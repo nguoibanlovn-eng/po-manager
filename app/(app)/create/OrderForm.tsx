@@ -58,7 +58,6 @@ export default function OrderForm({
   const [orderName, setOrderName] = useState(order?.order_name || "");
   const [owner, setOwner] = useState(order?.owner || user?.email || "");
   const [supplier, setSupplier] = useState(order?.supplier_name || "");
-  const [supplierContact, setSupplierContact] = useState(order?.supplier_contact || "");
   const [payStatus, setPayStatus] = useState(order?.pay_status || "Chưa thanh toán");
   const [goodsType, setGoodsType] = useState(order?.goods_type || "Hàng chính");
   const [orderDate, setOrderDate] = useState(formatYmd(order?.order_date));
@@ -178,7 +177,6 @@ export default function OrderForm({
         order_name: orderName,
         owner,
         supplier_name: supplier || null,
-        supplier_contact: supplierContact || null,
         pay_status: payStatus,
         goods_type: goodsType,
         order_date: orderDate || null,
@@ -370,22 +368,12 @@ export default function OrderForm({
             <input
               list="supplier-list"
               value={supplier}
-              onChange={(e) => {
-                setSupplier(e.target.value);
-                const found = suppliers.find((s) => s.supplier_name === e.target.value);
-                if (found) setSupplierContact(found.supplier_contact || "");
-              }}
+              onChange={(e) => setSupplier(e.target.value)}
               placeholder="Chọn hoặc nhập NCC mới"
             />
             <datalist id="supplier-list">
               {suppliers.map((s) => <option key={s.supplier_name} value={s.supplier_name} />)}
             </datalist>
-            <input
-              style={{ marginTop: 6 }}
-              value={supplierContact}
-              onChange={(e) => setSupplierContact(e.target.value)}
-              placeholder="Liên hệ NCC (WeChat, SĐT...)"
-            />
           </div>
         </div>
 
