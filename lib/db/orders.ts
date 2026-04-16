@@ -175,6 +175,16 @@ export async function saveOrder(payload: SaveOrderPayload): Promise<string> {
     await upsertSupplierUse(payload.supplier_name);
   }
 
+  // Auto-tạo phiếu triển khai khi đơn về (best-effort, không block save)
+  if (stage === "ARRIVED") {
+    try {
+      const { createDeploymentsForOrder } = await import("./deploy");
+      await createDeploymentsForOrder(oid, payload.created_by || "auto");
+    } catch (e) {
+      console.warn("Auto-create deployment failed for " + oid + ":", (e as Error).message);
+    }
+  }
+
   return oid;
 }
 
@@ -255,6 +265,16 @@ export async function advanceStage(
     .update({ stage: newStage, updated_at: nowVN(), note: merged })
     .eq("order_id", orderId);
   if (error) throw error;
+
+  // Auto-tạo phiếu triển khai khi đơn chuyển sang ARRIVED (best-effort)
+  if (newStage === "ARRIVED") {
+    try {
+      const { createDeploymentsForOrder } = await import("./deploy");
+      await createDeploymentsForOrder(orderId, "auto");
+    } catch (e) {
+      console.warn("Auto-create deployment failed for " + orderId + ":", (e as Error).message);
+    }
+  }
 }
 
 export async function confirmShelf(orderId: string) {
