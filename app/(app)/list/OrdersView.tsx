@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { daysFromNow, formatDate, formatVND, payClass } from "@/lib/format";
-import type { OrderListItem, OrderStage } from "@/lib/types";
+import type { OrderListItem } from "@/lib/types";
 import { deleteOrderAction } from "./actions";
+import OrderDetailModal from "./OrderDetailModal";
 
 const STAGE_LABEL: Record<string, string> = {
   DRAFT: "Nháp",
@@ -30,6 +31,7 @@ export default function OrdersView({
   const [stage, setStage] = useState<string>("");
   const [pay, setPay] = useState<string>("");
   const [eta, setEta] = useState<string>("");
+  const [detailOrderId, setDetailOrderId] = useState<string | null>(null);
 
   const canEdit = userRole === "ADMIN" || userRole.startsWith("LEADER_") || userRole === "NV_MH";
 
@@ -171,7 +173,15 @@ export default function OrdersView({
                   {orders.length === 0 ? "Chưa có đơn." : "Không có đơn khớp bộ lọc."}
                 </td></tr>
               ) : (
-                filtered.map((o) => <OrderRow key={o.order_id} o={o} canEdit={canEdit} onDelete={onDelete} />)
+                filtered.map((o) => (
+                  <OrderRow
+                    key={o.order_id}
+                    o={o}
+                    canEdit={canEdit}
+                    onDelete={onDelete}
+                    onOpen={() => setDetailOrderId(o.order_id)}
+                  />
+                ))
               )}
             </tbody>
           </table>
@@ -182,7 +192,15 @@ export default function OrdersView({
           {filtered.length === 0 ? (
             <div className="muted" style={{ padding: 24, textAlign: "center" }}>Không có đơn.</div>
           ) : (
-            filtered.map((o) => <OrderCard key={o.order_id} o={o} canEdit={canEdit} onDelete={onDelete} />)
+            filtered.map((o) => (
+              <OrderCard
+                key={o.order_id}
+                o={o}
+                canEdit={canEdit}
+                onDelete={onDelete}
+                onOpen={() => setDetailOrderId(o.order_id)}
+              />
+            ))
           )}
         </div>
 
@@ -192,25 +210,32 @@ export default function OrdersView({
       </div>
 
       {pending && <div style={{ position: "fixed", bottom: 20, right: 20, background: "#fff", padding: "8px 16px", borderRadius: 8, boxShadow: "var(--shadow-md)", fontSize: 13 }}>Đang xử lý...</div>}
+
+      {detailOrderId && (
+        <OrderDetailModal
+          orderId={detailOrderId}
+          onClose={() => setDetailOrderId(null)}
+          canEdit={canEdit}
+        />
+      )}
     </section>
   );
 }
 
 function OrderRow({
-  o, canEdit, onDelete,
+  o, canEdit, onDelete, onOpen,
 }: {
   o: OrderListItem;
   canEdit: boolean;
   onDelete: (id: string, name: string) => void;
+  onOpen: () => void;
 }) {
   const days = daysFromNow(o.eta_date);
   const etaClass = days !== null && days < 0 ? "chip-red" : days !== null && days <= 3 ? "chip-amber" : "muted";
   return (
-    <tr>
+    <tr style={{ cursor: "pointer" }} onClick={onOpen}>
       <td style={{ fontWeight: 700, fontSize: 12 }}>
-        <Link href={`/create?order_id=${o.order_id}`} style={{ color: "var(--blue)", textDecoration: "none" }}>
-          {o.order_id}
-        </Link>
+        <span style={{ color: "var(--blue)" }}>{o.order_id}</span>
       </td>
       <td>
         <div style={{ fontWeight: 600 }}>{o.order_name || "—"}</div>
@@ -235,7 +260,7 @@ function OrderRow({
         {canEdit && (
           <button
             className="btn btn-ghost btn-xs"
-            onClick={() => onDelete(o.order_id, o.order_name || "")}
+            onClick={(e) => { e.stopPropagation(); onDelete(o.order_id, o.order_name || ""); }}
             title="Xoá đơn"
             style={{ color: "var(--red)" }}
           >🗑</button>
@@ -246,20 +271,19 @@ function OrderRow({
 }
 
 function OrderCard({
-  o, canEdit, onDelete,
+  o, canEdit, onDelete, onOpen,
 }: {
   o: OrderListItem;
   canEdit: boolean;
   onDelete: (id: string, name: string) => void;
+  onOpen: () => void;
 }) {
   const days = daysFromNow(o.eta_date);
   return (
-    <div className="card" style={{ marginBottom: 10, padding: 12 }}>
+    <div className="card" style={{ marginBottom: 10, padding: 12, cursor: "pointer" }} onClick={onOpen}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <Link href={`/create?order_id=${o.order_id}`} style={{ color: "var(--blue)", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>
-            {o.order_id}
-          </Link>
+          <span style={{ color: "var(--blue)", fontWeight: 700, fontSize: 13 }}>{o.order_id}</span>
           <div style={{ fontWeight: 600, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {o.order_name || "—"}
           </div>
@@ -281,7 +305,7 @@ function OrderCard({
         </div>
       )}
       {canEdit && (
-        <div style={{ marginTop: 8, display: "flex", gap: 6 }}>
+        <div style={{ marginTop: 8, display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
           <Link href={`/create?order_id=${o.order_id}`} className="btn btn-ghost btn-sm" style={{ flex: 1, textAlign: "center", textDecoration: "none" }}>Sửa</Link>
           <button className="btn btn-danger btn-sm" onClick={() => onDelete(o.order_id, o.order_name || "")}>🗑</button>
         </div>

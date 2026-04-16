@@ -8,6 +8,7 @@ import {
   restoreOrder,
   softDeleteOrder,
 } from "@/lib/db/orders";
+import { createDeploymentsForOrder } from "@/lib/db/deploy";
 import type { OrderStage } from "@/lib/types";
 
 export async function deleteOrderAction(orderId: string) {
@@ -39,4 +40,16 @@ export async function advanceStageAction(
   await advanceStage(orderId, newStage, note);
   revalidatePath("/list");
   return { ok: true };
+}
+
+export async function createDeploymentAction(orderId: string) {
+  const u = await requireUser();
+  try {
+    const r = await createDeploymentsForOrder(orderId, u.name || u.email);
+    revalidatePath("/deploy");
+    revalidatePath("/list");
+    return { ok: true as const, ...r };
+  } catch (e) {
+    return { ok: false as const, error: (e as Error).message };
+  }
 }

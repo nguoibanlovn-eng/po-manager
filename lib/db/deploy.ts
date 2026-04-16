@@ -1,8 +1,79 @@
 import "server-only";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { nowVN } from "@/lib/helpers";
+import { toNum } from "@/lib/format";
 import { parseLinks, stringifyLinks, type Channel, type DeployGroup, type DeployProduct } from "./deploy-types";
 export type { Channel, DeployGroup, DeployProduct } from "./deploy-types";
+
+// Tạo phiếu triển khai (TK) cho mỗi SP trong đơn khi hàng về.
+// Idempotent — nếu đơn đã có phiếu, không tạo thêm.
+export async function createDeploymentsForOrder(
+  orderId: string,
+  createdBy: string,
+): Promise<{ created: number; existed: boolean; deployIds: string[] }> {
+  const db = supabaseAdmin();
+  // Kiểm tra đã có phiếu chưa
+  const { data: existing } = await db
+    .from("deployments")
+    .select("deploy_id")
+    .eq("order_id", orderId)
+    .limit(1);
+  if (existing && existing.length > 0) {
+    return { created: 0, existed: true, deployIds: [] };
+  }
+
+  // Lấy order + items
+  const { data: order } = await db
+    .from("orders")
+    .select("order_id, order_name")
+    .eq("order_id", orderId)
+    .eq("is_deleted", false)
+    .maybeSingle();
+  if (!order) throw new Error("Không tìm thấy đơn " + orderId);
+
+  const { data: items = [] } = await db
+    .from("items")
+    .select("line_id, sku, product_name, qty, unit_price")
+    .eq("order_id", orderId)
+    .eq("is_deleted", false);
+
+  const valid = (items || []).filter(
+    (it) =>
+      (it.product_name && it.product_name.trim()) ||
+      (it.sku && String(it.sku).trim()) ||
+      toNum(it.unit_price) > 0,
+  );
+  if (!valid.length) throw new Error("Đơn không có SP hợp lệ để tạo phiếu triển khai");
+
+  const now = nowVN();
+  const ts = Date.now().toString().slice(-4);
+  const rows = valid.map((it, idx) => ({
+    deploy_id: `DP-${orderId}-${ts}-${idx + 1}`,
+    order_id: orderId,
+    order_name: order.order_name || orderId,
+    line_id: it.line_id,
+    sku: it.sku || null,
+    product_name: it.product_name || null,
+    qty: toNum(it.qty),
+    unit_price: toNum(it.unit_price),
+    fb_done: false,
+    fb_links: "[]",
+    shopee_done: false,
+    shopee_links: "[]",
+    tiktok_done: false,
+    tiktok_links: "[]",
+    web_done: false,
+    web_links: "[]",
+    status: "pending",
+    created_at: now,
+    created_by: createdBy,
+    info_done: false,
+  }));
+
+  const { error } = await db.from("deployments").insert(rows);
+  if (error) throw error;
+  return { created: rows.length, existed: false, deployIds: rows.map((r) => r.deploy_id) };
+}
 
 export async function listDeployments(statusFilter?: "pending" | "in_progress" | "done"): Promise<DeployGroup[]> {
   const db = supabaseAdmin();
