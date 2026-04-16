@@ -11,12 +11,19 @@ import {
   saveOrderAction, deleteOrderFromForm, advanceStageFromForm,
   requestUnlockAction, approveUnlockAction,
 } from "./actions";
+import ProductPicker, { type PickableProduct } from "./ProductPicker";
 
-type ItemDraft = Partial<Item> & { _key: string };
+type ItemDraft = Partial<Item> & { _key: string; _expanded?: boolean };
 
 const PAY_OPTIONS = ["Chưa thanh toán", "Đã cọc", "Đã thanh toán", "Công nợ"];
-const GOODS_OPTIONS = ["Hàng chính", "Hàng sản xuất", "Hàng phụ", "Hàng khuyến mại"];
-const ITEM_TYPE_OPTIONS = ["Hàng chính", "Hàng phụ", "Khuyến mại"];
+const GOODS_OPTIONS = [
+  "Trung Quốc trữ sẵn",
+  "Trung Quốc đặt hàng",
+  "Nội địa",
+  "Hàng mẫu",
+  "Hàng sản xuất",
+];
+const ITEM_TYPE_OPTIONS = ["Hàng chính", "Hàng mẫu", "Hàng bonus"];
 
 const STAGE_FLOW: { from: OrderStage; to: OrderStage; label: string; note: string }[] = [
   { from: "DRAFT",     to: "ORDERED",   label: "Đã đặt NCC",       note: "Đã đặt nhà cung cấp" },
@@ -61,8 +68,31 @@ export default function OrderForm({
   const [note, setNote] = useState(order?.note || "");
 
   const [items, setItems] = useState<ItemDraft[]>(() =>
-    initialItems.map((it) => ({ ...it, _key: newKey() })),
+    initialItems.map((it) => ({ ...it, _key: newKey(), _expanded: false })),
   );
+  const [pickerFor, setPickerFor] = useState<string | null>(null);
+
+  function toggleExpand(key: string) {
+    setItems((xs) => xs.map((it) => (it._key === key ? { ...it, _expanded: !it._expanded } : it)));
+  }
+  function expandAll() {
+    const allExp = items.every((it) => it._expanded);
+    setItems((xs) => xs.map((it) => ({ ...it, _expanded: !allExp })));
+  }
+  function pickProduct(p: PickableProduct, key: string) {
+    setItems((xs) =>
+      xs.map((it) =>
+        it._key === key
+          ? {
+              ...it,
+              sku: p.sku || it.sku,
+              product_name: p.product_name || it.product_name,
+              unit_price: Number(p.cost_price) || it.unit_price || 0,
+            }
+          : it,
+      ),
+    );
+  }
 
   // Nhanh bill import
   const [nhanhBillId, setNhanhBillId] = useState("");
@@ -121,6 +151,7 @@ export default function OrderForm({
       ...xs,
       {
         _key: newKey(),
+        _expanded: true,
         item_type: "Hàng chính",
         qty: 0,
         unit_price: 0,
@@ -396,96 +427,150 @@ export default function OrderForm({
       {/* ITEMS */}
       <div className="card" style={{ marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <div style={{ fontWeight: 700 }}>📦 Sản phẩm trong đơn ({items.length})</div>
-          <button type="button" className="btn btn-primary btn-sm" onClick={addItem}>
-            + Thêm SP
-          </button>
+          <div style={{ fontWeight: 700 }}>📦 Sản phẩm trong đơn</div>
+          <div className="row">
+            {items.length > 0 && (
+              <button type="button" className="btn btn-ghost btn-sm" onClick={expandAll}>
+                Mở rộng tất cả
+              </button>
+            )}
+            <button type="button" className="btn btn-primary btn-sm" onClick={addItem}>
+              + Thêm SP
+            </button>
+          </div>
         </div>
 
         {items.length === 0 ? (
           <div style={{ textAlign: "center", padding: 24, color: "var(--muted)", fontSize: 13 }}>
-            Chưa có sản phẩm. Bấm &quot;+ Thêm SP&quot;.
+            Chưa có sản phẩm. Bấm &quot;+ Thêm SP&quot; hoặc đồng bộ từ nhanh.vn.
           </div>
         ) : (
-          <div className="tbl-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th style={{ width: 40 }}>#</th>
-                  <th style={{ minWidth: 140 }}>SKU</th>
-                  <th style={{ minWidth: 220 }}>Tên SP</th>
-                  <th style={{ width: 120 }}>Loại</th>
-                  <th style={{ width: 80 }} className="text-right">SL</th>
-                  <th style={{ width: 120 }} className="text-right">Đơn giá</th>
-                  <th style={{ width: 130 }} className="text-right">Thành tiền</th>
-                  <th style={{ width: 40 }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((it, i) => (
-                  <tr key={it._key}>
-                    <td className="muted">{i + 1}</td>
-                    <td>
-                      <input
-                        value={it.sku || ""}
-                        onChange={(e) => patchItem(it._key, { sku: e.target.value })}
-                        placeholder="SKU"
-                      />
-                    </td>
-                    <td>
-                      <input
-                        value={it.product_name || ""}
-                        onChange={(e) => patchItem(it._key, { product_name: e.target.value })}
-                        placeholder="Tên sản phẩm"
-                      />
-                    </td>
-                    <td>
-                      <select
-                        value={it.item_type || "Hàng chính"}
-                        onChange={(e) => patchItem(it._key, { item_type: e.target.value })}
-                      >
-                        {ITEM_TYPE_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-                      </select>
-                    </td>
-                    <td className="text-right">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        className="text-right"
-                        value={String(it.qty ?? "")}
-                        onChange={(e) =>
-                          patchItem(it._key, { qty: Number(e.target.value.replace(/[^\d.]/g, "")) })
-                        }
-                      />
-                    </td>
-                    <td className="text-right">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        className="text-right"
-                        value={String(it.unit_price ?? "")}
-                        onChange={(e) =>
-                          patchItem(it._key, {
-                            unit_price: Number(e.target.value.replace(/[^\d.]/g, "")),
-                          })
-                        }
-                      />
-                    </td>
-                    <td className="text-right font-bold">
-                      {formatVND(toNum(it.qty) * toNum(it.unit_price))}
-                    </td>
-                    <td>
+          <div>
+            {items.map((it, i) => {
+              const lineTotal = toNum(it.qty) * toNum(it.unit_price);
+              const priceWarn = toNum(it.unit_price) > 0 && toNum(it.unit_price) < 1000 ? " ⚠" : "";
+              const summary = it.product_name
+                ? `${it.product_name} · ${toNum(it.qty).toLocaleString("vi-VN")} × ${toNum(it.unit_price).toLocaleString("vi-VN")}đ${priceWarn} = ${formatVND(lineTotal)}`
+                : "(Chưa nhập)";
+              return (
+                <div
+                  key={it._key}
+                  className={"item-card" + (it._expanded ? " expanded" : "")}
+                >
+                  <div className="item-hdr" onClick={() => toggleExpand(it._key)}>
+                    <div className="item-hdr-l">
+                      <span className="item-num">{i + 1}</span>
+                      <span className="item-summary">{summary}</span>
+                    </div>
+                    <div className="row">
                       <button
                         type="button"
                         className="btn btn-ghost btn-xs"
+                        onClick={(e) => { e.stopPropagation(); removeItem(it._key); }}
                         style={{ color: "var(--red)" }}
-                        onClick={() => removeItem(it._key)}
-                      >🗑</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      >
+                        × Xoá
+                      </button>
+                      <span style={{ fontSize: 10, color: "var(--subtle)" }}>
+                        {it._expanded ? "▼" : "▶"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="item-body">
+                    <div className="form-grid fg-4" style={{ marginBottom: 10 }}>
+                      <div className="form-group">
+                        <label>SKU</label>
+                        <div style={{ display: "flex", gap: 4 }}>
+                          <input
+                            value={it.sku || ""}
+                            onChange={(e) => patchItem(it._key, { sku: e.target.value })}
+                            placeholder="Mã SP"
+                            style={{ flex: 1, minWidth: 0 }}
+                          />
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setPickerFor(it._key); }}
+                            title="Chọn từ catalog"
+                            style={{
+                              flexShrink: 0,
+                              padding: "0 8px",
+                              fontSize: 12,
+                              border: "0.5px solid var(--border)",
+                              borderRadius: "var(--radius-sm)",
+                              background: "var(--bg)",
+                              color: "var(--muted)",
+                              cursor: "pointer",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            📦 Chọn
+                          </button>
+                        </div>
+                      </div>
+                      <div className="form-group" style={{ gridColumn: "span 2" }}>
+                        <label>Tên sản phẩm</label>
+                        <input
+                          value={it.product_name || ""}
+                          onChange={(e) => patchItem(it._key, { product_name: e.target.value })}
+                          placeholder="Tên SP"
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Kiểu hàng</label>
+                        <select
+                          value={it.item_type || "Hàng chính"}
+                          onChange={(e) => patchItem(it._key, { item_type: e.target.value })}
+                        >
+                          {ITEM_TYPE_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="form-grid fg-4" style={{ marginBottom: 8 }}>
+                      <div className="form-group">
+                        <label>Số lượng</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={String(it.qty ?? 0)}
+                          onChange={(e) => patchItem(it._key, { qty: Number(e.target.value) || 0 })}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Giá nhập (đ)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={String(it.unit_price ?? 0)}
+                          onChange={(e) => patchItem(it._key, { unit_price: Number(e.target.value) || 0 })}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Thành tiền</label>
+                        <input className="ro" readOnly value={lineTotal.toLocaleString("vi-VN")} />
+                      </div>
+                      <div className="form-group">
+                        <label>Link mua</label>
+                        <input
+                          value={it.link || ""}
+                          onChange={(e) => patchItem(it._key, { link: e.target.value })}
+                          placeholder="https://..."
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Ghi chú SP</label>
+                      <input
+                        value={it.note || ""}
+                        onChange={(e) => patchItem(it._key, { note: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -493,6 +578,13 @@ export default function OrderForm({
           Tổng SL: {totalQty} · Tổng tiền: <span style={{ color: "var(--blue)" }}>{formatVND(orderTotal)}</span>
         </div>
       </div>
+
+      {pickerFor && (
+        <ProductPicker
+          onPick={(p) => pickProduct(p, pickerFor)}
+          onClose={() => setPickerFor(null)}
+        />
+      )}
 
       {/* STICKY BAR */}
       <div className="sticky-bar">
