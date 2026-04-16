@@ -83,6 +83,26 @@ export async function updateDamageItem(
   await recalcOrderDamage(orderId);
 }
 
+// Gửi ticket kế toán — đánh dấu ticket_sent_at + tạo pending_notification
+export async function sendDamageTicketToFinance(
+  orderId: string,
+  lineId: string,
+  sentBy: string,
+) {
+  const db = supabaseAdmin();
+  await db
+    .from("items")
+    .update({ ticket_sent_at: nowVN() })
+    .eq("order_id", orderId)
+    .eq("line_id", lineId);
+  await db.from("pending_notifications").insert({
+    to_emails: "",
+    order_id: orderId,
+    type: "DAMAGE_REFUND_TICKET",
+    payload: { line_id: lineId, sent_by: sentBy },
+  });
+}
+
 async function recalcOrderDamage(orderId: string) {
   const db = supabaseAdmin();
   const { data: items = [] } = await db
