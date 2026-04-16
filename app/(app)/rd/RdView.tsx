@@ -3,8 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { formatDate } from "@/lib/format";
-import type { RdItem } from "@/lib/db/rd";
-import { deleteRdItemAction, saveRdItemAction, updateStageAction } from "./actions";
+import type { RdItem } from "@/lib/db/rd-types";
+import { deleteRdItemAction, saveRdItemAction } from "./actions";
+import RdDetailModal from "./RdDetailModal";
 
 // Stage badges theo GAS gốc
 const STAGE_STYLE: Record<string, { bg: string; color: string; border: string }> = {
@@ -57,6 +58,7 @@ export default function RdView({ items }: { items: RdItem[]; filterStage?: strin
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState<RdItem | "new" | null>(null);
+  const [detailItem, setDetailItem] = useState<RdItem | null>(null);
   const [tab, setTab] = useState<Tab>("research");
   const [stageFilter, setStageFilter] = useState<string>("");
 
@@ -185,6 +187,7 @@ export default function RdView({ items }: { items: RdItem[]; filterStage?: strin
               key={it.id}
               item={it}
               tab={tab}
+              onOpen={() => setDetailItem(it)}
               onEdit={() => setEditing(it)}
               disabled={pending}
               startTransition={startTransition}
@@ -193,6 +196,14 @@ export default function RdView({ items }: { items: RdItem[]; filterStage?: strin
           ))}
         </div>
       )}
+
+      {detailItem && (
+        <RdDetailModal
+          item={detailItem}
+          onClose={() => setDetailItem(null)}
+          onRefresh={() => router.refresh()}
+        />
+      )}
     </section>
   );
 }
@@ -200,6 +211,7 @@ export default function RdView({ items }: { items: RdItem[]; filterStage?: strin
 function RdRow({
   item,
   tab,
+  onOpen,
   onEdit,
   disabled,
   startTransition,
@@ -207,6 +219,7 @@ function RdRow({
 }: {
   item: RdItem;
   tab: Tab;
+  onOpen: () => void;
   onEdit: () => void;
   disabled: boolean;
   startTransition: ReturnType<typeof useTransition>[1];
@@ -216,6 +229,12 @@ function RdRow({
   const progress = progressFor(item.stage, tab);
   const data = (item.data as Record<string, unknown> | null) || {};
   const description = String(data.description || data.note_short || item.note || "").substring(0, 140);
+
+  // Progress thật từ step_completed_at nếu có
+  const completed = item.step_completed_at || {};
+  const pipelineLen = tab === "production" ? 10 : 6;
+  const completedCount = Object.keys(completed).length;
+  const realProgress = completedCount > 0 ? Math.round((completedCount / pipelineLen) * 100) : progress;
 
   function del() {
     if (!confirm(`Xoá "${item.name}"?`)) return;
@@ -236,7 +255,7 @@ function RdRow({
         gap: 14,
         cursor: "pointer",
       }}
-      onClick={onEdit}
+      onClick={onOpen}
     >
       <span
         className="chip"
@@ -260,9 +279,18 @@ function RdRow({
         )}
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: progress >= 80 ? "var(--green)" : progress >= 40 ? "var(--amber)" : "var(--subtle)", minWidth: 40, textAlign: "right" }}>
-          {progress}%
+        <div style={{ fontSize: 13, fontWeight: 700, color: realProgress >= 80 ? "var(--green)" : realProgress >= 40 ? "var(--amber)" : "var(--subtle)", minWidth: 40, textAlign: "right" }}>
+          {realProgress}%
         </div>
+        <button
+          type="button"
+          className="btn btn-ghost btn-xs"
+          onClick={(e) => { e.stopPropagation(); onEdit(); }}
+          disabled={disabled}
+          title="Sửa info cơ bản"
+        >
+          ✏️
+        </button>
         <button
           type="button"
           className="btn btn-ghost btn-xs"

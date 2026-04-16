@@ -1,18 +1,9 @@
 import "server-only";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { nowVN } from "@/lib/helpers";
-
-export type RdItem = {
-  id: string;
-  name: string | null;
-  source_url: string | null;
-  stage: string | null;
-  note: string | null;
-  created_by: string | null;
-  created_at: string | null;
-  updated_at: string | null;
-  data: Record<string, unknown> | null;
-};
+import type { RdItem } from "./rd-types";
+export { getPipeline, RESEARCH_PIPELINE, PRODUCTION_PIPELINE } from "./rd-types";
+export type { RdItem } from "./rd-types";
 
 export async function listRdItems(stage?: string): Promise<RdItem[]> {
   const db = supabaseAdmin();
@@ -49,4 +40,44 @@ export async function updateRdStage(id: string, stage: string) {
 
 export async function deleteRdItem(id: string) {
   await supabaseAdmin().from("rd_items").delete().eq("id", id);
+}
+
+// ─── STEP MANAGEMENT ─────────────────────────────────────────
+export async function saveStepData(
+  id: string,
+  stepKey: string,
+  fields: Record<string, unknown>,
+) {
+  const db = supabaseAdmin();
+  const { data: cur } = await db
+    .from("rd_items").select("step_data").eq("id", id).maybeSingle();
+  const stepData = (cur?.step_data as Record<string, Record<string, unknown>>) || {};
+  stepData[stepKey] = { ...stepData[stepKey], ...fields };
+  await db.from("rd_items").update({ step_data: stepData, updated_at: nowVN() }).eq("id", id);
+}
+
+export async function completeStep(id: string, stepKey: string, nextStepKey?: string) {
+  const db = supabaseAdmin();
+  const { data: cur } = await db
+    .from("rd_items").select("step_completed_at").eq("id", id).maybeSingle();
+  const completed = (cur?.step_completed_at as Record<string, string>) || {};
+  completed[stepKey] = nowVN();
+  await db.from("rd_items").update({
+    step_completed_at: completed,
+    current_step: nextStepKey || stepKey,
+    updated_at: nowVN(),
+  }).eq("id", id);
+}
+
+export async function updateChecklist(
+  id: string,
+  stepKey: string,
+  checklist: Array<{ label: string; checked: boolean; note?: string }>,
+) {
+  const db = supabaseAdmin();
+  const { data: cur } = await db
+    .from("rd_items").select("checklists").eq("id", id).maybeSingle();
+  const checklists = (cur?.checklists as Record<string, Array<{ label: string; checked: boolean; note?: string }>>) || {};
+  checklists[stepKey] = checklist;
+  await db.from("rd_items").update({ checklists, updated_at: nowVN() }).eq("id", id);
 }
