@@ -28,29 +28,38 @@ type V3Product = {
   };
 };
 
-// ─── PRODUCTS ────────────────────────────────────────────────
-export async function syncProducts(): Promise<{ inserted: number }> {
-  const db = supabaseAdmin();
-  const all = await nhanhV3FetchAll<V3Product>("product/list", { filters: {} });
-  if (!all.length) return { inserted: 0 };
+// ─── PRODUCTS + INVENTORY (shared fetch) ─────────────────────
+// Gộp 2 sync thành 1 call tới Nhanh v3 product/list.
+// Tiết kiệm ~50% thời gian cron (trước: 2 × ~2 phút, nay: 1 × ~2 phút).
 
-  const now = nowVN();
-  const byId = new Map<number, {
-    id: number; sku: string; product_name: string; category: string; unit: string;
-    image_url: string; cost_price: number; sell_price: number;
-    stock: number; is_active: boolean; last_sync: string;
-  }>();
+type ProductRow = {
+  id: number; sku: string; product_name: string; category: string; unit: string;
+  image_url: string; cost_price: number; sell_price: number;
+  stock: number; is_active: boolean; last_sync: string;
+};
+type InventoryRow = {
+  sku: string; product_name: string; category: string;
+  available_qty: number; in_transit_qty: number; total_qty: number;
+  reserved_qty: number; sold_30d: number; last_sync: string;
+};
+
+function buildRows(all: V3Product[], now: string): { products: ProductRow[]; inventory: InventoryRow[] } {
+  const byId = new Map<number, ProductRow>();
+  const bySku = new Map<string, InventoryRow>();
   for (const p of all) {
     if (!p.id || !p.name) continue;
+    const sku = String(p.barcode || p.code || "");
     const inv = p.inventory || {};
     let stock = toNum(inv.remain);
     if (!stock && Array.isArray(inv.depots)) {
       stock = inv.depots.reduce((s, d) => s + toNum(d.remain), 0);
     }
     if (stock < 0) stock = 0;
+
+    // Products: 1 row per Nhanh product.id (variants tách riêng)
     byId.set(Number(p.id), {
       id: Number(p.id),
-      sku: String(p.barcode || p.code || ""),
+      sku,
       product_name: p.name || "",
       category: String(p.categoryName || p.cateName || p.categoryPath || ""),
       unit: p.units?.name || "cái",
@@ -61,42 +70,13 @@ export async function syncProducts(): Promise<{ inserted: number }> {
       is_active: p.status === 1 || p.status === "Active",
       last_sync: now,
     });
-  }
-  const rows = Array.from(byId.values());
 
-  await db.rpc("truncate_table", { tbl: "products" });
-  const BATCH = 500;
-  let inserted = 0;
-  for (let i = 0; i < rows.length; i += BATCH) {
-    const chunk = rows.slice(i, i + BATCH);
-    const { error } = await db.from("products").upsert(chunk, { onConflict: "id" });
-    if (error) throw error;
-    inserted += chunk.length;
-  }
-  return { inserted };
-}
-
-// ─── INVENTORY ───────────────────────────────────────────────
-export async function syncInventory(): Promise<{ inserted: number }> {
-  const db = supabaseAdmin();
-  const all = await nhanhV3FetchAll<V3Product>("product/list", { filters: {} });
-  if (!all.length) return { inserted: 0 };
-
-  const now = nowVN();
-  const bySku = new Map<string, {
-    sku: string; product_name: string; category: string;
-    available_qty: number; in_transit_qty: number; total_qty: number;
-    reserved_qty: number; sold_30d: number; last_sync: string;
-  }>();
-  for (const p of all) {
-    const sku = String(p.barcode || p.code || "");
+    // Inventory: gom variants cùng barcode (cộng dồn tồn)
     if (!sku) continue;
-    const inv = p.inventory || {};
     const remain = toNum(inv.remain);
     const shipping = toNum(inv.shipping);
     const holding = toNum(inv.holding);
     const sold30 = toNum(inv.sold || inv.soldCount || inv.totalSold);
-    // Sum across variants sharing a barcode instead of overwrite
     const existing = bySku.get(sku);
     if (existing) {
       existing.available_qty += remain;
@@ -118,17 +98,55 @@ export async function syncInventory(): Promise<{ inserted: number }> {
       });
     }
   }
-  const rows = Array.from(bySku.values());
+  return { products: Array.from(byId.values()), inventory: Array.from(bySku.values()) };
+}
 
-  await db.rpc("truncate_table", { tbl: "inventory" });
+async function writeBatched<T>(
+  table: string,
+  rows: T[],
+  conflict: string,
+): Promise<number> {
+  const db = supabaseAdmin();
+  await db.rpc("truncate_table", { tbl: table });
   const BATCH = 500;
   let inserted = 0;
   for (let i = 0; i < rows.length; i += BATCH) {
     const chunk = rows.slice(i, i + BATCH);
-    const { error } = await db.from("inventory").upsert(chunk, { onConflict: "sku" });
+    const { error } = await db.from(table).upsert(chunk as never, { onConflict: conflict });
     if (error) throw error;
     inserted += chunk.length;
   }
+  return inserted;
+}
+
+// Gộp: fetch 1 lần, ghi cả 2 bảng.
+export async function syncProductsAndInventory(): Promise<{
+  products: number; inventory: number;
+}> {
+  const all = await nhanhV3FetchAll<V3Product>("product/list", { filters: {} });
+  if (!all.length) return { products: 0, inventory: 0 };
+  const { products, inventory } = buildRows(all, nowVN());
+  // Ghi tuần tự (upsert + truncate lock cùng bảng nếu parallel không an toàn)
+  const p = await writeBatched("products", products, "id");
+  const i = await writeBatched("inventory", inventory, "sku");
+  return { products: p, inventory: i };
+}
+
+// Compatibility wrappers — cho admin-settings UI gọi riêng từng nút.
+// Cả 2 đều fetch product/list 1 lần và chỉ ghi bảng tương ứng.
+export async function syncProducts(): Promise<{ inserted: number }> {
+  const all = await nhanhV3FetchAll<V3Product>("product/list", { filters: {} });
+  if (!all.length) return { inserted: 0 };
+  const { products } = buildRows(all, nowVN());
+  const inserted = await writeBatched("products", products, "id");
+  return { inserted };
+}
+
+export async function syncInventory(): Promise<{ inserted: number }> {
+  const all = await nhanhV3FetchAll<V3Product>("product/list", { filters: {} });
+  if (!all.length) return { inserted: 0 };
+  const { inventory } = buildRows(all, nowVN());
+  const inserted = await writeBatched("inventory", inventory, "sku");
   return { inserted };
 }
 

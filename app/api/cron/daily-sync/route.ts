@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { syncProducts, syncInventory, syncSalesByChannel } from "@/lib/nhanh/sync";
+import { syncProductsAndInventory, syncSalesByChannel } from "@/lib/nhanh/sync";
 import { syncFbAds, syncFbPageInsights } from "@/lib/fb/sync";
 
 export const maxDuration = 300;
@@ -20,11 +20,11 @@ export async function POST(req: Request) {
   const t0 = Date.now();
 
   const jobs = [
-    { name: "products",    fn: () => syncProducts() },
-    { name: "inventory",   fn: () => syncInventory() },
-    { name: "sales",       fn: () => syncSalesByChannel({}) },
-    { name: "fb_ads",      fn: () => syncFbAds({}) },
-    { name: "fb_insights", fn: () => syncFbPageInsights() },
+    // Gộp products + inventory vì cùng gọi 1 endpoint Nhanh v3.
+    { name: "products_inventory", fn: () => syncProductsAndInventory() },
+    { name: "sales",              fn: () => syncSalesByChannel({}) },
+    { name: "fb_ads",             fn: () => syncFbAds({}) },
+    { name: "fb_insights",        fn: () => syncFbPageInsights() },
   ] as const;
 
   const settled = await Promise.allSettled(jobs.map((j) => j.fn()));

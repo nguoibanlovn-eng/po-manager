@@ -3,16 +3,18 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { formatDate, formatVND, formatVNDCompact, toNum } from "@/lib/format";
-import type { TiktokAdsRow, TiktokChannelRow } from "@/lib/db/tiktok";
+import type { TiktokAdsRow, TiktokChannelRow, TiktokProductStat } from "@/lib/db/tiktok";
 
 export default function SalesLeaderView({
   ads,
   channels,
+  productStats,
   from,
   to,
 }: {
   ads: TiktokAdsRow[];
   channels: TiktokChannelRow[];
+  productStats: TiktokProductStat[];
   from: string;
   to: string;
 }) {
@@ -133,6 +135,49 @@ export default function SalesLeaderView({
               ))}
               {adsByAdvertiser.length === 0 && (
                 <tr><td colSpan={7} className="muted" style={{ textAlign: "center", padding: 24 }}>Không có data ads.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Product stats từ TikTok Shop orders */}
+      <div className="card" style={{ marginBottom: 12, padding: 0 }}>
+        <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--border)", fontWeight: 700, display: "flex", justifyContent: "space-between" }}>
+          <span>🛍 Top sản phẩm bán trên TikTok Shop</span>
+          <span className="muted" style={{ fontSize: 12 }}>{productStats.length} SP · aggregate từ orders</span>
+        </div>
+        <div className="tbl-wrap" style={{ maxHeight: 400, overflowY: "auto" }}>
+          <table>
+            <thead><tr>
+              <th>Sản phẩm</th>
+              <th>Shop</th>
+              <th className="text-right">SL bán</th>
+              <th className="text-right">Doanh thu</th>
+              <th className="text-right">SL huỷ</th>
+              <th className="text-right">% huỷ</th>
+            </tr></thead>
+            <tbody>
+              {productStats.slice(0, 50).map((p) => (
+                <tr key={p.name}>
+                  <td style={{ maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={p.name}>
+                    {p.name}
+                  </td>
+                  <td className="muted" style={{ fontSize: 12 }}>{p.shop}</td>
+                  <td className="text-right font-bold">{p.sold.toLocaleString("vi-VN")}</td>
+                  <td className="text-right">{formatVND(p.revenue)}</td>
+                  <td className="text-right" style={{ color: p.cancel > 0 ? "var(--red)" : "var(--muted)" }}>
+                    {p.cancel.toLocaleString("vi-VN")}
+                  </td>
+                  <td className="text-right" style={{ color: p.cancel_rate > 20 ? "var(--red)" : p.cancel_rate > 10 ? "var(--amber)" : "var(--muted)" }}>
+                    {p.cancel_rate}%
+                  </td>
+                </tr>
+              ))}
+              {productStats.length === 0 && (
+                <tr><td colSpan={6} className="muted" style={{ textAlign: "center", padding: 24 }}>
+                  Chưa có đơn TikTok Shop. Sync orders ở Admin Settings trước.
+                </td></tr>
               )}
             </tbody>
           </table>

@@ -1,6 +1,75 @@
 import "server-only";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
+export type TiktokProductStat = {
+  name: string;
+  shop: string;
+  sold: number;
+  revenue: number;
+  cancel: number;
+  cancel_rate: number;
+};
+
+const CANCEL_STATUSES = new Set(["CANCELLED", "RETURNED", "RETURN_REQUEST"]);
+const SOLD_STATUSES = new Set(["COMPLETED", "DELIVERED", "IN_TRANSIT", "AWAITING_COLLECTION"]);
+
+// Aggregate product-level stats từ tiktok_shop_orders.raw (JSONB).
+export async function getTiktokProductStats(opts: { from?: string; to?: string } = {}): Promise<{
+  products: TiktokProductStat[];
+  shops: string[];
+}> {
+  const db = supabaseAdmin();
+  const to = opts.to ? new Date(opts.to + "T23:59:59Z") : new Date();
+  const from = opts.from ? new Date(opts.from + "T00:00:00Z") : new Date(Date.now() - 30 * 86400_000);
+
+  const { data: orders = [] } = await db
+    .from("tiktok_shop_orders")
+    .select("shop_id, order_status, raw")
+    .gte("order_date", from.toISOString())
+    .lte("order_date", to.toISOString())
+    .limit(50000);
+
+  // Lookup shop names
+  const { data: shopsData = [] } = await db.from("tktshop_shops").select("shop_id, name");
+  const shopMap = new Map((shopsData || []).map((s) => [s.shop_id, s.name || s.shop_id]));
+
+  const products = new Map<string, TiktokProductStat>();
+  const shopSet = new Set<string>();
+
+  for (const o of orders || []) {
+    const st = String(o.order_status || "").toUpperCase();
+    const shopName = shopMap.get(o.shop_id) || o.shop_id;
+    shopSet.add(shopName);
+    const raw = o.raw as { line_items?: Array<{ product_name?: string; name?: string; sku_name?: string; quantity?: number; original_price?: string | number; sale_price?: string | number }> } | null;
+    const items = raw?.line_items || [];
+    for (const it of items) {
+      const name = String(it.product_name || it.name || it.sku_name || "").trim();
+      if (!name) continue;
+      const qty = Number(it.quantity || 1);
+      const price = Number(it.sale_price || it.original_price || 0);
+      const cur = products.get(name) || { name, shop: shopName, sold: 0, revenue: 0, cancel: 0, cancel_rate: 0 };
+      if (CANCEL_STATUSES.has(st)) {
+        cur.cancel += qty;
+      } else if (SOLD_STATUSES.has(st)) {
+        cur.sold += qty;
+        cur.revenue += qty * price;
+      }
+      products.set(name, cur);
+    }
+  }
+
+  const result = Array.from(products.values())
+    .map((p) => {
+      const total = p.sold + p.cancel;
+      p.cancel_rate = total > 0 ? Math.round((p.cancel / total) * 100) : 0;
+      return p;
+    })
+    .sort((a, b) => b.sold - a.sold)
+    .slice(0, 200);
+
+  return { products: result, shops: Array.from(shopSet).sort() };
+}
+
 export type TiktokAdsRow = {
   date: string;
   advertiser_id: string;

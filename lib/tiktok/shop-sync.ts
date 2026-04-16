@@ -97,3 +97,106 @@ export async function syncAllShopsOrders(opts: { from?: string; to?: string } = 
   }
   return { totalFetched, shops: results };
 }
+
+// ─── RETURNS ─────────────────────────────────────────────────
+type ReturnSearchResult = {
+  returns?: Array<{
+    return_id?: string;
+    id?: string;
+    order_id?: string;
+    return_status?: string;
+    status?: string;
+    return_type?: string;
+    create_time?: number;
+    update_time?: number;
+    refund_amount?: string | number;
+    refund_total?: string | number;
+    currency?: string;
+    buyer_reason?: string;
+    reason?: string;
+    seller_note?: string;
+    return_line_items?: Array<unknown>;
+    items?: Array<unknown>;
+  }>;
+  next_page_token?: string;
+};
+
+export async function syncShopReturns(
+  shopId: string,
+  opts: { from?: string; to?: string } = {},
+): Promise<{ shop: string; fetched: number; errors: string[] }> {
+  const db = supabaseAdmin();
+  const errors: string[] = [];
+  await getShopToken(shopId);
+  const to = opts.to || new Date().toISOString().substring(0, 10);
+  const from = opts.from || new Date(Date.now() - 30 * 86400_000).toISOString().substring(0, 10);
+  const createTimeGe = Math.floor(new Date(from + "T00:00:00Z").getTime() / 1000);
+  const createTimeLt = Math.floor(new Date(to + "T23:59:59Z").getTime() / 1000);
+
+  let nextPageToken: string | undefined;
+  let fetched = 0;
+  for (let page = 0; page < 50; page++) {
+    try {
+      const params: Record<string, string | number> = { page_size: 50 };
+      if (nextPageToken) params.page_token = nextPageToken;
+      const body = {
+        create_time_ge: createTimeGe,
+        create_time_lt: createTimeLt,
+        sort_field: "create_time",
+        sort_order: "DESC",
+      };
+      const res = await tktshopRequest<ReturnSearchResult>(
+        "/return_refund/202309/returns/search",
+        shopId,
+        params,
+        "POST",
+        body,
+      );
+      if (res.code !== 0) {
+        errors.push(`${shopId} page ${page}: ${res.message}`);
+        break;
+      }
+      const returns = res.data?.returns || [];
+      if (returns.length === 0) break;
+      const rows = returns.map((rt) => ({
+        shop_id: shopId,
+        return_id: rt.return_id || rt.id || "",
+        order_id: rt.order_id || null,
+        status: rt.return_status || rt.status || null,
+        reason: rt.buyer_reason || rt.reason || null,
+        refund_amount: toNum(rt.refund_amount || rt.refund_total),
+        created_at: rt.create_time ? new Date(rt.create_time * 1000).toISOString() : null,
+        synced_at: nowVN(),
+        raw: rt,
+      }));
+      const { error } = await db
+        .from("tiktok_shop_returns")
+        .upsert(rows, { onConflict: "shop_id,return_id" });
+      if (error) errors.push(`${shopId} upsert: ${error.message}`);
+      else fetched += rows.length;
+      nextPageToken = res.data?.next_page_token;
+      if (!nextPageToken) break;
+      await new Promise((r) => setTimeout(r, 300));
+    } catch (e) {
+      errors.push(`${shopId} page ${page}: ${(e as Error).message}`);
+      break;
+    }
+  }
+  const { data: shop } = await db.from("tktshop_shops").select("name").eq("shop_id", shopId).maybeSingle();
+  return { shop: shop?.name || shopId, fetched, errors };
+}
+
+export async function syncAllShopsReturns(opts: { from?: string; to?: string } = {}): Promise<{
+  totalFetched: number;
+  shops: Array<{ shop: string; fetched: number; errors: string[] }>;
+}> {
+  const shops = await listShops();
+  const results: Array<{ shop: string; fetched: number; errors: string[] }> = [];
+  let totalFetched = 0;
+  for (const s of shops) {
+    const r = await syncShopReturns(s.shop_id, opts);
+    results.push(r);
+    totalFetched += r.fetched;
+  }
+  return { totalFetched, shops: results };
+}

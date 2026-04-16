@@ -93,6 +93,18 @@ const JOBS: SyncJob[] = [
       return { from: iso(from), to: iso(to) };
     },
   },
+  {
+    key: "tt-shop-returns",
+    label: "TikTok Shop Returns (30 ngày, 3 shops)",
+    sub: "Sync hoàn hàng từ 3 shops TikTok.",
+    url: "/api/tiktok/sync-shop-returns",
+    body: () => {
+      const to = new Date();
+      const from = new Date(to.getTime() - 30 * 86400_000);
+      const iso = (d: Date) => d.toISOString().substring(0, 10);
+      return { from: iso(from), to: iso(to) };
+    },
+  },
 ];
 
 export default function SyncPanel() {
