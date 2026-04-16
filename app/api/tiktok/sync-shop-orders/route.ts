@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/user";
 import { syncAllShopsOrders } from "@/lib/tiktok/shop-sync";
 
-export const maxDuration = 600;
+export const maxDuration = 300;
 
 export async function POST(req: Request) {
   const u = await getCurrentUser();

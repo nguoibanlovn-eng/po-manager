@@ -2,10 +2,14 @@ import { NextResponse } from "next/server";
 import { syncProducts, syncInventory, syncSalesByChannel } from "@/lib/nhanh/sync";
 import { syncFbAds, syncFbPageInsights } from "@/lib/fb/sync";
 
-export const maxDuration = 800;
+export const maxDuration = 300;
 
 // Triggered by Supabase pg_cron (see supabase/migrations/0005_cron.sql).
 // Auth: Authorization: Bearer <CRON_SECRET> header.
+//
+// Runs all syncs in PARALLEL to fit within Vercel Pro's 300s limit.
+// Note: Nhanh products + inventory both hit the same v3 product/list
+// endpoint — running in parallel doubles API calls but saves wall time.
 export async function POST(req: Request) {
   const expected = process.env.CRON_SECRET;
   const auth = req.headers.get("authorization") || "";
@@ -13,23 +17,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
-  const results: Record<string, unknown> = {};
   const t0 = Date.now();
 
-  // Run each sync, collect results, keep going on error
-  for (const [name, fn] of [
-    ["products", () => syncProducts()],
-    ["inventory", () => syncInventory()],
-    ["sales", () => syncSalesByChannel({})],
-    ["fb_ads", () => syncFbAds({})],
-    ["fb_insights", () => syncFbPageInsights()],
-  ] as const) {
-    try {
-      const r = await fn();
-      results[name] = { ok: true, ...r };
-    } catch (e) {
-      results[name] = { ok: false, error: (e as Error).message };
-    }
+  const jobs = [
+    { name: "products",    fn: () => syncProducts() },
+    { name: "inventory",   fn: () => syncInventory() },
+    { name: "sales",       fn: () => syncSalesByChannel({}) },
+    { name: "fb_ads",      fn: () => syncFbAds({}) },
+    { name: "fb_insights", fn: () => syncFbPageInsights() },
+  ] as const;
+
+  const settled = await Promise.allSettled(jobs.map((j) => j.fn()));
+  const results: Record<string, unknown> = {};
+  for (let i = 0; i < jobs.length; i++) {
+    const s = settled[i];
+    results[jobs[i].name] = s.status === "fulfilled"
+      ? { ok: true, ...s.value }
+      : { ok: false, error: s.reason instanceof Error ? s.reason.message : String(s.reason) };
   }
 
   return NextResponse.json({

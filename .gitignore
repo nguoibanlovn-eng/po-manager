@@ -39,6 +39,9 @@ yarn-error.log*
 # Claude Code local settings
 .claude/
 
+# Reference files từ hệ cũ (chứa API keys, không được push)
+/reference/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
