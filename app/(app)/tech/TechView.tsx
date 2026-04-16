@@ -36,6 +36,8 @@ export default function TechView({
         <button className="btn btn-ghost btn-sm" onClick={() => router.refresh()}>🔄</button>
       </div>
 
+      {null}
+
       <div className="mini-tabs">
         <Link
           href="/tech?tab=active"
@@ -144,24 +146,29 @@ function OrderQcCard({
           background: "#FAFAFA",
           borderBottom: expanded ? "1px solid var(--border)" : "none",
           cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 10,
         }}
         onClick={() => setExpanded((v) => !v)}
       >
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 700 }}>
-            {order.order_id} · {order.order_name || "—"}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 700 }}>
+              {order.order_id} · {order.order_name || "—"}
+            </div>
+            <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
+              {order.supplier_name || "—"} · Về ngày {formatDate(order.arrival_date)} · {items.length} SP
+            </div>
           </div>
-          <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
-            {order.supplier_name || "—"} · Về ngày {formatDate(order.arrival_date)} · {items.length} SP ·
-            QC {qcDoneCount}/{items.length} · Kệ {shelfDoneCount}/{items.length}
-          </div>
+          <span className={`stage-badge stage-${order.stage}`}>{order.stage}</span>
+          <span style={{ color: "var(--muted)" }}>{expanded ? "▾" : "▸"}</span>
         </div>
-        <span className={`stage-badge stage-${order.stage}`}>{order.stage}</span>
-        <span style={{ color: "var(--muted)" }}>{expanded ? "▾" : "▸"}</span>
+
+        {/* Progress bar QC + Kệ */}
+        {items.length > 0 && (
+          <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+            <ProgressLine label={`QC: ${qcDoneCount}/${items.length} SP`} pct={qcDoneCount / items.length * 100} color="var(--teal)" />
+            <ProgressLine label={`Lên kệ: ${shelfDoneCount}/${items.length} SP`} pct={shelfDoneCount / items.length * 100} color="var(--green)" />
+          </div>
+        )}
       </div>
 
       {expanded && (
@@ -170,75 +177,109 @@ function OrderQcCard({
             <table>
               <thead>
                 <tr>
-                  <th>SP</th>
-                  <th style={{ width: 60 }} className="text-right">SL</th>
-                  <th style={{ width: 130 }}>QC</th>
-                  <th style={{ width: 80 }} className="text-right">Hỏng SL</th>
-                  <th style={{ width: 110 }} className="text-right">Tiền hỏng</th>
-                  <th style={{ minWidth: 150 }}>Ghi chú</th>
-                  <th style={{ width: 70 }} className="text-center">Lên kệ</th>
+                  <th style={{ width: 40 }}>#</th>
+                  <th>SẢN PHẨM</th>
+                  <th style={{ width: 80 }} className="text-right">SL NHẬP</th>
+                  <th style={{ width: 110 }} className="text-right">GIÁ NHẬP</th>
+                  <th style={{ width: 140 }}>QC</th>
+                  <th style={{ width: 70 }} className="text-right">SL LỖI</th>
+                  <th style={{ width: 120 }} className="text-right">CHI PHÍ LỖI (Đ)</th>
+                  <th style={{ minWidth: 180 }}>GHI CHÚ LỖI</th>
+                  <th style={{ width: 140 }}>LÊN KỆ</th>
                 </tr>
               </thead>
               <tbody>
-                {items.map((it) => (
-                  <tr key={it.line_id}>
-                    <td>
-                      <div style={{ fontWeight: 600, fontSize: 12 }}>{it.product_name}</div>
-                      <div className="muted" style={{ fontSize: 11 }}>{it.sku || "—"}</div>
-                    </td>
-                    <td className="text-right">{toNum(it.qty)}</td>
-                    <td>
-                      <select
-                        value={it.qc_status || "Chưa QC"}
-                        onChange={(e) => patch(it.line_id, { qc_status: e.target.value })}
-                        disabled={disabled}
+                {items.map((it, idx) => {
+                  const qty = toNum(it.qty);
+                  const unitPrice = toNum(it.unit_price);
+                  const damageQty = toNum(it.damage_qty);
+                  const damageAmount = damageQty * unitPrice;
+                  const qcDone = it.qc_status === "Đã QC xong";
+                  const qcError = it.qc_status === "Lỗi NCC";
+                  const hasDamage = damageQty > 0;
+                  // Row bg theo trạng thái
+                  const rowBg = hasDamage || qcError ? "#FEF2F2" : qcDone ? "#F0FDF4" : "transparent";
+                  return (
+                    <tr key={it.line_id} style={{ background: rowBg }}>
+                      <td className="muted">{idx + 1}</td>
+                      <td>
+                        <div style={{ fontWeight: 600, fontSize: 12 }}>{it.product_name}</div>
+                        <div className="muted" style={{ fontSize: 11, fontFamily: "monospace" }}>{it.sku || "—"}</div>
+                      </td>
+                      <td className="text-right font-bold">{qty}</td>
+                      <td className="text-right muted">{formatVND(unitPrice)}</td>
+                      <td>
+                        <select
+                          value={it.qc_status || "Chưa QC"}
+                          onChange={(e) => patch(it.line_id, { qc_status: e.target.value })}
+                          disabled={disabled}
+                          style={{
+                            background: qcDone ? "#DCFCE7" : qcError ? "#FEE2E2" : "#fff",
+                            borderColor: qcDone ? "#86EFAC" : qcError ? "#FECACA" : "var(--border)",
+                            color: qcDone ? "#15803D" : qcError ? "#B91C1C" : "var(--text)",
+                            fontWeight: qcDone || qcError ? 700 : 400,
+                          }}
+                        >
+                          {QC_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                      </td>
+                      <td className="text-right">
+                        <input
+                          className="text-right"
+                          type="number"
+                          min={0}
+                          max={qty}
+                          value={String(damageQty)}
+                          onChange={(e) => {
+                            const newDmg = Math.max(0, Math.min(qty, Number(e.target.value) || 0));
+                            // Auto-sync damage_amount = damage_qty * unit_price
+                            patch(it.line_id, {
+                              damage_qty: newDmg,
+                              damage_amount: newDmg * unitPrice,
+                            });
+                          }}
+                          disabled={disabled}
+                          style={{
+                            background: hasDamage ? "#FEE2E2" : "#fff",
+                            borderColor: hasDamage ? "#FECACA" : "var(--border)",
+                            color: hasDamage ? "#B91C1C" : "var(--text)",
+                            fontWeight: hasDamage ? 700 : 400,
+                          }}
+                        />
+                      </td>
+                      <td
+                        className="text-right font-bold"
+                        style={{ color: damageAmount > 0 ? "var(--red)" : "var(--muted)" }}
                       >
-                        {QC_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-                      </select>
-                    </td>
-                    <td className="text-right">
-                      <input
-                        className="text-right"
-                        type="text"
-                        inputMode="numeric"
-                        value={String(it.damage_qty ?? 0)}
-                        onChange={(e) =>
-                          patch(it.line_id, { damage_qty: Number(e.target.value.replace(/\D/g, "")) })
-                        }
-                        disabled={disabled}
-                      />
-                    </td>
-                    <td className="text-right">
-                      <input
-                        className="text-right"
-                        type="text"
-                        inputMode="numeric"
-                        value={String(it.damage_amount ?? 0)}
-                        onChange={(e) =>
-                          patch(it.line_id, { damage_amount: Number(e.target.value.replace(/\D/g, "")) })
-                        }
-                        disabled={disabled}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        value={it.damage_note || ""}
-                        onChange={(e) => patch(it.line_id, { damage_note: e.target.value })}
-                        placeholder="Ghi chú hỏng..."
-                        disabled={disabled}
-                      />
-                    </td>
-                    <td className="text-center">
-                      <input
-                        type="checkbox"
-                        checked={!!it.shelf_done}
-                        onChange={(e) => patch(it.line_id, { shelf_done: e.target.checked })}
-                        disabled={disabled}
-                        style={{ width: 18, height: 18 }}
-                      />
-                    </td>
-                  </tr>
-                ))}
+                        {damageAmount > 0 ? damageAmount.toLocaleString("vi-VN") : "0"}
+                      </td>
+                      <td>
+                        <input
+                          value={it.damage_note || ""}
+                          onChange={(e) => patch(it.line_id, { damage_note: e.target.value })}
+                          placeholder={hasDamage ? "Mô tả lỗi..." : ""}
+                          disabled={disabled || !hasDamage}
+                        />
+                      </td>
+                      <td>
+                        <select
+                          value={it.shelf_done ? "Đã lên kệ" : "Chưa lên kệ"}
+                          onChange={(e) => patch(it.line_id, { shelf_done: e.target.value === "Đã lên kệ" })}
+                          disabled={disabled}
+                          style={{
+                            background: it.shelf_done ? "#DCFCE7" : "#fff",
+                            borderColor: it.shelf_done ? "#86EFAC" : "var(--border)",
+                            color: it.shelf_done ? "#15803D" : "var(--muted)",
+                            fontWeight: it.shelf_done ? 700 : 400,
+                          }}
+                        >
+                          <option>Chưa lên kệ</option>
+                          <option>Đã lên kệ</option>
+                        </select>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -273,6 +314,20 @@ function OrderQcCard({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function ProgressLine({ label, pct, color }: { label: string; pct: number; color: string }) {
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 3 }}>
+        <span className="muted">{label}</span>
+        <span style={{ fontWeight: 700, color }}>{Math.round(pct)}%</span>
+      </div>
+      <div style={{ height: 4, background: "var(--bg)", borderRadius: 2, overflow: "hidden" }}>
+        <div style={{ width: `${pct}%`, height: "100%", background: color, transition: "width 0.3s" }} />
+      </div>
     </div>
   );
 }
