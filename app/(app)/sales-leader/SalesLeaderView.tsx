@@ -636,14 +636,17 @@ function LineChart({ nhanhRevenue }: { nhanhRevenue: TiktokNhanhRow[] }) {
         const points = dates.map((d, i) => ({ x: x(i), y: y(srcMap.get(d) || 0), val: srcMap.get(d) || 0 }));
         const color = LINE_COLORS[si % LINE_COLORS.length];
         const pathD = points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ");
+        // Only show value labels for every Nth point to avoid overlap, offset by series index
+        const labelStep = Math.max(1, Math.ceil(dates.length / 7));
+        const labelOffset = si % labelStep;
         return (
           <g key={src}>
             <path d={pathD} fill="none" stroke={color} strokeWidth={2} />
             {points.map((p, i) => (
               <g key={i}>
                 <circle cx={p.x} cy={p.y} r={3} fill={color} />
-                {p.val > 0 && (
-                  <text x={p.x} y={p.y - 8} textAnchor="middle" fill={color} fontSize={8} fontWeight={600}>
+                {p.val > 0 && (i % labelStep === labelOffset) && (
+                  <text x={p.x} y={p.y - 6 - si * 10} textAnchor="middle" fill={color} fontSize={8} fontWeight={600}>
                     {formatVNDCompact(p.val)}
                   </text>
                 )}
