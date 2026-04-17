@@ -8,19 +8,33 @@ import SyncButton from "../components/SyncButton";
 
 type Tab = "overview" | "ads" | "channel" | "shop" | "products";
 
-const QUICK_RANGES = [
-  { key: "today", label: "Hôm nay", days: 0 },
-  { key: "yesterday", label: "Hôm qua", days: -1 },
-  { key: "7d", label: "7N", days: -7 },
-  { key: "14d", label: "14N", days: -14 },
-  { key: "30d", label: "30N", days: -30 },
-];
-
 function daysAgo(d: number): string {
   const dt = new Date();
   dt.setDate(dt.getDate() + d);
   return dt.toISOString().substring(0, 10);
 }
+
+function monthRange(offset: number): { from: string; to: string } {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth() + offset;
+  const first = new Date(y, m, 1);
+  const last = offset === 0 ? now : new Date(y, m + 1, 0);
+  return {
+    from: first.toISOString().substring(0, 10),
+    to: last.toISOString().substring(0, 10),
+  };
+}
+
+const QUICK_RANGES: { key: string; label: string; from: string; to: string }[] = [
+  { key: "today", label: "Hôm nay", from: daysAgo(0), to: daysAgo(0) },
+  { key: "yesterday", label: "Hôm qua", from: daysAgo(-1), to: daysAgo(-1) },
+  { key: "7d", label: "7N", from: daysAgo(-7), to: daysAgo(0) },
+  { key: "14d", label: "14N", from: daysAgo(-14), to: daysAgo(0) },
+  { key: "30d", label: "30N", from: daysAgo(-30), to: daysAgo(0) },
+  { key: "this_month", label: "Tháng này", ...monthRange(0) },
+  { key: "last_month", label: "Tháng trước", ...monthRange(-1) },
+];
 
 /* ═══════════════════════════════════════════════════════════
    MAIN VIEW
@@ -46,10 +60,8 @@ export default function SalesLeaderView({
   const [t, setT] = useState(to);
 
   function apply() { router.push(`/sales-leader?from=${f}&to=${t}`); }
-  function quickRange(days: number) {
-    const newTo = days === -1 ? daysAgo(-1) : daysAgo(0);
-    const newFrom = days === -1 ? daysAgo(-1) : daysAgo(days);
-    router.push(`/sales-leader?from=${newFrom}&to=${newTo}`);
+  function quickRange(qr: { from: string; to: string }) {
+    router.push(`/sales-leader?from=${qr.from}&to=${qr.to}`);
   }
 
   // ── Totals ──
@@ -74,12 +86,15 @@ export default function SalesLeaderView({
           <div className="page-sub">Ads · Kênh · Shop</div>
         </div>
         <div className="row" style={{ gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-          {QUICK_RANGES.map((r) => (
-            <button key={r.key} className="btn btn-ghost btn-xs" onClick={() => quickRange(r.days)}
-              style={{ background: from === (r.days === -1 ? daysAgo(-1) : daysAgo(r.days)) ? "var(--blue)" : undefined, color: from === (r.days === -1 ? daysAgo(-1) : daysAgo(r.days)) ? "#fff" : undefined }}>
-              {r.label}
-            </button>
-          ))}
+          {QUICK_RANGES.map((r) => {
+            const active = from === r.from && to === r.to;
+            return (
+              <button key={r.key} className="btn btn-ghost btn-xs" onClick={() => quickRange(r)}
+                style={{ background: active ? "var(--blue)" : undefined, color: active ? "#fff" : undefined }}>
+                {r.label}
+              </button>
+            );
+          })}
           <input type="date" value={f} onChange={(e) => setF(e.target.value)} style={{ fontSize: 12, width: 130 }} />
           <span className="muted">→</span>
           <input type="date" value={t} onChange={(e) => setT(e.target.value)} style={{ fontSize: 12, width: 130 }} />
