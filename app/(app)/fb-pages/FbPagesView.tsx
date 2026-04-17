@@ -25,12 +25,12 @@ const QUICK_RANGES = [
 ];
 
 export default function FbPagesView({
-  pages, ads, insights, summary, prevAds = [], prevSummary, nhanhRevenue = [], from, to,
+  pages, ads, insights, summary, prevAds = [], prevSummary, nhanhRevenue = [], nhanh30d = [], from, to,
   monthTarget = 0, monthActual = 0, monthKey = "",
 }: {
   pages: PageRow[]; ads: AdsRow[]; insights: InsightsRow[]; summary: Summary;
   prevAds?: AdsRow[]; prevSummary?: Summary;
-  nhanhRevenue?: FbNhanhRow[];
+  nhanhRevenue?: FbNhanhRow[]; nhanh30d?: FbNhanhRow[];
   from: string; to: string;
   monthTarget?: number; monthActual?: number; monthKey?: string;
 }) {
@@ -179,19 +179,8 @@ export default function FbPagesView({
       {/* ═══ CHI PHÍ ADS THEO NGÀY ═══ */}
       <AdsSection ads={ads} adsByDate={adsByDate} summary={summary} prevAds={prevAds} prevSummary={prevSummary} from={from} to={to} />
 
-      {/* ═══ DOANH THU NHANH.VN THEO NGÀY ═══ */}
-      {nhanhByDate.length > 0 && (
-        <div className="card" style={{ marginBottom: 14 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-            <span style={{ fontWeight: 700 }}>DOANH THU NHANH.VN THEO NGÀY</span>
-            <div style={{ display: "flex", gap: 12, fontSize: 11 }}>
-              <span>Tổng: <strong style={{ color: "var(--green)" }}>{formatVNDCompact(nhanhTotals.revenue)}</strong></span>
-              <span>{nhanhTotals.orders.toLocaleString("vi-VN")} đơn</span>
-            </div>
-          </div>
-          <RevenueBarChart data={nhanhByDate} />
-        </div>
-      )}
+      {/* ═══ DOANH THU CHI TIẾT 30 NGÀY ═══ */}
+      {nhanh30d.length > 0 && <RevenueDetailSection data={nhanh30d} />}
 
       {/* ═══ SO SÁNH DOANH THU THEO NGÀY ═══ */}
       {dailyComparison.length > 0 && (
@@ -230,10 +219,7 @@ export default function FbPagesView({
         </div>
       )}
 
-      {/* ═══ CHI TIẾT THEO KÊNH ═══ */}
-      {nhanhBySource.length > 0 && (
-        <ChannelDetail nhanhRevenue={nhanhRevenue} nhanhBySource={nhanhBySource} nhanhTotal={nhanhTotals.revenue} />
-      )}
+      {/* Chi tiết theo kênh đã tích hợp trong RevenueDetailSection */}
 
       {/* ═══ CHI TIÊU THEO TÀI KHOẢN ADS ═══ */}
       <div className="card" style={{ marginBottom: 14, padding: 0 }}>
@@ -600,22 +586,252 @@ function ChannelDetail({ nhanhRevenue, nhanhBySource, nhanhTotal }: {
 }
 
 
-/* ── Bar chart: Revenue per day ── */
-function RevenueBarChart({ data }: { data: [string, number][] }) {
-  if (data.length === 0) return <div className="muted" style={{ padding: 24, textAlign: "center" }}>Không có data.</div>;
-  const max = Math.max(...data.map(([, v]) => v));
+/* ── Revenue Detail Section (30 days) ── */
+function RevenueDetailSection({ data }: { data: FbNhanhRow[] }) {
+  const [period, setPeriod] = useState<7 | 14 | 30>(30);
+  const [mode, setMode] = useState<"total" | "channel">("total");
+
+  // Filter by period
+  const cutoff = useMemo(() => {
+    const d = new Date(); d.setDate(d.getDate() - period);
+    return d.toISOString().substring(0, 10);
+  }, [period]);
+  const filtered = useMemo(() => data.filter((r) => r.date >= cutoff), [data, cutoff]);
+
+  // Totals
+  const totals = useMemo(() => filtered.reduce(
+    (a, r) => ({ revenue: a.revenue + r.revenue, orders: a.orders + r.orders }),
+    { revenue: 0, orders: 0 },
+  ), [filtered]);
+
+  // By date (total)
+  const byDate = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of filtered) m.set(r.date, (m.get(r.date) || 0) + r.revenue);
+    return Array.from(m.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [filtered]);
+
+  // By date per source (for stacked/channel mode)
+  const { sources, byDateBySource } = useMemo(() => {
+    const srcSet = new Set<string>();
+    const m = new Map<string, Map<string, number>>();
+    for (const r of filtered) {
+      srcSet.add(r.source);
+      if (!m.has(r.date)) m.set(r.date, new Map());
+      const dm = m.get(r.date)!;
+      dm.set(r.source, (dm.get(r.source) || 0) + r.revenue);
+    }
+    const sources = Array.from(srcSet).sort((a, b) => {
+      const aRev = filtered.filter((r) => r.source === a).reduce((s, r) => s + r.revenue, 0);
+      const bRev = filtered.filter((r) => r.source === b).reduce((s, r) => s + r.revenue, 0);
+      return bRev - aRev;
+    });
+    return { sources, byDateBySource: m };
+  }, [filtered]);
+
+  // By source totals (for channel detail)
+  const bySource = useMemo(() => {
+    const m = new Map<string, { revenue: number; orders: number }>();
+    for (const r of filtered) {
+      const cur = m.get(r.source) || { revenue: 0, orders: 0 };
+      cur.revenue += r.revenue; cur.orders += r.orders;
+      m.set(r.source, cur);
+    }
+    return Array.from(m.entries()).map(([name, v]) => ({ name, ...v })).sort((a, b) => b.revenue - a.revenue);
+  }, [filtered]);
+
+  const avg = byDate.length > 0 ? totals.revenue / byDate.length : 0;
+  const maxDay = byDate.length > 0 ? byDate.reduce((best, [d, v]) => v > best.v ? { d, v } : best, { d: "", v: 0 }) : { d: "", v: 0 };
+  const dateRange = byDate.length > 0 ? `${byDate[0][0].substring(5)} → ${byDate[byDate.length - 1][0].substring(5)}` : "";
+
   return (
-    <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 170, paddingTop: 16 }}>
-      {data.map(([d, v]) => {
-        const h = max > 0 ? (v / max) * 110 : 0;
+    <div className="card" style={{ marginBottom: 14 }}>
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontWeight: 700, fontSize: 13 }}>Doanh thu chi tiết {period} ngày</span>
+          <span className="chip chip-green" style={{ fontSize: 9 }}>{formatVNDCompact(totals.revenue)} / {period} ngày</span>
+        </div>
+        <span className="muted" style={{ fontSize: 10 }}>{dateRange}</span>
+      </div>
+
+      {/* 3 Stat cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
+        <div style={{ padding: "6px 8px", background: "#FAFAFA", borderRadius: 6 }}>
+          <div className="muted" style={{ fontSize: 9, textTransform: "uppercase" }}>Tổng doanh thu</div>
+          <div style={{ fontSize: 16, fontWeight: 800 }}>{formatVNDCompact(totals.revenue)}</div>
+          <div className="muted" style={{ fontSize: 9 }}>{totals.orders.toLocaleString("vi-VN")} đơn thành công</div>
+        </div>
+        <div style={{ padding: "6px 8px", background: "#FAFAFA", borderRadius: 6 }}>
+          <div className="muted" style={{ fontSize: 9, textTransform: "uppercase" }}>Trung bình / ngày</div>
+          <div style={{ fontSize: 16, fontWeight: 800 }}>{formatVNDCompact(avg)}</div>
+          <div className="muted" style={{ fontSize: 9 }}>{byDate.length} ngày</div>
+        </div>
+        <div style={{ padding: "6px 8px", background: "#FAFAFA", borderRadius: 6 }}>
+          <div className="muted" style={{ fontSize: 9, textTransform: "uppercase" }}>Ngày cao nhất</div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: "var(--green)" }}>{formatVNDCompact(maxDay.v)}</div>
+          <div className="muted" style={{ fontSize: 9 }}>{maxDay.d}</div>
+        </div>
+      </div>
+
+      {/* Period + mode filter */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 10, alignItems: "center" }}>
+        {([7, 14, 30] as const).map((p) => (
+          <button key={p} className="btn btn-ghost btn-xs" onClick={() => setPeriod(p)}
+            style={{ background: period === p ? "var(--blue)" : undefined, color: period === p ? "#fff" : undefined }}>
+            {p} ngày
+          </button>
+        ))}
+        <span style={{ width: 1, height: 16, background: "var(--border)", margin: "0 4px" }} />
+        <button className="btn btn-ghost btn-xs" onClick={() => setMode("total")}
+          style={{ background: mode === "total" ? "var(--blue)" : undefined, color: mode === "total" ? "#fff" : undefined }}>
+          Tổng
+        </button>
+        <button className="btn btn-ghost btn-xs" onClick={() => setMode("channel")}
+          style={{ background: mode === "channel" ? "var(--blue)" : undefined, color: mode === "channel" ? "#fff" : undefined }}>
+          Theo kênh
+        </button>
+      </div>
+
+      {/* SVG Chart */}
+      {mode === "total" ? (
+        <RevenueTotalChart data={byDate} />
+      ) : (
+        <RevenueStackedChart dates={byDate.map(([d]) => d)} sources={sources} byDateBySource={byDateBySource} />
+      )}
+
+      {/* Channel detail with sparklines */}
+      <div style={{ marginTop: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase" }}>Chi tiết theo kênh</div>
+          <div className="muted" style={{ fontSize: 10 }}>Bấm vào kênh để xem biểu đồ theo ngày</div>
+        </div>
+        {bySource.map((s, i) => {
+          const color = SPARK_COLORS[i % SPARK_COLORS.length];
+          const pct = totals.revenue > 0 ? Math.round((s.revenue / totals.revenue) * 100) : 0;
+          // daily sparkline
+          const dates = byDate.map(([d]) => d);
+          const vals = dates.map((d) => byDateBySource.get(d)?.get(s.name) || 0);
+          const last = vals.length > 0 ? vals[vals.length - 1] : 0;
+          const prev = vals.length > 1 ? vals[vals.length - 2] : last;
+          const change = prev > 0 ? Math.round(((last - prev) / prev) * 100) : 0;
+          return (
+            <div key={s.name} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", borderBottom: "1px solid var(--border)" }}>
+              <span style={{ color, fontSize: 10 }}>●</span>
+              <span style={{ flex: 1, fontSize: 11, fontWeight: 500 }}>Facebook - {s.name}</span>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 1, height: 20, width: 70 }}>
+                {vals.map((v, j) => {
+                  const mx = Math.max(...vals);
+                  const h = mx > 0 ? (v / mx) * 16 : 0;
+                  return <div key={j} style={{ flex: 1, height: Math.max(h, 1), background: color, borderRadius: 1, opacity: 0.7 }} />;
+                })}
+              </div>
+              <span style={{ fontSize: 9, fontWeight: 600, width: 40, textAlign: "right", color: change > 0 ? "var(--green)" : change < 0 ? "var(--red)" : "var(--muted)" }}>
+                {change > 0 ? `▲+${change}%` : change < 0 ? `▼${change}%` : "—"}
+              </span>
+              <span style={{ fontSize: 11, fontWeight: 700, width: 55, textAlign: "right" }}>{formatVNDCompact(s.revenue)}</span>
+              <span style={{ fontSize: 9, color: "var(--muted)", width: 28, textAlign: "right" }}>{pct}%</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ── Revenue Total bar chart (SVG with Y-axis grid) ── */
+function RevenueTotalChart({ data }: { data: [string, number][] }) {
+  if (data.length === 0) return null;
+  const max = Math.max(...data.map(([, v]) => v), 1);
+  const W = 700, H = 200, PL = 40, PR = 10, PT = 20, PB = 30;
+  const chartW = W - PL - PR, chartH = H - PT - PB;
+  const barW = chartW / data.length;
+
+  function y(v: number) { return PT + chartH - (v / max) * chartH; }
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 200 }}>
+      {/* Y grid */}
+      {[0, 0.25, 0.5, 0.75, 1].map((p) => {
+        const val = max * p;
         return (
-          <div key={d} style={{ flex: 1, minWidth: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }} title={`${d}: ${formatVND(v)}`}>
-            <div style={{ fontSize: 10, color: "var(--muted)", whiteSpace: "nowrap" }}>{formatVNDCompact(v)}</div>
-            <div style={{ width: "70%", height: h, background: "#60A5FA", borderRadius: "2px 2px 0 0", minWidth: 12 }} />
-            <div style={{ fontSize: 10, color: "var(--subtle)" }}>{d.substring(5)}</div>
-          </div>
+          <g key={p}>
+            <line x1={PL} x2={W - PR} y1={y(val)} y2={y(val)} stroke="#E5E7EB" strokeWidth={0.5} />
+            <text x={PL - 4} y={y(val) + 3} textAnchor="end" fill="#999" fontSize={8}>{formatVNDCompact(val)}</text>
+          </g>
         );
       })}
-    </div>
+      {/* Bars */}
+      {data.map(([d, v], i) => {
+        const bx = PL + i * barW + barW * 0.1;
+        const bw = barW * 0.8;
+        return (
+          <g key={d}>
+            <rect x={bx} y={y(v)} width={bw} height={(v / max) * chartH} fill="#60A5FA" rx={2} />
+            <text x={bx + bw / 2} y={y(v) - 4} textAnchor="middle" fill="var(--text)" fontSize={7} fontWeight={600}>
+              {formatVNDCompact(v)}
+            </text>
+            {i % Math.max(1, Math.floor(data.length / 10)) === 0 && (
+              <text x={bx + bw / 2} y={H - 6} textAnchor="middle" fill="#999" fontSize={7}>{d.substring(5)}</text>
+            )}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+/* ── Revenue Stacked bar chart (per channel) ── */
+function RevenueStackedChart({ dates, sources, byDateBySource }: {
+  dates: string[]; sources: string[]; byDateBySource: Map<string, Map<string, number>>;
+}) {
+  if (dates.length === 0) return null;
+  // Max stacked total
+  const maxTotal = Math.max(...dates.map((d) => {
+    const dm = byDateBySource.get(d);
+    if (!dm) return 0;
+    let t = 0; for (const v of dm.values()) t += v;
+    return t;
+  }), 1);
+
+  const W = 700, H = 200, PL = 40, PR = 10, PT = 20, PB = 30;
+  const chartW = W - PL - PR, chartH = H - PT - PB;
+  const barW = chartW / dates.length;
+
+  function y(v: number) { return PT + chartH - (v / maxTotal) * chartH; }
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 200 }}>
+      {/* Y grid */}
+      {[0, 0.25, 0.5, 0.75, 1].map((p) => {
+        const val = maxTotal * p;
+        return (
+          <g key={p}>
+            <line x1={PL} x2={W - PR} y1={y(val)} y2={y(val)} stroke="#E5E7EB" strokeWidth={0.5} />
+            <text x={PL - 4} y={y(val) + 3} textAnchor="end" fill="#999" fontSize={8}>{formatVNDCompact(val)}</text>
+          </g>
+        );
+      })}
+      {/* Stacked bars */}
+      {dates.map((d, i) => {
+        const dm = byDateBySource.get(d) || new Map();
+        const bx = PL + i * barW + barW * 0.1;
+        const bw = barW * 0.8;
+        let cumY = PT + chartH;
+        return (
+          <g key={d}>
+            {sources.map((src, si) => {
+              const v = dm.get(src) || 0;
+              const h = (v / maxTotal) * chartH;
+              cumY -= h;
+              return <rect key={src} x={bx} y={cumY} width={bw} height={h} fill={SPARK_COLORS[si % SPARK_COLORS.length]} rx={0} opacity={0.8} />;
+            })}
+            {i % Math.max(1, Math.floor(dates.length / 10)) === 0 && (
+              <text x={bx + bw / 2} y={H - 6} textAnchor="middle" fill="#999" fontSize={7}>{d.substring(5)}</text>
+            )}
+          </g>
+        );
+      })}
+    </svg>
   );
 }
