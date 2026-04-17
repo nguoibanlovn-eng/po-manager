@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { syncProductsAndInventory, syncSalesByChannel } from "@/lib/nhanh/sync";
 import { syncFbAds, syncFbPageInsights } from "@/lib/fb/sync";
+import { refreshAllShopTokens } from "@/lib/tiktok/shop-api";
 
 export const maxDuration = 300;
 
@@ -25,6 +26,7 @@ export async function POST(req: Request) {
     { name: "sales",              fn: () => syncSalesByChannel({}) },
     { name: "fb_ads",             fn: () => syncFbAds({}) },
     { name: "fb_insights",        fn: () => syncFbPageInsights() },
+    { name: "tiktok_shop_refresh", fn: () => refreshAllShopTokens() },
   ] as const;
 
   const settled = await Promise.allSettled(jobs.map((j) => j.fn()));

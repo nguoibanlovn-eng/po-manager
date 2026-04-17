@@ -239,3 +239,24 @@ export async function listConnectedShops(): Promise<
 export async function disconnectShop(shopCipher: string) {
   await deleteToken(shopCipher);
 }
+
+/** Auto-refresh all shop tokens expiring within 48 hours */
+export async function refreshAllShopTokens(): Promise<{ refreshed: number; errors: string[] }> {
+  const { data } = await supabaseAdmin()
+    .from("tiktok_shop_tokens")
+    .select("*");
+  const now = Math.floor(Date.now() / 1000);
+  const threshold = now + 48 * 3600; // refresh if expiring within 48h
+  const errors: string[] = [];
+  let refreshed = 0;
+
+  for (const t of (data as ShopToken[]) || []) {
+    if (t.expire_at > threshold) continue; // still fresh
+    if (!t.refresh_token) { errors.push(`${t.shop_name}: no refresh token`); continue; }
+    const newToken = await refreshToken(t.shop_cipher);
+    if (newToken) { refreshed++; }
+    else { errors.push(`${t.shop_name}: refresh failed`); }
+  }
+
+  return { refreshed, errors };
+}
