@@ -150,19 +150,30 @@ async function shopeeGet(shopId: string, path: string, extraParams: Record<strin
 
 // ─── Public API ─────────────────────────────────────────────
 
+const DEFAULT_SHOPS = [
+  { shop_id: "10091288", shop_name: "Levu01" },
+  { shop_id: "303340636", shop_name: "Velasboost" },
+];
+
 export async function listConnectedShops(): Promise<Array<{
   shop_id: string; shop_name: string; has_token: boolean; token_ok: boolean; expire_in_hours: number;
 }>> {
   const db = supabaseAdmin();
   const { data } = await db.from("shopee_tokens").select("*");
+  const tokenMap = new Map<string, { shop_name?: string; access_token?: string; expire_at?: number }>();
+  for (const t of data || []) tokenMap.set(t.shop_id as string, t);
   const now = Math.floor(Date.now() / 1000);
-  return (data || []).map((t) => ({
-    shop_id: t.shop_id,
-    shop_name: t.shop_name || SHOP_NAMES[t.shop_id] || t.shop_id,
-    has_token: !!t.access_token,
-    token_ok: !!t.access_token && t.expire_at > now,
-    expire_in_hours: t.expire_at > now ? Math.round((t.expire_at - now) / 3600) : 0,
-  }));
+
+  return DEFAULT_SHOPS.map((s) => {
+    const t = tokenMap.get(s.shop_id);
+    return {
+      shop_id: s.shop_id,
+      shop_name: t?.shop_name || s.shop_name,
+      has_token: !!t?.access_token,
+      token_ok: !!t?.access_token && (t?.expire_at || 0) > now,
+      expire_in_hours: t && (t.expire_at || 0) > now ? Math.round(((t.expire_at || 0) - now) / 3600) : 0,
+    };
+  });
 }
 
 export async function disconnectShop(shopId: string) {
