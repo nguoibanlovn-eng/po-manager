@@ -77,7 +77,7 @@ export default function ShopeeAdsView({
 
   const roas = totals.spend > 0 ? nhanhTotals.revenue / totals.spend : 0;
 
-  // ── Daily chart data: nhanh revenue vs ads spend ──
+  // ── Daily chart data: nhanh revenue vs ads spend (using period_from for daily) ──
   const dailyChart = useMemo(() => {
     const nhMap = new Map<string, { revenue: number; orders: number }>();
     for (const r of nhanhRevenue) {
@@ -85,9 +85,10 @@ export default function ShopeeAdsView({
       c.revenue += r.revenue; c.orders += r.orders;
       nhMap.set(r.date, c);
     }
+    // Ads spend by actual day (period_from, not date)
     const adMap = new Map<string, number>();
     for (const a of filteredAds) {
-      const d = String(a.date).substring(0, 10);
+      const d = String(a.period_from || a.date).substring(0, 10);
       adMap.set(d, (adMap.get(d) || 0) + toNum(a.spend));
     }
     const allDates = new Set([...nhMap.keys(), ...adMap.keys()]);
@@ -166,64 +167,99 @@ export default function ShopeeAdsView({
         <div className="stat-card c-amber"><div className="sl">LƯỢT CLICK</div><div className="sv">{totals.clicks.toLocaleString("vi-VN")}</div></div>
       </div>
 
-      {/* ═══ DAILY CHART: DT vs Ads ═══ */}
+      {/* ═══ COMBO CHART: Bar (DT) + Line (Ads) ═══ */}
       {dailyChart.length > 0 && (
         <div className="card" style={{ marginBottom: 14 }}>
           <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>
             Doanh thu &amp; Chi phí ads theo ngày
             <span style={{ fontWeight: 400, fontSize: 10, color: "#9CA3AF", marginLeft: 8 }}>
-              <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: "#3B82F6", marginRight: 3, verticalAlign: "middle" }} />DT Nhanh.vn
-              <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: "#F87171", marginRight: 3, marginLeft: 10, verticalAlign: "middle" }} />Chi phí ads (đường)
+              <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: "#16A34A", marginRight: 3, verticalAlign: "middle" }} />DT Nhanh (cột)
+              <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 50, background: "#EF4444", marginRight: 3, marginLeft: 10, verticalAlign: "middle" }} />Chi phí ads (đường)
             </span>
           </div>
           {(() => {
             const maxRev = Math.max(...dailyChart.map((d) => d.revenue), 1);
-            const BAR_H = 140;
+            const maxSpend = Math.max(...dailyChart.map((d) => d.spend), 1);
+            const BAR_H = 160;
+            const chartH = BAR_H - 20;
+            const labelStep = Math.max(1, Math.floor(dailyChart.length / 15));
+            // Today's date to mark incomplete days
+            const today = new Date().toISOString().substring(0, 10);
+
             return (
               <div>
-                <div style={{ display: "flex", alignItems: "flex-end", height: BAR_H }}>
-                  {dailyChart.map((d) => {
-                    const h = (d.revenue / maxRev) * (BAR_H - 24);
-                    return (
-                      <div key={d.date} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end" }}>
-                        <div style={{ fontSize: 7, fontWeight: 600, marginBottom: 1, whiteSpace: "nowrap" }}>{formatVNDCompact(d.revenue)}</div>
-                        <div style={{ width: "85%", height: Math.max(h, 2), background: "#3B82F6", borderRadius: 2 }} />
-                      </div>
-                    );
-                  })}
+                {/* Chart area: bars + line overlay */}
+                <div style={{ position: "relative", height: BAR_H }}>
+                  {/* Bars with value labels */}
+                  <div style={{ display: "flex", alignItems: "flex-end", height: BAR_H, position: "relative", zIndex: 1 }}>
+                    {dailyChart.map((d) => {
+                      const h = (d.revenue / maxRev) * chartH;
+                      const isIncomplete = d.date >= today;
+                      return (
+                        <div key={d.date} style={{
+                          flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end",
+                          background: isIncomplete ? "rgba(254,202,202,0.15)" : "transparent",
+                        }}>
+                          {d.revenue > 0 && <div style={{ fontSize: 7, fontWeight: 600, color: "#16A34A", marginBottom: 1, whiteSpace: "nowrap" }}>{formatVNDCompact(d.revenue)}</div>}
+                          <div style={{ width: "78%", height: Math.max(h, 2), background: isIncomplete ? "#FCA5A5" : "#4ADE80", borderRadius: "2px 2px 0 0", opacity: isIncomplete ? 0.6 : 1 }} />
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Line overlay (ads spend) — absolute positioned SVG */}
+                  <svg style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 2 }}
+                    viewBox={`0 0 ${dailyChart.length * 100} ${BAR_H}`} preserveAspectRatio="none">
+                    {(() => {
+                      const pts = dailyChart.map((d, i) => ({
+                        x: i * 100 + 50,
+                        y: BAR_H - (maxSpend > 0 ? (d.spend / maxSpend) * chartH * 0.85 : 0) - 10,
+                        val: d.spend,
+                      }));
+                      const validPts = pts.filter((p) => p.val > 0);
+                      if (validPts.length < 2) return null;
+                      return (
+                        <g>
+                          <path
+                            d={validPts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ")}
+                            fill="none" stroke="#EF4444" strokeWidth={2.5} vectorEffect="non-scaling-stroke"
+                          />
+                          {validPts.map((p, i) => (
+                            <circle key={i} cx={p.x} cy={p.y} r={4} fill="#EF4444" vectorEffect="non-scaling-stroke" />
+                          ))}
+                        </g>
+                      );
+                    })()}
+                  </svg>
                 </div>
-                <div style={{ display: "flex", borderTop: "1px solid #E5E7EB" }}>
+
+                {/* Ads spend labels (below chart, above date) */}
+                <div style={{ display: "flex" }}>
                   {dailyChart.map((d, i) => (
-                    <div key={`dl-${d.date}`} style={{ flex: 1, textAlign: "center", fontSize: 7, color: "#999", padding: "3px 0" }}>
-                      {i % Math.max(1, Math.floor(dailyChart.length / 12)) === 0 ? d.date.substring(8) : ""}
+                    <div key={`al-${d.date}`} style={{ flex: 1, textAlign: "center", fontSize: 6, color: "#EF4444", fontWeight: 600, whiteSpace: "nowrap" }}>
+                      {d.spend > 0 && i % Math.max(1, Math.ceil(dailyChart.length / 10)) === 0 ? formatVNDCompact(d.spend) : ""}
                     </div>
                   ))}
                 </div>
-                {/* Spend row */}
-                <div style={{ display: "flex", marginTop: 2 }}>
-                  {dailyChart.map((d) => (
-                    <div key={`sp-${d.date}`} style={{ flex: 1, textAlign: "center", fontSize: 7, color: "#DC2626", fontWeight: 600 }}>
-                      {d.spend > 0 ? formatVNDCompact(d.spend) : ""}
-                    </div>
-                  ))}
-                </div>
-                {/* ROAS row */}
-                <div style={{ display: "flex", marginTop: 2 }}>
-                  {dailyChart.map((d) => {
-                    const color = d.spend <= 0 ? "#9CA3AF" : d.roas >= 12 ? "#16A34A" : d.roas >= 10 ? "#D97706" : "#DC2626";
-                    const bg = d.spend <= 0 ? "#F9FAFB" : d.roas >= 12 ? "#F0FDF4" : d.roas >= 10 ? "#FFFBEB" : "#FEF2F2";
+
+                {/* Date labels */}
+                <div style={{ display: "flex", borderTop: "1px solid #E5E7EB" }}>
+                  {dailyChart.map((d, i) => {
+                    const isIncomplete = d.date >= today;
                     return (
-                      <div key={`r-${d.date}`} style={{ flex: 1, textAlign: "center", fontSize: 8, fontWeight: 700, padding: "2px 0", borderRadius: 2, margin: "0 0.5px", color, background: bg }}>
-                        {d.spend > 0 ? d.roas.toFixed(1) : "—"}
+                      <div key={`dl-${d.date}`} style={{ flex: 1, textAlign: "center", fontSize: 8, padding: "3px 0", color: isIncomplete ? "#EF4444" : "#999", fontWeight: isIncomplete ? 600 : 400 }}>
+                        {i % labelStep === 0 ? d.date.substring(8) : ""}
                       </div>
                     );
                   })}
                 </div>
+
                 {/* Total */}
-                <div style={{ display: "flex", gap: 16, padding: "8px 12px", background: "#F9FAFB", borderRadius: 6, marginTop: 8, fontSize: 11 }}>
+                <div style={{ display: "flex", gap: 16, padding: "8px 12px", background: "#F9FAFB", borderRadius: 6, marginTop: 6, fontSize: 11 }}>
                   <span style={{ color: "#6B7280" }}>Tổng:</span>
                   <span>DT <strong style={{ color: "#16A34A" }}>{formatVNDCompact(nhanhTotals.revenue)}</strong></span>
                   <span>Ads <strong style={{ color: "#DC2626" }}>{formatVNDCompact(totals.spend)}</strong></span>
+                  <span>Tỉ lệ <strong style={{ color: "#DC2626" }}>{nhanhTotals.revenue > 0 ? ((totals.spend / nhanhTotals.revenue) * 100).toFixed(1) : 0}%</strong></span>
                   <span>ROAS <strong style={{ color: roas >= 5 ? "#16A34A" : "#DC2626" }}>{roas.toFixed(1)}</strong></span>
                   <span>Đơn <strong>{nhanhTotals.orders.toLocaleString("vi-VN")}</strong></span>
                 </div>
