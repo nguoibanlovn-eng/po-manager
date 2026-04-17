@@ -9,6 +9,7 @@ const TTS = {
   APP_KEY: process.env.TIKTOK_SHOP_APP_KEY || "6jh7svnk812sv",
   APP_SECRET: process.env.TIKTOK_SHOP_APP_SECRET || "",
   BASE: "https://open-api.tiktokglobalshop.com",
+  AUTH_BASE: "https://auth.tiktok-shops.com",
   AUTH_URL: "https://services.tiktokshop.com/open/authorize",
 };
 
@@ -76,27 +77,14 @@ export async function exchangeCode(
 ): Promise<{ ok: boolean; error?: string; shops?: Array<{ cipher: string; name: string }> }> {
   if (!TTS.APP_SECRET) return { ok: false, error: "Missing TIKTOK_SHOP_APP_SECRET" };
 
-  // TikTok Shop API v2 token endpoint
-  const path = "/api/v2/token/get";
-  const ts = Math.floor(Date.now() / 1000);
-  const params: Record<string, string | number> = {
-    app_key: TTS.APP_KEY,
-    timestamp: ts,
-  };
-  const body = JSON.stringify({
+  // TikTok Shop API v2 token endpoint — GET, no sign needed
+  const qs = new URLSearchParams({
     app_key: TTS.APP_KEY,
     app_secret: TTS.APP_SECRET,
     auth_code: authCode,
     grant_type: "authorized_code",
-  });
-  params.sign = signRequest(path, params, body);
-
-  const qs = new URLSearchParams(Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)]))).toString();
-  const res = await fetch(`${TTS.BASE}${path}?${qs}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body,
-  });
+  }).toString();
+  const res = await fetch(`${TTS.AUTH_BASE}/api/v2/token/get?${qs}`);
   const json = (await res.json()) as {
     code?: number;
     message?: string;
@@ -114,7 +102,8 @@ export async function exchangeCode(
 
   const d = json.data;
   const shops = d.granted_shops || [];
-  const expireAt = Math.floor(Date.now() / 1000) + (d.access_token_expire_in || 0);
+  // access_token_expire_in is absolute Unix timestamp
+  const expireAt = d.access_token_expire_in || 0;
 
   for (const s of shops) {
     if (!s.shop_cipher) continue;
@@ -140,25 +129,14 @@ export async function refreshToken(shopCipher: string): Promise<string | null> {
   if (!token?.refresh_token) return null;
   if (!TTS.APP_SECRET) return null;
 
-  const path = "/api/v2/token/refresh";
-  const ts = Math.floor(Date.now() / 1000);
-  const params: Record<string, string | number> = {
-    app_key: TTS.APP_KEY,
-    timestamp: ts,
-  };
-  const body = JSON.stringify({
+  // TikTok Shop API v2 refresh — GET, no sign needed
+  const qs = new URLSearchParams({
     app_key: TTS.APP_KEY,
     app_secret: TTS.APP_SECRET,
     refresh_token: token.refresh_token,
     grant_type: "refresh_token",
-  });
-  params.sign = signRequest(path, params, body);
-  const qs = new URLSearchParams(Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)]))).toString();
-  const res = await fetch(`${TTS.BASE}${path}?${qs}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body,
-  });
+  }).toString();
+  const res = await fetch(`${TTS.AUTH_BASE}/api/v2/token/refresh?${qs}`);
   const json = (await res.json()) as {
     code?: number;
     message?: string;
@@ -176,7 +154,7 @@ export async function refreshToken(shopCipher: string): Promise<string | null> {
     ...token,
     access_token: d.access_token || "",
     refresh_token: d.refresh_token || token.refresh_token,
-    expire_at: Math.floor(Date.now() / 1000) + (d.access_token_expire_in || 0),
+    expire_at: d.access_token_expire_in || 0,
   });
 
   return d.access_token || null;
