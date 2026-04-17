@@ -37,7 +37,10 @@ export async function listReturns(status?: string): Promise<ReturnRow[]> {
 }
 
 export async function createReturn(data: Partial<ReturnRow>, createdBy: string): Promise<string> {
-  const token = uid("RET");
+  const d = new Date();
+  const ds = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}`;
+  const rand = Math.random().toString(36).substring(2, 7).toUpperCase();
+  const token = `LIQ-${ds}-${rand}`;
   const loss = Math.max(0, toNum(data.cost) + toNum(data.repair_cost) - toNum(data.sell_price));
   const { error } = await supabaseAdmin().from("return_log").insert({
     token,
@@ -77,6 +80,10 @@ export async function updateReturn(token: string, data: Partial<ReturnRow>) {
     patch.loss = Math.max(0, toNum(cost) + toNum(repair) - toNum(sell));
   }
   await supabaseAdmin().from("return_log").update(patch).eq("token", token);
+}
+
+export async function deleteReturn(token: string) {
+  await supabaseAdmin().from("return_log").delete().eq("token", token);
 }
 
 export async function markSold(token: string, data: {

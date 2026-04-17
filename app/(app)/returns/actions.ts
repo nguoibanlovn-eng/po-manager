@@ -29,3 +29,14 @@ export async function markReturnSoldAction(token: string, data: Parameters<typeo
   revalidatePath("/returns");
   return { ok: true as const };
 }
+
+export async function deleteReturnAction(token: string) {
+  const u = await requireUser();
+  if (u.role !== "ADMIN" && !u.role.startsWith("LEADER_")) {
+    return { ok: false as const, error: "Chỉ leader/admin xoá được." };
+  }
+  const { deleteReturn } = await import("@/lib/db/returns");
+  await deleteReturn(token);
+  revalidatePath("/returns");
+  return { ok: true as const };
+}
