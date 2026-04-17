@@ -1,4 +1,5 @@
 import { listRdItems } from "@/lib/db/rd";
+import { listActiveUsers } from "@/lib/db/users";
 import RdView from "./RdView";
 
 export const dynamic = "force-dynamic";
@@ -9,6 +10,6 @@ export default async function RdPage({
   searchParams: Promise<{ stage?: string }>;
 }) {
   const { stage } = await searchParams;
-  const items = await listRdItems(stage);
-  return <RdView items={items} filterStage={stage || ""} />;
+  const [items, users] = await Promise.all([listRdItems(stage), listActiveUsers()]);
+  return <RdView items={items} users={users} filterStage={stage || ""} />;
 }

@@ -1,345 +1,573 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { formatDate } from "@/lib/format";
-import { getPipeline, type RdItem } from "@/lib/db/rd-types";
 import {
-  completeStepAction, saveStepDataAction, updateChecklistAction,
-} from "./actions";
+  getSteps, getStepsKey, isProduction, getLinkUrl, getLinkTag,
+  type RdItem, type RdStep, type RdCheckItem, type RdLink,
+} from "@/lib/db/rd-types";
+import type { UserRef } from "@/lib/db/users";
+import { saveRdItemAction } from "./actions";
 
-// Định nghĩa fields hiển thị cho từng bước (research + production)
-const STEP_FIELDS: Record<string, Array<{ key: string; label: string; type?: "text" | "textarea" | "url" | "number" }>> = {
-  // Research pipeline
-  nghien_cuu: [
-    { key: "brief",         label: "Brief / Mô tả sản phẩm", type: "textarea" },
-    { key: "competitor_urls", label: "Link đối thủ / SP cùng loại" },
-    { key: "market_price_low",  label: "Giá thị trường thấp nhất", type: "number" },
-    { key: "market_price_high", label: "Giá thị trường cao nhất", type: "number" },
+/* ─── Field definitions per step label ──────────────────── */
+type FieldDef = {
+  key: string;
+  label: string;
+  type?: "text" | "textarea" | "url" | "number" | "date" | "verdict";
+};
+
+const VERDICT_OPTIONS = ["Duyệt", "Từ chối", "Cần chỉnh sửa"];
+
+const STEP_FORM_FIELDS: Record<string, FieldDef[]> = {
+  "Nghiên cứu": [
+    { key: "description",       label: "Brief / Mô tả sản phẩm", type: "textarea" },
+    { key: "competitors",       label: "Link đối thủ / SP cùng loại", type: "url" },
+    { key: "price_buy",         label: "Giá nhập dự kiến", type: "number" },
+    { key: "price_sell",        label: "Giá bán dự kiến", type: "number" },
   ],
-  duyet_de_xuat: [
-    { key: "approve_verdict", label: "Duyệt / Từ chối" },
-    { key: "approve_note",    label: "Ghi chú leader", type: "textarea" },
+  "Duyệt đề xuất": [
+    { key: "approve_verdict",   label: "Kết quả duyệt", type: "verdict" },
+    { key: "approve_note",      label: "Ghi chú leader", type: "textarea" },
   ],
-  dat_mau: [
-    { key: "sample_supplier",     label: "NCC đặt mẫu" },
-    { key: "sample_contact",      label: "Liên hệ NCC" },
-    { key: "sample_qty",          label: "Số lượng mẫu", type: "number" },
-    { key: "sample_price_usd",    label: "Giá mẫu (USD)", type: "number" },
-    { key: "sample_order_link",   label: "Link đơn mẫu", type: "url" },
-    { key: "sample_eta",          label: "Dự kiến về" },
+  "Đặt mẫu": [
+    { key: "sample_supplier",   label: "NCC đặt mẫu" },
+    { key: "sample_contact",    label: "Liên hệ NCC" },
+    { key: "sample_qty",        label: "Số lượng mẫu", type: "number" },
+    { key: "sample_price_usd",  label: "Giá mẫu (USD)", type: "number" },
+    { key: "sample_order_link", label: "Link đơn mẫu", type: "url" },
+    { key: "sample_eta",        label: "Dự kiến mẫu về", type: "date" },
   ],
-  kiem_tra: [
-    { key: "check_result",    label: "Kết quả kiểm tra", type: "textarea" },
-    { key: "check_photos",    label: "Link ảnh kiểm tra" },
+  "Kiểm tra": [
+    { key: "check_note",        label: "Ghi chú kiểm tra", type: "textarea" },
   ],
-  nhap: [
-    { key: "import_decision", label: "Quyết định nhập", type: "textarea" },
-    { key: "bulk_qty",        label: "Số lượng nhập", type: "number" },
-    { key: "bulk_price",      label: "Giá nhập (đ)", type: "number" },
+  "Nhập?": [
+    { key: "bulk_decision",     label: "Quyết định nhập", type: "textarea" },
+    { key: "bulk_qty",          label: "Số lượng nhập", type: "number" },
+    { key: "bulk_price",        label: "Giá nhập (đ)", type: "number" },
   ],
-  ket_qua: [
-    { key: "linked_bulk_po",  label: "Mã PO liên kết" },
-    { key: "lesson_note",     label: "Ghi chú rút kinh nghiệm", type: "textarea" },
+  "Kết quả": [
+    { key: "linked_bulk_po",    label: "Mã PO liên kết" },
+    { key: "lesson_note",       label: "Ghi chú rút kinh nghiệm", type: "textarea" },
   ],
-  // Production pipeline
-  tao_ticket: [
-    { key: "base_sku",        label: "SP gốc (SKU)" },
-    { key: "base_product",    label: "Tên SP gốc" },
-    { key: "improvement_type", label: "Loại cải tiến" },
+  // Production
+  "Tạo ticket": [
+    { key: "base_sku",          label: "SP gốc (SKU)" },
+    { key: "base_product",      label: "Tên SP gốc" },
+    { key: "improvement_type",  label: "Loại cải tiến" },
   ],
-  duyet_b1: [
-    { key: "b1_verdict",      label: "Duyệt / Từ chối" },
-    { key: "b1_note",         label: "Ghi chú", type: "textarea" },
+  "Lên ý tưởng": [
+    { key: "base_sku",          label: "SP gốc (SKU)" },
+    { key: "improvement_type",  label: "Loại cải tiến" },
   ],
-  giao_tk: [
-    { key: "assigned_to",     label: "Giao cho ai" },
-    { key: "brief_tk",        label: "Brief TK", type: "textarea" },
+  "Duyệt B1": [
+    { key: "approve_verdict",   label: "Kết quả duyệt B1", type: "verdict" },
+    { key: "approve_note",      label: "Ghi chú", type: "textarea" },
   ],
-  thiet_ke: [
-    { key: "design_desc",     label: "Mô tả thiết kế", type: "textarea" },
-    { key: "mfg_file_links",  label: "File thiết kế" },
+  "Thiết kế": [
+    { key: "design_desc",       label: "Mô tả thiết kế", type: "textarea" },
+    { key: "mfg_file_links",    label: "Link file thiết kế", type: "url" },
   ],
-  duyet_2a: [
-    { key: "a2_verdict",      label: "Duyệt / Từ chối" },
-    { key: "a2_note",         label: "Ghi chú", type: "textarea" },
+  "Thiết kế mẫu": [
+    { key: "design_desc",       label: "Mô tả thiết kế", type: "textarea" },
+    { key: "mfg_file_links",    label: "Link file thiết kế", type: "url" },
   ],
-  ncc_tracking: [
-    { key: "mfg_supplier",    label: "NCC gia công" },
-    { key: "mfg_contact",     label: "Liên hệ NCC" },
-    { key: "mfg_moq",         label: "MOQ", type: "number" },
-    { key: "mfg_lead_time",   label: "Lead time (ngày)" },
-    { key: "mfg_price_unit",  label: "Giá gia công (đ)", type: "number" },
-    { key: "mfg_setup_fee",   label: "Phí khuôn (đ)", type: "number" },
+  "Duyệt 2A": [
+    { key: "approve_verdict",   label: "Kết quả duyệt 2A", type: "verdict" },
+    { key: "approve_note",      label: "Ghi chú", type: "textarea" },
   ],
-  cho_mau_ve: [
-    { key: "sample_eta",      label: "Dự kiến mẫu về" },
-    { key: "sample_tracking", label: "Mã tracking" },
+  "NCC+Tracking": [
+    { key: "mfg_supplier",      label: "NCC gia công" },
+    { key: "mfg_contact",       label: "Liên hệ NCC" },
+    { key: "mfg_moq",           label: "MOQ", type: "number" },
+    { key: "mfg_lead_time",     label: "Lead time (ngày)" },
+    { key: "mfg_price_unit",    label: "Giá gia công (đ)", type: "number" },
+    { key: "mfg_setup_fee",     label: "Phí khuôn (đ)", type: "number" },
+    { key: "mfg_ref_links",     label: "Link NCC / hợp đồng", type: "url" },
   ],
-  duyet_mau: [
-    { key: "mau_verdict",     label: "Duyệt / Từ chối" },
-    { key: "mau_note",        label: "Ghi chú", type: "textarea" },
+  "Đặt cọc sản xuất": [
+    { key: "mfg_supplier",      label: "NCC gia công" },
+    { key: "mfg_price_unit",    label: "Giá gia công (đ)", type: "number" },
   ],
-  dat_hang: [
-    { key: "bulk_qty",        label: "Số lượng đặt", type: "number" },
-    { key: "bulk_price",      label: "Giá (đ)", type: "number" },
-    { key: "target_launch_date", label: "Ngày launch dự kiến" },
-    { key: "linked_bulk_po",  label: "Mã PO" },
+  "Chờ mẫu về": [
+    { key: "sample_eta",        label: "Dự kiến mẫu về", type: "date" },
+  ],
+  "QC & Nhận hàng": [
+    { key: "check_note",        label: "Ghi chú kiểm tra", type: "textarea" },
+  ],
+  "Duyệt mẫu": [
+    { key: "approve_verdict",   label: "Kết quả duyệt mẫu", type: "verdict" },
+    { key: "approve_note",      label: "Ghi chú", type: "textarea" },
+  ],
+  "Đặt hàng": [
+    { key: "bulk_qty",          label: "Số lượng đặt", type: "number" },
+    { key: "bulk_price",        label: "Giá (đ)", type: "number" },
+    { key: "target_launch_date", label: "Ngày launch dự kiến", type: "date" },
+    { key: "linked_bulk_po",    label: "Mã PO" },
+  ],
+  "Ra mắt": [
+    { key: "target_launch_date", label: "Ngày launch", type: "date" },
+    { key: "lesson_note",       label: "Ghi chú", type: "textarea" },
   ],
 };
 
+/* ─── Verdict color ─────────────────────────────────────── */
+function verdictStyle(v: string): { bg: string; color: string } | null {
+  const lower = String(v).toLowerCase();
+  if (lower.includes("duyệt") && !lower.includes("từ")) return { bg: "#DCFCE7", color: "#15803D" };
+  if (lower.includes("từ chối")) return { bg: "#FEE2E2", color: "#B91C1C" };
+  if (lower.includes("chỉnh")) return { bg: "#FEF3C7", color: "#92400E" };
+  return null;
+}
+
+/* ─── Status styles ─────────────────────────────────────── */
+const STATUS_STYLE: Record<string, { bg: string; color: string; label: string }> = {
+  approved:  { bg: "#DCFCE7", color: "#15803D", label: "Hoàn thành" },
+  active:    { bg: "#EFF6FF", color: "#1D4ED8", label: "Đang làm" },
+  skipped:   { bg: "#F4F4F5", color: "#71717A", label: "Bỏ qua" },
+  locked:    { bg: "#F4F4F5", color: "#A1A1AA", label: "Chưa mở" },
+  rejected:  { bg: "#FEE2E2", color: "#B91C1C", label: "Từ chối" },
+};
+
+/* ─── Image URL check ───────────────────────────────────── */
+function isImageUrl(url: string): boolean {
+  const lower = url.toLowerCase();
+  return /\.(jpg|jpeg|png|gif|webp|avif|bmp|svg)(\?|$)/.test(lower)
+    || lower.includes("imgur") || lower.includes("ibb.co") || lower.includes("cloudinary");
+}
+
+/* ─── Parse deadline ────────────────────────────────────── */
+function isOverdue(deadline: string): boolean {
+  if (!deadline) return false;
+  const m = deadline.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  const d = m ? new Date(+m[3], +m[2] - 1, +m[1]) : new Date(deadline);
+  if (isNaN(d.getTime())) return false;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return d < today;
+}
+function deadlineToISO(d: string): string {
+  if (!d) return "";
+  const m = d.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+  return d;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN COMPONENT
+   ═══════════════════════════════════════════════════════════ */
 export default function RdDetailModal({
-  item,
-  onClose,
-  onRefresh,
+  item, users = [], onClose, onRefresh,
 }: {
-  item: RdItem;
-  onClose: () => void;
-  onRefresh: () => void;
+  item: RdItem; users?: UserRef[]; onClose: () => void; onRefresh: () => void;
 }) {
   const [pending, startTransition] = useTransition();
-  const pipeline = getPipeline(item.rd_type);
+  const steps = getSteps(item);
+  const stepsKey = getStepsKey(item);
+  const data = (item.data as Record<string, unknown>) || {};
 
-  // current step: nếu chưa set, dùng bước đầu tiên chưa hoàn thành
-  const completedMap = item.step_completed_at || {};
-  const firstIncomplete = pipeline.find((s) => !completedMap[s.key]);
-  const [activeStep, setActiveStep] = useState<string>(
-    item.current_step || firstIncomplete?.key || pipeline[0].key,
-  );
+  // Nếu item không có steps JSON → hiện thông báo
+  if (steps.length === 0) {
+    return (
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+        <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 12, padding: 32, maxWidth: 500, textAlign: "center" }}>
+          <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 8 }}>{item.name}</div>
+          <div className="muted" style={{ marginBottom: 16 }}>
+            Sản phẩm này chưa có pipeline workflow. Hãy chỉnh sửa và chọn loại R&D (Nghiên cứu / Sản xuất) để khởi tạo.
+          </div>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>Đóng</button>
+        </div>
+      </div>
+    );
+  }
 
-  const stepFields = STEP_FIELDS[activeStep] || [];
-  const existingStepData = (item.step_data?.[activeStep] as Record<string, unknown>) || {};
+  return <ModalInner item={item} steps={steps} stepsKey={stepsKey} data={data} users={users} onClose={onClose} onRefresh={onRefresh} pending={pending} startTransition={startTransition} />;
+}
+
+function ModalInner({
+  item, steps: initSteps, stepsKey, data, users, onClose, onRefresh, pending, startTransition,
+}: {
+  item: RdItem; steps: RdStep[]; stepsKey: string; data: Record<string, unknown>;
+  users: UserRef[]; onClose: () => void; onRefresh: () => void;
+  pending: boolean; startTransition: (fn: () => Promise<void>) => void;
+}) {
+  const firstActive = initSteps.findIndex((s) => s.status === "active");
+  const [activeIdx, setActiveIdx] = useState(firstActive >= 0 ? firstActive : 0);
+  const step = initSteps[activeIdx];
+
+  // Step-level state
+  const [assignee, setAssignee] = useState(step.assignee || "");
+  const [assigneeName, setAssigneeName] = useState(step.assignee_name || "");
+  const [deadline, setDeadline] = useState(step.deadline || "");
+  const [checklist, setChecklist] = useState<RdCheckItem[]>(step.checklist || []);
+  const [links, setLinks] = useState<RdLink[]>(step.links || []);
+  const [photos, setPhotos] = useState<string[]>(step.photos || []);
+  const [result, setResult] = useState(step.result || "");
+  const [newCheckLabel, setNewCheckLabel] = useState("");
+  const [newLink, setNewLink] = useState("");
+  const [newPhoto, setNewPhoto] = useState("");
+
+  // Form fields (data.* flat)
+  const formFields = STEP_FORM_FIELDS[step.label] || [];
   const [formData, setFormData] = useState<Record<string, string>>(() => {
     const d: Record<string, string> = {};
-    for (const f of stepFields) d[f.key] = String(existingStepData[f.key] || "");
+    for (const f of formFields) d[f.key] = String(data[f.key] ?? "");
     return d;
   });
   const [dirty, setDirty] = useState(false);
 
-  // Checklist
-  const existingChecklist = (item.checklists?.[activeStep] as Array<{ label: string; checked: boolean; note?: string }>) || [];
-  const [checklist, setChecklist] = useState(existingChecklist);
-  const [newCheckLabel, setNewCheckLabel] = useState("");
-
-  function switchStep(stepKey: string) {
+  /* ── Switch step ──────────────────────────────────────── */
+  function switchStep(idx: number) {
     if (dirty && !confirm("Bạn có thay đổi chưa lưu. Vẫn chuyển bước?")) return;
-    const data = (item.step_data?.[stepKey] as Record<string, unknown>) || {};
-    const fields = STEP_FIELDS[stepKey] || [];
+    const s = initSteps[idx];
+    setActiveIdx(idx);
+    setAssignee(s.assignee || "");
+    setAssigneeName(s.assignee_name || "");
+    setDeadline(s.deadline || "");
+    setChecklist(s.checklist || []);
+    setLinks(s.links || []);
+    setPhotos(s.photos || []);
+    setResult(s.result || "");
+    const fields = STEP_FORM_FIELDS[s.label] || [];
     const d: Record<string, string> = {};
-    for (const f of fields) d[f.key] = String(data[f.key] || "");
+    for (const f of fields) d[f.key] = String(data[f.key] ?? "");
     setFormData(d);
-    setChecklist((item.checklists?.[stepKey] as typeof existingChecklist) || []);
-    setActiveStep(stepKey);
     setDirty(false);
+  }
+
+  /* ── Build updated steps for save ────────────────────── */
+  function buildUpdatedSteps(statusOverride?: string) {
+    return initSteps.map((s, i) => {
+      if (i !== activeIdx) return s;
+      return {
+        ...s,
+        assignee,
+        assignee_name: assigneeName,
+        assigneeName: assigneeName, // keep both formats
+        deadline,
+        checklist,
+        links,
+        photos,
+        result,
+        ...(statusOverride ? { status: statusOverride } : {}),
+      };
+    });
   }
 
   function save() {
     startTransition(async () => {
-      await saveStepDataAction(item.id, activeStep, formData);
-      await updateChecklistAction(item.id, activeStep, checklist);
+      const newData = { ...data, ...formData, [stepsKey]: JSON.stringify(buildUpdatedSteps()) };
+      await saveRdItemAction(item.id, { data: newData });
       setDirty(false);
       onRefresh();
     });
   }
 
   function markComplete() {
-    const curIdx = pipeline.findIndex((s) => s.key === activeStep);
-    const nextStep = pipeline[curIdx + 1];
     startTransition(async () => {
-      // Save current form first
-      await saveStepDataAction(item.id, activeStep, formData);
-      await updateChecklistAction(item.id, activeStep, checklist);
-      await completeStepAction(item.id, activeStep, nextStep?.key);
+      const updated = initSteps.map((s, i) => {
+        if (i === activeIdx) return { ...s, status: "approved" as const, assignee, assignee_name: assigneeName, assigneeName, deadline, checklist, links, photos, result };
+        if (i === activeIdx + 1 && (s.status === "locked" || s.status === "skipped")) return { ...s, status: "active" as const };
+        return s;
+      });
+      const newData = { ...data, ...formData, [stepsKey]: JSON.stringify(updated) };
+      await saveRdItemAction(item.id, { data: newData });
+      setDirty(false);
       onRefresh();
-      if (nextStep) setActiveStep(nextStep.key);
+      if (activeIdx + 1 < initSteps.length) {
+        const next = updated[activeIdx + 1];
+        setActiveIdx(activeIdx + 1);
+        setAssignee(next.assignee || "");
+        setAssigneeName(next.assignee_name || "");
+        setDeadline(next.deadline || "");
+        setChecklist(next.checklist || []);
+        setLinks(next.links || []);
+        setPhotos(next.photos || []);
+        setResult(next.result || "");
+        const fields = STEP_FORM_FIELDS[next.label] || [];
+        const d: Record<string, string> = {};
+        for (const f of fields) d[f.key] = String(data[f.key] ?? "");
+        setFormData(d);
+      }
     });
   }
 
-  function addCheckItem() {
-    if (!newCheckLabel.trim()) return;
-    setChecklist([...checklist, { label: newCheckLabel.trim(), checked: false }]);
-    setNewCheckLabel("");
-    setDirty(true);
-  }
-  function toggleCheck(i: number) {
-    setChecklist(checklist.map((c, idx) => idx === i ? { ...c, checked: !c.checked } : c));
-    setDirty(true);
-  }
-  function removeCheck(i: number) {
-    setChecklist(checklist.filter((_, idx) => idx !== i));
-    setDirty(true);
-  }
+  /* ── Checklist helpers ──────────────────────────────────── */
+  function addCheckItem() { if (!newCheckLabel.trim()) return; setChecklist([...checklist, { text: newCheckLabel.trim(), checked: false }]); setNewCheckLabel(""); setDirty(true); }
+  function toggleCheck(i: number) { setChecklist(checklist.map((c, idx) => idx === i ? { ...c, checked: !c.checked } : c)); setDirty(true); }
+  function removeCheck(i: number) { setChecklist(checklist.filter((_, idx) => idx !== i)); setDirty(true); }
+  function updateCheckNote(i: number, note: string) { setChecklist(checklist.map((c, idx) => idx === i ? { ...c, note } : c)); setDirty(true); }
+
+  /* ── Links helpers ──────────────────────────────────────── */
+  function addLink() { if (!newLink.trim()) return; setLinks([...links, { tag: "", url: newLink.trim() }]); setNewLink(""); setDirty(true); }
+  function removeLink(i: number) { setLinks(links.filter((_, idx) => idx !== i)); setDirty(true); }
+
+  /* ── Photos helpers ─────────────────────────────────────── */
+  function addPhoto() { if (!newPhoto.trim()) return; setPhotos([...photos, newPhoto.trim()]); setNewPhoto(""); setDirty(true); }
+  function removePhoto(i: number) { setPhotos(photos.filter((_, idx) => idx !== i)); setDirty(true); }
+
+  function setField(key: string, val: string) { setFormData((prev) => ({ ...prev, [key]: val })); setDirty(true); }
 
   const checkedCount = checklist.filter((c) => c.checked).length;
+  const stepStatus = STATUS_STYLE[step.status] || STATUS_STYLE.locked;
+  const deadlineOverdue = step.status !== "approved" && isOverdue(deadline);
+
+  /* ── render form field ──────────────────────────────────── */
+  function renderField(f: FieldDef) {
+    const val = formData[f.key] || "";
+    switch (f.type) {
+      case "url":
+        return (
+          <div className="form-group" key={f.key} style={{ gridColumn: "span 2" }}>
+            <label>{f.label}</label>
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <input type="text" value={val} onChange={(e) => setField(f.key, e.target.value)} placeholder="https://..." style={{ flex: 1 }} />
+              {val && <a href={val} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: "var(--blue)", fontWeight: 600, whiteSpace: "nowrap", padding: "4px 8px", border: "1px solid var(--blue)", borderRadius: 4, textDecoration: "none" }}>Mở ↗</a>}
+            </div>
+          </div>
+        );
+      case "verdict": {
+        const vs = val ? verdictStyle(val) : null;
+        return (
+          <div className="form-group" key={f.key}>
+            <label>{f.label}</label>
+            <select value={val} onChange={(e) => setField(f.key, e.target.value)} style={vs ? { background: vs.bg, color: vs.color, fontWeight: 700 } : undefined}>
+              <option value="">— Chọn —</option>
+              {VERDICT_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+            </select>
+          </div>
+        );
+      }
+      case "date": {
+        const ov = val && isOverdue(val) && step.status !== "approved";
+        return (
+          <div className="form-group" key={f.key}>
+            <label>{f.label}{ov && <span style={{ color: "var(--red)", fontWeight: 700, marginLeft: 6, fontSize: 10 }}>QUÁ HẠN</span>}</label>
+            <input type="date" value={deadlineToISO(val)} onChange={(e) => setField(f.key, e.target.value)} style={ov ? { borderColor: "var(--red)", color: "var(--red)" } : undefined} />
+          </div>
+        );
+      }
+      case "textarea":
+        return (
+          <div className="form-group" key={f.key} style={{ gridColumn: "span 2" }}>
+            <label>{f.label}</label>
+            <textarea rows={3} value={val} onChange={(e) => setField(f.key, e.target.value)} />
+          </div>
+        );
+      case "number":
+        return (
+          <div className="form-group" key={f.key}>
+            <label>{f.label}</label>
+            <input type="text" inputMode="numeric" value={val} onChange={(e) => setField(f.key, e.target.value)} />
+          </div>
+        );
+      default:
+        return (
+          <div className="form-group" key={f.key}>
+            <label>{f.label}</label>
+            <input type="text" value={val} onChange={(e) => setField(f.key, e.target.value)} />
+          </div>
+        );
+    }
+  }
 
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 9999,
-        display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: "#fff", borderRadius: 12,
-          width: "94vw", maxWidth: 1100, maxHeight: "94vh",
-          display: "flex", flexDirection: "column", overflow: "hidden",
-        }}
-      >
-        {/* HEADER */}
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 12, width: "94vw", maxWidth: 1100, maxHeight: "94vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+
+        {/* ═══ HEADER ═══ */}
         <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", display: "flex", gap: 10, alignItems: "center" }}>
-          <span className="chip chip-blue">
-            {item.rd_type === "upgrade" || item.rd_type === "production" ? "Sản xuất / Thiết kế" : "Nghiên cứu SP"}
+          <span className="chip" style={{ background: step.phaseBg || step.phaseColorBg || "#EDE9FE", color: step.phaseColor || "#6D28D9", fontWeight: 700, fontSize: 10 }}>
+            {isProduction(item) ? "Sản xuất / TK" : "Nghiên cứu SP"}
           </span>
           <div style={{ fontWeight: 800, fontSize: 15, flex: 1 }}>
-            Bước {pipeline.findIndex((s) => s.key === activeStep) + 1}/{pipeline.length} — {pipeline.find((s) => s.key === activeStep)?.label} · {item.name}
+            {step.icon || ""} Bước {activeIdx + 1}/{initSteps.length} — {step.label} · {item.name}
           </div>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={save} disabled={pending || !dirty}>
-            {pending ? "..." : "💾 Lưu nháp"}
-          </button>
+          <span className="chip" style={{ background: stepStatus.bg, color: stepStatus.color, fontSize: 10, fontWeight: 700 }}>
+            {stepStatus.label}
+          </span>
+          {deadlineOverdue && <span style={{ background: "#FEE2E2", color: "#B91C1C", fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 4 }}>QUÁ HẠN</span>}
+          <button type="button" className="btn btn-ghost btn-sm" onClick={save} disabled={pending || !dirty}>{pending ? "..." : "Lưu nháp"}</button>
           <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
         </div>
 
-        {/* STEPPER */}
+        {/* ═══ STEPPER ═══ */}
         <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border)", background: "#FAFAFA", display: "flex", gap: 4, overflowX: "auto" }}>
-          {pipeline.map((s, idx) => {
-            const completedAt = completedMap[s.key];
-            const isActive = s.key === activeStep;
-            const isCompleted = !!completedAt;
+          {initSteps.map((s, idx) => {
+            const isActive = idx === activeIdx;
+            const isDone = s.status === "approved";
+            const isSkipped = s.status === "skipped";
             return (
-              <button
-                key={s.key}
-                type="button"
-                onClick={() => switchStep(s.key)}
-                style={{
-                  flex: "0 0 auto",
-                  padding: "6px 10px",
-                  borderRadius: 6,
-                  border: "1px solid " + (isActive ? "var(--blue)" : isCompleted ? "#86EFAC" : "var(--border)"),
-                  background: isActive ? "var(--blue)" : isCompleted ? "#F0FDF4" : "#fff",
-                  color: isActive ? "#fff" : isCompleted ? "#15803D" : "var(--muted)",
-                  fontSize: 11, fontWeight: 700, cursor: "pointer",
-                  display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
-                  minWidth: 78,
-                }}
-              >
+              <button key={idx} type="button" onClick={() => switchStep(idx)} style={{
+                flex: "0 0 auto", padding: "6px 10px", borderRadius: 6,
+                border: "1px solid " + (isActive ? "var(--blue)" : isDone ? "#86EFAC" : "var(--border)"),
+                background: isActive ? "var(--blue)" : isDone ? "#F0FDF4" : "#fff",
+                color: isActive ? "#fff" : isDone ? "#15803D" : isSkipped ? "#A1A1AA" : "var(--muted)",
+                fontSize: 11, fontWeight: 700, cursor: "pointer",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+                minWidth: 78, textDecoration: isSkipped ? "line-through" : "none",
+                opacity: s.status === "locked" ? 0.5 : 1,
+              }}>
                 <div style={{ display: "flex", gap: 4 }}>
-                  <span>{isCompleted ? "✓" : idx + 1}</span>
+                  <span>{s.icon || (isDone ? "✓" : isSkipped ? "—" : idx + 1)}</span>
                   <span>{s.label}</span>
                 </div>
-                {completedAt && (
-                  <div style={{ fontSize: 9, fontWeight: 400 }}>{formatDate(completedAt)}</div>
-                )}
+                {s.assignee_name && <div style={{ fontSize: 9, fontWeight: 400, opacity: 0.8 }}>{s.assignee_name.split("(")[0].trim()}</div>}
               </button>
             );
           })}
         </div>
 
-        {/* BODY: main form + right sidebar */}
+        {/* ═══ BODY ═══ */}
         <div style={{ flex: 1, overflowY: "auto", display: "flex", gap: 16, padding: 16 }}>
+          {/* ── LEFT ── */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            {stepFields.length > 0 ? (
-              <div className="form-grid fg-2">
-                {stepFields.map((f) => (
-                  <div key={f.key} className="form-group" style={{ gridColumn: f.type === "textarea" ? "span 2" : undefined }}>
-                    <label>{f.label}</label>
-                    {f.type === "textarea" ? (
-                      <textarea
-                        rows={3}
-                        value={formData[f.key] || ""}
-                        onChange={(e) => { setFormData({ ...formData, [f.key]: e.target.value }); setDirty(true); }}
-                      />
-                    ) : (
-                      <input
-                        type={f.type === "number" ? "text" : "text"}
-                        inputMode={f.type === "number" ? "numeric" : undefined}
-                        value={formData[f.key] || ""}
-                        onChange={(e) => { setFormData({ ...formData, [f.key]: e.target.value }); setDirty(true); }}
-                      />
-                    )}
-                  </div>
-                ))}
+            {/* Assignee + Deadline */}
+            <div style={{ display: "flex", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
+              <div className="form-group" style={{ flex: 1, minWidth: 180 }}>
+                <label>Người phụ trách</label>
+                <select value={assignee} onChange={(e) => {
+                  const email = e.target.value;
+                  const u = users.find((u) => u.email === email);
+                  setAssignee(email);
+                  setAssigneeName(u ? (u.name || email) : "");
+                  setDirty(true);
+                }}>
+                  <option value="">— Chọn —</option>
+                  {users.map((u) => <option key={u.email} value={u.email}>{u.name || u.email}{u.role ? ` (${u.role})` : ""}</option>)}
+                </select>
               </div>
-            ) : (
-              <div className="muted" style={{ padding: 20, textAlign: "center" }}>
-                Bước này chưa có fields. Dùng checklist bên phải.
+              <div className="form-group" style={{ minWidth: 160 }}>
+                <label>Deadline{deadlineOverdue && <span style={{ color: "var(--red)", fontWeight: 700, marginLeft: 6, fontSize: 10 }}>QUÁ HẠN</span>}</label>
+                <input type="date" value={deadlineToISO(deadline)} onChange={(e) => { setDeadline(e.target.value); setDirty(true); }} style={deadlineOverdue ? { borderColor: "var(--red)", color: "var(--red)" } : undefined} />
+              </div>
+              <div className="form-group" style={{ flex: 1, minWidth: 180 }}>
+                <label>Ghi chú bước</label>
+                <input type="text" value={result} onChange={(e) => { setResult(e.target.value); setDirty(true); }} placeholder="Kết quả / ghi chú..." />
+              </div>
+            </div>
+
+            {/* Form fields */}
+            {formFields.length > 0 && (
+              <div className="form-grid fg-2" style={{ marginBottom: 14 }}>
+                {formFields.map((f) => renderField(f))}
               </div>
             )}
 
-            {/* Nút hoàn thành bước */}
-            <div style={{ marginTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              {completedMap[activeStep] ? (
-                <div className="chip chip-green">
-                  ✓ Bước này đã hoàn thành ngày {formatDate(completedMap[activeStep])}
+            {/* ── Links ── */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", marginBottom: 6 }}>Links ({links.length})</div>
+              {links.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 6 }}>
+                  {links.map((link, i) => {
+                    const url = getLinkUrl(link);
+                    const tag = getLinkTag(link);
+                    return (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
+                        {tag && <span className="chip" style={{ fontSize: 9, padding: "1px 5px" }}>{tag}</span>}
+                        <a href={url.startsWith("http") ? url : `https://${url}`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, color: "var(--blue)", wordBreak: "break-all" }}>
+                          {url.length > 60 ? url.substring(0, 57) + "..." : url}
+                        </a>
+                        <button type="button" onClick={() => removeLink(i)} style={{ background: "none", border: "none", color: "var(--red)", cursor: "pointer", fontSize: 11, padding: 2 }}>✕</button>
+                      </div>
+                    );
+                  })}
                 </div>
-              ) : <span />}
-              <button
-                type="button"
-                className="btn btn-success btn-sm"
-                onClick={markComplete}
-                disabled={pending}
-              >
-                {completedMap[activeStep] ? "Cập nhật + Chuyển bước tiếp" : "✓ Hoàn thành bước + Chuyển tiếp"}
-              </button>
+              )}
+              <div style={{ display: "flex", gap: 4 }}>
+                <input value={newLink} onChange={(e) => setNewLink(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addLink())} placeholder="Dán link..." style={{ flex: 1, fontSize: 12 }} />
+                <button type="button" className="btn btn-primary btn-xs" onClick={addLink}>+ Link</button>
+              </div>
+            </div>
+
+            {/* ── Photos ── */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", marginBottom: 6 }}>Ảnh ({photos.length})</div>
+              {photos.length > 0 && (
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
+                  {photos.map((url, i) => (
+                    <div key={i} style={{ position: "relative" }}>
+                      {isImageUrl(url) ? (
+                        <a href={url} target="_blank" rel="noopener noreferrer">
+                          <img src={url} alt="" style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 6, border: "1px solid var(--border)" }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                        </a>
+                      ) : (
+                        <a href={url} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 72, height: 72, borderRadius: 6, border: "1px solid var(--border)", background: "#F9FAFB", fontSize: 10, color: "var(--blue)", textDecoration: "none", padding: 4, textAlign: "center", wordBreak: "break-all" }}>
+                          {url.length > 30 ? url.substring(0, 27) + "..." : url}
+                        </a>
+                      )}
+                      <button type="button" onClick={() => removePhoto(i)} style={{ position: "absolute", top: -4, right: -4, width: 16, height: 16, borderRadius: "50%", background: "var(--red)", color: "#fff", border: "none", fontSize: 10, cursor: "pointer", lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 4 }}>
+                <input value={newPhoto} onChange={(e) => setNewPhoto(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addPhoto())} placeholder="Dán link ảnh..." style={{ flex: 1, fontSize: 12 }} />
+                <button type="button" className="btn btn-primary btn-xs" onClick={addPhoto}>+ Ảnh</button>
+              </div>
+            </div>
+
+            {/* ── Action buttons ── */}
+            <div style={{ marginTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              {step.status === "approved" ? <div className="chip chip-green">✓ Hoàn thành</div> : <span />}
+              {step.status !== "approved" ? (
+                <button type="button" className="btn btn-success btn-sm" onClick={markComplete} disabled={pending}>✓ Hoàn thành bước + Chuyển tiếp</button>
+              ) : (
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={save} disabled={pending || !dirty}>Cập nhật dữ liệu</button>
+                  {activeIdx < initSteps.length - 1 && <button type="button" className="btn btn-primary btn-sm" onClick={() => switchStep(activeIdx + 1)} disabled={pending}>Bước tiếp →</button>}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* RIGHT SIDEBAR: Checklist + Timeline */}
-          <div style={{ width: 300, flexShrink: 0, display: "flex", flexDirection: "column", gap: 14 }}>
+          {/* ── RIGHT SIDEBAR ── */}
+          <div style={{ width: 280, flexShrink: 0, display: "flex", flexDirection: "column", gap: 14 }}>
             {/* Checklist */}
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", marginBottom: 6 }}>
-                Checklist bước này ({checkedCount}/{checklist.length})
-              </div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", marginBottom: 6 }}>Checklist ({checkedCount}/{checklist.length})</div>
+              {checklist.length > 0 && (
+                <div style={{ height: 3, borderRadius: 2, background: "#E5E7EB", marginBottom: 6, overflow: "hidden" }}>
+                  <div style={{ height: "100%", borderRadius: 2, width: checklist.length ? `${(checkedCount / checklist.length) * 100}%` : "0%", background: checkedCount === checklist.length ? "var(--green)" : "var(--blue)", transition: "width .2s" }} />
+                </div>
+              )}
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {checklist.map((c, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 6px", background: c.checked ? "#F0FDF4" : "#FAFAFA", borderRadius: 4, fontSize: 12 }}>
-                    <input type="checkbox" checked={c.checked} onChange={() => toggleCheck(i)} style={{ width: 14, height: 14 }} />
-                    <span style={{ flex: 1, textDecoration: c.checked ? "line-through" : "none", color: c.checked ? "var(--muted)" : "var(--text)" }}>
-                      {c.label}
-                    </span>
-                    <button type="button" onClick={() => removeCheck(i)} style={{ background: "none", border: "none", color: "var(--red)", cursor: "pointer", padding: 2 }}>✕</button>
+                  <div key={i} style={{ padding: "6px 8px", background: c.checked ? "#F0FDF4" : "#FAFAFA", borderRadius: 4, fontSize: 12 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <input type="checkbox" checked={c.checked} onChange={() => toggleCheck(i)} style={{ width: 14, height: 14 }} />
+                      <span style={{ flex: 1, textDecoration: c.checked ? "line-through" : "none", color: c.checked ? "var(--muted)" : "var(--text)" }}>{c.text}</span>
+                      <button type="button" onClick={() => removeCheck(i)} style={{ background: "none", border: "none", color: "var(--red)", cursor: "pointer", padding: 2, fontSize: 11 }}>✕</button>
+                    </div>
+                    <input type="text" value={c.note || ""} onChange={(e) => updateCheckNote(i, e.target.value)} placeholder="Ghi chú..." style={{ marginTop: 3, fontSize: 11, width: "100%", border: "none", borderBottom: "1px dashed var(--border)", background: "transparent", padding: "2px 0", marginLeft: 20, color: "var(--muted)" }} />
                   </div>
                 ))}
               </div>
               <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
-                <input
-                  value={newCheckLabel}
-                  onChange={(e) => setNewCheckLabel(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCheckItem())}
-                  placeholder="Thêm mục..."
-                  style={{ flex: 1, fontSize: 12 }}
-                />
+                <input value={newCheckLabel} onChange={(e) => setNewCheckLabel(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCheckItem())} placeholder="Thêm mục..." style={{ flex: 1, fontSize: 12 }} />
                 <button type="button" className="btn btn-primary btn-xs" onClick={addCheckItem}>+</button>
               </div>
             </div>
 
-            {/* Timeline các bước */}
+            {/* Timeline */}
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", marginBottom: 6 }}>
-                Timeline
-              </div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", marginBottom: 6 }}>Timeline</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 12 }}>
-                {pipeline.map((s) => {
-                  const at = completedMap[s.key];
+                {initSteps.map((s, idx) => {
+                  const st = STATUS_STYLE[s.status] || STATUS_STYLE.locked;
                   return (
-                    <div
-                      key={s.key}
-                      onClick={() => switchStep(s.key)}
-                      style={{
-                        display: "flex", justifyContent: "space-between",
-                        padding: "3px 6px", borderRadius: 4, cursor: "pointer",
-                        background: s.key === activeStep ? "var(--blue-lt)" : "transparent",
-                        fontWeight: s.key === activeStep ? 700 : 400,
-                      }}
-                    >
-                      <span style={{ color: at ? "var(--green)" : "var(--muted)" }}>
-                        {at ? "✓" : "○"} {s.label}
-                      </span>
-                      <span className="muted" style={{ fontSize: 11 }}>
-                        {at ? formatDate(at) : "—"}
-                      </span>
+                    <div key={idx} onClick={() => switchStep(idx)} style={{
+                      display: "flex", flexDirection: "column", gap: 1, padding: "4px 6px", borderRadius: 4, cursor: "pointer",
+                      background: idx === activeIdx ? "var(--blue-lt)" : "transparent",
+                      fontWeight: idx === activeIdx ? 700 : 400, opacity: s.status === "locked" ? 0.5 : 1,
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ color: st.color }}>{s.status === "approved" ? "✓" : s.status === "skipped" ? "—" : "○"} {s.label}</span>
+                        <span className="chip" style={{ background: st.bg, color: st.color, fontSize: 9, padding: "1px 5px" }}>{st.label}</span>
+                      </div>
+                      {(s.assignee_name || s.deadline) && (
+                        <div style={{ fontSize: 10, color: "var(--muted)", paddingLeft: 16, display: "flex", gap: 8 }}>
+                          {s.assignee_name && <span>→ {s.assignee_name.split("(")[0].trim()}</span>}
+                          {s.deadline && <span style={s.status !== "approved" && isOverdue(s.deadline) ? { color: "var(--red)", fontWeight: 700 } : undefined}>{s.deadline}</span>}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

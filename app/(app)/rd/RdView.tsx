@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { formatDate } from "@/lib/format";
-import type { RdItem } from "@/lib/db/rd-types";
+import { type RdItem, getSteps } from "@/lib/db/rd-types";
+import type { UserRef } from "@/lib/db/users";
 import { deleteRdItemAction, saveRdItemAction } from "./actions";
 import RdDetailModal from "./RdDetailModal";
 
@@ -54,7 +55,7 @@ function progressFor(stage: string | null, type: "research" | "production"): num
 
 type Tab = "research" | "production";
 
-export default function RdView({ items }: { items: RdItem[]; filterStage?: string }) {
+export default function RdView({ items, users = [] }: { items: RdItem[]; users?: UserRef[]; filterStage?: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState<RdItem | "new" | null>(null);
@@ -200,6 +201,7 @@ export default function RdView({ items }: { items: RdItem[]; filterStage?: strin
       {detailItem && (
         <RdDetailModal
           item={detailItem}
+          users={users}
           onClose={() => setDetailItem(null)}
           onRefresh={() => router.refresh()}
         />
@@ -230,11 +232,10 @@ function RdRow({
   const data = (item.data as Record<string, unknown> | null) || {};
   const description = String(data.description || data.note_short || item.note || "").substring(0, 140);
 
-  // Progress thật từ step_completed_at nếu có
-  const completed = item.step_completed_at || {};
-  const pipelineLen = tab === "production" ? 10 : 6;
-  const completedCount = Object.keys(completed).length;
-  const realProgress = completedCount > 0 ? Math.round((completedCount / pipelineLen) * 100) : progress;
+  // Progress thật từ steps JSON
+  const steps = getSteps(item);
+  const approvedCount = steps.filter((s) => s.status === "approved").length;
+  const realProgress = steps.length > 0 ? Math.round((approvedCount / steps.length) * 100) : progress;
 
   function del() {
     if (!confirm(`Xoá "${item.name}"?`)) return;
