@@ -37,6 +37,8 @@ export default function ShopeeAdsView({
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState<string | null>(null);
+  const [connecting, setConnecting] = useState(false);
+  const [shopeeShops, setShopeeShops] = useState<Array<{ shop_id: string; shop_name: string; token_ok: boolean; expire_in_hours: number }>>([]);
 
   async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -116,6 +118,25 @@ export default function ShopeeAdsView({
       .slice(0, 10);
   }, [filteredAds]);
 
+  async function connectShopee() {
+    setConnecting(true);
+    try {
+      const res = await fetch("/api/shopee/connect", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      const r = await res.json();
+      if (r.ok && r.url) window.open(r.url, "_blank");
+      else setUploadMsg(`✖ ${r.error || "Lỗi tạo link"}`);
+    } catch (e) { setUploadMsg(`✖ ${(e as Error).message}`); }
+    finally { setConnecting(false); }
+  }
+
+  async function checkShopeeStatus() {
+    try {
+      const res = await fetch("/api/shopee/shops");
+      const r = await res.json();
+      if (r.ok) setShopeeShops(r.shops || []);
+    } catch { /* ignore */ }
+  }
+
   function apply() {
     const p = new URLSearchParams();
     p.set("month", m); if (s) p.set("shop", s);
@@ -148,6 +169,31 @@ export default function ShopeeAdsView({
       {uploadMsg && (
         <div className={`card ${uploadMsg.startsWith("✓") ? "bar-green" : "bar-red"}`} style={{ marginBottom: 12 }}>{uploadMsg}</div>
       )}
+
+      {/* ═══ SHOPEE API STATUS ═══ */}
+      <div className="card" style={{ marginBottom: 12, padding: "8px 14px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 11, fontWeight: 700 }}>Shopee Open API</span>
+          <button className="btn btn-ghost btn-xs" onClick={checkShopeeStatus} style={{ fontSize: 10 }}>Kiểm tra</button>
+          <button className="btn btn-ghost btn-xs" onClick={connectShopee} disabled={connecting}
+            style={{ background: "#EFF6FF", border: "1px solid #93C5FD", fontSize: 10 }}>
+            {connecting ? "Đang tạo link..." : "＋ Kết nối Shop"}
+          </button>
+          {shopeeShops.length > 0 && shopeeShops.map((sh) => (
+            <span key={sh.shop_id} style={{
+              fontSize: 10, padding: "2px 8px", borderRadius: 4,
+              background: sh.token_ok ? "#F0FDF4" : "#FEF2F2",
+              color: sh.token_ok ? "#16A34A" : "#DC2626",
+              fontWeight: 600,
+            }}>
+              {sh.shop_name}: {sh.token_ok ? `✓ OK (${sh.expire_in_hours}h)` : "✖ Hết hạn"}
+            </span>
+          ))}
+          {shopeeShops.length === 0 && (
+            <span style={{ fontSize: 10, color: "#9CA3AF" }}>Bấm "Kiểm tra" để xem trạng thái</span>
+          )}
+        </div>
+      </div>
 
       {/* ═══ SHOP TABS ═══ */}
       <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
