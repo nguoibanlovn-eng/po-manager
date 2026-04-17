@@ -271,29 +271,120 @@ export default function FbPagesView({
         </div>
       </div>
 
-      {/* ═══ FB PAGES ═══ */}
-      <div className="card" style={{ padding: 0 }}>
-        <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--border)", fontWeight: 700 }}>
-          FB PAGES · {filteredPages.length} pages
-        </div>
-        <div className="tbl-wrap">
-          <table>
-            <thead><tr><th>Page</th><th>Nhân sự</th><th>FB Page ID</th><th>Ad Account</th><th>Sync</th></tr></thead>
-            <tbody>
-              {filteredPages.map((p) => (
-                <tr key={p.page_id}>
-                  <td style={{ fontWeight: 600 }}>{p.page_name || "—"}</td>
-                  <td className="muted" style={{ fontSize: 12 }}>{p.assigned_name || p.assigned_email || "—"}</td>
-                  <td className="muted" style={{ fontSize: 10, fontFamily: "monospace" }}>{p.fb_page_id || "—"}</td>
-                  <td className="muted" style={{ fontSize: 10, fontFamily: "monospace" }}>{p.ad_account_id || "—"}</td>
-                  <td className="muted" style={{ fontSize: 11 }}>{formatDate(p.last_sync)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* ═══ PAGE CARDS ═══ */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 10 }}>
+        {filteredPages.filter((p) => p.nhanh_id || p.ad_account_id).map((p) => (
+          <PageCard key={p.page_id} page={p} ads={ads} insights={insights} nhanhRevenue={nhanhRevenue} from={from} to={to} />
+        ))}
       </div>
     </section>
+  );
+}
+
+/* ── Page Card ── */
+function PageCard({ page, ads, insights, nhanhRevenue, from, to }: {
+  page: PageRow; ads: AdsRow[]; insights: InsightsRow[]; nhanhRevenue: FbNhanhRow[]; from: string; to: string;
+}) {
+  const pageName = (page.page_name || "").replace(/^FACEBOOK - /, "");
+
+  // Insights for this page
+  const pageInsights = useMemo(() => {
+    const filtered = insights.filter((r) => r.page_id === page.fb_page_id || r.page_id === page.page_id);
+    const totals = filtered.reduce(
+      (a, r) => ({ new_fans: a.new_fans + toNum(r.new_fans), lost_fans: a.lost_fans + toNum(r.lost_fans), reach: a.reach + toNum(r.reach) }),
+      { new_fans: 0, lost_fans: 0, reach: 0 },
+    );
+    const days = new Set(filtered.map((r) => r.date)).size || 1;
+    return { ...totals, net: totals.new_fans - totals.lost_fans, reachPerDay: Math.round(totals.reach / days), days };
+  }, [insights, page]);
+
+  // Ads for this page's ad account
+  const pageAds = useMemo(() => {
+    if (!page.ad_account_id) return { spend: 0, reach: 0, clicks: 0, ctr: 0 };
+    const filtered = ads.filter((a) => a.ad_account_id === page.ad_account_id);
+    const totals = filtered.reduce(
+      (a, r) => ({ spend: a.spend + toNum(r.spend), reach: a.reach + toNum(r.reach), clicks: a.clicks + toNum(r.clicks), impressions: a.impressions + toNum(r.impressions) }),
+      { spend: 0, reach: 0, clicks: 0, impressions: 0 },
+    );
+    return { ...totals, ctr: totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0 };
+  }, [ads, page]);
+
+  // Nhanh revenue for this page
+  const pageNhanh = useMemo(() => {
+    if (!page.nhanh_id) return { revenue: 0, orders: 0, daily: [] as number[] };
+    const filtered = nhanhRevenue.filter((r) => r.source === page.nhanh_id);
+    const totals = filtered.reduce((a, r) => ({ revenue: a.revenue + r.revenue, orders: a.orders + r.orders }), { revenue: 0, orders: 0 });
+    // Daily values for mini chart
+    const dates = new Set<string>();
+    for (const r of nhanhRevenue) dates.add(r.date);
+    const sortedDates = Array.from(dates).sort();
+    const byDate = new Map<string, number>();
+    for (const r of filtered) byDate.set(r.date, (byDate.get(r.date) || 0) + r.revenue);
+    const daily = sortedDates.map((d) => byDate.get(d) || 0);
+    return { ...totals, daily };
+  }, [nhanhRevenue, page]);
+
+  return (
+    <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+      {/* Header */}
+      <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#E8F0FE", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>f</div>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 13 }}>{pageName}</div>
+        </div>
+      </div>
+
+      {/* Insights */}
+      <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)" }}>
+        <div style={{ fontSize: 9, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", marginBottom: 4 }}>Insights</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 12px", fontSize: 11 }}>
+          <div>FOLLOWERS MỚI <strong style={{ color: "var(--green)" }}>+{pageInsights.new_fans.toLocaleString("vi-VN")}</strong></div>
+          <div>UNFOLLOW <strong style={{ color: "var(--red)" }}>-{pageInsights.lost_fans.toLocaleString("vi-VN")}</strong></div>
+          <div>TĂNG RÒNG <strong style={{ color: pageInsights.net >= 0 ? "var(--green)" : "var(--red)" }}>{pageInsights.net >= 0 ? "+" : ""}{pageInsights.net.toLocaleString("vi-VN")}</strong></div>
+          <div>REACH/NGÀY <strong style={{ color: "var(--blue)" }}>{pageInsights.reachPerDay.toLocaleString("vi-VN")}</strong></div>
+        </div>
+        {/* Mini reach chart */}
+        {pageNhanh.daily.length > 0 && (
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 30, marginTop: 6 }}>
+            {pageNhanh.daily.map((v, i) => {
+              const max = Math.max(...pageNhanh.daily);
+              const h = max > 0 ? (v / max) * 24 : 0;
+              return <div key={i} style={{ flex: 1, height: Math.max(h, 1), background: "#86EFAC", borderRadius: 1 }} />;
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Ads */}
+      {page.ad_account_id && (
+        <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)" }}>
+          <div style={{ fontSize: 9, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", marginBottom: 4 }}>Facebook Ads</div>
+          <div className="muted" style={{ fontSize: 10, marginBottom: 4 }}>{page.ad_account_id}</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 12px", fontSize: 11 }}>
+            <div>CHI PHÍ <strong style={{ color: "var(--red)" }}>{formatVNDCompact(pageAds.spend)}</strong></div>
+            <div>REACH <strong style={{ color: "var(--blue)" }}>{pageAds.reach.toLocaleString("vi-VN")}</strong></div>
+            <div>CLICKS <strong>{pageAds.clicks.toLocaleString("vi-VN")}</strong></div>
+            <div>CTR <strong style={{ color: "var(--green)" }}>{pageAds.ctr.toFixed(2)}%</strong></div>
+          </div>
+          <div className="muted" style={{ fontSize: 9, marginTop: 4 }}>{from} → {to}</div>
+        </div>
+      )}
+
+      {/* Nhanh revenue */}
+      {page.nhanh_id && (
+        <div style={{ padding: "8px 12px" }}>
+          <div style={{ fontSize: 9, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", marginBottom: 4 }}>Doanh thu Nhanh.vn</div>
+          <div className="muted" style={{ fontSize: 10, marginBottom: 4 }}>Facebook - {page.nhanh_id}</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 12px", fontSize: 11 }}>
+            <div>ĐƠN THỰC <strong>{pageNhanh.orders.toLocaleString("vi-VN")}</strong></div>
+            <div>DT THUẦN <strong style={{ color: "var(--green)" }}>{formatVNDCompact(pageNhanh.revenue)}</strong></div>
+          </div>
+          <div style={{ fontSize: 11, color: "var(--green)", fontWeight: 700, marginTop: 4 }}>
+            THÀNH CÔNG {pageNhanh.orders} đơn · {formatVNDCompact(pageNhanh.revenue)}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
