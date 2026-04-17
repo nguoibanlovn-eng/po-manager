@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { formatDate, formatVND, formatVNDCompact } from "@/lib/format";
 import type { AdsRow, InsightsRow, PageRow } from "@/lib/db/ads";
+import SyncButton from "../components/SyncButton";
 
 type Summary = { spend: number; impressions: number; clicks: number; reach: number; purchase_value: number };
 
@@ -91,6 +92,8 @@ export default function FbPagesView({
           <span className="muted">→</span>
           <input type="date" value={toD} onChange={(e) => setToD(e.target.value)} />
           <button className="btn btn-primary btn-sm" onClick={applyRange}>Áp dụng</button>
+          <SyncButton url="/api/fb/sync-ads" label="Sync Ads" onDone={() => router.refresh()} />
+          <SyncButton url="/api/fb/sync-insights" label="Sync Insights" onDone={() => router.refresh()} />
         </div>
       </div>
 

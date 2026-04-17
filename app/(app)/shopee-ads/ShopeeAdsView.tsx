@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 import { formatDate, formatVND, toNum } from "@/lib/format";
 import type { ShopeeAdsRow, ShopeeDailyRow } from "@/lib/db/shopee";
+import SyncButton from "../components/SyncButton";
 
 export default function ShopeeAdsView({
   ads,
@@ -96,6 +97,7 @@ export default function ShopeeAdsView({
             {shops.map((x) => <option key={x} value={x}>{x}</option>)}
           </select>
           <button className="btn btn-primary btn-sm" onClick={apply}>Áp dụng</button>
+          <SyncButton url="/api/nhanh/sync-sales" label="Sync Nhanh" onDone={() => router.refresh()} />
           <input
             ref={fileRef}
             type="file"

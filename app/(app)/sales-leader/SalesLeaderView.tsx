@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { formatDate, formatVND, formatVNDCompact, toNum } from "@/lib/format";
 import type { TiktokAdsRow, TiktokChannelRow, TiktokNhanhRow, TiktokProductStat } from "@/lib/db/tiktok";
+import SyncButton from "../components/SyncButton";
 
 type Tab = "overview" | "ads" | "channel" | "shop" | "products";
 
@@ -68,7 +69,7 @@ export default function SalesLeaderView({
           <div className="page-title">TikTok Overview</div>
           <div className="page-sub">Ads · Kênh · Shop</div>
         </div>
-        <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+        <div className="row" style={{ gap: 6, flexWrap: "wrap", alignItems: "center" }}>
           {QUICK_RANGES.map((r) => (
             <button key={r.key} className="btn btn-ghost btn-xs" onClick={() => quickRange(r.days)}
               style={{ background: from === (r.days === -1 ? daysAgo(-1) : daysAgo(r.days)) ? "var(--blue)" : undefined, color: from === (r.days === -1 ? daysAgo(-1) : daysAgo(r.days)) ? "#fff" : undefined }}>
@@ -79,6 +80,9 @@ export default function SalesLeaderView({
           <span className="muted">→</span>
           <input type="date" value={t} onChange={(e) => setT(e.target.value)} style={{ fontSize: 12, width: 130 }} />
           <button className="btn btn-primary btn-xs" onClick={apply}>Áp dụng</button>
+          <span style={{ width: 1, height: 20, background: "var(--border)" }} />
+          <SyncButton url="/api/nhanh/sync-sales" label="NHANH.VN" onDone={() => router.refresh()} />
+          <SyncButton url="/api/tiktok/sync-ads" label="Sync Ads" onDone={() => router.refresh()} />
         </div>
       </div>
 

@@ -473,3 +473,4 @@ body.mobile .tku-daily-summary { display: block !important; }
 body.mobile #tab-fin-debt > div:first-child { flex-direction: column !important; }
 body.mobile [id^="fintab-"] { width: 100% !important; border-radius: 8px !important; border-right: none !important; border-bottom: 1px solid var(--border) !important; }
 body.modal-open { overflow: hidden !important; position: fixed !important; width: 100% !important; }
+@keyframes spin { to { transform: rotate(360deg); } }
