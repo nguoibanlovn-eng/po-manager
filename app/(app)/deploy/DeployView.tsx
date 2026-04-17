@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { formatDate, formatVND, toNum } from "@/lib/format";
@@ -12,6 +11,7 @@ import {
   updateInfoAction,
 } from "./actions";
 
+/* ─── Constants ─────────────────────────────────────────── */
 const CHANNELS: { key: Channel; label: string; color: string }[] = [
   { key: "fb", label: "Facebook", color: "#1877F2" },
   { key: "shopee", label: "Shopee", color: "#EE4D2D" },
@@ -19,6 +19,15 @@ const CHANNELS: { key: Channel; label: string; color: string }[] = [
   { key: "web", label: "Web/B2B", color: "#0EA5E9" },
 ];
 
+const PAGE_SIZE = 100;
+
+type StatusFilter = "all" | "todo" | "done";
+type TimeFilter = "all" | "today" | "7d" | "month" | "custom";
+type SortOrder = "newest" | "oldest";
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN VIEW
+   ═══════════════════════════════════════════════════════════ */
 export default function DeployView({
   groups,
   filter,
@@ -30,75 +39,183 @@ export default function DeployView({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>((filter as StatusFilter) || "all");
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
 
-  const filtered = useMemo(() => {
-    if (filter === "todo") {
-      return groups
-        .map((g) => ({
-          ...g,
-          products: g.products.filter((p) => p.status !== "done"),
-        }))
-        .filter((g) => g.products.length > 0);
+  // ── All products flat (for stats) ──
+  const allProducts = useMemo(() => groups.flatMap((g) => g.products), [groups]);
+
+  // ── Filter by status ──
+  const statusFiltered = useMemo(() => {
+    if (statusFilter === "todo") {
+      return groups.map((g) => ({ ...g, products: g.products.filter((p) => p.status !== "done") })).filter((g) => g.products.length > 0);
     }
-    if (filter === "done") {
-      return groups
-        .map((g) => ({
-          ...g,
-          products: g.products.filter((p) => p.status === "done"),
-        }))
-        .filter((g) => g.products.length > 0);
+    if (statusFilter === "done") {
+      return groups.map((g) => ({ ...g, products: g.products.filter((p) => p.status === "done") })).filter((g) => g.products.length > 0);
     }
     return groups;
-  }, [groups, filter]);
+  }, [groups, statusFilter]);
 
-  const stats = useMemo(() => {
-    let pendingCount = 0, inProgress = 0, done = 0;
-    for (const g of groups) {
-      for (const p of g.products) {
-        if (p.status === "done") done++;
-        else if (p.status === "in_progress") inProgress++;
-        else pendingCount++;
-      }
+  // ── Filter by time ──
+  const timeFiltered = useMemo(() => {
+    if (timeFilter === "all") return statusFiltered;
+    const now = new Date();
+    let cutoff: Date;
+    if (timeFilter === "today") {
+      cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else if (timeFilter === "7d") {
+      cutoff = new Date(now.getTime() - 7 * 86400000);
+    } else if (timeFilter === "month") {
+      cutoff = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else {
+      return statusFiltered;
     }
-    return { pendingCount, inProgress, done, total: groups.reduce((s, g) => s + g.products.length, 0) };
-  }, [groups]);
+    return statusFiltered.map((g) => ({
+      ...g,
+      products: g.products.filter((p) => {
+        const d = new Date(p.created_at || "");
+        return d >= cutoff;
+      }),
+    })).filter((g) => g.products.length > 0);
+  }, [statusFiltered, timeFilter]);
+
+  // ── Search ──
+  const searched = useMemo(() => {
+    if (!search) return timeFiltered;
+    const s = search.toLowerCase();
+    return timeFiltered.map((g) => ({
+      ...g,
+      products: g.products.filter((p) =>
+        (p.product_name || "").toLowerCase().includes(s) ||
+        (p.sku || "").toLowerCase().includes(s) ||
+        (g.order_name || "").toLowerCase().includes(s)
+      ),
+    })).filter((g) => g.products.length > 0);
+  }, [timeFiltered, search]);
+
+  // ── Sort ──
+  const sorted = useMemo(() => {
+    const arr = [...searched];
+    if (sortOrder === "oldest") arr.reverse();
+    return arr;
+  }, [searched, sortOrder]);
+
+  // ── Pagination ──
+  const totalProducts = sorted.reduce((s, g) => s + g.products.length, 0);
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // ── Stats ──
+  const stats = useMemo(() => {
+    let needInfo = 0, infoDone = 0;
+    for (const p of allProducts) {
+      if (p.info_done) infoDone++;
+      else needInfo++;
+    }
+    return {
+      needInfo,
+      infoDone,
+      total: allProducts.length,
+      pct: allProducts.length > 0 ? Math.round((infoDone / allProducts.length) * 100) : 0,
+      showing: totalProducts,
+    };
+  }, [allProducts, totalProducts]);
 
   return (
     <section className="section">
+      {/* ═══ HEADER ═══ */}
       <div className="page-hdr">
         <div>
-          <div className="page-title">🚀 Triển khai bán</div>
+          <div className="page-title">Thông tin sản phẩm</div>
           <div className="page-sub">
-            {stats.total} SP · {stats.pendingCount} chờ · {stats.inProgress} đang làm · {stats.done} xong
+            {stats.total} sản phẩm · {stats.infoDone} chờ triển khai · {stats.total - stats.infoDone} hoàn tất
           </div>
         </div>
-        <button className="btn btn-ghost btn-sm" onClick={() => router.refresh()}>🔄</button>
+        <button className="btn btn-ghost btn-sm" onClick={() => router.refresh()}>Tải lại</button>
       </div>
 
-      <div style={{ display: "flex", gap: 0, border: "0.5px solid var(--border)", borderRadius: 6, overflow: "hidden", width: "fit-content", marginBottom: 12, fontSize: 12 }}>
-        {[
-          ["all", "Tất cả"],
-          ["todo", "Chờ làm"],
-          ["done", "Đã xong"],
-        ].map(([k, v]) => (
-          <Link
-            key={k}
-            href={`/deploy?filter=${k}`}
-            style={{
-              padding: "6px 14px",
-              textDecoration: "none",
-              background: filter === k ? "#e8940a" : "var(--card)",
-              color: filter === k ? "#fff" : "var(--muted)",
-              fontWeight: filter === k ? 600 : 400,
-            }}
-          >{v}</Link>
-        ))}
+      {/* ═══ KPI CARDS ═══ */}
+      <div className="stat-grid" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+        <div className="stat-card c-red">
+          <div className="sl">CHỜ ĐIỀN</div>
+          <div className="sv">{stats.needInfo}</div>
+          <div className="muted" style={{ fontSize: 11 }}>SP cần xử lý</div>
+        </div>
+        <div className="stat-card c-green">
+          <div className="sl">ĐÃ XONG</div>
+          <div className="sv">{stats.infoDone}</div>
+          <div className="muted" style={{ fontSize: 11 }}>tổng cộng</div>
+        </div>
+        <div className="stat-card c-blue">
+          <div className="sl">TỈ LỆ</div>
+          <div className="sv">{stats.pct}%</div>
+          <div className="muted" style={{ fontSize: 11 }}>{stats.infoDone} / {stats.total} SP</div>
+        </div>
+        <div className="stat-card c-amber">
+          <div className="sl">ĐANG LỌC</div>
+          <div className="sv">{stats.showing}</div>
+          <div className="muted" style={{ fontSize: 11 }}>SP hiện tại</div>
+        </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {/* ═══ FILTERS ═══ */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
+        {/* Status filter */}
+        <div className="mini-tabs" style={{ marginBottom: 0 }}>
+          {([["all", "Tất cả"], ["todo", "Chờ điền"], ["done", "Đã xong"]] as const).map(([k, v]) => (
+            <button key={k} className={"mini-tab" + (statusFilter === k ? " active" : "")} onClick={() => { setStatusFilter(k); setPage(1); }}>
+              {v}
+            </button>
+          ))}
+        </div>
+
+        {/* Time filter */}
+        <div className="mini-tabs" style={{ marginBottom: 0 }}>
+          {([["all", "Tất cả"], ["today", "Hôm nay"], ["7d", "7 ngày"], ["month", "Tháng này"]] as const).map(([k, v]) => (
+            <button key={k} className={"mini-tab" + (timeFilter === k ? " active" : "")} onClick={() => { setTimeFilter(k); setPage(1); }}>
+              {v}
+            </button>
+          ))}
+        </div>
+
+        {/* Sort */}
+        <div className="mini-tabs" style={{ marginBottom: 0 }}>
+          <button className={"mini-tab" + (sortOrder === "newest" ? " active" : "")} onClick={() => setSortOrder("newest")}>Mới nhất</button>
+          <button className={"mini-tab" + (sortOrder === "oldest" ? " active" : "")} onClick={() => setSortOrder("oldest")}>Cũ nhất</button>
+        </div>
+
+        {/* Search */}
+        <input
+          value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          placeholder="Tìm SP, SKU, đơn..."
+          style={{ fontSize: 12, width: 180, marginLeft: "auto" }}
+        />
+      </div>
+
+      {/* ═══ PAGINATION ═══ */}
+      {totalPages > 1 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontSize: 12 }}>
+          <span className="muted">Trang {page} / {totalPages} · {totalProducts} sản phẩm</span>
+          <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
+            <button className="btn btn-ghost btn-xs" disabled={page <= 1} onClick={() => setPage(page - 1)}>‹</button>
+            {Array.from({ length: totalPages }, (_, i) => (
+              <button key={i} className="btn btn-ghost btn-xs" style={{ background: page === i + 1 ? "var(--blue)" : undefined, color: page === i + 1 ? "#fff" : undefined }} onClick={() => setPage(i + 1)}>
+                {i + 1}
+              </button>
+            ))}
+            <button className="btn btn-ghost btn-xs" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>›</button>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ GROUPS ═══ */}
+      {paginated.length === 0 ? (
         <div className="card muted" style={{ padding: 24, textAlign: "center" }}>Không có phiếu nào.</div>
       ) : (
-        filtered.map((g) => (
+        paginated.map((g) => (
           <OrderGroup
             key={g.order_id}
             group={g}
@@ -113,49 +230,51 @@ export default function DeployView({
   );
 }
 
+/* ═══════════════════════════════════════════════════════════
+   ORDER GROUP
+   ═══════════════════════════════════════════════════════════ */
 function OrderGroup({
-  group,
-  canApprove,
-  disabled,
-  startTransition,
-  refresh,
+  group, canApprove, disabled, startTransition, refresh,
 }: {
-  group: DeployGroup;
-  canApprove: boolean;
-  disabled: boolean;
-  startTransition: ReturnType<typeof useTransition>[1];
-  refresh: () => void;
+  group: DeployGroup; canApprove: boolean; disabled: boolean;
+  startTransition: (fn: () => Promise<void>) => void; refresh: () => void;
 }) {
-  const [expanded, setExpanded] = useState(group.products.some((p) => p.status !== "done"));
+  const todoCount = group.products.filter((p) => p.status !== "done").length;
+  const [expanded, setExpanded] = useState(todoCount > 0);
+
   return (
     <div className="card" style={{ marginBottom: 12, padding: 0, overflow: "hidden" }}>
+      {/* Group header */}
       <div
         onClick={() => setExpanded((v) => !v)}
         style={{
-          padding: "12px 14px",
-          background: "#FAFAFA",
+          padding: "10px 14px", background: "#FAFAFA",
           borderBottom: expanded ? "1px solid var(--border)" : "none",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 10,
+          cursor: "pointer", display: "flex", alignItems: "center", gap: 10,
         }}
       >
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 700 }}>
-            {group.order_id} · {group.order_name}
+          <div style={{ fontWeight: 700, fontSize: 14 }}>
+            {group.order_name || group.order_id}
+            {group.order_stage && (
+              <span className="chip chip-green" style={{ marginLeft: 8, fontSize: 10 }}>{group.order_stage === "ARRIVED" ? "Hàng về" : group.order_stage}</span>
+            )}
           </div>
           <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
-            {group.supplier_name || "—"} · Về {formatDate(group.arrival_date)} · {group.products.length} SP
+            NCC: {group.supplier_name || "—"} · {group.products.length} SP · về {formatDate(group.arrival_date)}
           </div>
         </div>
-        {group.order_stage && <span className={`stage-badge stage-${group.order_stage}`}>{group.order_stage}</span>}
+        {todoCount > 0 && (
+          <span style={{ color: "var(--red)", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>
+            {todoCount} chờ xử lý
+          </span>
+        )}
         <span style={{ color: "var(--muted)" }}>{expanded ? "▾" : "▸"}</span>
       </div>
 
+      {/* Products */}
       {expanded && (
-        <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", flexDirection: "column" }}>
           {group.products.map((p) => (
             <DeployRow
               key={p.deploy_id}
@@ -172,22 +291,45 @@ function OrderGroup({
   );
 }
 
+/* ═══════════════════════════════════════════════════════════
+   DEPLOY ROW — single product
+   ═══════════════════════════════════════════════════════════ */
 function DeployRow({
-  p,
-  canApprove,
-  disabled,
-  startTransition,
-  refresh,
+  p, canApprove, disabled, startTransition, refresh,
 }: {
-  p: DeployProduct;
-  canApprove: boolean;
-  disabled: boolean;
-  startTransition: ReturnType<typeof useTransition>[1];
-  refresh: () => void;
+  p: DeployProduct; canApprove: boolean; disabled: boolean;
+  startTransition: (fn: () => Promise<void>) => void; refresh: () => void;
 }) {
+  const [showDetail, setShowDetail] = useState(false);
   const [desc, setDesc] = useState(p.product_desc || "");
   const [sellPrice, setSellPrice] = useState(String(p.sell_price || ""));
-  const [refLinks, setRefLinks] = useState(""); // stored separately; not in DeployProduct type for now
+  const [refLinks, setRefLinks] = useState(p.ref_links || "");
+  const [dirty, setDirty] = useState(false);
+
+  const isDone = p.status === "done";
+  const hasDesc = !!(p.product_desc && p.product_desc.trim());
+  const hasPrice = toNum(p.sell_price) > 0;
+
+  function saveInfo() {
+    startTransition(async () => {
+      const r = await updateInfoAction(p.deploy_id, {
+        product_desc: desc,
+        sell_price: toNum(sellPrice),
+        ref_links: refLinks || undefined,
+      });
+      if (!r.ok) alert(r.error);
+      else { setDirty(false); refresh(); }
+    });
+  }
+
+  function approvePrice() {
+    if (!confirm("Duyệt giá bán này?")) return;
+    startTransition(async () => {
+      const r = await approvePriceAction(p.deploy_id);
+      if (!r.ok) alert(r.error);
+      else refresh();
+    });
+  }
 
   function toggleChannel(ch: Channel, currentlyDone: boolean) {
     startTransition(async () => {
@@ -201,115 +343,177 @@ function DeployRow({
     });
   }
 
-  function saveInfo() {
+  function cancelApproval() {
+    // Just save with empty price_approved_by not possible from client
+    // Instead, update info to force re-review
+    if (!confirm("Huỷ xác nhận SP này?")) return;
     startTransition(async () => {
-      const r = await updateInfoAction(p.deploy_id, {
-        product_desc: desc,
-        sell_price: toNum(sellPrice),
-        ref_links: refLinks || undefined,
-      });
-      if (!r.ok) alert(r.error);
-      else refresh();
-    });
-  }
-
-  function approvePrice() {
-    if (!confirm("Duyệt giá bán này?")) return;
-    startTransition(async () => {
-      const r = await approvePriceAction(p.deploy_id);
-      if (!r.ok) alert(r.error);
-      else refresh();
+      await updateInfoAction(p.deploy_id, { product_desc: desc, sell_price: 0 });
+      refresh();
     });
   }
 
   return (
-    <div className="item-card" style={{ padding: 12 }}>
-      <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
-        <div style={{ flex: "1 1 300px", minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 14 }}>{p.product_name || "—"}</div>
-          <div className="muted" style={{ fontSize: 12 }}>
-            SKU: {p.sku || "—"} · SL: {toNum(p.qty)} · Giá nhập: {formatVND(p.unit_price)}
+    <div style={{ borderBottom: "1px solid var(--border)" }}>
+      {/* ── Product header row ── */}
+      <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: 13 }}>{p.product_name || "—"}</div>
+          <div className="muted" style={{ fontSize: 11, display: "flex", gap: 8, flexWrap: "wrap", marginTop: 2 }}>
+            <span>SKU: {p.sku || "—"}</span>
+            <span>· SL: {toNum(p.qty)}</span>
+            <span>· Vốn: {formatVND(p.unit_price)}</span>
+            {hasDesc && <span className="chip chip-green" style={{ fontSize: 9, padding: "1px 5px" }}>✓ QC xong</span>}
+            {!hasPrice && <span className="chip chip-amber" style={{ fontSize: 9, padding: "1px 5px" }}>Chờ KH bán</span>}
+            {hasPrice && <span className="chip chip-blue" style={{ fontSize: 9, padding: "1px 5px" }}>Giá: {formatVND(p.sell_price)}</span>}
           </div>
-          {p.price_approved_by && (
-            <div style={{ fontSize: 11, color: "var(--green)", marginTop: 4 }}>
-              ✓ Giá đã duyệt · {p.price_approved_by}
+        </div>
+        <span className="muted" style={{ fontSize: 11 }}>Mua hàng</span>
+        <button
+          className="btn btn-ghost btn-sm"
+          onClick={() => setShowDetail(!showDetail)}
+          style={{ fontSize: 12 }}
+        >
+          Điền info {showDetail ? "▴" : "▾"}
+        </button>
+      </div>
+
+      {/* ── Expanded detail ── */}
+      {showDetail && (
+        <div style={{ padding: "0 14px 14px" }}>
+          {/* Section 1: Mô tả & tính năng nổi bật */}
+          <div style={{ marginBottom: 12, background: "#FAFAFA", borderRadius: 8, padding: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <span style={{ fontSize: 14 }}>📋</span>
+              <span style={{ color: hasDesc ? "var(--green)" : "var(--muted)" }}>
+                {hasDesc ? "✓" : "○"}
+              </span>
+              <span style={{ fontWeight: 600, fontSize: 13 }}>Mô tả &amp; tính năng nổi bật</span>
+            </div>
+            <div className="muted" style={{ fontSize: 11, marginBottom: 6, fontStyle: "italic" }}>
+              USP + CÔNG DỤNG + CHẤT LIỆU + BẢO HÀNH. DÙNG LÀM CAPTION BÁN HÀNG.
+            </div>
+            <textarea
+              rows={4}
+              value={desc}
+              onChange={(e) => { setDesc(e.target.value); setDirty(true); }}
+              disabled={disabled}
+              placeholder="Nhập mô tả sản phẩm..."
+              style={{ fontSize: 13 }}
+            />
+            {hasDesc && (
+              <div style={{ fontSize: 11, color: "var(--green)", marginTop: 4 }}>Đã có thông tin</div>
+            )}
+          </div>
+
+          {/* Section 2: Link thông tin SP quốc tế */}
+          <div style={{ marginBottom: 12, background: "#FAFAFA", borderRadius: 8, padding: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <span style={{ fontSize: 14 }}>🌐</span>
+              <span style={{ color: refLinks ? "var(--green)" : "var(--muted)" }}>
+                {refLinks ? "✓" : "○"}
+              </span>
+              <span style={{ fontWeight: 600, fontSize: 13 }}>Link thông tin sản phẩm quốc tế</span>
+              <span className="muted" style={{ fontSize: 11 }}>Nhà SX, Amazon, GSMArena...</span>
+            </div>
+            <textarea
+              rows={2}
+              value={refLinks}
+              onChange={(e) => { setRefLinks(e.target.value); setDirty(true); }}
+              disabled={disabled}
+              placeholder="Mỗi link 1 dòng..."
+              style={{ fontSize: 12 }}
+            />
+            {!refLinks && <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>Chưa có link nào</div>}
+          </div>
+
+          {/* Section 3: Giá bán */}
+          <div style={{ marginBottom: 12, background: "#FAFAFA", borderRadius: 8, padding: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <span style={{ fontSize: 14 }}>💰</span>
+              <span style={{ fontWeight: 600, fontSize: 13 }}>Giá bán đề xuất</span>
+            </div>
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              <input
+                type="text" inputMode="numeric"
+                value={sellPrice}
+                onChange={(e) => { setSellPrice(e.target.value.replace(/\D/g, "")); setDirty(true); }}
+                disabled={disabled}
+                placeholder="0"
+                style={{ width: 160 }}
+              />
+              <button className="btn btn-primary btn-sm" onClick={saveInfo} disabled={disabled || !dirty}>
+                Lưu thông tin
+              </button>
+              {canApprove && !p.price_approved_by && toNum(sellPrice) > 0 && (
+                <button className="btn btn-success btn-sm" onClick={approvePrice} disabled={disabled}>
+                  ✓ Duyệt giá
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Status bar: Đã xác nhận */}
+          {p.info_done && (
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "8px 12px", background: "#F0FDF4", borderRadius: 6, marginBottom: 12,
+              border: "1px solid #86EFAC",
+            }}>
+              <span style={{ color: "#15803D", fontWeight: 600, fontSize: 13 }}>
+                ✓ Đã xác nhận · Chờ lập kế hoạch bán
+              </span>
+              <div className="row" style={{ gap: 6 }}>
+                <button className="btn btn-ghost btn-xs" onClick={() => setShowDetail(true)}>Sửa</button>
+                <button className="btn btn-ghost btn-xs" style={{ color: "var(--red)" }} onClick={cancelApproval} disabled={disabled}>
+                  Huỷ xác nhận
+                </button>
+              </div>
             </div>
           )}
-        </div>
-        <span className={`chip ${p.status === "done" ? "chip-green" : p.status === "in_progress" ? "chip-amber" : "chip-gray"}`}>
-          {p.status === "done" ? "Xong" : p.status === "in_progress" ? "Đang làm" : "Chờ"}
-        </span>
-      </div>
 
-      <div className="form-grid fg-3" style={{ marginTop: 10 }}>
-        <div className="form-group">
-          <label>Mô tả SP</label>
-          <textarea rows={2} value={desc} onChange={(e) => setDesc(e.target.value)} disabled={disabled} />
-        </div>
-        <div className="form-group">
-          <label>Giá bán đề xuất</label>
-          <input
-            type="text"
-            inputMode="numeric"
-            value={sellPrice}
-            onChange={(e) => setSellPrice(e.target.value.replace(/\D/g, ""))}
-            disabled={disabled}
-          />
-        </div>
-        <div className="form-group">
-          <label>Link tham khảo (thị trường)</label>
-          <input value={refLinks} onChange={(e) => setRefLinks(e.target.value)} placeholder="URL..." disabled={disabled} />
-        </div>
-      </div>
+          {p.price_approved_by && (
+            <div style={{ fontSize: 11, color: "var(--green)", marginBottom: 8 }}>
+              ✓ Giá đã duyệt bởi {p.price_approved_by}
+            </div>
+          )}
 
-      <div className="row" style={{ marginTop: 10, gap: 8 }}>
-        <button type="button" className="btn btn-primary btn-sm" onClick={saveInfo} disabled={disabled}>
-          💾 Lưu thông tin
-        </button>
-        {canApprove && !p.price_approved_by && toNum(p.sell_price) > 0 && (
-          <button type="button" className="btn btn-success btn-sm" onClick={approvePrice} disabled={disabled}>
-            ✓ Duyệt giá
-          </button>
-        )}
-      </div>
-
-      <div style={{ marginTop: 12, borderTop: "0.5px solid var(--border)", paddingTop: 10 }}>
-        <div className="muted" style={{ fontSize: 11, marginBottom: 6, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".5px" }}>
-          Đăng kênh
-        </div>
-        <div className="row" style={{ gap: 6 }}>
-          {CHANNELS.map((c) => {
-            const done = !!p[`${c.key}_done` as const];
-            const links = parseLinks(p[`${c.key}_links` as const]);
-            return (
-              <div key={c.key} style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 110 }}>
-                <button
-                  type="button"
-                  onClick={() => toggleChannel(c.key, done)}
-                  disabled={disabled}
-                  style={{
-                    padding: "6px 10px",
-                    fontSize: 12,
-                    fontWeight: 700,
-                    border: `1px solid ${done ? c.color : "var(--border)"}`,
-                    borderRadius: 6,
-                    background: done ? c.color : "transparent",
-                    color: done ? "#fff" : "var(--muted)",
-                    cursor: "pointer",
-                  }}
-                >
-                  {done ? "✓ " : ""}{c.label}
-                </button>
-                {links.length > 0 && (
-                  <div style={{ fontSize: 10, color: "var(--subtle)", textAlign: "center" }}>
-                    {links.length} link
+          {/* Channel buttons */}
+          <div style={{ borderTop: "1px solid var(--border)", paddingTop: 10 }}>
+            <div className="muted" style={{ fontSize: 11, marginBottom: 6, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".5px" }}>
+              Đăng kênh
+            </div>
+            <div className="row" style={{ gap: 6 }}>
+              {CHANNELS.map((c) => {
+                const done = !!p[`${c.key}_done` as keyof DeployProduct];
+                const links = parseLinks(p[`${c.key}_links` as keyof DeployProduct] as string);
+                return (
+                  <div key={c.key} style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 110 }}>
+                    <button
+                      type="button"
+                      onClick={() => toggleChannel(c.key, done)}
+                      disabled={disabled}
+                      style={{
+                        padding: "6px 10px", fontSize: 12, fontWeight: 700,
+                        border: `1px solid ${done ? c.color : "var(--border)"}`,
+                        borderRadius: 6,
+                        background: done ? c.color : "transparent",
+                        color: done ? "#fff" : "var(--muted)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {done ? "✓ " : ""}{c.label}
+                    </button>
+                    {links.length > 0 && (
+                      <div style={{ fontSize: 10, color: "var(--subtle)", textAlign: "center" }}>{links.length} link</div>
+                    )}
                   </div>
-                )}
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

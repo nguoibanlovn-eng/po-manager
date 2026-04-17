@@ -23,6 +23,7 @@ export type DeployProduct = {
   shopee_done: boolean | null; shopee_done_at: string | null; shopee_links: string | null;
   tiktok_done: boolean | null; tiktok_done_at: string | null; tiktok_links: string | null;
   web_done: boolean | null;  web_done_at: string | null;  web_links: string | null;
+  ref_links: string | null;
 };
 
 export type DeployGroup = {
