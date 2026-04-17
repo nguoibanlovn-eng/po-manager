@@ -27,6 +27,7 @@ function daysAgo(d: number): string {
    ═══════════════════════════════════════════════════════════ */
 export default function SalesLeaderView({
   ads, channels, productStats, shops = [], nhanhRevenue = [], from, to,
+  monthTarget = 0, monthActual = 0, monthKey = "",
 }: {
   ads: TiktokAdsRow[];
   channels: TiktokChannelRow[];
@@ -35,6 +36,9 @@ export default function SalesLeaderView({
   nhanhRevenue?: TiktokNhanhRow[];
   from: string;
   to: string;
+  monthTarget?: number;
+  monthActual?: number;
+  monthKey?: string;
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("overview");
@@ -86,6 +90,11 @@ export default function SalesLeaderView({
         </div>
       </div>
 
+      {/* ═══ MONTHLY TARGET PROGRESS ═══ */}
+      {monthTarget > 0 && (
+        <TargetProgress monthTarget={monthTarget} monthActual={monthActual} monthKey={monthKey} />
+      )}
+
       {/* ═══ KPI CARDS ═══ */}
       <div className="stat-grid" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))" }}>
         <div className="stat-card c-green" style={{ borderLeft: "4px solid var(--green)" }}>
@@ -128,6 +137,68 @@ export default function SalesLeaderView({
       {tab === "shop" && <ShopTab nhanhRevenue={nhanhRevenue} from={from} to={to} />}
       {tab === "products" && <ProductsTab products={productStats} />}
     </section>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MONTHLY TARGET PROGRESS BAR
+   ═══════════════════════════════════════════════════════════ */
+function TargetProgress({ monthTarget, monthActual, monthKey }: { monthTarget: number; monthActual: number; monthKey: string }) {
+  const pct = monthTarget > 0 ? Math.min((monthActual / monthTarget) * 100, 150) : 0;
+  const pctDisplay = monthTarget > 0 ? Math.round((monthActual / monthTarget) * 100) : 0;
+  const remaining = Math.max(0, monthTarget - monthActual);
+
+  // Days progress in month
+  const now = new Date();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const dayOfMonth = now.getDate();
+  const dayPct = Math.round((dayOfMonth / daysInMonth) * 100);
+
+  // Expected pace
+  const expectedPct = dayPct;
+  const isAhead = pctDisplay >= expectedPct;
+
+  const monthLabel = monthKey ? monthKey.substring(0, 7) : "";
+
+  return (
+    <div className="card" style={{ marginBottom: 14, padding: "12px 16px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontWeight: 700, fontSize: 13 }}>MỤC TIÊU TIKTOK THÁNG {monthLabel.substring(5)}/2026</span>
+          <span className="chip" style={{
+            fontSize: 10, fontWeight: 700, padding: "2px 8px",
+            background: isAhead ? "#DCFCE7" : "#FEF3C7",
+            color: isAhead ? "#15803D" : "#92400E",
+          }}>
+            {isAhead ? "Vượt tiến độ" : "Chậm tiến độ"}
+          </span>
+        </div>
+        <div style={{ display: "flex", gap: 16, fontSize: 12 }}>
+          <span>Thực tế: <strong style={{ color: "var(--green)" }}>{formatVNDCompact(monthActual)}</strong></span>
+          <span>Mục tiêu: <strong>{formatVNDCompact(monthTarget)}</strong></span>
+          <span>Còn: <strong style={{ color: remaining > 0 ? "var(--red)" : "var(--green)" }}>{formatVNDCompact(remaining)}</strong></span>
+        </div>
+      </div>
+      {/* Progress bar */}
+      <div style={{ position: "relative", height: 28, background: "#F3F4F6", borderRadius: 6, overflow: "hidden" }}>
+        {/* Actual progress */}
+        <div style={{
+          position: "absolute", top: 0, left: 0, height: "100%", borderRadius: 6,
+          width: `${Math.min(pct, 100)}%`,
+          background: pctDisplay >= 100 ? "var(--green)" : pctDisplay >= expectedPct ? "#3B82F6" : "#F59E0B",
+          transition: "width .5s",
+        }} />
+        {/* Day marker */}
+        <div style={{
+          position: "absolute", top: 0, left: `${dayPct}%`, width: 2, height: "100%",
+          background: "#000", opacity: 0.3,
+        }} />
+        {/* Labels on bar */}
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: pctDisplay > 40 ? "#fff" : "var(--text)" }}>
+          {pctDisplay}% · Ngày {dayOfMonth}/{daysInMonth} ({dayPct}% thời gian)
+        </div>
+      </div>
+    </div>
   );
 }
 

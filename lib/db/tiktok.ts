@@ -121,6 +121,19 @@ export async function listTiktokNhanhRevenue(from: string, to: string): Promise<
   }));
 }
 
+// Get channel target for a given month
+export async function getChannelTarget(channel: string, monthKey: string): Promise<number> {
+  const db = supabaseAdmin();
+  const { data } = await db
+    .from("targets")
+    .select("rev_target")
+    .eq("type", "channel")
+    .eq("ref_id", channel)
+    .eq("month_key", monthKey)
+    .maybeSingle();
+  return Number(data?.rev_target || 0);
+}
+
 export async function listTiktokAds(from?: string, to?: string): Promise<TiktokAdsRow[]> {
   const db = supabaseAdmin();
   let q = db.from("tiktok_ads").select("*").order("date", { ascending: false });
