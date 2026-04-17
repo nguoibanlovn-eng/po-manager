@@ -67,19 +67,32 @@ export default function FbPagesView({
     return Array.from(m.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [ads]);
 
+  // ── Map ad_account_id → page names ──
+  const accountPageNames = useMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const p of pages) {
+      if (!p.ad_account_id) continue;
+      const names = m.get(p.ad_account_id) || [];
+      names.push((p.page_name || "").replace(/^FACEBOOK - /, ""));
+      m.set(p.ad_account_id, names);
+    }
+    return m;
+  }, [pages]);
+
   // ── Ads by account ──
   const adsByAccount = useMemo(() => {
     const m = new Map<string, { name: string; spend: number; impressions: number; clicks: number; purchase_value: number; reach: number }>();
     for (const a of ads) {
       const k = a.ad_account_id || "—";
-      const cur = m.get(k) || { name: a.account_name || k, spend: 0, impressions: 0, clicks: 0, purchase_value: 0, reach: 0 };
+      const pageNames = accountPageNames.get(k);
+      const displayName = pageNames ? pageNames.join(" + ") : (a.account_name || k);
+      const cur = m.get(k) || { name: displayName, spend: 0, impressions: 0, clicks: 0, purchase_value: 0, reach: 0 };
       cur.spend += toNum(a.spend); cur.impressions += toNum(a.impressions); cur.clicks += toNum(a.clicks);
       cur.purchase_value += toNum(a.purchase_value); cur.reach += toNum(a.reach);
-      if (a.account_name) cur.name = a.account_name;
       m.set(k, cur);
     }
     return Array.from(m.entries()).map(([id, r]) => ({ id, ...r })).sort((a, b) => b.spend - a.spend);
-  }, [ads]);
+  }, [ads, accountPageNames]);
 
   // ── Nhanh by source ──
   const nhanhBySource = useMemo(() => {
@@ -91,6 +104,33 @@ export default function FbPagesView({
     }
     return Array.from(m.entries()).map(([name, v]) => ({ name, ...v })).sort((a, b) => b.revenue - a.revenue);
   }, [nhanhRevenue]);
+
+  // ── Per-page: revenue (nhanh) + ads spend merged ──
+  const pageRevenueAds = useMemo(() => {
+    // Build ads spend by page using nhanh_id as key
+    const adsByPage = new Map<string, { spend: number; reach: number; adsAccount: string }>();
+    for (const p of pages) {
+      if (!p.nhanh_id || !p.ad_account_id) continue;
+      const acct = adsByAccount.find((a) => a.id === p.ad_account_id);
+      if (!acct) continue;
+      const pageName = p.nhanh_id;
+      const cur = adsByPage.get(pageName) || { spend: 0, reach: 0, adsAccount: "" };
+      cur.spend += acct.spend;
+      cur.reach += acct.reach;
+      cur.adsAccount = acct.name;
+      adsByPage.set(pageName, cur);
+    }
+    // Merge with nhanh revenue
+    const result: { name: string; revenue: number; orders: number; spend: number; reach: number; roas: number; ratio: number; adsAccount: string }[] = [];
+    for (const src of nhanhBySource) {
+      const ad = adsByPage.get(src.name);
+      const spend = ad?.spend || 0;
+      const roas = spend > 0 ? src.revenue / spend : 0;
+      const ratio = src.revenue > 0 ? (spend / src.revenue) * 100 : 0;
+      result.push({ name: src.name, revenue: src.revenue, orders: src.orders, spend, reach: ad?.reach || 0, roas, ratio, adsAccount: ad?.adsAccount || "" });
+    }
+    return result.sort((a, b) => b.revenue - a.revenue);
+  }, [nhanhBySource, pages, adsByAccount]);
 
   // ── Nhanh by date ──
   const nhanhByDate = useMemo(() => {
@@ -173,71 +213,102 @@ export default function FbPagesView({
       {/* ═══ DOANH THU CHI TIẾT 30 NGÀY ═══ */}
       {nhanh30d.length > 0 && <RevenueDetailSection data={nhanh30d} />}
 
-      {/* ═══ SO SÁNH DOANH THU THEO NGÀY ═══ */}
-      {dailyComparison.length > 0 && (
-        <div className="card" style={{ marginBottom: 14, padding: 0 }}>
-          <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--border)", fontWeight: 700 }}>
-            SO SÁNH DOANH THU THEO NGÀY
-            <span className="muted" style={{ fontWeight: 400, fontSize: 11, marginLeft: 8 }}>
-              ROAS: <span style={{ color: "var(--red)" }}>● &lt;10</span> <span style={{ color: "var(--amber)" }}>● 10-12</span> <span style={{ color: "var(--green)" }}>● &gt;12</span>
-            </span>
+      {/* ═══ HIỆU QUẢ ADS THEO PAGE — stacked chart ═══ */}
+      {pageRevenueAds.length > 0 && (
+        <div className="card" style={{ marginBottom: 14 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>HIỆU QUẢ ADS THEO PAGE</div>
+          <div style={{ fontSize: 10, color: "#9CA3AF", marginBottom: 10 }}>
+            Doanh thu (Nhanh.vn) vs Chi phí Ads · Tỉ lệ chi phí / doanh thu · ROAS = DT / Spend
           </div>
-          <div className="tbl-wrap">
-            <table>
-              <thead><tr><th>NGÀY</th><th className="text-right">DT NHANH.VN</th><th className="text-right">SPEND</th><th className="text-right">ROAS</th><th className="text-right">ĐƠN</th></tr></thead>
-              <tbody>
-                {dailyComparison.map((d) => (
-                  <tr key={d.date}>
-                    <td style={{ fontWeight: 600 }}>{d.date.substring(5)}</td>
-                    <td className="text-right" style={{ color: "var(--green)" }}>{formatVNDCompact(d.revenue)}</td>
-                    <td className="text-right" style={{ color: "var(--red)" }}>{formatVNDCompact(d.spend)}</td>
-                    <td className="text-right font-bold" style={{ color: d.roas >= 12 ? "var(--green)" : d.roas >= 10 ? "var(--amber)" : d.roas > 0 ? "var(--red)" : "var(--muted)" }}>
-                      {d.spend > 0 ? d.roas.toFixed(1) : "—"}
-                    </td>
-                    <td className="text-right muted">{d.orders}</td>
-                  </tr>
-                ))}
-                <tr style={{ fontWeight: 700, background: "#1a1a1a", color: "#fff" }}>
-                  <td>Tổng kỳ</td>
-                  <td className="text-right">{formatVNDCompact(nhanhTotals.revenue)}</td>
-                  <td className="text-right">{formatVNDCompact(summary.spend)}</td>
-                  <td className="text-right">{roas.toFixed(1)}</td>
-                  <td className="text-right">{nhanhTotals.orders}</td>
-                </tr>
-              </tbody>
-            </table>
+          <div style={{ display: "flex", gap: 12, fontSize: 10, color: "#6B7280", marginBottom: 10 }}>
+            <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: "#3B82F6", marginRight: 3, verticalAlign: "middle" }} />Doanh thu</span>
+            <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: "#F87171", marginRight: 3, verticalAlign: "middle" }} />Chi phí Ads</span>
           </div>
+
+          {(() => {
+            const maxVal = Math.max(...pageRevenueAds.map((p) => p.revenue + p.spend), 1);
+            const BAR_H = 170;
+            return (
+              <div>
+                {/* Stacked bars */}
+                <div style={{ display: "flex", alignItems: "flex-end", height: BAR_H }}>
+                  {pageRevenueAds.map((p) => {
+                    const total = p.revenue + p.spend;
+                    const h = (total / maxVal) * (BAR_H - 20);
+                    const revH = total > 0 ? (p.revenue / total) * h : h;
+                    const spendH = total > 0 ? (p.spend / total) * h : 0;
+                    return (
+                      <div key={p.name} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end" }}>
+                        <div style={{ fontSize: 8, fontWeight: 700, marginBottom: 2, whiteSpace: "nowrap" }}>{formatVNDCompact(p.revenue)}</div>
+                        <div style={{ width: "80%", borderRadius: "3px 3px 0 0", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+                          <div style={{ height: Math.max(revH, 1), background: "#3B82F6" }} />
+                          {spendH > 0 && (
+                            <div style={{ height: Math.max(spendH, 2), background: "#F87171", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              {p.ratio >= 1 && <span style={{ fontSize: 7, fontWeight: 700, color: "#fff" }}>{p.ratio.toFixed(0)}%</span>}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Page names */}
+                <div style={{ display: "flex", borderTop: "1px solid var(--border)" }}>
+                  {pageRevenueAds.map((p) => (
+                    <div key={`n-${p.name}`} style={{ flex: 1, textAlign: "center", padding: "5px 2px 0" }}>
+                      <div style={{ fontSize: 10, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
+                      <div style={{ fontSize: 7, color: "#9CA3AF" }}>{p.adsAccount || "—"}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Revenue + Spend detail */}
+                <div style={{ display: "flex", marginTop: 3 }}>
+                  {pageRevenueAds.map((p) => (
+                    <div key={`d-${p.name}`} style={{ flex: 1, textAlign: "center", fontSize: 8, color: "#6B7280", lineHeight: 1.4 }}>
+                      DT <span style={{ fontWeight: 600, color: "#374151" }}>{formatVNDCompact(p.revenue)}</span><br />
+                      Ads <span style={{ fontWeight: 600, color: p.spend > 0 ? "#DC2626" : "#9CA3AF" }}>{p.spend > 0 ? formatVNDCompact(p.spend) : "—"}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* ROAS row */}
+                <div style={{ display: "flex", marginTop: 4 }}>
+                  {pageRevenueAds.map((p) => {
+                    const color = p.spend <= 0 ? "#9CA3AF" : p.roas >= 15 ? "#16A34A" : p.roas >= 10 ? "#D97706" : "#DC2626";
+                    const bg = p.spend <= 0 ? "#F9FAFB" : p.roas >= 15 ? "#F0FDF4" : p.roas >= 10 ? "#FFFBEB" : "#FEF2F2";
+                    return (
+                      <div key={`r-${p.name}`} style={{ flex: 1, textAlign: "center", fontSize: 10, fontWeight: 700, padding: "3px 0", borderRadius: 3, margin: "0 1px", color, background: bg }}>
+                        {p.spend > 0 ? p.roas.toFixed(1) : "—"}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Orders row */}
+                <div style={{ display: "flex", marginTop: 2 }}>
+                  {pageRevenueAds.map((p) => (
+                    <div key={`o-${p.name}`} style={{ flex: 1, textAlign: "center", fontSize: 8, color: "#6B7280" }}>
+                      <span style={{ fontWeight: 600, color: "#374151" }}>{p.orders}</span> đơn
+                    </div>
+                  ))}
+                </div>
+
+                {/* Total row */}
+                <div style={{ display: "flex", gap: 16, padding: "8px 12px", background: "#F9FAFB", borderRadius: 6, marginTop: 10, fontSize: 11 }}>
+                  <span style={{ color: "#6B7280" }}>Tổng kỳ:</span>
+                  <span>DT <strong style={{ color: "#16A34A" }}>{formatVNDCompact(nhanhTotals.revenue)}</strong></span>
+                  <span>Ads <strong style={{ color: "#DC2626" }}>{formatVNDCompact(summary.spend)}</strong></span>
+                  <span>Tỉ lệ <strong style={{ color: "#DC2626" }}>{summary.spend > 0 && nhanhTotals.revenue > 0 ? ((summary.spend / nhanhTotals.revenue) * 100).toFixed(1) : 0}%</strong></span>
+                  <span>ROAS <strong style={{ color: "#16A34A" }}>{roas.toFixed(1)}</strong></span>
+                  <span>Đơn <strong>{nhanhTotals.orders.toLocaleString("vi-VN")}</strong></span>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
-
-      {/* Chi tiết theo kênh đã tích hợp trong RevenueDetailSection */}
-
-      {/* ═══ CHI TIÊU THEO TÀI KHOẢN ADS ═══ */}
-      <div className="card" style={{ marginBottom: 14, padding: 0 }}>
-        <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--border)", fontWeight: 700 }}>
-          CHI TIÊU THEO TÀI KHOẢN ADS · {adsByAccount.length} tài khoản
-        </div>
-        <div className="tbl-wrap">
-          <table>
-            <thead><tr><th>Tài khoản</th><th className="text-right">Spend</th><th className="text-right">Impressions</th><th className="text-right">Clicks</th><th className="text-right">Reach</th><th className="text-right">ROAS</th></tr></thead>
-            <tbody>
-              {adsByAccount.map((r) => (
-                <tr key={r.id}>
-                  <td><div style={{ fontWeight: 600 }}>{r.name}</div><div className="muted" style={{ fontSize: 10 }}>{r.id}</div></td>
-                  <td className="text-right font-bold" style={{ color: "var(--red)" }}>{formatVND(r.spend)}</td>
-                  <td className="text-right muted">{r.impressions.toLocaleString("vi-VN")}</td>
-                  <td className="text-right muted">{r.clicks.toLocaleString("vi-VN")}</td>
-                  <td className="text-right muted">{r.reach.toLocaleString("vi-VN")}</td>
-                  <td className="text-right font-bold" style={{ color: r.spend > 0 && r.purchase_value / r.spend >= 1 ? "var(--green)" : "var(--red)" }}>
-                    {r.spend > 0 ? (r.purchase_value / r.spend).toFixed(2) + "x" : "—"}
-                  </td>
-                </tr>
-              ))}
-              {adsByAccount.length === 0 && <tr><td colSpan={6} className="muted" style={{ textAlign: "center", padding: 24 }}>Không có data ads.</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </div>
 
       {/* ═══ PAGE CARDS ═══ */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 10 }}>
