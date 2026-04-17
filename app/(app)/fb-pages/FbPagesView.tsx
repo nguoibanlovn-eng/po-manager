@@ -25,10 +25,11 @@ const QUICK_RANGES = [
 ];
 
 export default function FbPagesView({
-  pages, ads, insights, summary, nhanhRevenue = [], from, to,
+  pages, ads, insights, summary, prevAds = [], prevSummary, nhanhRevenue = [], from, to,
   monthTarget = 0, monthActual = 0, monthKey = "",
 }: {
   pages: PageRow[]; ads: AdsRow[]; insights: InsightsRow[]; summary: Summary;
+  prevAds?: AdsRow[]; prevSummary?: Summary;
   nhanhRevenue?: FbNhanhRow[];
   from: string; to: string;
   monthTarget?: number; monthActual?: number; monthKey?: string;
@@ -176,17 +177,7 @@ export default function FbPagesView({
       </div>
 
       {/* ═══ CHI PHÍ ADS THEO NGÀY ═══ */}
-      <div className="card" style={{ marginBottom: 14 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-          <span style={{ fontWeight: 700 }}>CHI PHÍ ADS THEO NGÀY</span>
-          <div style={{ display: "flex", gap: 12, fontSize: 11 }}>
-            <span>Tổng chi: <strong style={{ color: "var(--red)" }}>{formatVNDCompact(summary.spend)}</strong></span>
-            <span>TB/ngày: <strong>{formatVNDCompact(adsByDate.length > 0 ? summary.spend / adsByDate.length : 0)}</strong></span>
-            {adsByDate.length > 0 && <span>Cao nhất: <strong>{formatVNDCompact(Math.max(...adsByDate.map(([, v]) => v)))}</strong></span>}
-          </div>
-        </div>
-        <AdsBarChart data={adsByDate} />
-      </div>
+      <AdsSection ads={ads} adsByDate={adsByDate} summary={summary} prevAds={prevAds} prevSummary={prevSummary} from={from} to={to} />
 
       {/* ═══ DOANH THU NHANH.VN THEO NGÀY ═══ */}
       {nhanhByDate.length > 0 && (
@@ -278,6 +269,145 @@ export default function FbPagesView({
         ))}
       </div>
     </section>
+  );
+}
+
+/* ── Ads Section with stat cards + overlay chart ── */
+function AdsSection({ ads, adsByDate, summary, prevAds = [], prevSummary, from, to }: {
+  ads: AdsRow[]; adsByDate: [string, number][]; summary: Summary;
+  prevAds?: AdsRow[]; prevSummary?: Summary; from: string; to: string;
+}) {
+  const prevTotal = prevSummary?.spend || 0;
+  const pctVsPrev = prevTotal > 0 ? Math.round(((summary.spend - prevTotal) / prevTotal) * 100) : 0;
+  const avg = adsByDate.length > 0 ? summary.spend / adsByDate.length : 0;
+  const maxDay = adsByDate.length > 0 ? adsByDate.reduce((best, [d, v]) => v > best.v ? { d, v } : best, { d: "", v: 0 }) : { d: "", v: 0 };
+  const minDay = adsByDate.length > 0 ? adsByDate.reduce((best, [d, v]) => v < best.v ? { d, v } : best, { d: "", v: Infinity }) : { d: "", v: 0 };
+
+  // Previous period daily for overlay line
+  const prevByDate = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const a of prevAds) { const d = String(a.date).substring(0, 10); m.set(d, (m.get(d) || 0) + toNum(a.spend)); }
+    return Array.from(m.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [prevAds]);
+
+  const prevMonth = from ? new Date(new Date(from).setMonth(new Date(from).getMonth() - 1)).toISOString().substring(0, 7) : "";
+
+  return (
+    <div className="card" style={{ marginBottom: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <span style={{ fontWeight: 700, fontSize: 13 }}>CHI PHÍ ADS THEO NGÀY</span>
+        {prevMonth && <span className="muted" style={{ fontSize: 10 }}>— Tháng {prevMonth}</span>}
+      </div>
+
+      {/* Stat cards row */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8, marginBottom: 12 }}>
+        <div style={{ padding: "6px 8px", background: "#FAFAFA", borderRadius: 6 }}>
+          <div className="muted" style={{ fontSize: 9, textTransform: "uppercase" }}>Tổng chi</div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: "var(--red)" }}>{formatVNDCompact(summary.spend)}</div>
+          {prevTotal > 0 && (
+            <div style={{ fontSize: 9, color: pctVsPrev > 0 ? "var(--red)" : "var(--green)" }}>
+              {pctVsPrev > 0 ? "↑" : "↓"}{Math.abs(pctVsPrev)}% vs T trước
+            </div>
+          )}
+        </div>
+        <div style={{ padding: "6px 8px", background: "#FAFAFA", borderRadius: 6 }}>
+          <div className="muted" style={{ fontSize: 9, textTransform: "uppercase" }}>Trung bình/ngày</div>
+          <div style={{ fontSize: 15, fontWeight: 800 }}>{formatVNDCompact(avg)}</div>
+        </div>
+        <div style={{ padding: "6px 8px", background: "#FAFAFA", borderRadius: 6 }}>
+          <div className="muted" style={{ fontSize: 9, textTransform: "uppercase" }}>Cao nhất</div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: "var(--red)" }}>{formatVNDCompact(maxDay.v)}</div>
+          <div className="muted" style={{ fontSize: 9 }}>{maxDay.d.substring(5)}</div>
+        </div>
+        <div style={{ padding: "6px 8px", background: "#FAFAFA", borderRadius: 6 }}>
+          <div className="muted" style={{ fontSize: 9, textTransform: "uppercase" }}>Thấp nhất</div>
+          <div style={{ fontSize: 15, fontWeight: 800 }}>{formatVNDCompact(minDay.v)}</div>
+          <div className="muted" style={{ fontSize: 9 }}>{minDay.d.substring(5)}</div>
+        </div>
+        <div style={{ padding: "6px 8px", background: "#FAFAFA", borderRadius: 6 }}>
+          <div className="muted" style={{ fontSize: 9, textTransform: "uppercase" }}>Cùng kỳ T trước</div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: "var(--blue)" }}>{formatVNDCompact(prevTotal)}</div>
+        </div>
+      </div>
+
+      {/* Combined bar + line chart */}
+      <AdsOverlayChart current={adsByDate} prev={prevByDate} />
+    </div>
+  );
+}
+
+/* ── Combined bar (current) + line (prev month) chart ── */
+function AdsOverlayChart({ current, prev }: { current: [string, number][]; prev: [string, number][] }) {
+  if (current.length === 0) return <div className="muted" style={{ padding: 20, textAlign: "center" }}>Không có data.</div>;
+
+  const allVals = [...current.map(([, v]) => v), ...prev.map(([, v]) => v)];
+  const max = Math.max(...allVals, 1);
+  const W = 700, H = 160, PL = 10, PR = 10, PT = 20, PB = 40;
+  const chartW = W - PL - PR, chartH = H - PT - PB;
+  const barW = current.length > 0 ? chartW / current.length : chartW;
+
+  function xBar(i: number) { return PL + i * barW; }
+  function y(v: number) { return PT + chartH - (v / max) * chartH; }
+
+  // Map prev values to same index positions
+  const prevVals = prev.map(([, v]) => v);
+
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 160 }}>
+        {/* Bars — current period */}
+        {current.map(([d, v], i) => {
+          const bx = xBar(i) + barW * 0.1;
+          const bw = barW * 0.8;
+          const bh = (v / max) * chartH;
+          return (
+            <g key={d}>
+              <rect x={bx} y={y(v)} width={bw} height={bh} fill="#86EFAC" rx={2} />
+              <text x={bx + bw / 2} y={y(v) - 4} textAnchor="middle" fill="var(--text)" fontSize={8} fontWeight={600}>
+                {formatVNDCompact(v)}
+              </text>
+              <text x={bx + bw / 2} y={H - PB + 12} textAnchor="middle" fill="#999" fontSize={8}>
+                {d.substring(5)}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Line — previous period overlay */}
+        {prevVals.length > 0 && (() => {
+          const points = prevVals.slice(0, current.length).map((v, i) => ({
+            x: xBar(i) + barW / 2,
+            y: y(v),
+          }));
+          const pathD = points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ");
+          return (
+            <g>
+              <path d={pathD} fill="none" stroke="var(--blue)" strokeWidth={1.5} strokeDasharray="4 3" opacity={0.7} />
+              {points.map((p, i) => (
+                <circle key={i} cx={p.x} cy={p.y} r={3} fill="var(--blue)" opacity={0.7} />
+              ))}
+            </g>
+          );
+        })()}
+      </svg>
+
+      {/* % change row */}
+      <div style={{ display: "flex", gap: 0 }}>
+        {current.map(([d, v], i) => {
+          const prev = i > 0 ? current[i - 1][1] : v;
+          const pct = prev > 0 ? Math.round(((v - prev) / prev) * 100) : 0;
+          return (
+            <div key={d} style={{
+              flex: 1, textAlign: "center", fontSize: 9, fontWeight: 600, padding: "3px 0",
+              background: pct > 0 ? "#F0FDF4" : pct < 0 ? "#FEF2F2" : "#FAFAFA",
+              color: pct > 0 ? "var(--green)" : pct < 0 ? "var(--red)" : "var(--muted)",
+            }}>
+              {i === 0 ? "0%" : pct > 0 ? `+${pct}%` : `${pct}%`}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -456,42 +586,6 @@ function ChannelDetail({ nhanhRevenue, nhanhBySource, nhanhTotal }: {
   );
 }
 
-/* ── Bar chart: Ads spend per day ── */
-function AdsBarChart({ data }: { data: [string, number][] }) {
-  if (data.length === 0) return <div className="muted" style={{ padding: 24, textAlign: "center" }}>Không có data.</div>;
-  const max = Math.max(...data.map(([, v]) => v));
-  // Calculate daily % change
-  return (
-    <div>
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 170, paddingTop: 16 }}>
-        {data.map(([d, v], i) => {
-          const h = max > 0 ? (v / max) * 110 : 0;
-          const prev = i > 0 ? data[i - 1][1] : v;
-          const pctChange = prev > 0 ? Math.round(((v - prev) / prev) * 100) : 0;
-          return (
-            <div key={d} style={{ flex: 1, minWidth: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }} title={`${d}: ${formatVND(v)}`}>
-              <div style={{ fontSize: 10, color: "var(--muted)", whiteSpace: "nowrap" }}>{formatVNDCompact(v)}</div>
-              <div style={{ width: "70%", height: h, background: "#86EFAC", borderRadius: "2px 2px 0 0", minWidth: 12 }} />
-              <div style={{ fontSize: 10, color: "var(--subtle)" }}>{d.substring(5)}</div>
-            </div>
-          );
-        })}
-      </div>
-      {/* % change row */}
-      <div style={{ display: "flex", gap: 2, marginTop: 2 }}>
-        {data.map(([d, v], i) => {
-          const prev = i > 0 ? data[i - 1][1] : v;
-          const pct = prev > 0 ? Math.round(((v - prev) / prev) * 100) : 0;
-          return (
-            <div key={d} style={{ flex: 1, textAlign: "center", fontSize: 9, fontWeight: 600, color: pct > 0 ? "var(--green)" : pct < 0 ? "var(--red)" : "var(--muted)" }}>
-              {i === 0 ? "" : pct > 0 ? `+${pct}%` : `${pct}%`}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 /* ── Bar chart: Revenue per day ── */
 function RevenueBarChart({ data }: { data: [string, number][] }) {
