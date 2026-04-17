@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatVND, formatVNDCompact, toNum } from "@/lib/format";
 import type { ShopeeAdsRow, ShopeeDailyRow } from "@/lib/db/shopee";
 import SyncButton from "../components/SyncButton";
@@ -129,12 +129,17 @@ export default function ShopeeAdsView({
     finally { setConnecting(false); }
   }
 
+  // Auto-check on mount
+  useEffect(() => { checkShopeeStatus(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function checkShopeeStatus() {
     try {
-      const res = await fetch("/api/shopee/shops");
+      const res = await fetch("/api/shopee/shops", { credentials: "include" });
+      if (res.redirected || res.url.includes("/login")) { setUploadMsg("✖ Chưa đăng nhập"); return; }
       const r = await res.json();
       if (r.ok) setShopeeShops(r.shops || []);
-    } catch { /* ignore */ }
+      else setUploadMsg(`✖ ${r.error || "Lỗi"}`);
+    } catch (e) { setUploadMsg(`✖ ${(e as Error).message}`); }
   }
 
   function apply() {
