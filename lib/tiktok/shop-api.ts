@@ -76,15 +76,27 @@ export async function exchangeCode(
 ): Promise<{ ok: boolean; error?: string; shops?: Array<{ cipher: string; name: string }> }> {
   if (!TTS.APP_SECRET) return { ok: false, error: "Missing TIKTOK_SHOP_APP_SECRET" };
 
-  const path = "/api/token/get_token";
-  const params: Record<string, string> = {
+  // TikTok Shop API v2 token endpoint
+  const path = "/api/v2/token/get";
+  const ts = Math.floor(Date.now() / 1000);
+  const params: Record<string, string | number> = {
+    app_key: TTS.APP_KEY,
+    timestamp: ts,
+  };
+  const body = JSON.stringify({
     app_key: TTS.APP_KEY,
     app_secret: TTS.APP_SECRET,
     auth_code: authCode,
     grant_type: "authorized_code",
-  };
-  const qs = new URLSearchParams(params).toString();
-  const res = await fetch(`${TTS.BASE}${path}?${qs}`, { method: "GET" });
+  });
+  params.sign = signRequest(path, params, body);
+
+  const qs = new URLSearchParams(Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)]))).toString();
+  const res = await fetch(`${TTS.BASE}${path}?${qs}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body,
+  });
   const json = (await res.json()) as {
     code?: number;
     message?: string;
@@ -128,15 +140,25 @@ export async function refreshToken(shopCipher: string): Promise<string | null> {
   if (!token?.refresh_token) return null;
   if (!TTS.APP_SECRET) return null;
 
-  const path = "/api/token/refresh_token";
-  const params: Record<string, string> = {
+  const path = "/api/v2/token/refresh";
+  const ts = Math.floor(Date.now() / 1000);
+  const params: Record<string, string | number> = {
+    app_key: TTS.APP_KEY,
+    timestamp: ts,
+  };
+  const body = JSON.stringify({
     app_key: TTS.APP_KEY,
     app_secret: TTS.APP_SECRET,
     refresh_token: token.refresh_token,
     grant_type: "refresh_token",
-  };
-  const qs = new URLSearchParams(params).toString();
-  const res = await fetch(`${TTS.BASE}${path}?${qs}`, { method: "GET" });
+  });
+  params.sign = signRequest(path, params, body);
+  const qs = new URLSearchParams(Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)]))).toString();
+  const res = await fetch(`${TTS.BASE}${path}?${qs}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body,
+  });
   const json = (await res.json()) as {
     code?: number;
     message?: string;
