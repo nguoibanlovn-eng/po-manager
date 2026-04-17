@@ -427,30 +427,11 @@ function DeployRow({
             {!refLinks && <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>Chưa có link nào</div>}
           </div>
 
-          {/* Section 3: Giá bán */}
-          <div style={{ marginBottom: 12, background: "#FAFAFA", borderRadius: 8, padding: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-              <span style={{ fontSize: 14 }}>💰</span>
-              <span style={{ fontWeight: 600, fontSize: 13 }}>Giá bán đề xuất</span>
-            </div>
-            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              <input
-                type="text" inputMode="numeric"
-                value={sellPrice}
-                onChange={(e) => { setSellPrice(e.target.value.replace(/\D/g, "")); setDirty(true); }}
-                disabled={disabled}
-                placeholder="0"
-                style={{ width: 160 }}
-              />
-              <button className="btn btn-primary btn-sm" onClick={saveInfo} disabled={disabled || !dirty}>
-                Lưu thông tin
-              </button>
-              {canApprove && !p.price_approved_by && toNum(sellPrice) > 0 && (
-                <button className="btn btn-success btn-sm" onClick={approvePrice} disabled={disabled}>
-                  ✓ Duyệt giá
-                </button>
-              )}
-            </div>
+          {/* Save button */}
+          <div style={{ marginBottom: 12 }}>
+            <button className="btn btn-primary btn-sm" onClick={saveInfo} disabled={disabled || !dirty}>
+              Lưu thông tin
+            </button>
           </div>
 
           {/* Status bar: Đã xác nhận */}
