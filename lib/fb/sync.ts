@@ -17,6 +17,19 @@ function pageToken(): string {
   return t;
 }
 
+/** Quick token validity check */
+async function validateToken(token: string, label: string): Promise<void> {
+  const res = await fetch(`${FB_GRAPH}/me?access_token=${token}`);
+  const json = await res.json() as { error?: { message?: string; code?: number } };
+  if (json.error) {
+    const msg = json.error.message || "Token không hợp lệ";
+    if (msg.includes("expired")) {
+      throw new Error(`${label} đã hết hạn. Vui lòng tạo token mới tại Facebook Developer.`);
+    }
+    throw new Error(`${label}: ${msg}`);
+  }
+}
+
 // ─── FB Ads Insights ─────────────────────────────────────────
 type AdInsight = {
   spend?: string | number;
@@ -45,6 +58,7 @@ export async function syncFbAds(opts: {
   to?: string;
 } = {}): Promise<{ fetched: number; accounts: number; errors: string[] }> {
   const token = adsToken();
+  await validateToken(token, "FB_ACCESS_TOKEN");
   const from = opts.from || dateVN(null, -7);
   const to = opts.to || dateVN();
   const accounts = await fetchAdAccounts();
@@ -114,14 +128,25 @@ export async function syncFbAds(opts: {
 type PageInsightValue = { value?: number; end_time?: string };
 type PageInsightEntry = { name?: string; values?: PageInsightValue[] };
 
-async function fetchPageIds(): Promise<Array<{ page_id: string; page_name: string | null }>> {
-  const { data = [] } = await supabaseAdmin()
-    .from("pages")
-    .select("fb_page_id, page_name")
-    .not("fb_page_id", "is", null);
-  return (data || [])
-    .filter((p) => p.fb_page_id)
-    .map((p) => ({ page_id: String(p.fb_page_id), page_name: p.page_name }));
+type ManagedPage = { page_id: string; page_name: string; page_token: string };
+
+/** Fetch page-specific access tokens from FB Graph API (needed for insights) */
+async function fetchManagedPages(userToken: string): Promise<ManagedPage[]> {
+  const result: ManagedPage[] = [];
+  let url: string | null =
+    `${FB_GRAPH}/me/accounts?fields=id,name,access_token&limit=50&access_token=${userToken}`;
+  while (url) {
+    const res = await fetch(url);
+    const json = (await res.json()) as {
+      data?: Array<{ id: string; name: string; access_token: string }>;
+      paging?: { next?: string };
+    };
+    for (const p of json.data || []) {
+      result.push({ page_id: p.id, page_name: p.name, page_token: p.access_token });
+    }
+    url = json.paging?.next || null;
+  }
+  return result;
 }
 
 export async function syncFbPageInsights(opts: { days?: number } = {}): Promise<{
@@ -130,26 +155,29 @@ export async function syncFbPageInsights(opts: { days?: number } = {}): Promise<
   errors: string[];
 }> {
   const token = pageToken();
+  await validateToken(token, "FB_PAGE_ACCESS_TOKEN");
   const days = opts.days || 30;
-  const pages = await fetchPageIds();
-  if (!pages.length) return { fetched: 0, pages: 0, errors: ["Không có fb_page_id"] };
+
+  // Get page-specific tokens from FB (required for insights API)
+  const managedPages = await fetchManagedPages(token);
+  if (!managedPages.length) return { fetched: 0, pages: 0, errors: ["Không tìm thấy page nào qua /me/accounts"] };
 
   const db = supabaseAdmin();
   const errors: string[] = [];
   let fetched = 0;
 
-  for (const page of pages) {
+  for (const page of managedPages) {
     try {
-      // Metrics: page_fan_adds, page_fan_removes, page_impressions, page_impressions_unique (reach)
-      const metrics = "page_fan_adds,page_fan_removes,page_impressions,page_impressions_unique";
+      // Updated metrics (old page_fan_adds/page_fan_removes/page_impressions are deprecated)
+      const metrics = "page_daily_follows,page_daily_unfollows,page_impressions_unique,page_post_engagements";
       const url =
         `${FB_GRAPH}/${page.page_id}/insights` +
         `/${metrics}?period=day&date_preset=last_30d` +
-        `&access_token=${token}`;
+        `&access_token=${page.page_token}`;
       const res = await fetch(url);
       const json = (await res.json()) as { data?: PageInsightEntry[]; error?: { message?: string } };
       if (json.error) {
-        errors.push(`${page.page_id}: ${json.error.message}`);
+        errors.push(`${page.page_name}: ${json.error.message}`);
         continue;
       }
 
@@ -163,9 +191,9 @@ export async function syncFbPageInsights(opts: { days?: number } = {}): Promise<
           if (!v.end_time) continue;
           const d = v.end_time.substring(0, 10);
           const cur = byDate.get(d) || { new_fans: 0, lost_fans: 0, impressions: 0, reach: 0 };
-          if (entry.name === "page_fan_adds") cur.new_fans = toNum(v.value);
-          else if (entry.name === "page_fan_removes") cur.lost_fans = toNum(v.value);
-          else if (entry.name === "page_impressions") cur.impressions = toNum(v.value);
+          if (entry.name === "page_daily_follows") cur.new_fans = toNum(v.value);
+          else if (entry.name === "page_daily_unfollows") cur.lost_fans = toNum(v.value);
+          else if (entry.name === "page_post_engagements") cur.impressions = toNum(v.value);
           else if (entry.name === "page_impressions_unique") cur.reach = toNum(v.value);
           byDate.set(d, cur);
         }
@@ -194,8 +222,8 @@ export async function syncFbPageInsights(opts: { days?: number } = {}): Promise<
     } catch (e) {
       errors.push(`${page.page_id}: ${(e as Error).message}`);
     }
-    void days; // silence unused if we drop the param later
+    void days;
   }
 
-  return { fetched, pages: pages.length, errors };
+  return { fetched, pages: managedPages.length, errors };
 }

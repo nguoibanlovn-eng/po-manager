@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { formatDate, formatVND, formatVNDCompact, toNum } from "@/lib/format";
 import type { TiktokAdsRow, TiktokChannelRow, TiktokNhanhRow, TiktokProductStat } from "@/lib/db/tiktok";
 import SyncButton from "../components/SyncButton";
+import TargetProgressBar from "../components/TargetProgressBar";
 
 type Tab = "overview" | "ads" | "channel" | "shop" | "products";
 
@@ -106,9 +107,7 @@ export default function SalesLeaderView({
       </div>
 
       {/* ═══ MONTHLY TARGET PROGRESS ═══ */}
-      {monthTarget > 0 && (
-        <TargetProgress monthTarget={monthTarget} monthActual={monthActual} monthKey={monthKey} />
-      )}
+      <TargetProgressBar channel="TikTok" monthTarget={monthTarget} monthActual={monthActual} monthKey={monthKey} />
 
       {/* ═══ KPI CARDS ═══ */}
       <div className="stat-grid" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))" }}>
@@ -155,67 +154,7 @@ export default function SalesLeaderView({
   );
 }
 
-/* ═══════════════════════════════════════════════════════════
-   MONTHLY TARGET PROGRESS BAR
-   ═══════════════════════════════════════════════════════════ */
-function TargetProgress({ monthTarget, monthActual, monthKey }: { monthTarget: number; monthActual: number; monthKey: string }) {
-  const pct = monthTarget > 0 ? Math.min((monthActual / monthTarget) * 100, 150) : 0;
-  const pctDisplay = monthTarget > 0 ? Math.round((monthActual / monthTarget) * 100) : 0;
-  const remaining = Math.max(0, monthTarget - monthActual);
-
-  // Days progress in month
-  const now = new Date();
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const dayOfMonth = now.getDate();
-  const dayPct = Math.round((dayOfMonth / daysInMonth) * 100);
-
-  // Expected pace
-  const expectedPct = dayPct;
-  const isAhead = pctDisplay >= expectedPct;
-
-  const monthLabel = monthKey ? monthKey.substring(0, 7) : "";
-
-  return (
-    <div className="card" style={{ marginBottom: 14, padding: "12px 16px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontWeight: 700, fontSize: 13 }}>MỤC TIÊU TIKTOK THÁNG {monthLabel.substring(5)}/2026</span>
-          <span className="chip" style={{
-            fontSize: 10, fontWeight: 700, padding: "2px 8px",
-            background: isAhead ? "#DCFCE7" : "#FEF3C7",
-            color: isAhead ? "#15803D" : "#92400E",
-          }}>
-            {isAhead ? "Vượt tiến độ" : "Chậm tiến độ"}
-          </span>
-        </div>
-        <div style={{ display: "flex", gap: 16, fontSize: 12 }}>
-          <span>Thực tế: <strong style={{ color: "var(--green)" }}>{formatVNDCompact(monthActual)}</strong></span>
-          <span>Mục tiêu: <strong>{formatVNDCompact(monthTarget)}</strong></span>
-          <span>Còn: <strong style={{ color: remaining > 0 ? "var(--red)" : "var(--green)" }}>{formatVNDCompact(remaining)}</strong></span>
-        </div>
-      </div>
-      {/* Progress bar */}
-      <div style={{ position: "relative", height: 28, background: "#F3F4F6", borderRadius: 6, overflow: "hidden" }}>
-        {/* Actual progress */}
-        <div style={{
-          position: "absolute", top: 0, left: 0, height: "100%", borderRadius: 6,
-          width: `${Math.min(pct, 100)}%`,
-          background: pctDisplay >= 100 ? "var(--green)" : pctDisplay >= expectedPct ? "#3B82F6" : "#F59E0B",
-          transition: "width .5s",
-        }} />
-        {/* Day marker */}
-        <div style={{
-          position: "absolute", top: 0, left: `${dayPct}%`, width: 2, height: "100%",
-          background: "#000", opacity: 0.3,
-        }} />
-        {/* Labels on bar */}
-        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: pctDisplay > 40 ? "#fff" : "var(--text)" }}>
-          {pctDisplay}% · Ngày {dayOfMonth}/{daysInMonth} ({dayPct}% thời gian)
-        </div>
-      </div>
-    </div>
-  );
-}
+/* TargetProgress moved to shared component: ../components/TargetProgressBar */
 
 /* ═══════════════════════════════════════════════════════════
    TAB 1: TỔNG QUAN
@@ -675,7 +614,7 @@ function LineChart({ nhanhRevenue }: { nhanhRevenue: TiktokNhanhRow[] }) {
   function y(v: number) { return PT + chartH - (maxVal > 0 ? (v / maxVal) * chartH : 0); }
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 220 }}>
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block" }}>
       {/* Y-axis grid */}
       {[0, 0.25, 0.5, 0.75, 1].map((pct) => {
         const val = maxVal * pct;

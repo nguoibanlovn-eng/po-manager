@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { formatDate, formatVND, formatVNDCompact, toNum } from "@/lib/format";
 import type { AdsRow, FbNhanhRow, InsightsRow, PageRow } from "@/lib/db/ads";
 import SyncButton from "../components/SyncButton";
+import TargetProgressBar from "../components/TargetProgressBar";
 
 type Summary = { spend: number; impressions: number; clicks: number; reach: number; purchase_value: number };
 
@@ -119,32 +120,22 @@ export default function FbPagesView({
     return pages.filter((p) => (p.page_name || "").toLowerCase().includes(s));
   }, [pages, search]);
 
-  // ── Target progress ──
-  const targetPct = monthTarget > 0 ? Math.round((monthActual / monthTarget) * 100) : 0;
-
   return (
     <section className="section">
+      {/* ═══ TARGET PROGRESS ═══ */}
+      <TargetProgressBar channel="Facebook" monthTarget={monthTarget} monthActual={monthActual} monthKey={monthKey} />
+
       {/* ═══ HEADER ═══ */}
       <div className="page-hdr">
         <div>
           <div className="page-title">Facebook Pages</div>
           <div className="page-sub">{pages.length} pages · {from} → {to}</div>
-          {monthTarget > 0 && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: targetPct >= 100 ? "var(--green)" : "var(--amber)" }}>
-                {targetPct}% KH · {formatVNDCompact(monthActual)} / {formatVNDCompact(monthTarget)}
-              </div>
-              <div style={{ flex: 1, maxWidth: 200, height: 4, background: "#E5E7EB", borderRadius: 2, overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${Math.min(targetPct, 100)}%`, background: targetPct >= 100 ? "var(--green)" : targetPct >= 50 ? "var(--blue)" : "var(--red)", borderRadius: 2, transition: "width .3s" }} />
-              </div>
-            </div>
-          )}
         </div>
-        <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
-          <SyncButton url="/api/fb/sync-ads" label="Sync Ads" onDone={() => router.refresh()} />
-          <SyncButton url="/api/fb/sync-insights" label="Sync Insights" onDone={() => router.refresh()} />
-          <SyncButton url="/api/nhanh/sync-sales" label="Sync Nhanh" onDone={() => router.refresh()} />
-          <button className="btn btn-ghost btn-xs" onClick={() => router.refresh()}>Tải lại</button>
+        <div className="row" style={{ gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+          <SyncButton url="/api/fb/sync-ads" label="⟳ Sync Ads" onDone={() => router.refresh()} style={{ background: "#EFF6FF", border: "1px solid #93C5FD" }} />
+          <SyncButton url="/api/fb/sync-insights" label="⟳ Sync Insights" onDone={() => router.refresh()} style={{ background: "#F0FDF4", border: "1px solid #86EFAC" }} />
+          <SyncButton url="/api/nhanh/sync-sales" label="⟳ Sync Nhanh" onDone={() => router.refresh()} style={{ background: "#FFF7ED", border: "1px solid #FDBA74" }} />
+          <button className="btn btn-ghost btn-xs" onClick={() => router.refresh()}>↻ Tải lại</button>
         </div>
       </div>
 
@@ -326,7 +317,6 @@ function AdsSection({ ads, adsByDate, summary, prevAds = [], prevSummary, from, 
 function AdsOverlayChart({ current, prev }: { current: [string, number][]; prev: [string, number][] }) {
   if (current.length === 0) return <div className="muted" style={{ padding: 20, textAlign: "center" }}>Không có data.</div>;
 
-  // Build prev lookup by day-of-month so line aligns with bars
   const prevByDay = useMemo(() => {
     const m = new Map<number, number>();
     for (const [d, v] of prev) {
@@ -336,7 +326,6 @@ function AdsOverlayChart({ current, prev }: { current: [string, number][]; prev:
     return m;
   }, [prev]);
 
-  // For each current bar, find matching prev value by same day-of-month
   const merged = current.map(([d, v]) => {
     const day = new Date(d).getDate();
     return { date: d, val: v, prevVal: prevByDay.get(day) ?? null };
@@ -344,62 +333,58 @@ function AdsOverlayChart({ current, prev }: { current: [string, number][]; prev:
 
   const allVals = [...merged.map((m) => m.val), ...merged.filter((m) => m.prevVal !== null).map((m) => m.prevVal!)];
   const max = Math.max(...allVals, 1);
-  const W = 700, H = 160, PL = 10, PR = 10, PT = 20, PB = 40;
-  const chartW = W - PL - PR, chartH = H - PT - PB;
-  const barW = merged.length > 0 ? chartW / merged.length : chartW;
-
-  function xBar(i: number) { return PL + i * barW; }
-  function y(v: number) { return PT + chartH - (v / max) * chartH; }
-
-  // Build line points only for days that have prev data
-  const linePoints = merged
-    .map((m, i) => m.prevVal !== null ? { x: xBar(i) + barW / 2, y: y(m.prevVal!), val: m.prevVal! } : null)
-    .filter(Boolean) as { x: number; y: number; val: number }[];
+  const BAR_H = 140;
 
   return (
     <div>
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 160 }}>
-        {/* Bars — current period */}
-        {merged.map((m, i) => {
-          const bx = xBar(i) + barW * 0.1;
-          const bw = barW * 0.8;
+      {/* Bar chart — pure flex, each column = flex:1 */}
+      <div style={{ display: "flex", alignItems: "flex-end", height: BAR_H, position: "relative" }}>
+        {merged.map((m) => {
+          const h = max > 0 ? (m.val / max) * (BAR_H - 28) : 0;
           return (
-            <g key={m.date}>
-              <rect x={bx} y={y(m.val)} width={bw} height={(m.val / max) * chartH} fill="#86EFAC" rx={2} />
-              <text x={bx + bw / 2} y={y(m.val) - 4} textAnchor="middle" fill="var(--text)" fontSize={8} fontWeight={600}>
-                {formatVNDCompact(m.val)}
-              </text>
-              <text x={bx + bw / 2} y={H - PB + 12} textAnchor="middle" fill="#999" fontSize={8}>
-                {m.date.substring(5)}
-              </text>
-            </g>
+            <div key={m.date} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end" }}>
+              <div style={{ fontSize: 9, fontWeight: 600, marginBottom: 2, whiteSpace: "nowrap" }}>{formatVNDCompact(m.val)}</div>
+              <div style={{ width: "85%", height: Math.max(h, 2), background: "#86EFAC", borderRadius: 2 }} />
+            </div>
           );
         })}
+        {/* Prev period dashed line overlay */}
+        {merged.length > 1 && (() => {
+          const pts = merged.map((m, i) => {
+            if (m.prevVal === null) return null;
+            const pct = (i + 0.5) / merged.length;
+            const yPct = max > 0 ? 1 - m.prevVal / max : 1;
+            return { left: `${pct * 100}%`, top: `${yPct * (BAR_H - 28) + 14}px`, val: m.prevVal };
+          }).filter(Boolean) as { left: string; top: string; val: number }[];
+          return pts.map((p, i) => (
+            <div key={`dot-${i}`} style={{
+              position: "absolute", left: p.left, top: p.top,
+              width: 6, height: 6, borderRadius: "50%", background: "var(--blue)",
+              transform: "translate(-50%, -50%)", opacity: 0.7, zIndex: 2,
+            }} />
+          ));
+        })()}
+      </div>
 
-        {/* Line — previous period overlay (aligned by day-of-month) */}
-        {linePoints.length > 1 && (
-          <g>
-            <path
-              d={linePoints.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ")}
-              fill="none" stroke="var(--blue)" strokeWidth={1.5} strokeDasharray="4 3" opacity={0.6}
-            />
-            {linePoints.map((p, i) => (
-              <circle key={i} cx={p.x} cy={p.y} r={3} fill="var(--blue)" opacity={0.7} />
-            ))}
-          </g>
-        )}
-      </svg>
+      {/* Date labels — same flex:1 = perfect alignment */}
+      <div style={{ display: "flex" }}>
+        {merged.map((m) => (
+          <div key={`dl-${m.date}`} style={{ flex: 1, textAlign: "center", fontSize: 9, color: "#999", padding: "4px 0" }}>
+            {m.date.substring(5)}
+          </div>
+        ))}
+      </div>
 
-      {/* % change row */}
-      <div style={{ display: "flex", gap: 0 }}>
+      {/* % change row — same flex:1 = perfect alignment */}
+      <div style={{ display: "flex" }}>
         {merged.map((m, i) => {
           const prevDay = i > 0 ? merged[i - 1].val : m.val;
           const pct = prevDay > 0 ? Math.round(((m.val - prevDay) / prevDay) * 100) : 0;
           return (
-            <div key={m.date} style={{
+            <div key={`pc-${m.date}`} style={{
               flex: 1, textAlign: "center", fontSize: 9, fontWeight: 600, padding: "3px 0",
               background: pct > 0 ? "#F0FDF4" : pct < 0 ? "#FEF2F2" : "#FAFAFA",
-              color: pct > 0 ? "var(--green)" : pct < 0 ? "var(--red)" : "var(--muted)",
+              color: pct > 0 ? "#16A34A" : pct < 0 ? "#DC2626" : "#999",
             }}>
               {i === 0 ? "0%" : pct > 0 ? `+${pct}%` : `${pct}%`}
             </div>
@@ -739,54 +724,42 @@ function RevenueDetailSection({ data }: { data: FbNhanhRow[] }) {
   );
 }
 
-/* ── Revenue Total bar chart (SVG with Y-axis grid) ── */
+/* ── Revenue Total bar chart (HTML flex) ── */
 function RevenueTotalChart({ data }: { data: [string, number][] }) {
   if (data.length === 0) return null;
   const max = Math.max(...data.map(([, v]) => v), 1);
-  const W = 700, H = 200, PL = 40, PR = 10, PT = 20, PB = 30;
-  const chartW = W - PL - PR, chartH = H - PT - PB;
-  const barW = chartW / data.length;
-
-  function y(v: number) { return PT + chartH - (v / max) * chartH; }
+  const BAR_H = 160;
+  const labelStep = Math.max(1, Math.floor(data.length / 12));
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 200 }}>
-      {/* Y grid */}
-      {[0, 0.25, 0.5, 0.75, 1].map((p) => {
-        const val = max * p;
-        return (
-          <g key={p}>
-            <line x1={PL} x2={W - PR} y1={y(val)} y2={y(val)} stroke="#E5E7EB" strokeWidth={0.5} />
-            <text x={PL - 4} y={y(val) + 3} textAnchor="end" fill="#999" fontSize={8}>{formatVNDCompact(val)}</text>
-          </g>
-        );
-      })}
-      {/* Bars */}
-      {data.map(([d, v], i) => {
-        const bx = PL + i * barW + barW * 0.1;
-        const bw = barW * 0.8;
-        return (
-          <g key={d}>
-            <rect x={bx} y={y(v)} width={bw} height={(v / max) * chartH} fill="#60A5FA" rx={2} />
-            <text x={bx + bw / 2} y={y(v) - 4} textAnchor="middle" fill="var(--text)" fontSize={7} fontWeight={600}>
-              {formatVNDCompact(v)}
-            </text>
-            {i % Math.max(1, Math.floor(data.length / 10)) === 0 && (
-              <text x={bx + bw / 2} y={H - 6} textAnchor="middle" fill="#999" fontSize={7}>{d.substring(5)}</text>
-            )}
-          </g>
-        );
-      })}
-    </svg>
+    <div>
+      <div style={{ display: "flex", alignItems: "flex-end", height: BAR_H }}>
+        {data.map(([d, v]) => {
+          const h = max > 0 ? (v / max) * (BAR_H - 24) : 0;
+          return (
+            <div key={d} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end" }}>
+              <div style={{ fontSize: 7, fontWeight: 600, marginBottom: 1, whiteSpace: "nowrap" }}>{formatVNDCompact(v)}</div>
+              <div style={{ width: "85%", height: Math.max(h, 2), background: "#60A5FA", borderRadius: 2 }} />
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ display: "flex" }}>
+        {data.map(([d], i) => (
+          <div key={`rl-${d}`} style={{ flex: 1, textAlign: "center", fontSize: 7, color: "#999", padding: "3px 0" }}>
+            {i % labelStep === 0 ? d.substring(5) : ""}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
-/* ── Revenue Stacked bar chart (per channel) ── */
+/* ── Revenue Stacked bar chart (per channel, HTML flex) ── */
 function RevenueStackedChart({ dates, sources, byDateBySource }: {
   dates: string[]; sources: string[]; byDateBySource: Map<string, Map<string, number>>;
 }) {
   if (dates.length === 0) return null;
-  // Max stacked total
   const maxTotal = Math.max(...dates.map((d) => {
     const dm = byDateBySource.get(d);
     if (!dm) return 0;
@@ -794,44 +767,37 @@ function RevenueStackedChart({ dates, sources, byDateBySource }: {
     return t;
   }), 1);
 
-  const W = 700, H = 200, PL = 40, PR = 10, PT = 20, PB = 30;
-  const chartW = W - PL - PR, chartH = H - PT - PB;
-  const barW = chartW / dates.length;
-
-  function y(v: number) { return PT + chartH - (v / maxTotal) * chartH; }
+  const BAR_H = 160;
+  const labelStep = Math.max(1, Math.floor(dates.length / 12));
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 200 }}>
-      {/* Y grid */}
-      {[0, 0.25, 0.5, 0.75, 1].map((p) => {
-        const val = maxTotal * p;
-        return (
-          <g key={p}>
-            <line x1={PL} x2={W - PR} y1={y(val)} y2={y(val)} stroke="#E5E7EB" strokeWidth={0.5} />
-            <text x={PL - 4} y={y(val) + 3} textAnchor="end" fill="#999" fontSize={8}>{formatVNDCompact(val)}</text>
-          </g>
-        );
-      })}
-      {/* Stacked bars */}
-      {dates.map((d, i) => {
-        const dm = byDateBySource.get(d) || new Map();
-        const bx = PL + i * barW + barW * 0.1;
-        const bw = barW * 0.8;
-        let cumY = PT + chartH;
-        return (
-          <g key={d}>
-            {sources.map((src, si) => {
-              const v = dm.get(src) || 0;
-              const h = (v / maxTotal) * chartH;
-              cumY -= h;
-              return <rect key={src} x={bx} y={cumY} width={bw} height={h} fill={SPARK_COLORS[si % SPARK_COLORS.length]} rx={0} opacity={0.8} />;
-            })}
-            {i % Math.max(1, Math.floor(dates.length / 10)) === 0 && (
-              <text x={bx + bw / 2} y={H - 6} textAnchor="middle" fill="#999" fontSize={7}>{d.substring(5)}</text>
-            )}
-          </g>
-        );
-      })}
-    </svg>
+    <div>
+      <div style={{ display: "flex", alignItems: "flex-end", height: BAR_H }}>
+        {dates.map((d) => {
+          const dm = byDateBySource.get(d) || new Map();
+          let total = 0;
+          for (const v of dm.values()) total += v;
+          const totalH = maxTotal > 0 ? (total / maxTotal) * (BAR_H - 4) : 0;
+          return (
+            <div key={d} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end" }}>
+              <div style={{ width: "85%", height: Math.max(totalH, 1), display: "flex", flexDirection: "column-reverse", borderRadius: 2, overflow: "hidden" }}>
+                {sources.map((src, si) => {
+                  const v = dm.get(src) || 0;
+                  const h = maxTotal > 0 ? (v / maxTotal) * (BAR_H - 4) : 0;
+                  return <div key={src} style={{ width: "100%", height: h, background: SPARK_COLORS[si % SPARK_COLORS.length], opacity: 0.8 }} />;
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ display: "flex" }}>
+        {dates.map((d, i) => (
+          <div key={`sl-${d}`} style={{ flex: 1, textAlign: "center", fontSize: 7, color: "#999", padding: "3px 0" }}>
+            {i % labelStep === 0 ? d.substring(5) : ""}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

@@ -25,12 +25,20 @@ export default function SyncButton({
         headers: { "Content-Type": "application/json" },
         body: "{}",
       });
+      if (res.redirected || res.url.includes("/login")) {
+        setResult("Chưa đăng nhập");
+        return;
+      }
       const json = await res.json();
       if (json.ok) {
-        setResult("OK");
+        const detail = json.fetched != null ? `✓ ${json.fetched} dòng` : "OK";
+        setResult(detail);
+        if (json.errors?.length) console.warn("Sync warnings:", json.errors);
         onDone?.();
       } else {
-        setResult(json.error || "Lỗi");
+        const msg = json.error || "Lỗi không xác định";
+        setResult(msg);
+        console.error("Sync error:", msg);
       }
     } catch (e) {
       setResult((e as Error).message);
@@ -63,8 +71,8 @@ export default function SyncButton({
           Đang sync...
         </span>
       ) : result ? (
-        <span style={{ color: result === "OK" ? "var(--green)" : "var(--red)" }}>
-          {result === "OK" ? "✓ Xong" : result.substring(0, 30)}
+        <span style={{ color: result.startsWith("✓") || result === "OK" ? "var(--green)" : "var(--red)" }}>
+          {result === "OK" ? "✓ Xong" : result.substring(0, 40)}
         </span>
       ) : (
         label
