@@ -75,6 +75,26 @@ export async function listInsightsCache(opts: {
   return (data as InsightsRow[]) || [];
 }
 
+export type FbNhanhRow = { date: string; source: string; revenue: number; orders: number };
+
+export async function listFbNhanhRevenue(from: string, to: string): Promise<FbNhanhRow[]> {
+  const db = supabaseAdmin();
+  const { data } = await db
+    .from("sales_sync")
+    .select("period_from, source, revenue_net, order_net")
+    .eq("channel", "Facebook")
+    .gte("period_from", from)
+    .lte("period_from", to)
+    .order("period_from", { ascending: true })
+    .limit(1000);
+  return (data || []).map((r) => ({
+    date: r.period_from,
+    source: r.source || "",
+    revenue: Number(r.revenue_net || 0),
+    orders: Number(r.order_net || 0),
+  }));
+}
+
 export function summarizeAds(rows: AdsRow[]) {
   return rows.reduce(
     (acc, r) => ({
