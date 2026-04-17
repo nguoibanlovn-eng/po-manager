@@ -340,64 +340,77 @@ function AdsSection({ ads, adsByDate, summary, prevAds = [], prevSummary, from, 
 function AdsOverlayChart({ current, prev }: { current: [string, number][]; prev: [string, number][] }) {
   if (current.length === 0) return <div className="muted" style={{ padding: 20, textAlign: "center" }}>Không có data.</div>;
 
-  const allVals = [...current.map(([, v]) => v), ...prev.map(([, v]) => v)];
+  // Build prev lookup by day-of-month so line aligns with bars
+  const prevByDay = useMemo(() => {
+    const m = new Map<number, number>();
+    for (const [d, v] of prev) {
+      const day = new Date(d).getDate();
+      m.set(day, (m.get(day) || 0) + v);
+    }
+    return m;
+  }, [prev]);
+
+  // For each current bar, find matching prev value by same day-of-month
+  const merged = current.map(([d, v]) => {
+    const day = new Date(d).getDate();
+    return { date: d, val: v, prevVal: prevByDay.get(day) ?? null };
+  });
+
+  const allVals = [...merged.map((m) => m.val), ...merged.filter((m) => m.prevVal !== null).map((m) => m.prevVal!)];
   const max = Math.max(...allVals, 1);
   const W = 700, H = 160, PL = 10, PR = 10, PT = 20, PB = 40;
   const chartW = W - PL - PR, chartH = H - PT - PB;
-  const barW = current.length > 0 ? chartW / current.length : chartW;
+  const barW = merged.length > 0 ? chartW / merged.length : chartW;
 
   function xBar(i: number) { return PL + i * barW; }
   function y(v: number) { return PT + chartH - (v / max) * chartH; }
 
-  // Map prev values to same index positions
-  const prevVals = prev.map(([, v]) => v);
+  // Build line points only for days that have prev data
+  const linePoints = merged
+    .map((m, i) => m.prevVal !== null ? { x: xBar(i) + barW / 2, y: y(m.prevVal!), val: m.prevVal! } : null)
+    .filter(Boolean) as { x: number; y: number; val: number }[];
 
   return (
     <div>
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 160 }}>
         {/* Bars — current period */}
-        {current.map(([d, v], i) => {
+        {merged.map((m, i) => {
           const bx = xBar(i) + barW * 0.1;
           const bw = barW * 0.8;
-          const bh = (v / max) * chartH;
           return (
-            <g key={d}>
-              <rect x={bx} y={y(v)} width={bw} height={bh} fill="#86EFAC" rx={2} />
-              <text x={bx + bw / 2} y={y(v) - 4} textAnchor="middle" fill="var(--text)" fontSize={8} fontWeight={600}>
-                {formatVNDCompact(v)}
+            <g key={m.date}>
+              <rect x={bx} y={y(m.val)} width={bw} height={(m.val / max) * chartH} fill="#86EFAC" rx={2} />
+              <text x={bx + bw / 2} y={y(m.val) - 4} textAnchor="middle" fill="var(--text)" fontSize={8} fontWeight={600}>
+                {formatVNDCompact(m.val)}
               </text>
               <text x={bx + bw / 2} y={H - PB + 12} textAnchor="middle" fill="#999" fontSize={8}>
-                {d.substring(5)}
+                {m.date.substring(5)}
               </text>
             </g>
           );
         })}
 
-        {/* Line — previous period overlay */}
-        {prevVals.length > 0 && (() => {
-          const points = prevVals.slice(0, current.length).map((v, i) => ({
-            x: xBar(i) + barW / 2,
-            y: y(v),
-          }));
-          const pathD = points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ");
-          return (
-            <g>
-              <path d={pathD} fill="none" stroke="var(--blue)" strokeWidth={1.5} strokeDasharray="4 3" opacity={0.7} />
-              {points.map((p, i) => (
-                <circle key={i} cx={p.x} cy={p.y} r={3} fill="var(--blue)" opacity={0.7} />
-              ))}
-            </g>
-          );
-        })()}
+        {/* Line — previous period overlay (aligned by day-of-month) */}
+        {linePoints.length > 1 && (
+          <g>
+            <path
+              d={linePoints.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ")}
+              fill="none" stroke="var(--blue)" strokeWidth={1.5} strokeDasharray="4 3" opacity={0.6}
+            />
+            {linePoints.map((p, i) => (
+              <circle key={i} cx={p.x} cy={p.y} r={3} fill="var(--blue)" opacity={0.7} />
+            ))}
+          </g>
+        )}
       </svg>
 
       {/* % change row */}
       <div style={{ display: "flex", gap: 0 }}>
-        {current.map(([d, v], i) => {
-          const prev = i > 0 ? current[i - 1][1] : v;
-          const pct = prev > 0 ? Math.round(((v - prev) / prev) * 100) : 0;
+        {merged.map((m, i) => {
+          const prevDay = i > 0 ? merged[i - 1].val : m.val;
+          const pct = prevDay > 0 ? Math.round(((m.val - prevDay) / prevDay) * 100) : 0;
           return (
-            <div key={d} style={{
+            <div key={m.date} style={{
               flex: 1, textAlign: "center", fontSize: 9, fontWeight: 600, padding: "3px 0",
               background: pct > 0 ? "#F0FDF4" : pct < 0 ? "#FEF2F2" : "#FAFAFA",
               color: pct > 0 ? "var(--green)" : pct < 0 ? "var(--red)" : "var(--muted)",
