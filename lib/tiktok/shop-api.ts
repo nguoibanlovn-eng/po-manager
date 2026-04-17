@@ -74,7 +74,7 @@ export function generateAuthUrl(state = "tktshop"): string {
 
 export async function exchangeCode(
   authCode: string,
-): Promise<{ ok: boolean; error?: string; shops?: Array<{ cipher: string; name: string }> }> {
+): Promise<{ ok: boolean; error?: string; shops?: Array<{ cipher: string; name: string }>; raw?: unknown }> {
   if (!TTS.APP_SECRET) return { ok: false, error: "Missing TIKTOK_SHOP_APP_SECRET" };
 
   // TikTok Shop API v2 token endpoint — GET, no sign needed
@@ -85,42 +85,54 @@ export async function exchangeCode(
     grant_type: "authorized_code",
   }).toString();
   const res = await fetch(`${TTS.AUTH_BASE}/api/v2/token/get?${qs}`);
-  const json = (await res.json()) as {
-    code?: number;
-    message?: string;
-    data?: {
-      access_token?: string;
-      refresh_token?: string;
-      access_token_expire_in?: number;
-      granted_shops?: Array<{ shop_cipher?: string; shop_name?: string }>;
-    };
-  };
+  const json = (await res.json()) as Record<string, unknown>;
 
-  if (json.code !== 0 || !json.data?.access_token) {
-    return { ok: false, error: json.message || "Token exchange failed" };
+  const code = json.code as number | undefined;
+  const data = json.data as Record<string, unknown> | undefined;
+
+  if (code !== 0 || !data?.access_token) {
+    return { ok: false, error: (json.message as string) || "Token exchange failed", raw: json };
   }
 
-  const d = json.data;
-  const shops = d.granted_shops || [];
-  // access_token_expire_in is absolute Unix timestamp
-  const expireAt = d.access_token_expire_in || 0;
+  const accessToken = String(data.access_token || "");
+  const refreshToken = String(data.refresh_token || "");
+  const expireAt = Number(data.access_token_expire_in || 0);
 
-  for (const s of shops) {
-    if (!s.shop_cipher) continue;
+  // Try multiple possible fields for shop list
+  const grantedShops = (data.granted_shops || data.shops || []) as Array<Record<string, unknown>>;
+  const openId = String(data.open_id || data.seller_id || "");
+
+  // If granted_shops exists, save per shop
+  if (grantedShops.length > 0) {
+    for (const s of grantedShops) {
+      const cipher = String(s.shop_cipher || s.cipher || s.shop_id || "");
+      if (!cipher) continue;
+      await saveToken({
+        shop_cipher: cipher,
+        shop_name: String(s.shop_name || s.name || SHOP_NAMES[cipher] || cipher),
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        expire_at: expireAt,
+      });
+    }
+  } else {
+    // No shop list — save with open_id or "default" as key
+    const key = openId || "default";
     await saveToken({
-      shop_cipher: s.shop_cipher,
-      shop_name: s.shop_name || SHOP_NAMES[s.shop_cipher] || s.shop_cipher,
-      access_token: d.access_token || "",
-      refresh_token: d.refresh_token || "",
+      shop_cipher: key,
+      shop_name: "TikTok Shop",
+      access_token: accessToken,
+      refresh_token: refreshToken,
       expire_at: expireAt,
     });
   }
 
   return {
     ok: true,
-    shops: shops
-      .filter((s) => s.shop_cipher)
-      .map((s) => ({ cipher: s.shop_cipher!, name: s.shop_name || s.shop_cipher! })),
+    shops: grantedShops.length > 0
+      ? grantedShops.map((s) => ({ cipher: String(s.shop_cipher || s.shop_id || ""), name: String(s.shop_name || "") }))
+      : [{ cipher: openId || "default", name: "TikTok Shop" }],
+    raw: data,
   };
 }
 
