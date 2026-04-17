@@ -643,10 +643,11 @@ const LABEL_FIELDS = [
 ];
 
 const LABEL_SIZES = [
+  { w: 100, h: 20, label: "100×20mm" },
+  { w: 100, h: 30, label: "100×30mm" },
   { w: 100, h: 50, label: "100×50mm" },
   { w: 75, h: 40, label: "75×40mm" },
   { w: 50, h: 30, label: "50×30mm" },
-  { w: 100, h: 30, label: "100×30mm" },
 ];
 
 function LabelTab({ items, selected }: { items: ReturnRow[]; selected: Set<string> }) {
@@ -655,7 +656,7 @@ function LabelTab({ items, selected }: { items: ReturnRow[]; selected: Set<strin
     LABEL_FIELDS.forEach((f) => { d[f.key] = f.default; });
     return d;
   });
-  const [sizeIdx, setSizeIdx] = useState(3); // 100x30 default
+  const [sizeIdx, setSizeIdx] = useState(0); // 100x20 default
   const size = LABEL_SIZES[sizeIdx];
   const previewRef = useRef<HTMLDivElement>(null);
 
@@ -683,14 +684,14 @@ function LabelTab({ items, selected }: { items: ReturnRow[]; selected: Set<strin
       <style>
         @page { size: ${size.w}mm ${size.h}mm; margin: 0; }
         body { margin: 0; font-family: Arial, sans-serif; }
-        .label { page-break-after: always; width: ${size.w}mm; height: ${size.h}mm; padding: 2mm; box-sizing: border-box; display: flex; gap: 2mm; align-items: center; }
+        .label { page-break-after: always; width: ${size.w}mm; height: ${size.h}mm; padding: 1mm 2mm; box-sizing: border-box; display: flex; gap: 1.5mm; align-items: center; }
         .label:last-child { page-break-after: auto; }
-        .qr { width: ${Math.min(size.h - 4, 20)}mm; height: ${Math.min(size.h - 4, 20)}mm; border: 1px solid #000; display: flex; align-items: center; justify-content: center; font-size: 6pt; flex-shrink: 0; }
-        .info { flex: 1; font-size: 7pt; line-height: 1.4; overflow: hidden; }
-        .token { font-weight: bold; font-size: 8pt; }
-        .name { font-weight: bold; }
-        .cond { display: inline-block; background: #fee; color: #c00; padding: 0 3px; border-radius: 2px; font-size: 6pt; font-weight: bold; }
-        .desc { color: #666; font-size: 6pt; }
+        .qr { width: ${Math.min(size.h - 2, 18)}mm; height: ${Math.min(size.h - 2, 18)}mm; border: 1px solid #000; display: flex; align-items: center; justify-content: center; font-size: 5pt; flex-shrink: 0; }
+        .info { flex: 1; font-size: ${size.h <= 20 ? 6 : 7}pt; line-height: ${size.h <= 20 ? 1.2 : 1.4}; overflow: hidden; }
+        .token { font-weight: bold; font-size: ${size.h <= 20 ? 7 : 8}pt; }
+        .name { font-weight: bold; font-size: ${size.h <= 20 ? 6 : 7}pt; }
+        .cond { display: inline-block; background: #fee; color: #c00; padding: 0 3px; border-radius: 2px; font-size: ${size.h <= 20 ? 5 : 6}pt; font-weight: bold; }
+        .desc { color: #666; font-size: ${size.h <= 20 ? 5 : 6}pt; }
       </style></head><body>${labels}</body></html>
     `);
     w.document.close();
@@ -821,7 +822,7 @@ function renderLabelHTML(r: ReturnRow, fields: Record<string, boolean>, size: { 
 function printSingleLabel(r: ReturnRow) {
   const defaultFields: Record<string, boolean> = {};
   LABEL_FIELDS.forEach((f) => { defaultFields[f.key] = f.default; });
-  const size = LABEL_SIZES[3]; // 100x30
+  const size = LABEL_SIZES[0]; // 100x20
   const html = renderLabelHTML(r, defaultFields, size);
   const w = window.open("", "_blank");
   if (!w) return alert("Cần bật pop-up trình duyệt");
@@ -830,13 +831,13 @@ function printSingleLabel(r: ReturnRow) {
     <style>
       @page { size: ${size.w}mm ${size.h}mm; margin: 0; }
       body { margin: 0; font-family: Arial, sans-serif; }
-      .label { width: ${size.w}mm; height: ${size.h}mm; padding: 2mm; box-sizing: border-box; display: flex; gap: 2mm; align-items: center; }
-      .qr { width: ${Math.min(size.h - 4, 20)}mm; height: ${Math.min(size.h - 4, 20)}mm; border: 1px solid #000; display: flex; align-items: center; justify-content: center; font-size: 6pt; flex-shrink: 0; }
-      .info { flex: 1; font-size: 7pt; line-height: 1.4; }
-      .token { font-weight: bold; font-size: 8pt; }
-      .name { font-weight: bold; }
-      .cond { display: inline-block; background: #fee; color: #c00; padding: 0 3px; border-radius: 2px; font-size: 6pt; font-weight: bold; }
-      .desc { color: #666; font-size: 6pt; }
+      .label { width: ${size.w}mm; height: ${size.h}mm; padding: 1mm 2mm; box-sizing: border-box; display: flex; gap: 1.5mm; align-items: center; }
+      .qr { width: ${Math.min(size.h - 2, 18)}mm; height: ${Math.min(size.h - 2, 18)}mm; border: 1px solid #000; display: flex; align-items: center; justify-content: center; font-size: 5pt; flex-shrink: 0; }
+      .info { flex: 1; font-size: ${size.h <= 20 ? 6 : 7}pt; line-height: ${size.h <= 20 ? 1.2 : 1.4}; }
+      .token { font-weight: bold; font-size: ${size.h <= 20 ? 7 : 8}pt; }
+      .name { font-weight: bold; font-size: ${size.h <= 20 ? 6 : 7}pt; }
+      .cond { display: inline-block; background: #fee; color: #c00; padding: 0 3px; border-radius: 2px; font-size: ${size.h <= 20 ? 5 : 6}pt; font-weight: bold; }
+      .desc { color: #666; font-size: ${size.h <= 20 ? 5 : 6}pt; }
     </style></head><body>${html}</body></html>
   `);
   w.document.close();
