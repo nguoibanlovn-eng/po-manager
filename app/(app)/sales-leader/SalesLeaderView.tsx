@@ -638,14 +638,14 @@ function SimpleBar({ data, color = "#FF6B8A" }: { data: [string, number][]; colo
   if (data.length === 0) return <div className="muted" style={{ padding: 24, textAlign: "center" }}>Không có data.</div>;
   const max = Math.max(...data.map(([, v]) => v));
   return (
-    <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 140, overflowX: "auto" }}>
+    <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 170, overflowX: "auto", paddingTop: 16 }}>
       {data.map(([d, v]) => {
-        const h = max > 0 ? (v / max) * 120 : 0;
+        const h = max > 0 ? (v / max) * 110 : 0;
         return (
-          <div key={d} style={{ flex: 1, minWidth: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }} title={`${d}: ${formatVND(v)}`}>
-            <div style={{ fontSize: 9, color: "var(--muted)" }}>{formatVNDCompact(v)}</div>
-            <div style={{ width: "80%", height: h, background: color, borderRadius: "2px 2px 0 0", minWidth: 12 }} />
-            <div style={{ fontSize: 9, color: "var(--subtle)" }}>{d.substring(5)}</div>
+          <div key={d} style={{ flex: 1, minWidth: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }} title={`${d}: ${formatVND(v)}`}>
+            <div style={{ fontSize: 10, color: "var(--muted)", whiteSpace: "nowrap" }}>{formatVNDCompact(v)}</div>
+            <div style={{ width: "70%", height: h, background: color, borderRadius: "2px 2px 0 0", minWidth: 12 }} />
+            <div style={{ fontSize: 10, color: "var(--subtle)" }}>{d.substring(5)}</div>
           </div>
         );
       })}
