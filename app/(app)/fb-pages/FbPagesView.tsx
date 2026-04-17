@@ -239,28 +239,9 @@ export default function FbPagesView({
         </div>
       )}
 
-      {/* ═══ CHI TIẾT THEO KÊNH NHANH.VN ═══ */}
+      {/* ═══ CHI TIẾT THEO KÊNH ═══ */}
       {nhanhBySource.length > 0 && (
-        <div className="card" style={{ marginBottom: 14, padding: 0 }}>
-          <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--border)", fontWeight: 700 }}>
-            CHI TIẾT THEO KÊNH · {nhanhBySource.length} kênh
-          </div>
-          <div className="tbl-wrap">
-            <table>
-              <thead><tr><th>Kênh Facebook</th><th className="text-right">Doanh thu</th><th className="text-right">Đơn</th><th className="text-right">TB/đơn</th></tr></thead>
-              <tbody>
-                {nhanhBySource.map((s) => (
-                  <tr key={s.name}>
-                    <td style={{ fontWeight: 600 }}>● {s.name}</td>
-                    <td className="text-right" style={{ color: "var(--green)" }}>{formatVNDCompact(s.revenue)}</td>
-                    <td className="text-right">{s.orders}</td>
-                    <td className="text-right muted">{formatVNDCompact(s.orders > 0 ? s.revenue / s.orders : 0)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <ChannelDetail nhanhRevenue={nhanhRevenue} nhanhBySource={nhanhBySource} nhanhTotal={nhanhTotals.revenue} />
       )}
 
       {/* ═══ CHI TIÊU THEO TÀI KHOẢN ADS ═══ */}
@@ -313,6 +294,74 @@ export default function FbPagesView({
         </div>
       </div>
     </section>
+  );
+}
+
+/* ── Channel Detail with sparklines ── */
+const SPARK_COLORS = ["#2563EB", "#DC2626", "#16A34A", "#D97706", "#7C3AED", "#0D9488", "#EC4899", "#F59E0B", "#6366F1", "#10B981", "#3B82F6", "#EF4444", "#8B5CF6"];
+
+function ChannelDetail({ nhanhRevenue, nhanhBySource, nhanhTotal }: {
+  nhanhRevenue: FbNhanhRow[];
+  nhanhBySource: { name: string; revenue: number; orders: number }[];
+  nhanhTotal: number;
+}) {
+  // Build daily data per source for sparklines
+  const sourceDaily = useMemo(() => {
+    const m = new Map<string, Map<string, number>>();
+    for (const r of nhanhRevenue) {
+      if (!m.has(r.source)) m.set(r.source, new Map());
+      const dm = m.get(r.source)!;
+      dm.set(r.date, (dm.get(r.date) || 0) + r.revenue);
+    }
+    // Get all dates sorted
+    const dates = new Set<string>();
+    for (const r of nhanhRevenue) dates.add(r.date);
+    const sortedDates = Array.from(dates).sort();
+    return { bySource: m, dates: sortedDates };
+  }, [nhanhRevenue]);
+
+  return (
+    <div className="card" style={{ marginBottom: 14 }}>
+      <div style={{ fontWeight: 700, marginBottom: 10, fontSize: 12, textTransform: "uppercase", color: "var(--muted)" }}>
+        Chi tiết theo kênh
+        <span style={{ float: "right", fontWeight: 400, fontSize: 11, textTransform: "none" }}>Bấm vào kênh để xem biểu đồ theo ngày</span>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {nhanhBySource.map((s, i) => {
+          const color = SPARK_COLORS[i % SPARK_COLORS.length];
+          const pct = nhanhTotal > 0 ? Math.round((s.revenue / nhanhTotal) * 100) : 0;
+          const daily = sourceDaily.bySource.get(s.name);
+          const vals = sourceDaily.dates.map((d) => daily?.get(d) || 0);
+          // % change: last vs second-to-last
+          const last = vals.length > 0 ? vals[vals.length - 1] : 0;
+          const prev = vals.length > 1 ? vals[vals.length - 2] : last;
+          const change = prev > 0 ? Math.round(((last - prev) / prev) * 100) : 0;
+
+          return (
+            <div key={s.name} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", borderBottom: "1px solid var(--border)" }}>
+              <span style={{ color, fontSize: 10 }}>●</span>
+              <span style={{ flex: 1, fontSize: 12, fontWeight: 500 }}>{s.name}</span>
+              {/* Sparkline mini bars */}
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 1, height: 24, width: 80 }}>
+                {vals.map((v, j) => {
+                  const max = Math.max(...vals);
+                  const h = max > 0 ? (v / max) * 20 : 0;
+                  return <div key={j} style={{ flex: 1, height: Math.max(h, 1), background: color, borderRadius: 1, opacity: 0.7 }} />;
+                })}
+              </div>
+              {/* % change */}
+              <span style={{ fontSize: 10, fontWeight: 600, width: 42, textAlign: "right", color: change > 0 ? "var(--green)" : change < 0 ? "var(--red)" : "var(--muted)" }}>
+                {change > 0 ? `▲+${change}%` : change < 0 ? `▼${change}%` : "—"}
+              </span>
+              {/* Revenue */}
+              <span style={{ fontSize: 12, fontWeight: 700, width: 60, textAlign: "right" }}>{formatVNDCompact(s.revenue)}</span>
+              {/* % share */}
+              <span style={{ fontSize: 10, color: "var(--muted)", width: 30, textAlign: "right" }}>{pct}%</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
