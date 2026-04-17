@@ -27,31 +27,33 @@ async function listShopeeNhanhRevenue(from: string, to: string) {
 export default async function ShopeeAdsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; shop?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; shop?: string }>;
 }) {
   const sp = await searchParams;
-  const month = sp.month || dateVN().substring(0, 7);
-  const shop = sp.shop || undefined;
+  const to = sp.to || dateVN();
+  const from = sp.from || dateVN(null, -7);
 
-  const monthFrom = `${month}-01`;
-  const [y, mo] = month.split("-").map(Number);
-  const lastDay = new Date(y, mo, 0).getDate();
-  const monthTo = `${month}-${String(lastDay).padStart(2, "0")}`;
-  const monthKey = `${month}-01`;
+  // Month target uses current month
+  const now = new Date();
+  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+  const monthFrom = monthKey.substring(0, 7) + "-01";
+  const monthTo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()).padStart(2, "0")}`;
 
-  const [ads, daily, shops, monthTarget, nhanhRevenue] = await Promise.all([
-    listShopeeAds({ monthKey: month, shop }),
-    listShopeeDaily(month),
+  const [ads, daily, shops, monthTarget, nhanhRevenue, monthNhanh] = await Promise.all([
+    listShopeeAds({ from, to }),
+    listShopeeDaily(from.substring(0, 7)),
     listShops(),
     getChannelTarget("shopee", monthKey),
+    listShopeeNhanhRevenue(from, to),
     listShopeeNhanhRevenue(monthFrom, monthTo),
   ]);
 
-  const monthActual = nhanhRevenue.reduce((s, r) => s + r.revenue, 0);
+  const monthActual = monthNhanh.reduce((s, r) => s + r.revenue, 0);
 
   return (
     <ShopeeAdsView
-      ads={ads} daily={daily} shops={shops} month={month} shop={shop || ""}
+      ads={ads} daily={daily} shops={shops}
+      from={from} to={to} shop={sp.shop || ""}
       monthTarget={monthTarget} monthActual={monthActual} monthKey={monthKey}
       nhanhRevenue={nhanhRevenue}
     />
