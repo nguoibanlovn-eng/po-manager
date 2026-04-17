@@ -11,6 +11,9 @@ export function proxy(request: NextRequest) {
   const isPublic =
     path.startsWith("/login") ||
     path.startsWith("/api/auth") ||
+    path.startsWith("/api/tiktok-shop/callback") ||
+    path.startsWith("/api/tiktok/callback") ||
+    path.startsWith("/api/shopee/callback") ||
     path === "/favicon.ico";
 
   if (isPublic) return NextResponse.next();
