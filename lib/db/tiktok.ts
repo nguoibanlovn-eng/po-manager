@@ -95,6 +95,32 @@ export type TiktokChannelRow = {
   shares: number | null;
 };
 
+// Doanh thu TikTok Shop từ nhanh.vn sales_sync
+export type TiktokNhanhRow = {
+  date: string;
+  source: string;
+  revenue: number;
+  orders: number;
+};
+
+export async function listTiktokNhanhRevenue(from: string, to: string): Promise<TiktokNhanhRow[]> {
+  const db = supabaseAdmin();
+  const { data } = await db
+    .from("sales_sync")
+    .select("period_from, source, revenue_net, order_net")
+    .eq("channel", "TikTok")
+    .gte("period_from", from)
+    .lte("period_from", to)
+    .order("period_from", { ascending: true })
+    .limit(500);
+  return (data || []).map((r) => ({
+    date: r.period_from,
+    source: r.source || "",
+    revenue: Number(r.revenue_net || 0),
+    orders: Number(r.order_net || 0),
+  }));
+}
+
 export async function listTiktokAds(from?: string, to?: string): Promise<TiktokAdsRow[]> {
   const db = supabaseAdmin();
   let q = db.from("tiktok_ads").select("*").order("date", { ascending: false });

@@ -1,4 +1,4 @@
-import { getTiktokProductStats, listTiktokAds, listTiktokChannels } from "@/lib/db/tiktok";
+import { getTiktokProductStats, listTiktokAds, listTiktokChannels, listTiktokNhanhRevenue } from "@/lib/db/tiktok";
 import { dateVN } from "@/lib/helpers";
 import SalesLeaderView from "./SalesLeaderView";
 
@@ -11,17 +11,20 @@ export default async function SalesLeaderPage({
 }) {
   const sp = await searchParams;
   const to = sp.to || dateVN();
-  const from = sp.from || dateVN(null, -30);
-  const [ads, channels, productStats] = await Promise.all([
+  const from = sp.from || dateVN(null, -7);
+  const [ads, channels, productStats, nhanhRevenue] = await Promise.all([
     listTiktokAds(from, to),
     listTiktokChannels(from, to),
     getTiktokProductStats({ from, to }),
+    listTiktokNhanhRevenue(from, to),
   ]);
   return (
     <SalesLeaderView
       ads={ads}
       channels={channels}
       productStats={productStats.products}
+      shops={productStats.shops}
+      nhanhRevenue={nhanhRevenue}
       from={from}
       to={to}
     />
