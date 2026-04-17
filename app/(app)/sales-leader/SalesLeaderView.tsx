@@ -179,7 +179,7 @@ function OverviewTab({ ads, nhanhRevenue, adsTotals, nhanhTotals, roas, from, to
     return Array.from(m.entries()).map(([name, v]) => ({ name, ...v })).sort((a, b) => b.revenue - a.revenue);
   }, [nhanhRevenue]);
 
-  // Daily comparison table
+  // Daily comparison table (DT NHANH.VN + GMV SHOP)
   const dailyComparison = useMemo(() => {
     const nhanhByDate = new Map<string, { revenue: number; orders: number }>();
     for (const r of nhanhRevenue) {
@@ -198,7 +198,7 @@ function OverviewTab({ ads, nhanhRevenue, adsTotals, nhanhTotals, roas, from, to
       const n = nhanhByDate.get(d) || { revenue: 0, orders: 0 };
       const spend = adsByDateMap.get(d) || 0;
       const r = spend > 0 ? n.revenue / spend : 0;
-      return { date: d, revenue: n.revenue, spend, roas: r, orders: n.orders };
+      return { date: d, revenue: n.revenue, spend, roas: r, orders: n.orders, gmvShop: n.revenue };
     });
   }, [nhanhRevenue, ads]);
 
@@ -260,9 +260,24 @@ function OverviewTab({ ads, nhanhRevenue, adsTotals, nhanhTotals, roas, from, to
         </div>
       </div>
 
+      {/* GMV SHOP THEO NGÀY — line chart */}
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+          <div>
+            <span style={{ fontWeight: 700 }}>GMV SHOP THEO NGÀY</span>
+            {shopCards.map((s, i) => (
+              <span key={s.name} style={{ marginLeft: 10, fontSize: 11 }}>
+                <span style={{ color: LINE_COLORS[i % LINE_COLORS.length] }}>●</span> {s.name}
+              </span>
+            ))}
+          </div>
+        </div>
+        <LineChart nhanhRevenue={nhanhRevenue} />
+      </div>
+
       {/* SO SÁNH DOANH THU THEO NGÀY */}
       <div className="card" style={{ marginBottom: 14, padding: 0 }}>
-        <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between" }}>
+        <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
           <div>
             <span style={{ fontWeight: 700 }}>SO SÁNH DOANH THU THEO NGÀY</span>
             <span className="chip chip-amber" style={{ marginLeft: 8, fontSize: 9 }}>NHANH.VN</span>
@@ -275,10 +290,12 @@ function OverviewTab({ ads, nhanhRevenue, adsTotals, nhanhTotals, roas, from, to
         <div className="tbl-wrap">
           <table>
             <thead><tr>
-              <th>NGÀY</th><th className="text-right">DT NHANH.VN</th><th className="text-right">SPEND</th><th className="text-right">ROAS</th><th className="text-right">ĐƠN</th>
+              <th>NGÀY</th><th className="text-right">DT NHANH.VN</th><th className="text-right">SPEND</th><th className="text-right">ROAS</th><th className="text-right">GMV SHOP</th><th className="text-right">ĐƠN</th><th className="text-right">ROAS SHOP</th>
             </tr></thead>
             <tbody>
-              {dailyComparison.map((d) => (
+              {dailyComparison.map((d) => {
+                const roasShop = d.spend > 0 ? d.gmvShop / d.spend : 0;
+                return (
                 <tr key={d.date}>
                   <td style={{ fontWeight: 600 }}>{d.date.substring(5)}</td>
                   <td className="text-right" style={{ color: "var(--green)" }}>{formatVNDCompact(d.revenue)}</td>
@@ -286,16 +303,23 @@ function OverviewTab({ ads, nhanhRevenue, adsTotals, nhanhTotals, roas, from, to
                   <td className="text-right font-bold" style={{ color: d.roas >= 12 ? "var(--green)" : d.roas >= 10 ? "var(--amber)" : "var(--red)" }}>
                     {d.spend > 0 ? d.roas.toFixed(1) : "—"}
                   </td>
+                  <td className="text-right" style={{ color: "var(--blue)" }}>{formatVNDCompact(d.gmvShop)}</td>
                   <td className="text-right muted">{d.orders}</td>
+                  <td className="text-right font-bold" style={{ color: roasShop >= 12 ? "var(--green)" : roasShop >= 10 ? "var(--amber)" : roasShop > 0 ? "var(--red)" : "var(--muted)" }}>
+                    {d.spend > 0 && d.gmvShop > 0 ? roasShop.toFixed(1) : "—"}
+                  </td>
                 </tr>
-              ))}
+                );
+              })}
               {dailyComparison.length > 0 && (
                 <tr style={{ fontWeight: 700, background: "#1a1a1a", color: "#fff" }}>
                   <td>Tổng kỳ</td>
                   <td className="text-right">{formatVNDCompact(nhanhTotals.revenue)}</td>
                   <td className="text-right">{formatVNDCompact(adsTotals.spend)}</td>
                   <td className="text-right">{roas.toFixed(1)}</td>
+                  <td className="text-right">{formatVNDCompact(dailyComparison.reduce((s, d) => s + d.gmvShop, 0))}</td>
                   <td className="text-right">{nhanhTotals.orders}</td>
+                  <td className="text-right">{adsTotals.spend > 0 ? (dailyComparison.reduce((s, d) => s + d.gmvShop, 0) / adsTotals.spend).toFixed(1) : "—"}</td>
                 </tr>
               )}
             </tbody>
@@ -526,6 +550,84 @@ function ProductsTab({ products }: { products: TiktokProductStat[] }) {
         </table>
       </div>
     </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LINE CHART — GMV per shop per day (SVG)
+   ═══════════════════════════════════════════════════════════ */
+const LINE_COLORS = ["#EF4444", "#22C55E", "#6366F1", "#F59E0B", "#0EA5E9"];
+
+function LineChart({ nhanhRevenue }: { nhanhRevenue: TiktokNhanhRow[] }) {
+  const { dates, sources, series, maxVal } = useMemo(() => {
+    const dateSet = new Set<string>();
+    const sourceSet = new Set<string>();
+    for (const r of nhanhRevenue) { dateSet.add(r.date); sourceSet.add(r.source); }
+    const dates = Array.from(dateSet).sort();
+    const sources = Array.from(sourceSet).sort((a, b) => {
+      const aRev = nhanhRevenue.filter((r) => r.source === a).reduce((s, r) => s + r.revenue, 0);
+      const bRev = nhanhRevenue.filter((r) => r.source === b).reduce((s, r) => s + r.revenue, 0);
+      return bRev - aRev;
+    });
+    const m = new Map<string, Map<string, number>>();
+    for (const src of sources) m.set(src, new Map());
+    for (const r of nhanhRevenue) {
+      const srcMap = m.get(r.source)!;
+      srcMap.set(r.date, (srcMap.get(r.date) || 0) + r.revenue);
+    }
+    let maxVal = 0;
+    for (const [, srcMap] of m) for (const [, v] of srcMap) if (v > maxVal) maxVal = v;
+    return { dates, sources, series: m, maxVal };
+  }, [nhanhRevenue]);
+
+  if (dates.length === 0) return <div className="muted" style={{ padding: 24, textAlign: "center" }}>Không có data.</div>;
+
+  const W = 700, H = 200, PL = 55, PR = 10, PT = 20, PB = 30;
+  const chartW = W - PL - PR, chartH = H - PT - PB;
+
+  function x(i: number) { return PL + (dates.length > 1 ? (i / (dates.length - 1)) * chartW : chartW / 2); }
+  function y(v: number) { return PT + chartH - (maxVal > 0 ? (v / maxVal) * chartH : 0); }
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 220 }}>
+      {/* Y-axis grid */}
+      {[0, 0.25, 0.5, 0.75, 1].map((pct) => {
+        const val = maxVal * pct;
+        const yy = y(val);
+        return (
+          <g key={pct}>
+            <line x1={PL} x2={W - PR} y1={yy} y2={yy} stroke="#E5E7EB" strokeWidth={0.5} />
+            <text x={PL - 4} y={yy + 3} textAnchor="end" fill="#999" fontSize={9}>{formatVNDCompact(val)}</text>
+          </g>
+        );
+      })}
+      {/* X-axis labels */}
+      {dates.map((d, i) => (
+        <text key={d} x={x(i)} y={H - 6} textAnchor="middle" fill="#999" fontSize={9}>{d.substring(5)}</text>
+      ))}
+      {/* Lines per source */}
+      {sources.map((src, si) => {
+        const srcMap = series.get(src)!;
+        const points = dates.map((d, i) => ({ x: x(i), y: y(srcMap.get(d) || 0), val: srcMap.get(d) || 0 }));
+        const color = LINE_COLORS[si % LINE_COLORS.length];
+        const pathD = points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ");
+        return (
+          <g key={src}>
+            <path d={pathD} fill="none" stroke={color} strokeWidth={2} />
+            {points.map((p, i) => (
+              <g key={i}>
+                <circle cx={p.x} cy={p.y} r={3} fill={color} />
+                {p.val > 0 && (
+                  <text x={p.x} y={p.y - 8} textAnchor="middle" fill={color} fontSize={8} fontWeight={600}>
+                    {formatVNDCompact(p.val)}
+                  </text>
+                )}
+              </g>
+            ))}
+          </g>
+        );
+      })}
+    </svg>
   );
 }
 
