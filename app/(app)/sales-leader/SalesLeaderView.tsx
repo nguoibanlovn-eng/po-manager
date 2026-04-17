@@ -83,7 +83,7 @@ export default function SalesLeaderView({
       {/* ═══ HEADER ═══ */}
       <div className="page-hdr">
         <div>
-          <div className="page-title">TikTok Overview</div>
+          <div className="page-title"><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: "50%", background: "#000000", color: "#fff", fontSize: 14, fontWeight: 700, marginRight: 8, verticalAlign: "middle" }}>&#9834;</span>TikTok Overview</div>
           <div className="page-sub">Ads · Kênh · Shop</div>
         </div>
         <div className="row" style={{ gap: 6, flexWrap: "wrap", alignItems: "center" }}>
@@ -107,31 +107,31 @@ export default function SalesLeaderView({
       </div>
 
       {/* ═══ MONTHLY TARGET PROGRESS ═══ */}
-      <TargetProgressBar channel="TikTok" monthTarget={monthTarget} monthActual={monthActual} monthKey={monthKey} />
+      <TargetProgressBar channel="TikTok" monthTarget={monthTarget} monthActual={monthActual} monthKey={monthKey} color="#FE2C55" />
 
       {/* ═══ KPI CARDS ═══ */}
       <div className="stat-grid" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))" }}>
-        <div className="stat-card c-green" style={{ borderLeft: "4px solid var(--green)" }}>
+        <div className="stat-card" style={{ borderLeft: "4px solid #25F4EE" }}>
           <div className="sl">ROAS</div>
           <div className="sv" style={{ color: roas >= 10 ? "var(--green)" : roas >= 5 ? "var(--amber)" : "var(--red)" }}>{roas.toFixed(2)}x</div>
           <div className="muted" style={{ fontSize: 10 }}>GMV / Spend</div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card" style={{ borderLeft: "4px solid #FE2C55" }}>
           <div className="sl">GMV TỔNG</div>
           <div className="sv">{formatVNDCompact(nhanhTotals.revenue)}</div>
           <div className="muted" style={{ fontSize: 10 }}>nhanh.vn</div>
         </div>
-        <div className="stat-card c-red">
+        <div className="stat-card" style={{ borderLeft: "4px solid #000000" }}>
           <div className="sl">ADS SPEND</div>
           <div className="sv">{formatVNDCompact(adsTotals.spend)}</div>
           <div className="muted" style={{ fontSize: 10 }}>API</div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card" style={{ borderLeft: "4px solid #25F4EE" }}>
           <div className="sl">SHOP GMV</div>
           <div className="sv">{formatVNDCompact(adsTotals.conversion_value)}</div>
           <div className="muted" style={{ fontSize: 10 }}>{shops.length} shop · API</div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card" style={{ borderLeft: "4px solid #FE2C55" }}>
           <div className="sl">ĐƠN THÀNH CÔNG</div>
           <div className="sv">{nhanhTotals.orders.toLocaleString("vi-VN")}</div>
           <div className="muted" style={{ fontSize: 10 }}>Thành công</div>
@@ -511,10 +511,10 @@ function ShopTab({ nhanhRevenue, from, to }: { nhanhRevenue: TiktokNhanhRow[]; f
 
       {/* KPI cards */}
       <div className="stat-grid" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))", marginBottom: 14 }}>
-        <div className="stat-card c-green"><div className="sl">GMV THÀNH CÔNG</div><div className="sv">{formatVNDCompact(totals.revenue)}</div><div className="muted" style={{ fontSize: 10 }}>Không tính huỷ/hoàn</div></div>
-        <div className="stat-card c-blue"><div className="sl">SỐ ĐƠN</div><div className="sv">{totals.orders.toLocaleString("vi-VN")}</div><div className="muted" style={{ fontSize: 10 }}>Đơn thành công</div></div>
-        <div className="stat-card c-amber"><div className="sl">TB / ĐƠN</div><div className="sv">{formatVNDCompact(avgOrder)}</div></div>
-        <div className="stat-card c-red"><div className="sl">HUỶ / HOÀN</div><div className="sv">—</div><div className="muted" style={{ fontSize: 10 }}>Chưa có data</div></div>
+        <div className="stat-card" style={{ borderLeft: "3px solid #25F4EE" }}><div className="sl">GMV THÀNH CÔNG</div><div className="sv">{formatVNDCompact(totals.revenue)}</div><div className="muted" style={{ fontSize: 10 }}>Không tính huỷ/hoàn</div></div>
+        <div className="stat-card" style={{ borderLeft: "3px solid #FE2C55" }}><div className="sl">SỐ ĐƠN</div><div className="sv">{totals.orders.toLocaleString("vi-VN")}</div><div className="muted" style={{ fontSize: 10 }}>Đơn thành công</div></div>
+        <div className="stat-card" style={{ borderLeft: "3px solid #000000" }}><div className="sl">TB / ĐƠN</div><div className="sv">{formatVNDCompact(avgOrder)}</div></div>
+        <div className="stat-card" style={{ borderLeft: "3px solid #FE2C55" }}><div className="sl">HUỶ / HOÀN</div><div className="sv">—</div><div className="muted" style={{ fontSize: 10 }}>Chưa có data</div></div>
       </div>
 
       {/* GMV chart */}

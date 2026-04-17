@@ -7,11 +7,13 @@ export default function TargetProgressBar({
   monthTarget,
   monthActual,
   monthKey,
+  color,
 }: {
   channel: string;
   monthTarget: number;
   monthActual: number;
   monthKey: string;
+  color?: string;
 }) {
   if (monthTarget <= 0) return null;
 
@@ -27,7 +29,7 @@ export default function TargetProgressBar({
   const isAhead = pct >= dayPct;
   const monthNum = monthKey ? monthKey.substring(5, 7) : "";
 
-  const fillColor = pct >= 100 ? "#16A34A" : isAhead ? "#3B82F6" : "#F59E0B";
+  const fillColor = pct >= 100 ? "#16A34A" : isAhead ? (color || "#3B82F6") : "#F59E0B";
   const chipBg = pct >= 100 ? "rgba(22,163,74,0.15)" : isAhead ? "rgba(22,163,74,0.15)" : "rgba(245,158,11,0.2)";
   const chipColor = pct >= 100 ? "#15803D" : isAhead ? "#15803D" : "#92400E";
   const chipText = pct >= 100 ? "Đạt!" : isAhead ? "Vượt" : "Chậm";

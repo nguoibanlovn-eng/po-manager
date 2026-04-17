@@ -163,12 +163,12 @@ export default function FbPagesView({
   return (
     <section className="section">
       {/* ═══ TARGET PROGRESS ═══ */}
-      <TargetProgressBar channel="Facebook" monthTarget={monthTarget} monthActual={monthActual} monthKey={monthKey} />
+      <TargetProgressBar channel="Facebook" monthTarget={monthTarget} monthActual={monthActual} monthKey={monthKey} color="#1877F2" />
 
       {/* ═══ HEADER ═══ */}
       <div className="page-hdr">
         <div>
-          <div className="page-title">Facebook Pages</div>
+          <div className="page-title"><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: "50%", background: "#1877F2", color: "#fff", fontSize: 14, fontWeight: 700, marginRight: 8, verticalAlign: "middle" }}>f</span>Facebook Pages</div>
           <div className="page-sub">{pages.length} pages · {from} → {to}</div>
         </div>
         <div className="row" style={{ gap: 6, flexWrap: "wrap", alignItems: "center" }}>
@@ -200,8 +200,8 @@ export default function FbPagesView({
         <div className="stat-card"><div className="sl">TĂNG RÒNG</div><div className="sv" style={{ color: netFans >= 0 ? "var(--green)" : "var(--red)" }}>{netFans >= 0 ? "+" : ""}{netFans.toLocaleString("vi-VN")}</div><div className="muted" style={{ fontSize: 10 }}>net growth</div></div>
         <div className="stat-card"><div className="sl">REACH</div><div className="sv">{insightsTotals.reach.toLocaleString("vi-VN")}</div></div>
 
-        <div className="stat-card c-green"><div className="sl">DOANH THU</div><div className="sv">{formatVNDCompact(nhanhTotals.revenue)}</div><div className="muted" style={{ fontSize: 10 }}>nhanh.vn</div></div>
-        <div className="stat-card c-red"><div className="sl">CHI PHÍ ADS</div><div className="sv">{formatVNDCompact(summary.spend)}</div></div>
+        <div className="stat-card" style={{ borderLeft: "3px solid #1877F2" }}><div className="sl">DOANH THU</div><div className="sv">{formatVNDCompact(nhanhTotals.revenue)}</div><div className="muted" style={{ fontSize: 10 }}>nhanh.vn</div></div>
+        <div className="stat-card" style={{ borderLeft: "3px solid #42A5F5" }}><div className="sl">CHI PHÍ ADS</div><div className="sv">{formatVNDCompact(summary.spend)}</div></div>
         <div className="stat-card" style={{ borderLeft: roas >= 10 ? "3px solid var(--green)" : "3px solid var(--red)" }}><div className="sl">ROAS</div><div className="sv" style={{ color: roas >= 10 ? "var(--green)" : "var(--red)" }}>{roas.toFixed(1)}x</div><div className="muted" style={{ fontSize: 10 }}>doanh thu/ads</div></div>
         <div className="stat-card"><div className="sl">CHI PHÍ/FOLLOW</div><div className="sv">{costPerFollow > 0 ? formatVNDCompact(costPerFollow) : "—"}</div><div className="muted" style={{ fontSize: 10 }}>spend÷tăng ròng</div></div>
         <div className="stat-card"><div className="sl">CTR TB</div><div className="sv">{ctr.toFixed(2)}%</div><div className="muted" style={{ fontSize: 10 }}>weighted avg</div></div>
@@ -221,7 +221,7 @@ export default function FbPagesView({
             Doanh thu (Nhanh.vn) vs Chi phí Ads · Tỉ lệ chi phí / doanh thu · ROAS = DT / Spend
           </div>
           <div style={{ display: "flex", gap: 12, fontSize: 10, color: "#6B7280", marginBottom: 10 }}>
-            <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: "#3B82F6", marginRight: 3, verticalAlign: "middle" }} />Doanh thu</span>
+            <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: "#1877F2", marginRight: 3, verticalAlign: "middle" }} />Doanh thu</span>
             <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: "#F87171", marginRight: 3, verticalAlign: "middle" }} />Chi phí Ads</span>
           </div>
 
@@ -241,7 +241,7 @@ export default function FbPagesView({
                       <div key={p.name} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end" }}>
                         <div style={{ fontSize: 8, fontWeight: 700, marginBottom: 2, whiteSpace: "nowrap" }}>{formatVNDCompact(p.revenue)}</div>
                         <div style={{ width: "80%", borderRadius: "3px 3px 0 0", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-                          <div style={{ height: Math.max(revH, 1), background: "#3B82F6" }} />
+                          <div style={{ height: Math.max(revH, 1), background: "#1877F2" }} />
                           {spendH > 0 && (
                             <div style={{ height: Math.max(spendH, 2), background: "#F87171", display: "flex", alignItems: "center", justifyContent: "center" }}>
                               {p.ratio >= 1 && <span style={{ fontSize: 7, fontWeight: 700, color: "#fff" }}>{p.ratio.toFixed(0)}%</span>}

@@ -136,12 +136,12 @@ export default function ShopeeAdsView({
   return (
     <section className="section">
       {/* ═══ TARGET PROGRESS ═══ */}
-      <TargetProgressBar channel="Shopee" monthTarget={monthTarget} monthActual={monthActual} monthKey={monthKey} />
+      <TargetProgressBar channel="Shopee" monthTarget={monthTarget} monthActual={monthActual} monthKey={monthKey} color="#EE4D2D" />
 
       {/* ═══ HEADER ═══ */}
       <div className="page-hdr">
         <div>
-          <div className="page-title">Shopee</div>
+          <div className="page-title"><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: "50%", background: "#EE4D2D", color: "#fff", fontSize: 13, fontWeight: 700, marginRight: 8, verticalAlign: "middle" }}>S</span>Shopee</div>
           <div className="page-sub">{from} → {to} · {filteredAds.length} campaigns</div>
         </div>
         <div className="row" style={{ gap: 6, flexWrap: "wrap", alignItems: "center" }}>
@@ -191,10 +191,10 @@ export default function ShopeeAdsView({
 
       {/* ═══ KPI CARDS ═══ */}
       <div className="stat-grid">
-        <div className="stat-card c-green"><div className="sl">DT SHOPEE (NHANH)</div><div className="sv">{formatVND(nhanhTotals.revenue)}</div><div className="ss">nhanh.vn</div></div>
-        <div className="stat-card c-red"><div className="sl">CHI PHÍ ADS</div><div className="sv">{formatVND(totals.spend)}</div><div className="ss">upload CSV</div></div>
-        <div className="stat-card c-blue"><div className="sl">ROAS</div><div className="sv" style={{ color: roas >= 5 ? "var(--green)" : "var(--red)" }}>{roas.toFixed(1)}x</div><div className="ss">DT/ads</div></div>
-        <div className="stat-card c-amber"><div className="sl">LƯỢT CLICK</div><div className="sv">{totals.clicks.toLocaleString("vi-VN")}</div></div>
+        <div className="stat-card" style={{ borderLeft: "3px solid #EE4D2D" }}><div className="sl">DT SHOPEE (NHANH)</div><div className="sv">{formatVND(nhanhTotals.revenue)}</div><div className="ss">nhanh.vn</div></div>
+        <div className="stat-card" style={{ borderLeft: "3px solid #F57C51" }}><div className="sl">CHI PHÍ ADS</div><div className="sv">{formatVND(totals.spend)}</div><div className="ss">upload CSV</div></div>
+        <div className="stat-card" style={{ borderLeft: "3px solid #D73A1A" }}><div className="sl">ROAS</div><div className="sv" style={{ color: roas >= 5 ? "var(--green)" : "var(--red)" }}>{roas.toFixed(1)}x</div><div className="ss">DT/ads</div></div>
+        <div className="stat-card" style={{ borderLeft: "3px solid #FF6633" }}><div className="sl">LƯỢT CLICK</div><div className="sv">{totals.clicks.toLocaleString("vi-VN")}</div></div>
       </div>
 
       {/* ═══ COMBO CHART: Bar (DT) + Line (Ads) ═══ */}
@@ -223,7 +223,7 @@ export default function ShopeeAdsView({
                       return (
                         <div key={d.date} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", background: inc ? "rgba(254,202,202,0.15)" : "transparent" }}>
                           {d.revenue > 0 && <div style={{ fontSize: 7, fontWeight: 600, color: "#16A34A", marginBottom: 1, whiteSpace: "nowrap" }}>{formatVNDCompact(d.revenue)}</div>}
-                          <div style={{ width: "78%", height: Math.max(h, 2), background: inc ? "#FCA5A5" : "#4ADE80", borderRadius: "2px 2px 0 0", opacity: inc ? 0.6 : 1 }} />
+                          <div style={{ width: "78%", height: Math.max(h, 2), background: inc ? "#FCA5A5" : "#EE4D2D", borderRadius: "2px 2px 0 0", opacity: inc ? 0.6 : 1 }} />
                         </div>
                       );
                     })}
@@ -280,7 +280,7 @@ export default function ShopeeAdsView({
         <div className="card" style={{ marginBottom: 14 }}>
           <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Hiệu quả theo Shop</div>
           <div style={{ display: "flex", gap: 12, fontSize: 10, color: "#6B7280", marginBottom: 10 }}>
-            <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: "#3B82F6", marginRight: 3, verticalAlign: "middle" }} />Doanh thu</span>
+            <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: "#EE4D2D", marginRight: 3, verticalAlign: "middle" }} />Doanh thu</span>
             <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: "#F87171", marginRight: 3, verticalAlign: "middle" }} />Chi phí Ads</span>
           </div>
           {(() => {
@@ -297,7 +297,7 @@ export default function ShopeeAdsView({
                       <div key={s.name} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end" }}>
                         <div style={{ fontSize: 9, fontWeight: 700, marginBottom: 2 }}>{formatVNDCompact(s.revenue)}</div>
                         <div style={{ width: "75%", borderRadius: "3px 3px 0 0", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-                          <div style={{ height: Math.max(revH, 1), background: "#3B82F6" }} />
+                          <div style={{ height: Math.max(revH, 1), background: "#EE4D2D" }} />
                           {spendH > 0 && (
                             <div style={{ height: Math.max(spendH, 2), background: "#F87171", display: "flex", alignItems: "center", justifyContent: "center" }}>
                               {s.ratio >= 1 && <span style={{ fontSize: 7, fontWeight: 700, color: "#fff" }}>{s.ratio.toFixed(0)}%</span>}
