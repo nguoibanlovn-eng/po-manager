@@ -6,7 +6,7 @@ import { formatVND, formatVNDCompact, toNum } from "@/lib/format";
 import type { SalesSyncRow } from "@/lib/db/webapp";
 import TargetProgressBar from "../components/TargetProgressBar";
 
-const BRAND = "#6366F1"; // Indigo for Web/App
+const BRAND = "#6366F1";
 
 function daysAgo(d: number): string {
   const dt = new Date(); dt.setDate(dt.getDate() + d);
@@ -23,6 +23,9 @@ const QUICK_RANGES = [
   { key: "month", label: "Tháng này", ...monthRange(0) },
   { key: "prev", label: "Tháng trước", ...monthRange(-1) },
 ];
+
+// Fixed web/app sources (matching GAS)
+const WEB_SOURCES = ["WEB - Bán sỉ/bán buôn", "App Lỗ Vũ", "WEB - LynkID", "https://lovu.vn", "WEB - Muagimuadi", "https://velasboost.vn"];
 
 export default function WebAppView({
   rows, from, to, monthTarget = 0, monthActual = 0, monthKey = "",
@@ -44,25 +47,32 @@ export default function WebAppView({
     { orders: 0, revenue: 0 },
   ), [rows]);
 
-  // By source
+  // By source — only web sources
   const bySource = useMemo(() => {
     const m = new Map<string, { orders: number; revenue: number }>();
     for (const r of rows) {
       const src = r.source || r.channel || "Khác";
+      if (!WEB_SOURCES.includes(src)) continue;
       const cur = m.get(src) || { orders: 0, revenue: 0 };
       cur.orders += toNum(r.order_net);
       cur.revenue += toNum(r.revenue_net);
       m.set(src, cur);
     }
-    return Array.from(m.entries())
-      .map(([name, v]) => ({ name, ...v, pct: totals.revenue > 0 ? (v.revenue / totals.revenue) * 100 : 0 }))
-      .sort((a, b) => b.revenue - a.revenue);
-  }, [rows, totals.revenue]);
+    const webTotal = Array.from(m.values()).reduce((s, v) => s + v.revenue, 0);
+    return {
+      sources: Array.from(m.entries())
+        .map(([name, v]) => ({ name, ...v, pct: webTotal > 0 ? (v.revenue / webTotal) * 100 : 0 }))
+        .sort((a, b) => b.revenue - a.revenue),
+      total: webTotal,
+    };
+  }, [rows]);
 
   // By date for chart
   const dailyChart = useMemo(() => {
     const m = new Map<string, { revenue: number; orders: number }>();
     for (const r of rows) {
+      const src = r.source || "";
+      if (!WEB_SOURCES.includes(src)) continue;
       const d = String(r.period_from || "").substring(0, 10);
       if (!d) continue;
       const cur = m.get(d) || { revenue: 0, orders: 0 };
@@ -74,9 +84,6 @@ export default function WebAppView({
   }, [rows]);
 
   const maxRev = Math.max(...dailyChart.map((d) => d.revenue), 1);
-  const avgRevPerDay = dailyChart.length > 0 ? totals.revenue / dailyChart.length : 0;
-  const aov = totals.orders > 0 ? totals.revenue / totals.orders : 0;
-  const sources = bySource.length;
   const today = new Date().toISOString().substring(0, 10);
   const labelStep = Math.max(1, Math.ceil(dailyChart.length / 15));
 
@@ -115,139 +122,125 @@ export default function WebAppView({
       <div className="stat-grid" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
         <div className="stat-card" style={{ borderLeft: `4px solid ${BRAND}` }}>
           <div className="sl">DOANH THU WEB/APP B2B</div>
-          <div className="sv" style={{ color: "#16A34A" }}>{formatVND(totals.revenue)}</div>
-          <div className="ss">{sources} nguồn · nhanh.vn</div>
+          <div className="sv" style={{ color: "#16A34A" }}>{formatVND(bySource.total)}</div>
+          <div className="ss">{bySource.sources.length} nguồn · nhanh.vn</div>
         </div>
         <div className="stat-card" style={{ borderLeft: "4px solid #3B82F6" }}>
           <div className="sl">ĐƠN HÀNG</div>
-          <div className="sv">{totals.orders.toLocaleString("vi-VN")}</div>
-          <div className="ss">TB {formatVNDCompact(avgRevPerDay)}/ngày</div>
+          <div className="sv">{bySource.sources.reduce((s, src) => s + src.orders, 0).toLocaleString("vi-VN")}</div>
+          <div className="ss">Thành công</div>
+        </div>
+        <div className="stat-card" style={{ borderLeft: "4px solid #DC2626" }}>
+          <div className="sl">CHI PHÍ ADS FB</div>
+          <div className="sv" style={{ color: "#DC2626" }}>—</div>
+          <div className="ss">Chờ kết nối</div>
         </div>
         <div className="stat-card" style={{ borderLeft: "4px solid #D97706" }}>
-          <div className="sl">AOV (TB/ĐƠN)</div>
-          <div className="sv">{formatVNDCompact(aov)}</div>
-          <div className="ss">{dailyChart.length} ngày có data</div>
-        </div>
-        <div className="stat-card" style={{ borderLeft: "4px solid #7C3AED" }}>
-          <div className="sl">NGUỒN LỚN NHẤT</div>
-          <div className="sv" style={{ fontSize: 14 }}>{bySource[0]?.name || "—"}</div>
-          <div className="ss">{bySource[0] ? `${bySource[0].pct.toFixed(1)}% · ${formatVNDCompact(bySource[0].revenue)}` : ""}</div>
+          <div className="sl">ROAS TỔNG</div>
+          <div className="sv">—</div>
+          <div className="ss">DT / Chi phí Ads</div>
         </div>
       </div>
 
-      {/* ═══ 2-COLUMN: Source breakdown + Chart ═══ */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
-
-        {/* Source breakdown */}
-        <div className="card" style={{ padding: "14px 16px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-            <div style={{ fontWeight: 700, fontSize: 13 }}>Bóc tách doanh thu theo nguồn</div>
-            <span style={{ fontSize: 10, color: "#6B7280" }}>{formatVND(totals.revenue)} tổng</span>
-          </div>
-          {bySource.map((s) => (
-            <div key={s.name} style={{ marginBottom: 8 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
-                <span style={{ fontSize: 11, fontWeight: 600 }}>{s.name}</span>
-                <div style={{ display: "flex", gap: 12, fontSize: 10 }}>
-                  <span style={{ color: "#6B7280" }}>{s.orders} đơn</span>
-                  <span style={{ fontWeight: 700, color: "#16A34A" }}>{formatVNDCompact(s.revenue)}</span>
-                  <span style={{ fontWeight: 600, color: BRAND, width: 36, textAlign: "right" }}>{s.pct.toFixed(1)}%</span>
-                </div>
-              </div>
-              <div style={{ height: 6, background: "#F3F4F6", borderRadius: 3, overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${Math.min(s.pct, 100)}%`, background: BRAND, borderRadius: 3, opacity: 0.7 }} />
-              </div>
-            </div>
-          ))}
-          {bySource.length === 0 && <div className="muted" style={{ padding: 20, textAlign: "center" }}>Không có data.</div>}
+      {/* ═══ SOURCE BREAKDOWN ═══ */}
+      <div className="card" style={{ marginBottom: 12, padding: "14px 16px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+          <div style={{ fontWeight: 700, fontSize: 13 }}>Bóc tách doanh thu theo nguồn</div>
+          <span style={{ fontSize: 11, color: "#6B7280" }}>{formatVND(bySource.total)} tổng</span>
         </div>
-
-        {/* Daily chart */}
-        <div className="card" style={{ padding: "14px 16px" }}>
-          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 10 }}>Doanh thu theo ngày</div>
-          {dailyChart.length > 0 ? (
-            <div>
-              <div style={{ position: "relative", height: 170 }}>
-                <div style={{ display: "flex", alignItems: "flex-end", height: 170, gap: 3, padding: "0 2px" }}>
-                  {dailyChart.map((d) => {
-                    const h = (d.revenue / maxRev) * 150;
-                    const isFuture = d.date > today;
-                    return (
-                      <div key={d.date} style={{
-                        flex: 1, minWidth: 0,
-                        height: Math.max(h, d.revenue > 0 ? 4 : 0),
-                        background: isFuture ? "rgba(99,102,241,0.15)" : BRAND,
-                        borderRadius: "3px 3px 0 0",
-                        opacity: isFuture ? 0.5 : 0.8,
-                      }} />
-                    );
-                  })}
-                </div>
-              </div>
-              <div style={{ display: "flex", gap: 3, padding: "0 2px", borderTop: "1px solid #E5E7EB" }}>
-                {dailyChart.map((d, i) => (
-                  <div key={d.date} style={{ flex: 1, textAlign: "center", fontSize: 9, padding: "4px 0", color: "#6B7280", minWidth: 0 }}>
-                    {i % labelStep === 0 ? d.date.substring(8) : ""}
-                  </div>
-                ))}
-              </div>
-              <div style={{ display: "flex", gap: 1, marginTop: 8, borderRadius: 8, overflow: "hidden", fontSize: 10 }}>
-                <div style={{ flex: 1, padding: "8px 10px", background: "#EEF2FF" }}>
-                  <div style={{ color: "#6B7280", fontSize: 8 }}>Tổng DT</div>
-                  <div style={{ fontWeight: 800, color: BRAND }}>{formatVNDCompact(totals.revenue)}</div>
-                </div>
-                <div style={{ flex: 1, padding: "8px 10px", background: "#F9FAFB" }}>
-                  <div style={{ color: "#6B7280", fontSize: 8 }}>TB/ngày</div>
-                  <div style={{ fontWeight: 800 }}>{formatVNDCompact(avgRevPerDay)}</div>
-                </div>
-                <div style={{ flex: 1, padding: "8px 10px", background: "#F9FAFB" }}>
-                  <div style={{ color: "#6B7280", fontSize: 8 }}>Đơn</div>
-                  <div style={{ fontWeight: 800 }}>{totals.orders.toLocaleString("vi-VN")}</div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="muted" style={{ padding: 40, textAlign: "center" }}>Không có data.</div>
-          )}
-        </div>
-      </div>
-
-      {/* ═══ DETAIL TABLE ═══ */}
-      <div className="card" style={{ padding: 0 }}>
-        <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontWeight: 700, fontSize: 12 }}>Chi tiết theo nguồn &amp; ngày</span>
-          <span className="muted" style={{ fontSize: 10 }}>{rows.length} bản ghi</span>
-        </div>
-        <div className="tbl-wrap" style={{ maxHeight: 400, overflowY: "auto" }}>
+        <div className="tbl-wrap">
           <table>
             <thead><tr>
-              <th>Nguồn</th>
-              <th>Channel</th>
-              <th>Ngày</th>
-              <th className="text-right">Đơn</th>
-              <th className="text-right">Doanh thu</th>
-              <th className="text-right">AOV</th>
+              <th>NGUỒN</th>
+              <th className="text-right">ĐƠN</th>
+              <th className="text-right">DOANH THU</th>
+              <th className="text-right">%</th>
             </tr></thead>
             <tbody>
-              {rows.slice(0, 300).map((r) => {
-                const rev = toNum(r.revenue_net);
-                const ord = toNum(r.order_net);
-                return (
-                  <tr key={r.id}>
-                    <td style={{ fontWeight: 600, fontSize: 12 }}>{r.source || "—"}</td>
-                    <td className="muted" style={{ fontSize: 11 }}>{r.channel}</td>
-                    <td className="muted" style={{ fontSize: 11 }}>{String(r.period_from || "").substring(0, 10)}</td>
-                    <td className="text-right">{ord}</td>
-                    <td className="text-right font-bold" style={{ color: rev >= 0 ? "#16A34A" : "#DC2626" }}>{formatVND(rev)}</td>
-                    <td className="text-right muted">{ord > 0 ? formatVNDCompact(rev / ord) : "—"}</td>
-                  </tr>
-                );
-              })}
-              {rows.length === 0 && (
-                <tr><td colSpan={6} className="muted" style={{ textAlign: "center", padding: 24 }}>Không có data cho khoảng này.</td></tr>
+              {bySource.sources.map((s) => (
+                <tr key={s.name}>
+                  <td style={{ fontWeight: 600 }}>{s.name}</td>
+                  <td className="text-right">{s.orders.toLocaleString("vi-VN")}</td>
+                  <td className="text-right" style={{ color: "#16A34A", fontWeight: 700 }}>{formatVND(s.revenue)}</td>
+                  <td className="text-right" style={{ fontWeight: 600 }}>{s.pct.toFixed(1)}%</td>
+                </tr>
+              ))}
+              {bySource.sources.length === 0 && (
+                <tr><td colSpan={4} className="muted" style={{ textAlign: "center", padding: 20 }}>Không có data.</td></tr>
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* ═══ DAILY CHART — full width ═══ */}
+      {dailyChart.length > 0 && (
+        <div className="card" style={{ marginBottom: 12, padding: "14px 16px" }}>
+          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12 }}>Doanh thu theo ngày</div>
+          <div style={{ height: 180 }}>
+            <div style={{ display: "flex", alignItems: "flex-end", height: 180, gap: 3, padding: "0 2px" }}>
+              {dailyChart.map((d) => {
+                const h = (d.revenue / maxRev) * 160;
+                const isFuture = d.date > today;
+                return (
+                  <div key={d.date} style={{
+                    flex: 1, minWidth: 0,
+                    height: Math.max(h, d.revenue > 0 ? 4 : 0),
+                    background: isFuture ? "rgba(99,102,241,0.15)" : BRAND,
+                    borderRadius: "3px 3px 0 0",
+                    opacity: isFuture ? 0.5 : 0.8,
+                  }} />
+                );
+              })}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 3, padding: "0 2px", borderTop: "1px solid #E5E7EB" }}>
+            {dailyChart.map((d, i) => (
+              <div key={d.date} style={{ flex: 1, textAlign: "center", fontSize: 10, padding: "5px 0", color: "#6B7280", minWidth: 0 }}>
+                {i % labelStep === 0 ? d.date.substring(8) : ""}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ KẾT QUẢ TÀI CHÍNH — simple list like GAS ═══ */}
+      <div className="card" style={{ padding: 0 }}>
+        <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontWeight: 700, fontSize: 13 }}>
+          Kết quả tài chính
+        </div>
+        <div style={{ padding: "0 16px" }}>
+          {/* Doanh thu Web/App B2B */}
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #F3F4F6", fontWeight: 700 }}>
+            <span>Doanh thu Web/App B2B</span>
+            <span style={{ color: "#16A34A" }}>{formatVND(bySource.total)}</span>
+          </div>
+          {bySource.sources.map((s) => (
+            <div key={s.name} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0 8px 20px", borderBottom: "1px solid #F9FAFB", fontSize: 12 }}>
+              <span style={{ color: "#374151" }}>{s.name}</span>
+              <span>{formatVND(s.revenue)}</span>
+            </div>
+          ))}
+
+          {/* Chi phí Ads Facebook — placeholder */}
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #F3F4F6", fontWeight: 700, marginTop: 4 }}>
+            <span>Chi phí Ads Facebook</span>
+            <span style={{ color: "#DC2626" }}>—</span>
+          </div>
+          <div style={{ padding: "8px 0 8px 20px", fontSize: 12, color: "#9CA3AF", borderBottom: "1px solid #F9FAFB" }}>
+            Chờ kết nối FB Ads cho Web/App pages
+          </div>
+
+          {/* ROAS */}
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #F3F4F6", fontWeight: 700 }}>
+            <span>ROAS tổng</span>
+            <span>—</span>
+          </div>
+
+          {/* Note */}
+          <div style={{ padding: "10px 0", fontSize: 11, color: "#9CA3AF" }}>
+            Chưa tính: Giá vốn · Ship · Vận hành
+          </div>
         </div>
       </div>
     </section>
