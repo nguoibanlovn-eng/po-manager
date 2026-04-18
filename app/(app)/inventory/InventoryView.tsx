@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatVND, formatVNDCompact, toNum } from "@/lib/format";
 import type { InventoryRow } from "@/lib/db/inventory";
 import SyncButton from "../components/SyncButton";
@@ -175,40 +175,38 @@ export default function InventoryView({
   const salesTotalPages = Math.ceil(filteredSales.length / SALES_PG);
   const salesPaginated = filteredSales.slice((salesPage - 1) * SALES_PG, salesPage * SALES_PG);
 
-  // ─── Bảng 3: Analysis ───
-  const analysis = useMemo(() => {
-    const salesMap = new Map<string, number>();
-    for (const s of salesItems) salesMap.set(s.sku, s.qty);
-    return rows.map((r) => {
-      const stock = toNum(r.available_qty);
-      const sold = salesMap.get(r.sku) || 0;
-      const rate = stock > 0 ? (sold / stock) * 100 : sold > 0 ? 999 : 0;
-      const stockValue = stock * toNum(r.cost_price);
-      let category: string;
-      if (!salesLoaded && sold === 0 && stock > 0) category = "no_data";
-      else if (stock <= 0 && sold === 0) category = "no_data";
-      else if (sold === 0) category = "no_sale";
-      else if (rate < 10) category = "slow";
-      else if (rate <= 30) category = "normal";
-      else category = "good";
-      return { ...r, sold, stock, rate, category, stockValue };
-    });
-  }, [rows, salesItems, salesLoaded]);
+  // ─── Bảng 3: Analysis (load toàn bộ products từ API) ───
+  type AnalysisItem = { sku: string; product_name: string; stock: number; sold: number; rate: number; category: string; stockValue: number; cost_price: number };
+  const [analysisItems, setAnalysisItems] = useState<AnalysisItem[]>([]);
+  const [analysisCounts, setAnalysisCounts] = useState<Record<string, number>>({ no_sale: 0, slow: 0, normal: 0, good: 0, no_data: 0 });
+  const [analysisTotal, setAnalysisTotal] = useState(0);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
 
-  const analysisCounts = useMemo(() => {
-    const c: Record<string, number> = { no_sale: 0, slow: 0, normal: 0, good: 0, no_data: 0 };
-    for (const a of analysis) c[a.category]++;
-    return c;
-  }, [analysis]);
+  const loadAnalysis = useCallback(async () => {
+    setAnalysisLoading(true);
+    try {
+      const params = new URLSearchParams({ from: salesFrom, to: salesTo });
+      const res = await fetch(`/api/inventory/stock-analysis?${params}`);
+      const json = await res.json();
+      if (json.ok) {
+        setAnalysisItems(json.items || []);
+        setAnalysisCounts(json.counts || {});
+        setAnalysisTotal(json.total || 0);
+      }
+    } catch { /* */ } finally { setAnalysisLoading(false); }
+  }, [salesFrom, salesTo]);
+
+  // Auto-load analysis khi sales data loaded
+  useEffect(() => { if (salesLoaded) loadAnalysis(); }, [salesLoaded, loadAnalysis]);
 
   const filteredAnalysis = useMemo(() => {
-    let list = analysisFilter === "all" ? analysis : analysis.filter((a) => a.category === analysisFilter);
+    let list = analysisFilter === "all" ? analysisItems : analysisItems.filter((a) => a.category === analysisFilter);
     if (analysisSort === "value_desc") list = [...list].sort((a, b) => b.stockValue - a.stockValue);
     else if (analysisSort === "rate_desc") list = [...list].sort((a, b) => b.rate - a.rate);
     else if (analysisSort === "sold_desc") list = [...list].sort((a, b) => b.sold - a.sold);
     else if (analysisSort === "stock_desc") list = [...list].sort((a, b) => b.stock - a.stock);
     return list;
-  }, [analysis, analysisFilter, analysisSort]);
+  }, [analysisItems, analysisFilter, analysisSort]);
 
   const analysisGroupTotals = useMemo(() => {
     const t = { count: 0, stock: 0, sold: 0, value: 0 };
