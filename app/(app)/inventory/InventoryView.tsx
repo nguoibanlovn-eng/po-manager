@@ -30,8 +30,8 @@ function SyncSalesButton({ onDone, from, to }: { onDone: () => void; from: strin
   const [syncing, setSyncing] = useState(false);
   const [progress, setProgress] = useState("");
 
-  async function run() {
-    setSyncing(true); setProgress("Bắt đầu...");
+  async function doSync(clearFirst: boolean) {
+    setSyncing(true); setProgress(clearFirst ? "Xoá data cũ..." : "Bắt đầu...");
     try {
       // Split into chunks of max 30 days
       const chunks: Array<{ from: string; to: string }> = [];
@@ -46,14 +46,15 @@ function SyncSalesButton({ onDone, from, to }: { onDone: () => void; from: strin
         cursor.setUTCDate(cursor.getUTCDate() + 1);
       }
 
-      // Chunk đầu tiên gửi clear=true để xoá data cũ (sai filter)
       let totalRows = 0, totalOrders = 0;
       for (let i = 0; i < chunks.length; i++) {
         const c = chunks[i];
         setProgress(`Chunk ${i + 1}/${chunks.length}: ${c.from} → ${c.to}...`);
+        const payload: Record<string, unknown> = { ...c };
+        if (clearFirst && i === 0) payload.clear = true;
         const res = await fetch("/api/nhanh/sync-product-sales", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...c, ...(i === 0 ? { clear: true } : {}) }),
+          body: JSON.stringify(payload),
         });
         if (!res.ok && res.status >= 500) {
           setProgress(`Lỗi server (${res.status}) — thử lại sau`);
@@ -61,16 +62,17 @@ function SyncSalesButton({ onDone, from, to }: { onDone: () => void; from: strin
         }
         const text = await res.text();
         let json;
-        try { json = JSON.parse(text); } catch { setProgress(`Lỗi: response không hợp lệ`); break; }
+        try { json = JSON.parse(text); } catch { setProgress(`Lỗi: response không hợp lệ — ${text.substring(0, 100)}`); break; }
         if (!json.ok) { setProgress(`Lỗi: ${json.error}`); break; }
         totalRows += json.totalRows || 0;
         totalOrders += json.totalOrders || 0;
         const errCount = json.errors?.length || 0;
-        setProgress(`Chunk ${i + 1}/${chunks.length} ✓ ${totalOrders} đơn → ${totalRows} dòng${errCount ? ` (${errCount} lỗi)` : ""}`);
+        const errMsg = errCount ? ` — ${json.errors[0]}` : "";
+        setProgress(`Chunk ${i + 1}/${chunks.length} ✓ ${totalOrders} đơn → ${totalRows} dòng${errMsg}`);
       }
       setProgress(`✓ Xong: ${totalOrders} đơn → ${totalRows} dòng`);
       onDone();
-      setTimeout(() => setProgress(""), 5000);
+      setTimeout(() => setProgress(""), 8000);
     } catch (e) {
       setProgress(`Lỗi: ${(e as Error).message}`);
     } finally {
@@ -79,12 +81,16 @@ function SyncSalesButton({ onDone, from, to }: { onDone: () => void; from: strin
   }
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <button onClick={run} disabled={syncing}
+    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+      <button onClick={() => doSync(false)} disabled={syncing}
         style={{ padding: "4px 12px", borderRadius: 6, fontSize: 11, fontWeight: 600, border: "none", cursor: syncing ? "wait" : "pointer", background: "#EAF3DE", color: "#3B6D11" }}>
         {syncing ? "Đang sync..." : "⟳ Đồng bộ Nhanh"}
       </button>
-      {progress && <span style={{ fontSize: 10, color: progress.startsWith("✓") ? "#16A34A" : progress.startsWith("Lỗi") ? "#DC2626" : "#6B7280" }}>{progress}</span>}
+      <button onClick={() => { if (confirm("Xoá toàn bộ data bán cũ rồi sync lại?")) doSync(true); }} disabled={syncing}
+        style={{ padding: "4px 10px", borderRadius: 6, fontSize: 10, fontWeight: 600, border: "1px solid #FECACA", cursor: syncing ? "wait" : "pointer", background: "#FEF2F2", color: "#DC2626" }}>
+        Xoá & Sync lại
+      </button>
+      {progress && <span style={{ fontSize: 10, color: progress.startsWith("✓") ? "#16A34A" : progress.startsWith("Lỗi") ? "#DC2626" : "#6B7280", maxWidth: 400 }}>{progress}</span>}
     </div>
   );
 }
