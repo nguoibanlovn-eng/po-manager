@@ -79,8 +79,8 @@ export async function syncShopOrders(
       break;
     }
   }
-  const { data: shop } = await db.from("tktshop_shops").select("name").eq("shop_id", shopId).maybeSingle();
-  return { shop: shop?.name || shopId, fetched, errors };
+  const { data: shop } = await db.from("tiktok_shop_tokens").select("shop_name").eq("shop_cipher", shopId).maybeSingle();
+  return { shop: shop?.shop_name || shopId, fetched, errors };
 }
 
 export async function syncAllShopsOrders(opts: { from?: string; to?: string } = {}): Promise<{
@@ -182,8 +182,8 @@ export async function syncShopReturns(
       break;
     }
   }
-  const { data: shop } = await db.from("tktshop_shops").select("name").eq("shop_id", shopId).maybeSingle();
-  return { shop: shop?.name || shopId, fetched, errors };
+  const { data: shop } = await db.from("tiktok_shop_tokens").select("shop_name").eq("shop_cipher", shopId).maybeSingle();
+  return { shop: shop?.shop_name || shopId, fetched, errors };
 }
 
 export async function syncAllShopsReturns(opts: { from?: string; to?: string } = {}): Promise<{

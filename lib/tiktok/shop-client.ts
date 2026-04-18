@@ -18,39 +18,45 @@ export type ShopCred = {
   expires_at: number;
 };
 
+/** List all connected shops from tiktok_shop_tokens table */
 export async function listShops(): Promise<ShopCred[]> {
   const { data } = await supabaseAdmin()
-    .from("tktshop_shops")
-    .select("*")
-    .order("name", { ascending: true });
-  return (data as ShopCred[]) || [];
+    .from("tiktok_shop_tokens")
+    .select("shop_cipher, shop_name, access_token, refresh_token, expire_at")
+    .order("shop_name", { ascending: true });
+  return (data || []).map((r) => ({
+    shop_id: r.shop_cipher,
+    name: r.shop_name,
+    access_token: r.access_token,
+    refresh_token: r.refresh_token,
+    expires_at: r.expire_at,
+  }));
 }
 
 async function saveShopTokens(
-  shopId: string,
+  shopCipher: string,
   accessToken: string,
   refreshToken: string,
   expiresAt: number,
 ) {
   await supabaseAdmin()
-    .from("tktshop_shops")
+    .from("tiktok_shop_tokens")
     .update({
       access_token: accessToken,
       refresh_token: refreshToken,
-      expires_at: expiresAt,
-      updated_at: nowVN(),
+      expire_at: expiresAt,
     })
-    .eq("shop_id", shopId);
+    .eq("shop_cipher", shopCipher);
 }
 
 // Refresh access_token using refresh_token. Returns new access_token.
-async function refreshToken(shopId: string): Promise<string> {
+async function refreshToken(shopCipher: string): Promise<string> {
   const { data: shop } = await supabaseAdmin()
-    .from("tktshop_shops")
+    .from("tiktok_shop_tokens")
     .select("*")
-    .eq("shop_id", shopId)
+    .eq("shop_cipher", shopCipher)
     .maybeSingle();
-  if (!shop) throw new Error("Shop không tồn tại: " + shopId);
+  if (!shop) throw new Error("Shop không tồn tại: " + shopCipher);
 
   if (!TKTSHOP.APP_SECRET) throw new Error("Thiếu TIKTOK_SHOP_APP_SECRET");
 
@@ -66,11 +72,11 @@ async function refreshToken(shopId: string): Promise<string> {
     message?: string;
     data?: { access_token?: string; refresh_token?: string; access_token_expire_in?: number };
   };
-  if (json.code !== 0) throw new Error(`Refresh failed for ${shop.name || shopId}: ${json.message}`);
+  if (json.code !== 0) throw new Error(`Refresh failed for ${shop.shop_name || shopCipher}: ${json.message}`);
   const data = json.data || {};
   if (!data.access_token || !data.refresh_token) throw new Error("Refresh response missing tokens");
   await saveShopTokens(
-    shopId,
+    shopCipher,
     data.access_token,
     data.refresh_token,
     Number(data.access_token_expire_in || 0),
@@ -81,23 +87,22 @@ async function refreshToken(shopId: string): Promise<string> {
 // Get valid access_token for a shop (auto-refreshes if expiring < 2 days).
 export async function getShopToken(shopId: string): Promise<{ token: string; shopName: string }> {
   const { data: shop } = await supabaseAdmin()
-    .from("tktshop_shops")
+    .from("tiktok_shop_tokens")
     .select("*")
-    .eq("shop_id", shopId)
+    .eq("shop_cipher", shopId)
     .maybeSingle();
   if (!shop) throw new Error("Shop không tồn tại: " + shopId);
 
   const nowSec = Math.floor(Date.now() / 1000);
-  const remaining = (shop.expires_at || 0) - nowSec;
+  const remaining = (shop.expire_at || 0) - nowSec;
   if (remaining < 172800 /* 2 days */) {
     const newToken = await refreshToken(shopId);
-    return { token: newToken, shopName: shop.name || shopId };
+    return { token: newToken, shopName: shop.shop_name || shopId };
   }
-  return { token: shop.access_token, shopName: shop.name || shopId };
+  return { token: shop.access_token, shopName: shop.shop_name || shopId };
 }
 
 // HMAC-SHA256 signing for TikTok Shop API (v202309).
-// Signature format: HMAC_SHA256(app_secret, app_secret + path + sorted_query + body + app_secret)
 export function signRequest(
   path: string,
   queryParams: Record<string, string | number>,
@@ -125,7 +130,7 @@ export async function tktshopRequest<T = unknown>(
     app_key: TKTSHOP.APP_KEY,
     timestamp: ts,
     version: "202309",
-    shop_id: shopId,
+    shop_cipher: shopId,
     ...queryParams,
   };
   const sign = signRequest(path, baseParams, bodyStr);
