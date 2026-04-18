@@ -463,8 +463,16 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
   const [giftSearch, setGiftSearch] = useState("");
   const [giftResults, setGiftResults] = useState<InvItem[]>([]);
   const [giftSearching, setGiftSearching] = useState(false);
+  // Combo items: nhiều SP gộp thành 1 combo
+  const [comboItems, setComboItems] = useState<Array<{ name: string; sku: string; cost: number; qty: number }>>([]);
+  const [comboQty, setComboQty] = useState(1); // SL SP chính trong combo
+  const [showComboSearch, setShowComboSearch] = useState(false);
+  const [comboSearch, setComboSearch] = useState("");
+  const [comboResults, setComboResults] = useState<InvItem[]>([]);
+  const [comboSearching, setComboSearching] = useState(false);
   const giftCostTotal = gift ? gift.cost * giftQty : 0;
-  const A = cost + giftCostTotal;
+  const comboCostTotal = comboItems.reduce((s, c) => s + c.cost * c.qty, 0);
+  const A = promoType === "combo" ? cost * comboQty + comboCostTotal : cost + giftCostTotal;
   const gross = sellB1 > 0 ? sellB1 - A : 0;
   const grossPct = sellB1 > 0 ? (gross / sellB1 * 100).toFixed(1) : "0";
   // Step 5 — Listing
@@ -668,7 +676,7 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
           <div style={{ background: "var(--bg)", border: "0.5px solid #E5E7EB", borderRadius: 8, padding: "10px 12px", marginBottom: 10 }}>
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280", marginBottom: 6 }}>CHƯƠNG TRÌNH BÁN <span style={{ fontWeight: 400, fontSize: 9, color: "#9CA3AF" }}>— giá vốn quà cộng vào A</span></div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
-              <select value={promoType} onChange={(e) => { setPromoType(e.target.value); if (e.target.value !== "gift") { setGift(null); setShowGiftSearch(false); } }} style={{ width: 140, fontSize: 11 }}>
+              <select value={promoType} onChange={(e) => { setPromoType(e.target.value); if (e.target.value !== "gift") { setGift(null); setShowGiftSearch(false); } if (e.target.value !== "combo") { setComboItems([]); setShowComboSearch(false); setComboQty(1); } }} style={{ width: 140, fontSize: 11 }}>
                 <option value="none">Không có</option><option value="gift">Tặng kèm quà</option><option value="combo">Combo set</option><option value="flash">Flash sale</option><option value="discount">Giảm trực tiếp</option>
               </select>
               {promoType === "gift" && (<>
@@ -680,6 +688,13 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
                 )}
                 <button type="button" className="btn btn-ghost btn-xs" style={{ fontSize: 10 }} onClick={() => setShowGiftSearch(!showGiftSearch)}>
                   {gift ? "Đổi" : "Chọn"}
+                </button>
+              </>)}
+              {promoType === "combo" && (<>
+                <span style={{ fontSize: 11, color: "#6B7280" }}>SL SP chính:</span>
+                <input type="number" value={comboQty} min={1} onChange={(e) => setComboQty(Math.max(1, Number(e.target.value)))} style={{ width: 50, textAlign: "center", fontSize: 11 }} />
+                <button type="button" className="btn btn-ghost btn-xs" style={{ fontSize: 10, color: "#185FA5" }} onClick={() => setShowComboSearch(!showComboSearch)}>
+                  + Thêm SP combo
                 </button>
               </>)}
             </div>
@@ -707,13 +722,54 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
                 ))}
               </div>
             )}
+            {/* Combo search */}
+            {promoType === "combo" && showComboSearch && (
+              <div style={{ marginBottom: 8, padding: "8px 10px", background: "#fff", border: "1.5px solid #185FA5", borderRadius: 8 }}>
+                <input placeholder="Tìm SP thêm vào combo..." value={comboSearch}
+                  onChange={(e) => {
+                    setComboSearch(e.target.value);
+                    const q = e.target.value;
+                    if (q.trim().length > 1) {
+                      setComboSearching(true);
+                      fetch(`/api/inventory/search?q=${encodeURIComponent(q)}&limit=10`).then((r) => r.json()).then((j) => setComboResults(j.items || [])).finally(() => setComboSearching(false));
+                    } else { setComboResults([]); }
+                  }}
+                  style={{ width: "100%", fontSize: 11, border: "1px solid #E5E7EB", borderRadius: 4, padding: "4px 8px", marginBottom: 4 }} />
+                {comboSearching && <div style={{ fontSize: 10, color: "#6B7280" }}>Đang tìm...</div>}
+                {comboResults.map((item) => (
+                  <div key={item.sku} style={{ padding: "4px 0", borderBottom: "1px solid #F3F4F6", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11 }}>
+                    <span><strong>{item.product_name}</strong> <span style={{ color: "#6B7280" }}>Vốn: {item.cost_price ? formatVND(item.cost_price) : "—"}</span></span>
+                    <button type="button" className="btn btn-ghost btn-xs" style={{ color: "#185FA5" }} onClick={() => {
+                      setComboItems((prev) => [...prev, { name: item.product_name, sku: item.sku, cost: item.cost_price || 0, qty: 1 }]);
+                      setShowComboSearch(false); setComboSearch(""); setComboResults([]);
+                    }}>Thêm</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* Combo items list */}
+            {promoType === "combo" && comboItems.length > 0 && (
+              <div style={{ marginBottom: 6, padding: "6px 10px", background: "#F0FDF4", borderRadius: 6, fontSize: 11 }}>
+                {comboItems.map((ci, idx) => (
+                  <div key={ci.sku + idx} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 0", borderBottom: idx < comboItems.length - 1 ? "1px solid #E5E7EB" : "none" }}>
+                    <span style={{ flex: 1, fontWeight: 600 }}>{ci.name}</span>
+                    <span style={{ color: "#6B7280", fontSize: 10 }}>Vốn: {formatVND(ci.cost)}</span>
+                    <span style={{ color: "#6B7280" }}>×</span>
+                    <input type="number" value={ci.qty} min={1} onChange={(e) => setComboItems((prev) => prev.map((p, i) => i === idx ? { ...p, qty: Math.max(1, Number(e.target.value)) } : p))} style={{ width: 42, textAlign: "center", fontSize: 11 }} />
+                    <span style={{ fontWeight: 700, color: "#185FA5", minWidth: 70, textAlign: "right" }}>{formatVND(ci.cost * ci.qty)}</span>
+                    <button type="button" onClick={() => setComboItems((prev) => prev.filter((_, i) => i !== idx))} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 13, padding: 0 }}>×</button>
+                  </div>
+                ))}
+              </div>
+            )}
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, flexWrap: "wrap" }}>
               {promoType === "gift" && gift && (<>
                 <span style={{ color: "#6B7280" }}>Số lượng:</span>
                 <input type="number" value={giftQty} min={1} onChange={(e) => setGiftQty(Math.max(1, Number(e.target.value)))} style={{ width: 54, textAlign: "center", fontSize: 11 }} />
               </>)}
-              <span style={{ color: "#6B7280" }}>Vốn gốc</span><strong>{formatVND(cost)}</strong>
+              <span style={{ color: "#6B7280" }}>Vốn gốc</span><strong>{formatVND(cost)}{promoType === "combo" && comboQty > 1 ? ` × ${comboQty}` : ""}</strong>
               {gift && promoType === "gift" && <span style={{ color: "#6B7280" }}>+ Quà {formatVND(gift.cost)} × {giftQty} = {formatVND(giftCostTotal)}</span>}
+              {promoType === "combo" && comboItems.length > 0 && <span style={{ color: "#6B7280" }}>+ Combo {formatVND(comboCostTotal)}</span>}
               <span style={{ color: "#6B7280" }}>→</span>
               <strong style={{ color: "#185FA5", fontSize: 13 }}>A = {formatVND(A)}</strong>
             </div>
