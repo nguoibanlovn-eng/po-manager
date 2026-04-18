@@ -139,18 +139,28 @@ export async function getDashboardStats(monthKey?: string): Promise<DashStats> {
 /** Revenue by channel from sales_sync (nhanh.vn) for a date range */
 export async function getRevenueByChannel(from: string, to: string) {
   const db = supabaseAdmin();
-  const { data } = await db
-    .from("sales_sync")
-    .select("period_from, channel, revenue_net, order_net")
-    .gte("period_from", from)
-    .lte("period_from", to)
-    .order("period_from", { ascending: true })
-    .limit(5000);
+  // Paginate — Supabase caps at 1000 rows per request
+  const allData: Array<{ period_from: string; channel: string; revenue_net: number; order_net: number }> = [];
+  let off = 0;
+  const PG = 1000;
+  while (true) {
+    const { data: page } = await db
+      .from("sales_sync")
+      .select("period_from, channel, revenue_net, order_net")
+      .gte("period_from", from)
+      .lte("period_from", to)
+      .order("period_from", { ascending: true })
+      .range(off, off + PG - 1);
+    if (!page || page.length === 0) break;
+    allData.push(...page);
+    if (page.length < PG) break;
+    off += PG;
+  }
 
   const byChannel = new Map<string, { revenue: number; orders: number }>();
   const byDate = new Map<string, number>();
 
-  for (const r of data || []) {
+  for (const r of allData) {
     const ch = String(r.channel || "Khác");
     const cur = byChannel.get(ch) || { revenue: 0, orders: 0 };
     cur.revenue += Number(r.revenue_net || 0);
@@ -179,12 +189,21 @@ export async function getYearlySummary(year: number) {
   const from = `${year}-01-01`;
   const to = `${year}-12-31`;
 
-  // Revenue by month from sales_sync
-  const { data: salesData } = await db
-    .from("sales_sync")
-    .select("period_from, channel, revenue_net, order_net")
-    .gte("period_from", from).lte("period_from", to)
-    .limit(10000);
+  // Revenue by month from sales_sync (paginated — Supabase caps at 1000 rows)
+  const salesData: Array<{ period_from: string; channel: string; revenue_net: number; order_net: number }> = [];
+  let offset = 0;
+  const PAGE = 1000;
+  while (true) {
+    const { data: page } = await db
+      .from("sales_sync")
+      .select("period_from, channel, revenue_net, order_net")
+      .gte("period_from", from).lte("period_from", to)
+      .range(offset, offset + PAGE - 1);
+    if (!page || page.length === 0) break;
+    salesData.push(...page);
+    if (page.length < PAGE) break;
+    offset += PAGE;
+  }
 
   const revByMonth = new Map<string, { total: number; byChannel: Map<string, number> }>();
   for (const r of salesData || []) {
