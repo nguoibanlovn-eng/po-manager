@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getDashboardStats, getRecentOrders, getRevenueByChannel } from "@/lib/db/dashboard";
+import { getDashboardStats, getRecentOrders, getRevenueByChannel, getYearlySummary } from "@/lib/db/dashboard";
 import { getChannelTarget } from "@/lib/db/tiktok";
 import { getCurrentUser } from "@/lib/auth/user";
 import { dateVN } from "@/lib/helpers";
@@ -20,10 +20,11 @@ const CHANNEL_COLORS: Record<string, string> = {
 export default async function DashPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string }>;
+  searchParams: Promise<{ month?: string; view?: string }>;
 }) {
-  const { month: monthParam } = await searchParams;
-  const month = monthParam || dateVN().substring(0, 7);
+  const sp = await searchParams;
+  const view = sp.view || "month";
+  const month = sp.month || dateVN().substring(0, 7);
   const [y, m] = month.split("-").map(Number);
   const lastDay = new Date(y, m, 0).getDate();
   const from = `${month}-01`;
@@ -36,7 +37,9 @@ export default async function DashPage({
   const now = new Date();
   const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
 
-  const [user, stats, recent, revMonth, rev7d, fbTarget, tkTarget, spTarget] = await Promise.all([
+  const currentYear = Number(month.split("-")[0]);
+
+  const [user, stats, recent, revMonth, rev7d, fbTarget, tkTarget, spTarget, yearly] = await Promise.all([
     getCurrentUser(),
     getDashboardStats(month),
     getRecentOrders(10),
@@ -45,6 +48,7 @@ export default async function DashPage({
     getChannelTarget("facebook", monthKey),
     getChannelTarget("tiktok", monthKey),
     getChannelTarget("shopee", monthKey),
+    getYearlySummary(currentYear),
   ]);
 
   const totalAdSpend = stats.revenue.adSpend + stats.revenue.shopeeAdSpend + stats.revenue.tiktokAdSpend;
@@ -56,9 +60,175 @@ export default async function DashPage({
   const avg7d = rev7d.daily.length > 0 ? rev7d.total / rev7d.daily.length : 0;
   const best7d = rev7d.daily.reduce((best, d) => d.revenue > best.revenue ? d : best, { date: "", revenue: 0 });
 
-  // Year target
-  const yearTarget = 118_300_000_000;
-  const yearActual = revMonth.total; // simplified — ideally sum all months
+  // Year summary
+  const yearPct = yearly.yearTarget > 0 ? Math.round((yearly.cumRevenue / yearly.yearTarget) * 100) : 0;
+  const yearRemaining = Math.max(0, yearly.yearTarget - yearly.cumRevenue);
+  const yearAdsPct = yearly.cumRevenue > 0 ? (yearly.cumAds / yearly.cumRevenue) * 100 : 0;
+
+  // ═══════════════════════════════════════════════════════
+  // YEARLY VIEW
+  // ═══════════════════════════════════════════════════════
+  if (view === "year") {
+    const maxMonthRev = Math.max(...yearly.months.map((m) => m.revenue), 1);
+    const maxMonthTarget = Math.max(...yearly.months.map((m) => m.target), 1);
+    const maxBar = Math.max(maxMonthRev, maxMonthTarget);
+    const nowMonth = now.getMonth() + 1; // 1-based
+
+    return (
+      <section className="section">
+        <div className="page-hdr">
+          <div>
+            <div className="page-title">Dashboard</div>
+            <div className="page-sub">Năm {currentYear} · KH: {formatVNDCompact(yearly.yearTarget)}</div>
+          </div>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <Link href="/dash?view=month" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Tháng</Link>
+            <Link href="/dash?view=year" className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>Năm</Link>
+          </div>
+        </div>
+
+        {/* Year KPIs */}
+        <div className="stat-grid" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))" }}>
+          <div className="stat-card" style={{ borderLeft: "4px solid #16A34A" }}>
+            <div className="sl">DOANH THU LŨY KẾ</div>
+            <div className="sv" style={{ color: "#16A34A" }}>{formatVNDCompact(yearly.cumRevenue)}</div>
+            <div className="ss">T1-T{Math.min(nowMonth, 12)}</div>
+          </div>
+          <div className="stat-card" style={{ borderLeft: "4px solid #3B82F6" }}>
+            <div className="sl">KẾ HOẠCH NĂM</div>
+            <div className="sv">{formatVNDCompact(yearly.yearTarget)}</div>
+            <div className="ss">{yearPct}% đạt</div>
+          </div>
+          <div className="stat-card" style={{ borderLeft: "4px solid #DC2626" }}>
+            <div className="sl">CÒN PHẢI ĐẠT</div>
+            <div className="sv" style={{ color: "#DC2626" }}>{formatVNDCompact(yearRemaining)}</div>
+            <div className="ss">{100 - yearPct}% còn lại</div>
+          </div>
+          <div className="stat-card" style={{ borderLeft: "4px solid #D97706" }}>
+            <div className="sl">CHI PHÍ ADS LŨY KẾ</div>
+            <div className="sv">{formatVNDCompact(yearly.cumAds)}</div>
+            <div className="ss">Ads/DT: {yearAdsPct.toFixed(1)}%</div>
+          </div>
+          <div className="stat-card" style={{ borderLeft: "4px solid #7C3AED" }}>
+            <div className="sl">ROAS NĂM</div>
+            <div className="sv">{yearly.cumAds > 0 ? (yearly.cumRevenue / yearly.cumAds).toFixed(1) : "—"}x</div>
+            <div className="ss">DT / Ads</div>
+          </div>
+        </div>
+
+        {/* Year progress bar */}
+        <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 6, padding: "8px 14px", marginBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 4 }}>
+            <span>Đã đạt <strong style={{ color: "#16A34A" }}>{formatVNDCompact(yearly.cumRevenue)}</strong> ({yearPct}%)</span>
+            <span>KH {currentYear}: <strong>{formatVNDCompact(yearly.yearTarget)}</strong></span>
+            <span>Còn: <strong style={{ color: "#DC2626" }}>{formatVNDCompact(yearRemaining)}</strong></span>
+          </div>
+          <div style={{ height: 18, background: "#F3F4F6", borderRadius: 4, overflow: "hidden", position: "relative" }}>
+            <div style={{ position: "absolute", top: 0, left: 0, height: "100%", width: `${Math.min(yearPct, 100)}%`, background: yearPct >= 100 ? "#16A34A" : "#3B82F6", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: "#fff" }}>{yearPct}%</span>
+            </div>
+            <div style={{ position: "absolute", top: 0, left: `${Math.round((nowMonth / 12) * 100)}%`, width: 1.5, height: "100%", background: "#000", opacity: 0.3 }} />
+          </div>
+        </div>
+
+        {/* Monthly bar chart T1-T12 */}
+        <div className="card" style={{ marginBottom: 12 }}>
+          <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 8 }}>Doanh thu theo tháng</div>
+          <div style={{ display: "flex", gap: 12, fontSize: 10, color: "#6B7280", marginBottom: 8 }}>
+            <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: "#4ADE80", marginRight: 3, verticalAlign: "middle" }} />Thực tế</span>
+            <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: "#E5E7EB", marginRight: 3, verticalAlign: "middle" }} />Kế hoạch</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "flex-end", height: 140 }}>
+            {yearly.months.map((m, i) => {
+              const revH = maxBar > 0 ? (m.revenue / maxBar) * 110 : 0;
+              const tgtH = maxBar > 0 ? (m.target / maxBar) * 110 : 0;
+              const isPast = i + 1 <= nowMonth;
+              return (
+                <div key={m.month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end" }}>
+                  {m.revenue > 0 && <div style={{ fontSize: 7, fontWeight: 600, color: "#16A34A", marginBottom: 1 }}>{formatVNDCompact(m.revenue)}</div>}
+                  <div style={{ width: "80%", position: "relative" }}>
+                    {/* Target ghost bar */}
+                    <div style={{ width: "100%", height: Math.max(tgtH, 1), background: "#E5E7EB", borderRadius: "2px 2px 0 0", position: "absolute", bottom: 0 }} />
+                    {/* Actual bar */}
+                    <div style={{ width: "100%", height: Math.max(revH, isPast && m.revenue > 0 ? 2 : 0), background: isPast ? "#4ADE80" : "transparent", borderRadius: "2px 2px 0 0", position: "relative", zIndex: 1 }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ display: "flex", borderTop: "1px solid #E5E7EB" }}>
+            {yearly.months.map((m, i) => (
+              <div key={`l-${m.month}`} style={{ flex: 1, textAlign: "center", fontSize: 9, fontWeight: i + 1 === nowMonth ? 700 : 400, color: i + 1 === nowMonth ? "#3B82F6" : "#999", padding: "3px 0" }}>
+                T{i + 1}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Monthly detail table */}
+        <div className="card" style={{ marginBottom: 12, padding: 0 }}>
+          <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)", fontWeight: 700, fontSize: 12 }}>
+            Doanh thu + Ads lũy kế theo tháng
+          </div>
+          <div className="tbl-wrap">
+            <table>
+              <thead><tr>
+                <th>Tháng</th><th className="text-right">KH</th><th className="text-right">Thực tế</th>
+                <th className="text-right">%</th><th className="text-right">Ads</th><th className="text-right">Ads/DT</th>
+                <th className="text-right">Lũy kế DT</th><th className="text-right">Lũy kế Ads</th>
+              </tr></thead>
+              <tbody>
+                {(() => {
+                  let cumRev = 0, cumAd = 0;
+                  return yearly.months.map((m, i) => {
+                    cumRev += m.revenue; cumAd += m.ads;
+                    const pct = m.target > 0 ? Math.round((m.revenue / m.target) * 100) : 0;
+                    const adRatio = m.revenue > 0 ? ((m.ads / m.revenue) * 100).toFixed(1) : "—";
+                    const hasData = m.revenue > 0 || m.ads > 0;
+                    return (
+                      <tr key={m.month} style={{ color: hasData ? undefined : "#D1D5DB" }}>
+                        <td style={{ fontWeight: 600 }}>T{i + 1}</td>
+                        <td className="text-right">{formatVNDCompact(m.target)}</td>
+                        <td className="text-right" style={{ color: hasData ? "#16A34A" : undefined, fontWeight: 600 }}>{hasData ? formatVNDCompact(m.revenue) : "—"}</td>
+                        <td className="text-right" style={{ fontWeight: 700, color: pct >= 100 ? "#16A34A" : pct > 0 ? "#D97706" : undefined }}>{pct > 0 ? `${pct}%` : "—"}</td>
+                        <td className="text-right" style={{ color: "#DC2626" }}>{m.ads > 0 ? formatVNDCompact(m.ads) : "—"}</td>
+                        <td className="text-right">{adRatio}%</td>
+                        <td className="text-right" style={{ fontWeight: 600 }}>{cumRev > 0 ? formatVNDCompact(cumRev) : "—"}</td>
+                        <td className="text-right" style={{ color: "#DC2626" }}>{cumAd > 0 ? formatVNDCompact(cumAd) : "—"}</td>
+                      </tr>
+                    );
+                  });
+                })()}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Monthly progress bars */}
+        <div className="card" style={{ marginBottom: 12, padding: "12px 14px" }}>
+          <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 8 }}>Tiến độ từng tháng</div>
+          {yearly.months.filter((m) => m.target > 0).map((m, i) => {
+            const pct = m.target > 0 ? Math.round((m.revenue / m.target) * 100) : 0;
+            const color = pct >= 100 ? "#16A34A" : pct > 0 ? "#3B82F6" : "#E5E7EB";
+            return (
+              <div key={m.month} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, width: 24, color: i + 1 === nowMonth ? "#3B82F6" : "#6B7280" }}>T{i + 1}</span>
+                <div style={{ flex: 1, height: 10, background: "#F3F4F6", borderRadius: 2, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${Math.min(pct, 100)}%`, background: color, borderRadius: 2 }} />
+                </div>
+                <span style={{ fontSize: 9, fontWeight: 600, width: 32, textAlign: "right", color: pct >= 100 ? "#16A34A" : pct > 0 ? "#374151" : "#D1D5DB" }}>{pct > 0 ? `${pct}%` : "—"}</span>
+                <span style={{ fontSize: 9, width: 45, textAlign: "right", color: "#6B7280" }}>{m.revenue > 0 ? formatVNDCompact(m.revenue) : "—"}</span>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // MONTHLY VIEW (default)
+  // ═══════════════════════════════════════════════════════
 
   return (
     <section className="section" id="tab-dash">
@@ -69,10 +239,14 @@ export default async function DashPage({
             Xin chào <b>{user?.name || user?.email}</b> · Tháng {month}
           </div>
         </div>
-        <form style={{ display: "flex", gap: 6, alignItems: "center" }}>
-          <input id="dash-month" type="month" name="month" defaultValue={month} style={{ fontSize: 12 }} />
-          <button type="submit" className="btn btn-primary btn-sm">Áp dụng</button>
-        </form>
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <Link href="/dash?view=month" className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>Tháng</Link>
+          <Link href="/dash?view=year" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Năm</Link>
+          <form style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <input id="dash-month" type="month" name="month" defaultValue={month} style={{ fontSize: 12 }} />
+            <button type="submit" className="btn btn-ghost btn-sm">Áp dụng</button>
+          </form>
+        </div>
       </div>
 
       {/* ═══ ROW 1: Top KPIs ═══ */}

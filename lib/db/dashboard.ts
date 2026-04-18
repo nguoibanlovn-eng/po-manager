@@ -173,6 +173,94 @@ export async function getRevenueByChannel(from: string, to: string) {
   };
 }
 
+/** Yearly summary: revenue per month + targets per month + ads per month */
+export async function getYearlySummary(year: number) {
+  const db = supabaseAdmin();
+  const from = `${year}-01-01`;
+  const to = `${year}-12-31`;
+
+  // Revenue by month from sales_sync
+  const { data: salesData } = await db
+    .from("sales_sync")
+    .select("period_from, channel, revenue_net, order_net")
+    .gte("period_from", from).lte("period_from", to)
+    .limit(10000);
+
+  const revByMonth = new Map<string, { total: number; byChannel: Map<string, number> }>();
+  for (const r of salesData || []) {
+    const m = String(r.period_from || "").substring(0, 7);
+    if (!m) continue;
+    const entry = revByMonth.get(m) || { total: 0, byChannel: new Map() };
+    const rev = Number(r.revenue_net || 0);
+    entry.total += rev;
+    const ch = String(r.channel || "Khác");
+    entry.byChannel.set(ch, (entry.byChannel.get(ch) || 0) + rev);
+    revByMonth.set(m, entry);
+  }
+
+  // Targets by month
+  const { data: targetData } = await db
+    .from("targets")
+    .select("ref_id, month_key, rev_target")
+    .eq("type", "channel")
+    .gte("month_key", from).lte("month_key", to);
+
+  const targetByMonth = new Map<string, number>();
+  const targetByMonthChannel = new Map<string, Map<string, number>>();
+  for (const t of targetData || []) {
+    const m = String(t.month_key || "").substring(0, 7);
+    targetByMonth.set(m, (targetByMonth.get(m) || 0) + Number(t.rev_target || 0));
+    const chMap = targetByMonthChannel.get(m) || new Map();
+    chMap.set(String(t.ref_id || ""), Number(t.rev_target || 0));
+    targetByMonthChannel.set(m, chMap);
+  }
+
+  // Ads spend by month
+  const { data: fbAds } = await db.from("ads_cache").select("date, spend").gte("date", from).lte("date", to);
+  const { data: spAds } = await db.from("shopee_ads").select("date, spend").gte("date", from).lte("date", to);
+  const { data: tkAds } = await db.from("tiktok_ads").select("date, spend").gte("date", from).lte("date", to);
+
+  const adsByMonth = new Map<string, { fb: number; shopee: number; tiktok: number; total: number }>();
+  for (const a of fbAds || []) {
+    const m = String(a.date || "").substring(0, 7);
+    const e = adsByMonth.get(m) || { fb: 0, shopee: 0, tiktok: 0, total: 0 };
+    e.fb += Number(a.spend || 0); e.total += Number(a.spend || 0);
+    adsByMonth.set(m, e);
+  }
+  for (const a of spAds || []) {
+    const m = String(a.date || "").substring(0, 7);
+    const e = adsByMonth.get(m) || { fb: 0, shopee: 0, tiktok: 0, total: 0 };
+    e.shopee += Number(a.spend || 0); e.total += Number(a.spend || 0);
+    adsByMonth.set(m, e);
+  }
+  for (const a of tkAds || []) {
+    const m = String(a.date || "").substring(0, 7);
+    const e = adsByMonth.get(m) || { fb: 0, shopee: 0, tiktok: 0, total: 0 };
+    e.tiktok += Number(a.spend || 0); e.total += Number(a.spend || 0);
+    adsByMonth.set(m, e);
+  }
+
+  // Build 12-month array
+  const months: Array<{
+    month: string; revenue: number; target: number; ads: number;
+    adsFb: number; adsShopee: number; adsTiktok: number;
+    byChannel: Record<string, number>;
+  }> = [];
+  let cumRevenue = 0, cumTarget = 0, cumAds = 0;
+  for (let mi = 1; mi <= 12; mi++) {
+    const m = `${year}-${String(mi).padStart(2, "0")}`;
+    const rev = revByMonth.get(m)?.total || 0;
+    const tgt = targetByMonth.get(m) || 0;
+    const ad = adsByMonth.get(m) || { fb: 0, shopee: 0, tiktok: 0, total: 0 };
+    cumRevenue += rev; cumTarget += tgt; cumAds += ad.total;
+    const byChannel: Record<string, number> = {};
+    for (const [ch, v] of revByMonth.get(m)?.byChannel || []) byChannel[ch] = v;
+    months.push({ month: m, revenue: rev, target: tgt, ads: ad.total, adsFb: ad.fb, adsShopee: ad.shopee, adsTiktok: ad.tiktok, byChannel });
+  }
+
+  return { year, months, cumRevenue, cumTarget, cumAds, yearTarget: cumTarget };
+}
+
 export async function getRecentOrders(limit = 10) {
   const { data } = await supabaseAdmin()
     .from("orders")
