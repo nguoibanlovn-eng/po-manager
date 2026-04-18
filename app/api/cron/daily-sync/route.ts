@@ -4,6 +4,7 @@ import { syncFbAds, syncFbPageInsights } from "@/lib/fb/sync";
 import { refreshAllShopTokens } from "@/lib/tiktok/shop-api";
 import { syncTiktokAds } from "@/lib/tiktok/sync";
 import { syncAllShopsOrders, syncAllShopsReturns } from "@/lib/tiktok/shop-sync";
+import { refreshAllShopeeTokens } from "@/lib/shopee/api";
 
 export const maxDuration = 300;
 
@@ -26,6 +27,7 @@ export async function POST(req: Request) {
     { name: "fb_ads",             fn: () => syncFbAds({}) },
     { name: "fb_insights",        fn: () => syncFbPageInsights() },
     { name: "tiktok_shop_refresh", fn: () => refreshAllShopTokens() },
+    { name: "shopee_token_refresh", fn: () => refreshAllShopeeTokens() },
     { name: "tiktok_ads",         fn: () => syncTiktokAds({}) },
     { name: "tiktok_shop_orders", fn: () => syncAllShopsOrders({}) },
     { name: "tiktok_shop_returns", fn: () => syncAllShopsReturns({}) },

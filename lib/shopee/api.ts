@@ -176,6 +176,26 @@ export async function listConnectedShops(): Promise<Array<{
   });
 }
 
+/** Proactively refresh all Shopee tokens expiring within 2 hours */
+export async function refreshAllShopeeTokens(): Promise<{ refreshed: number; errors: string[] }> {
+  const db = supabaseAdmin();
+  const now = Math.floor(Date.now() / 1000);
+  const threshold = now + 7200; // 2 hours
+  const { data } = await db.from("shopee_tokens").select("shop_id, shop_name, expire_at").lt("expire_at", threshold);
+  const errors: string[] = [];
+  let refreshed = 0;
+  for (const t of data || []) {
+    try {
+      const newToken = await refreshToken(t.shop_id);
+      if (newToken) refreshed++;
+      else errors.push(`${t.shop_name || t.shop_id}: refresh returned null`);
+    } catch (e) {
+      errors.push(`${t.shop_name || t.shop_id}: ${(e as Error).message}`);
+    }
+  }
+  return { refreshed, errors };
+}
+
 export async function disconnectShop(shopId: string) {
   await deleteShopToken(shopId);
 }

@@ -175,7 +175,7 @@ export default function ShopeeAdsView({
         <button className="btn btn-ghost btn-xs" onClick={connectShopee} style={{ fontSize: 10, background: "#EFF6FF", border: "1px solid #93C5FD" }}>＋ Kết nối</button>
         {shopeeShops.map((sh) => (
           <span key={sh.shop_id} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, fontWeight: 600, background: sh.token_ok ? "#F0FDF4" : "#FEF2F2", color: sh.token_ok ? "#16A34A" : "#DC2626" }}>
-            {sh.shop_name}: {sh.token_ok ? `✓ OK (${sh.expire_in_hours}h)` : "✖ Chưa kết nối"}
+            {sh.shop_name}: {sh.token_ok ? `✓ OK (${sh.expire_in_hours}h — tự gia hạn)` : "✖ Chưa kết nối"}
           </span>
         ))}
         <span style={{ fontSize: 9, color: "#9CA3AF" }}>Ads: upload CSV · Đơn hàng: API</span>
@@ -223,7 +223,7 @@ export default function ShopeeAdsView({
                       return (
                         <div key={d.date} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", background: inc ? "rgba(254,202,202,0.15)" : "transparent" }}>
                           {d.revenue > 0 && <div style={{ fontSize: 7, fontWeight: 600, color: "#16A34A", marginBottom: 1, whiteSpace: "nowrap" }}>{formatVNDCompact(d.revenue)}</div>}
-                          <div style={{ width: "78%", height: Math.max(h, 2), background: inc ? "#FCA5A5" : "#EE4D2D", borderRadius: "2px 2px 0 0", opacity: inc ? 0.6 : 1 }} />
+                          <div style={{ width: "78%", height: Math.max(h, 2), background: inc ? "#BBF7D0" : "#16A34A", borderRadius: "2px 2px 0 0", opacity: inc ? 0.6 : 1 }} />
                         </div>
                       );
                     })}
