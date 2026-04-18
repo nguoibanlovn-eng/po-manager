@@ -5,6 +5,7 @@ import { refreshAllShopTokens } from "@/lib/tiktok/shop-api";
 import { syncTiktokAds } from "@/lib/tiktok/sync";
 import { syncAllShopsOrders, syncAllShopsReturns } from "@/lib/tiktok/shop-sync";
 import { refreshAllShopeeTokens } from "@/lib/shopee/api";
+import { syncProductSales } from "@/lib/nhanh/sync-product-sales";
 
 export const maxDuration = 300;
 
@@ -29,6 +30,7 @@ export async function POST(req: Request) {
     { name: "tiktok_shop_refresh", fn: () => refreshAllShopTokens() },
     { name: "shopee_token_refresh", fn: () => refreshAllShopeeTokens() },
     { name: "tiktok_ads",         fn: () => syncTiktokAds({}) },
+    { name: "product_sales",      fn: () => syncProductSales({}) },
     { name: "tiktok_shop_orders", fn: () => syncAllShopsOrders({}) },
     { name: "tiktok_shop_returns", fn: () => syncAllShopsReturns({}) },
   ] as const;
