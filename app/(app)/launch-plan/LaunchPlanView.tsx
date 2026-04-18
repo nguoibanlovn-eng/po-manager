@@ -256,38 +256,123 @@ export default function LaunchPlanView({ plans }: { plans: LaunchPlanRow[] }) {
       )}
 
       {/* ═══ TAB: ĐANG LAUNCH ═══ */}
-      {tab === "launching" && (
-        <div className="card" style={{ padding: 0 }}>
-          {launching.map((p) => {
-            const m = getMetrics(p);
-            const ch = m.channels_selected || [];
-            const pt = PRODUCT_TYPES.find((t) => t.k === m.product_type);
-            return (
-              <div key={p.id} style={{ padding: "12px 16px", borderBottom: "1px solid #F3F4F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-                    {pt && <span style={{ fontSize: 9, background: pt.color, color: "#fff", borderRadius: 3, padding: "1px 6px", fontWeight: 600 }}>{pt.label.split(" ")[0]}</span>}
-                    <span style={{ fontWeight: 700, fontSize: 13 }}>{p.product_name}</span>
-                  </div>
-                  <div style={{ fontSize: 10, color: "#6B7280" }}>SKU: {p.sku || "—"}</div>
-                  <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
-                    {ch.map((c) => (
-                      <span key={c} style={{ fontSize: 9, padding: "1px 6px", borderRadius: 3, background: "#E5E7EB", color: "#374151" }}>{c.substring(0, 2)}</span>
-                    ))}
-                  </div>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  {m.pricing?.sell_price && (
-                    <div style={{ fontSize: 12, fontWeight: 700 }}>{formatVND(m.pricing.sell_price)}</div>
-                  )}
-                  <button className="btn btn-ghost btn-xs" style={{ marginTop: 4 }} onClick={() => setEditPlan(p)}>Xem plan</button>
-                </div>
+      {tab === "launching" && (() => {
+        const filtered = filterList(launching);
+        const totalTarget = filtered.reduce((s, p) => s + (getMetrics(p).sales_target?.stock_qty || 0), 0);
+        const needAttention = filtered.filter((p) => {
+          const m = getMetrics(p);
+          const ct = m.content?.targets || [];
+          const totalVid = ct.reduce((s, t) => s + t.videos, 0);
+          const pubVid = ct.reduce((s, t) => s + t.published, 0);
+          return totalVid > 0 && pubVid / totalVid < 0.5;
+        }).length;
+
+        return (
+          <div>
+            {/* Mini KPIs */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 12 }}>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 10, color: "#6B7280" }}>Đang launch</div>
+                <div style={{ fontSize: 22, fontWeight: 800 }}>{filtered.length} <span style={{ fontSize: 11, fontWeight: 400, color: "#6B7280" }}>SP</span></div>
               </div>
-            );
-          })}
-          {launching.length === 0 && <div className="muted" style={{ padding: 24, textAlign: "center" }}>Chưa có SP đang launch.</div>}
-        </div>
-      )}
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 10, color: "#6B7280" }}>Đã bán / Target</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: "#16A34A" }}>0 / {totalTarget.toLocaleString("vi-VN")}</div>
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 10, color: "#6B7280" }}>Hoàn thành</div>
+                <div style={{ fontSize: 22, fontWeight: 800 }}>0%</div>
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 10, color: "#6B7280" }}>Cần chú ý</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: needAttention > 0 ? "#DC2626" : "#16A34A" }}>{needAttention} <span style={{ fontSize: 11, fontWeight: 400, color: "#6B7280" }}>SP</span></div>
+              </div>
+            </div>
+
+            {/* Product cards */}
+            {filtered.map((p) => {
+              const m = getMetrics(p);
+              const pt = PRODUCT_TYPES.find((t) => t.k === m.product_type);
+              const chSel = m.channels_selected || [];
+              const listings = m.listings || {};
+              const ct = m.content?.targets || [];
+              const totalVid = ct.reduce((s, t) => s + t.videos, 0);
+              const pubVid = ct.reduce((s, t) => s + t.published, 0);
+              const targetQty = m.sales_target?.stock_qty || 0;
+              const confirmed = m.sales_target?.confirmed;
+              const hasWarning = !confirmed || (totalVid > 0 && pubVid / totalVid < 0.5);
+
+              // Step progress
+              const steps = [
+                { label: "Phân tích", done: !!m.customer?.group },
+                { label: "Định giá", done: (m.pricing?.sell_price || 0) > 0 },
+                { label: "Phân bổ", done: !!m.sales_target?.confirmed },
+                { label: "Nội dung", done: totalVid > 0 && pubVid >= totalVid },
+              ];
+
+              const CHANNEL_COLORS: Record<string, string> = { Facebook: "#1877F2", "TikTok Shop": "#000", Shopee: "#EE4D2D", "Web/B2B": "#6366F1", "Live stream": "#16A34A" };
+              const CHANNEL_SHORT: Record<string, string> = { Facebook: "FB", "TikTok Shop": "TT", Shopee: "SP", "Web/B2B": "Web", "Live stream": "Live" };
+
+              return (
+                <div key={p.id} className="card" style={{ marginBottom: 8, padding: "12px 16px" }}>
+                  <div style={{ display: "flex", gap: 12 }}>
+                    {/* Left: product info */}
+                    <div style={{ width: 280, flexShrink: 0 }}>
+                      <div style={{ display: "flex", gap: 4, marginBottom: 4, flexWrap: "wrap" }}>
+                        {pt && <span style={{ fontSize: 9, background: pt.color, color: "#fff", borderRadius: 3, padding: "1px 6px", fontWeight: 600 }}>{pt.label.split(" ")[0]}</span>}
+                        {hasWarning && <span style={{ fontSize: 9, background: "#DC2626", color: "#fff", borderRadius: 3, padding: "1px 6px", fontWeight: 600 }}>Cảnh báo</span>}
+                      </div>
+                      <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2 }}>{p.product_name}</div>
+                      <div style={{ fontSize: 10, color: "#6B7280", marginBottom: 6 }}>{p.sku || "—"}</div>
+                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                        {chSel.map((ch) => {
+                          const done = listings[ch]?.done;
+                          return (
+                            <span key={ch} style={{
+                              fontSize: 9, padding: "2px 6px", borderRadius: 3, fontWeight: 600,
+                              background: done ? CHANNEL_COLORS[ch] || "#3B82F6" : "#F3F4F6",
+                              color: done ? "#fff" : "#6B7280",
+                            }}>
+                              {CHANNEL_SHORT[ch] || ch} {done ? "✓" : "—"}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Middle: step progress + sales progress */}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: "flex", gap: 12, marginBottom: 8 }}>
+                        {steps.map((s) => (
+                          <span key={s.label} style={{ fontSize: 10, color: s.done ? "#16A34A" : "#9CA3AF", display: "flex", alignItems: "center", gap: 3 }}>
+                            <span style={{ width: 10, height: 10, borderRadius: "50%", border: s.done ? "none" : "1.5px solid #D1D5DB", background: s.done ? "#16A34A" : "transparent", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, color: "#fff" }}>
+                              {s.done ? "✓" : ""}
+                            </span>
+                            {s.label}
+                          </span>
+                        ))}
+                      </div>
+                      <div style={{ fontSize: 10, color: "#6B7280", marginBottom: 4 }}>Tiến độ DS · 0/{targetQty} SP</div>
+                      <div style={{ height: 6, background: "#F3F4F6", borderRadius: 3, overflow: "hidden", position: "relative" }}>
+                        <div style={{ height: "100%", width: "0%", background: "#16A34A", borderRadius: 3 }} />
+                        <span style={{ position: "absolute", right: 4, top: -12, fontSize: 9, color: "#6B7280" }}>0%</span>
+                      </div>
+                    </div>
+
+                    {/* Right: target + button */}
+                    <div style={{ width: 100, textAlign: "right", flexShrink: 0 }}>
+                      <div style={{ fontSize: 10, color: "#6B7280" }}>Target</div>
+                      <div style={{ fontSize: 16, fontWeight: 800 }}>{targetQty.toLocaleString("vi-VN")} <span style={{ fontSize: 9, fontWeight: 400 }}>SP</span></div>
+                      <button className="btn btn-ghost btn-xs" style={{ marginTop: 6 }} onClick={() => setEditPlan(p)}>Xem plan</button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {filtered.length === 0 && <div className="muted" style={{ padding: 24, textAlign: "center" }}>Chưa có SP đang launch.</div>}
+          </div>
+        );
+      })()}
 
       {/* ═══ TAB: HOÀN TẤT ═══ */}
       {tab === "done" && (
