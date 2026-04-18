@@ -32,6 +32,8 @@ const FORM_STEPS = [
 
 // ─── Metrics type stored in JSONB ────────────────────────
 type Metrics = {
+  deploy_id?: string;
+  product_desc?: string;
   product_type?: string; product_type_note?: string;
   customer?: { group?: string; pain_point?: string; competitors?: string };
   channels_selected?: string[]; channel_note?: string;
@@ -196,18 +198,31 @@ export default function LaunchPlanView({ plans }: { plans: LaunchPlanRow[] }) {
                 style={{ width: "100%", padding: "8px 12px", border: "1px solid #E5E7EB", borderRadius: 6, fontSize: 12 }} />
             </div>
             <div className="card" style={{ padding: 0, maxHeight: 500, overflowY: "auto" }}>
-              {filterList(ready).map((p) => (
-                <div key={p.id} style={{ padding: "10px 14px", borderBottom: "1px solid #F3F4F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 12 }}>{p.product_name}</div>
-                    <div style={{ fontSize: 10, color: "#6B7280" }}>SKU: {p.sku || "—"}</div>
+              {filterList(ready).map((p) => {
+                const pm = getMetrics(p);
+                const hasDeployId = !!pm.deploy_id;
+                const pt = PRODUCT_TYPES.find((t) => t.k === pm.product_type);
+                return (
+                  <div key={p.id} style={{ padding: "10px 14px", borderBottom: "1px solid #F3F4F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 2 }}>
+                        {hasDeployId && <span style={{ fontSize: 8, background: "#16A34A", color: "#fff", borderRadius: 3, padding: "1px 5px", fontWeight: 600 }}>TỪ TRIỂN KHAI</span>}
+                        {pt && <span style={{ fontSize: 8, background: pt.color, color: "#fff", borderRadius: 3, padding: "1px 5px", fontWeight: 600 }}>{pt.label.split(" ")[0]}</span>}
+                        <span style={{ fontWeight: 600, fontSize: 12 }}>{p.product_name}</span>
+                      </div>
+                      <div style={{ fontSize: 10, color: "#6B7280" }}>
+                        SKU: {p.sku || "—"}
+                        {pm.pricing?.sell_price ? ` · Giá: ${formatVND(pm.pricing.sell_price)}` : ""}
+                        {pm.pricing?.cost ? ` · Vốn: ${formatVND(pm.pricing.cost)}` : ""}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <button className="btn btn-primary btn-xs" onClick={() => setEditPlan(p)}>Tạo Launch Plan</button>
+                      <button className="btn btn-ghost btn-xs" style={{ color: "var(--red)" }} onClick={() => del(p.id, p.product_name || "")}>✕</button>
+                    </div>
                   </div>
-                  <div style={{ display: "flex", gap: 4 }}>
-                    <button className="btn btn-ghost btn-xs" onClick={() => setEditPlan(p)}>Xem plan</button>
-                    <button className="btn btn-ghost btn-xs" style={{ color: "var(--red)" }} onClick={() => del(p.id, p.product_name || "")}>✕</button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
               {filterList(ready).length === 0 && <div className="muted" style={{ padding: 24, textAlign: "center" }}>Không có SP sẵn sàng.</div>}
             </div>
           </div>

@@ -182,11 +182,29 @@ export async function updateDeployInfo(
   deployId: string,
   data: { product_desc?: string; sell_price?: number; ref_links?: string },
 ) {
+  const db = supabaseAdmin();
   const info_done = !!(data.product_desc && data.sell_price && data.sell_price > 0);
-  await supabaseAdmin()
+  await db
     .from("deployments")
     .update({ ...data, info_done })
     .eq("deploy_id", deployId);
+
+  // Auto-create launch plan when info is complete
+  if (info_done) {
+    const { data: deploy } = await db
+      .from("deployments")
+      .select("deploy_id, sku, product_name, unit_price, sell_price, product_desc, fb_done, shopee_done, tiktok_done, web_done, fb_links, shopee_links, tiktok_links, web_links, created_by")
+      .eq("deploy_id", deployId)
+      .maybeSingle();
+    if (deploy) {
+      try {
+        const { createLaunchFromDeploy } = await import("./plans");
+        await createLaunchFromDeploy(deploy as Parameters<typeof createLaunchFromDeploy>[0], deploy.created_by || "auto");
+      } catch (e) {
+        console.warn("Auto-create launch plan failed:", (e as Error).message);
+      }
+    }
+  }
 }
 
 export async function approveDeployPrice(deployId: string, approvedBy: string) {
