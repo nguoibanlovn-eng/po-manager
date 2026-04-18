@@ -54,7 +54,13 @@ function SyncSalesButton({ onDone, from, to }: { onDone: () => void; from: strin
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify(c),
         });
-        const json = await res.json();
+        if (!res.ok && res.status >= 500) {
+          setProgress(`Lỗi server (${res.status}) — thử lại sau`);
+          break;
+        }
+        const text = await res.text();
+        let json;
+        try { json = JSON.parse(text); } catch { setProgress(`Lỗi: response không hợp lệ`); break; }
         if (!json.ok) { setProgress(`Lỗi: ${json.error}`); break; }
         totalRows += json.totalRows || 0;
         totalOrders += json.totalOrders || 0;
