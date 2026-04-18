@@ -103,6 +103,8 @@ export default function SalesLeaderView({
           <span style={{ width: 1, height: 20, background: "var(--border)" }} />
           <SyncButton url="/api/nhanh/sync-sales" label="NHANH.VN" onDone={() => router.refresh()} />
           <SyncButton url="/api/tiktok/sync-ads" label="Sync Ads" onDone={() => router.refresh()} />
+          <SyncButton url="/api/tiktok/sync-shop-orders" label="Sync Orders" onDone={() => router.refresh()} />
+          <CsvUploadButton onDone={() => router.refresh()} />
         </div>
       </div>
 
@@ -662,6 +664,57 @@ function LineChart({ nhanhRevenue }: { nhanhRevenue: TiktokNhanhRow[] }) {
 /* ═══════════════════════════════════════════════════════════
    SIMPLE BAR CHART
    ═══════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════
+   CSV UPLOAD BUTTON — for GMV Max / manual ads data
+   ═══════════════════════════════════════════════════════════ */
+function CsvUploadButton({ onDone }: { onDone?: () => void }) {
+  const [uploading, setUploading] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setResult(null);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("promotion_type", "GMV_MAX");
+      form.append("advertiser_id", "gmv_max");
+      const res = await fetch("/api/tiktok/upload-ads", { method: "POST", body: form });
+      const json = await res.json();
+      if (json.ok) {
+        setResult(`✓ ${json.fetched} dòng · ${json.dateRange || ""}`);
+        onDone?.();
+      } else {
+        setResult(json.error || "Lỗi");
+      }
+    } catch (err) {
+      setResult((err as Error).message);
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+      setTimeout(() => setResult(null), 5000);
+    }
+  }
+
+  return (
+    <label className="btn btn-ghost btn-xs" style={{ cursor: "pointer", minWidth: 90, position: "relative" }}>
+      {uploading ? (
+        <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <span style={{ width: 12, height: 12, border: "2px solid var(--border)", borderTopColor: "var(--blue)", borderRadius: "50%", display: "inline-block", animation: "spin .6s linear infinite" }} />
+          Uploading...
+        </span>
+      ) : result ? (
+        <span style={{ color: result.startsWith("✓") ? "var(--green)" : "var(--red)", fontSize: 10 }}>{result.substring(0, 40)}</span>
+      ) : (
+        <>↑ GMV Max CSV</>
+      )}
+      <input type="file" accept=".csv,.tsv,.txt" onChange={handleFile} style={{ display: "none" }} disabled={uploading} />
+    </label>
+  );
+}
+
 function SimpleBar({ data, color = "#FF6B8A" }: { data: [string, number][]; color?: string }) {
   if (data.length === 0) return <div className="muted" style={{ padding: 24, textAlign: "center" }}>Không có data.</div>;
   const max = Math.max(...data.map(([, v]) => v));
