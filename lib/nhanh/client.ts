@@ -70,7 +70,8 @@ export async function nhanhFetchAll<T = unknown>(
       chunk = Object.values(r.data as Record<string, T>);
     }
     all.push(...chunk);
-    const totalPages = r.paginator?.totalPages ?? 1;
+    // V1: totalPages nằm trong data, KHÔNG phải paginator (giống GAS)
+    const totalPages = (d as Record<string, unknown>).totalPages as number || r.paginator?.totalPages || 1;
     if (page >= totalPages) break;
   }
   return all;
