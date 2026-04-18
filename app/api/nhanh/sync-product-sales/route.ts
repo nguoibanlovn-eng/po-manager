@@ -2,7 +2,45 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/user";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { syncProductSales } from "@/lib/nhanh/sync-product-sales";
+import { nhanhReq } from "@/lib/nhanh/client";
 export const maxDuration = 300;
+
+// GET: debug raw V1 /order/index response
+export async function GET(req: Request) {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "ADMIN") return NextResponse.json({ error: "Admin only" }, { status: 403 });
+
+  const { searchParams } = new URL(req.url);
+  const date = searchParams.get("date") || "2026-04-17";
+
+  const raw = await nhanhReq<unknown>("/order/index", {
+    filters: { createdFrom: date, createdTo: date },
+    paginator: { page: 1, size: 3 },
+  });
+
+  // Inspect response structure
+  const data = raw.data as Record<string, unknown> | null;
+  let orderCount = 0;
+  let orderKeys: string[] = [];
+  const topLevelKeys = data ? Object.keys(data) : [];
+
+  if (data?.orders && typeof data.orders === "object") {
+    const orders = data.orders as Record<string, unknown>;
+    orderCount = Object.keys(orders).length;
+    orderKeys = Object.keys(orders).slice(0, 3);
+  }
+
+  return NextResponse.json({
+    code: raw.code,
+    messages: raw.messages,
+    paginator_response: raw.paginator,
+    data_topLevelKeys: topLevelKeys,
+    data_totalPages: data?.totalPages,
+    data_orderCount: orderCount,
+    data_orderKeys: orderKeys,
+    data_sample: data?.orders ? Object.values(data.orders as Record<string, unknown>)[0] : data,
+  });
+}
 
 export async function POST(req: Request) {
   const user = await getCurrentUser();
