@@ -519,6 +519,162 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
     });
   }
 
+  /* ─── STEP 4 COMPONENT ─── */
+  function Step4Pricing({ cost, setCost, sellB1, setSellB1, sellB2, setSellB2 }: {
+    cost: number; setCost: (v: number) => void;
+    sellB1: number; setSellB1: (v: number) => void;
+    sellB2: number; setSellB2: (v: number) => void;
+  }) {
+    const [promoType, setPromoType] = useState("none");
+    const [giftSearch, setGiftSearch] = useState("");
+    const [giftResults, setGiftResults] = useState<InvItem[]>([]);
+    const [giftSearching, setGiftSearching] = useState(false);
+    const [gift, setGift] = useState<{ name: string; sku: string; cost: number } | null>(null);
+    const [giftQty, setGiftQty] = useState(1);
+    const [showGiftSearch, setShowGiftSearch] = useState(false);
+
+    const giftCostTotal = gift ? gift.cost * giftQty : 0;
+    const A = cost + giftCostTotal;
+    const gross = sellB1 > 0 ? sellB1 - A : 0;
+    const grossPct = sellB1 > 0 ? (gross / sellB1 * 100).toFixed(1) : "0";
+
+    async function searchGift(q: string) {
+      if (!q.trim()) { setGiftResults([]); return; }
+      setGiftSearching(true);
+      try {
+        const res = await fetch(`/api/inventory/search?q=${encodeURIComponent(q)}&limit=10`);
+        const json = await res.json();
+        setGiftResults(json.items || []);
+      } catch { setGiftResults([]); }
+      finally { setGiftSearching(false); }
+    }
+
+    return (
+      <div>
+        {/* Block 1 — Chương trình bán */}
+        <div style={{ background: "var(--bg)", border: "0.5px solid #E5E7EB", borderRadius: 8, padding: "10px 12px", marginBottom: 10 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280", marginBottom: 6 }}>CHƯƠNG TRÌNH BÁN <span style={{ fontWeight: 400, fontSize: 9, color: "#9CA3AF" }}>— giá vốn quà cộng vào A</span></div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
+            <select value={promoType} onChange={(e) => setPromoType(e.target.value)} style={{ width: 140, fontSize: 11 }}>
+              <option value="none">Không có</option><option value="gift">Tặng kèm quà</option><option value="combo">Combo set</option><option value="flash">Flash sale</option><option value="discount">Giảm trực tiếp</option>
+            </select>
+            <span style={{ fontSize: 11, color: "#6B7280" }}>Quà tặng:</span>
+            {gift ? (
+              <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: "#EAF3DE", color: "#3B6D11", fontWeight: 600 }}>{gift.name} ({formatVND(gift.cost)})</span>
+            ) : (
+              <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: "#F3F4F6", color: "#9CA3AF" }}>Chưa chọn</span>
+            )}
+            <button className="btn btn-ghost btn-xs" style={{ fontSize: 10 }} onClick={() => setShowGiftSearch(!showGiftSearch)}>
+              {gift ? "Đổi" : "Chọn"}
+            </button>
+          </div>
+
+          {/* Gift search inline */}
+          {showGiftSearch && (
+            <div style={{ marginBottom: 8, padding: "8px 10px", background: "#fff", border: "1.5px solid #185FA5", borderRadius: 8 }}>
+              <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+                <input placeholder="Tìm SP quà tặng trong kho..." value={giftSearch}
+                  onChange={(e) => { setGiftSearch(e.target.value); searchGift(e.target.value); }}
+                  style={{ flex: 1, fontSize: 11, border: "1px solid #E5E7EB", borderRadius: 4, padding: "4px 8px" }} />
+              </div>
+              {giftSearching && <div style={{ fontSize: 10, color: "#6B7280", padding: 4 }}>Đang tìm...</div>}
+              {giftResults.map((item) => (
+                <div key={item.sku} style={{ padding: "4px 0", borderBottom: "1px solid #F3F4F6", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11 }}>
+                  <div>
+                    <span style={{ fontWeight: 600 }}>{item.product_name}</span>
+                    <span style={{ color: "#6B7280", marginLeft: 6 }}>Vốn: {item.cost_price ? formatVND(item.cost_price) : "—"}</span>
+                  </div>
+                  <button className="btn btn-ghost btn-xs" style={{ color: "#185FA5" }} onClick={() => {
+                    setGift({ name: item.product_name, sku: item.sku, cost: item.cost_price || 0 });
+                    setShowGiftSearch(false); setGiftSearch(""); setGiftResults([]);
+                  }}>Chọn</button>
+                </div>
+              ))}
+              {giftResults.length === 0 && giftSearch && !giftSearching && <div style={{ fontSize: 10, color: "#9CA3AF", padding: 4 }}>Không tìm thấy.</div>}
+            </div>
+          )}
+
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, flexWrap: "wrap" }}>
+            <span style={{ color: "#6B7280" }}>Số lượng:</span>
+            <input type="number" value={giftQty} min={1} onChange={(e) => setGiftQty(Math.max(1, Number(e.target.value)))} style={{ width: 54, textAlign: "center", fontSize: 11 }} />
+            <span style={{ color: "#6B7280" }}>Vốn gốc</span>
+            <strong>{formatVND(cost)}</strong>
+            {gift && <>
+              <span style={{ color: "#6B7280" }}>+ Quà {formatVND(gift.cost)} × {giftQty} = {formatVND(giftCostTotal)}</span>
+            </>}
+            <span style={{ color: "#6B7280" }}>→</span>
+            <strong style={{ color: "#185FA5", fontSize: 13 }}>A = {formatVND(A)}</strong>
+          </div>
+        </div>
+
+        {/* Block 2 — Giá bán */}
+        <div style={{ background: "var(--bg)", border: "0.5px solid #E5E7EB", borderRadius: 8, padding: "9px 12px", marginBottom: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280" }}>GIÁ VỐN A</div>
+              <input type="number" value={cost || ""} onChange={(e) => setCost(Number(e.target.value))} placeholder="Nhập vốn..."
+                style={{ fontSize: 18, fontWeight: 800, width: 120, border: "none", background: "transparent", borderBottom: "1.5px solid #E5E7EB" }} />
+            </div>
+            <span style={{ fontSize: 16, color: "#D1D5DB" }}>→</span>
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280" }}>GIÁ BÁN TỪ (B1)</div>
+              <input type="number" value={sellB1 || ""} onChange={(e) => setSellB1(Number(e.target.value))} placeholder="Giá thấp..."
+                style={{ fontSize: 17, fontWeight: 800, width: 130, border: "none", background: "transparent", borderBottom: "1.5px solid #E5E7EB" }} />
+            </div>
+            <span style={{ fontSize: 14, color: "#D1D5DB" }}>—</span>
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280" }}>ĐẾN (B2)</div>
+              <input type="number" value={sellB2 || ""} onChange={(e) => setSellB2(Number(e.target.value))} placeholder="Giá cao..."
+                style={{ fontSize: 17, fontWeight: 800, width: 130, border: "none", background: "transparent", borderBottom: "1.5px solid #E5E7EB" }} />
+            </div>
+            <div style={{ width: 0.5, height: 28, background: "#E5E7EB", margin: "0 6px" }} />
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280" }}>GROSS (B−A)</div>
+              {sellB1 > 0 ? (
+                <div style={{ fontSize: 18, fontWeight: 800, color: gross >= 0 ? "#16A34A" : "#DC2626" }}>
+                  {gross >= 0 ? "+" : ""}{formatVND(gross)} <span style={{ fontSize: 11, fontWeight: 600 }}>({grossPct}%)</span>
+                </div>
+              ) : (
+                <div style={{ fontSize: 16, fontWeight: 600, color: "#D1D5DB" }}>Nhập B1...</div>
+              )}
+            </div>
+          </div>
+          {sellB1 > 0 && (
+            <div style={{ fontSize: 11, color: "#6B7280", display: "flex", gap: 0, flexWrap: "wrap" }}>
+              <span>Phí sàn <strong style={{ color: "#993C1D" }}>{formatVNDCompact(sellB1 * 0.20)} (20%)</strong></span>
+              <span style={{ margin: "0 4px" }}>·</span>
+              <span>Thuế <strong style={{ color: "#3C3489" }}>{formatVNDCompact(sellB1 * 0.015)} (1.5%)</strong></span>
+              <span style={{ margin: "0 4px" }}>·</span>
+              <span>HT sàn <strong style={{ color: "#0C447C" }}>7.000đ</strong></span>
+              <span style={{ margin: "0 4px" }}>·</span>
+              <span>Vận hành <strong style={{ color: "#633806" }}>{formatVNDCompact(sellB1 * 0.10)} (10%)</strong></span>
+              <span style={{ margin: "0 4px" }}>·</span>
+              <span>Ads <strong style={{ color: "#444441" }}>{formatVNDCompact(sellB1 * 0.10)} (10%)</strong></span>
+              <span style={{ margin: "0 4px" }}>·</span>
+              <span>Aff/CTV <strong style={{ color: "#27500A" }}>{formatVNDCompact(sellB1 * 0.10)} (10%)</strong></span>
+            </div>
+          )}
+        </div>
+
+        {/* Block 3 — 2 bảng kịch bản */}
+        {sellB1 > 0 && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <ScenarioTable
+              chips={[{ label: "Shopee", bg: "#FAECE7", color: "#993C1D" }, { label: "TikTok", bg: "#FBEAF0", color: "#993556" }]}
+              subtitle="Sàn 20%+Thuế+HT 7k"
+              scenarios={SCENARIOS_SAN} A={A} B1={sellB1} B2={sellB2}
+            />
+            <ScenarioTable
+              chips={[{ label: "Facebook", bg: "#E6F1FB", color: "#185FA5" }, { label: "Web/B2B", bg: "#EEEDFE", color: "#3C3489" }]}
+              subtitle="Thuế 1.5%, không phí sàn"
+              scenarios={SCENARIOS_OFF} A={A} B1={sellB1} B2={sellB2}
+            />
+          </div>
+        )}
+      </div>
+    );
+  }
+
   const FEE_CHIPS: Record<string, { bg: string; color: string }> = {
     "Sàn 20%": { bg: "#FAECE7", color: "#993C1D" }, "Thuế 1.5%": { bg: "#EEEDFE", color: "#3C3489" },
     "HT 7k": { bg: "#E6F1FB", color: "#0C447C" }, "VH 10%": { bg: "#FAEEDA", color: "#633806" },
@@ -652,87 +808,7 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
         </div>)}
 
         {/* ─── STEP 4: Định giá & chương trình bán ─── */}
-        {step === 4 && (<div>
-          {/* Block 1 — Chương trình bán */}
-          <div style={{ background: "var(--bg)", border: "0.5px solid #E5E7EB", borderRadius: 8, padding: "10px 12px", marginBottom: 10 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280", marginBottom: 6 }}>CHƯƠNG TRÌNH BÁN <span style={{ fontWeight: 400, fontSize: 9, color: "#9CA3AF" }}>— giá vốn quà cộng vào A</span></div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-              <select style={{ width: 140, fontSize: 11 }}><option>Không có</option><option>Tặng kèm quà</option><option>Combo set</option><option>Flash sale</option><option>Giảm trực tiếp</option></select>
-              <span style={{ fontSize: 11, color: "#6B7280" }}>Quà tặng:</span>
-              <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: "#F3F4F6", color: "#9CA3AF" }}>Chưa chọn</span>
-              <button className="btn btn-ghost btn-xs" style={{ fontSize: 10 }}>Đổi</button>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11 }}>
-              <span style={{ color: "#6B7280" }}>Số lượng:</span>
-              <input type="number" defaultValue={1} min={1} style={{ width: 54, textAlign: "center", fontSize: 11 }} />
-              <span style={{ color: "#6B7280" }}>Vốn gốc</span>
-              <strong>{formatVND(cost)}</strong>
-              <span style={{ color: "#6B7280" }}>→</span>
-              <strong style={{ color: "#185FA5" }}>A = {formatVND(cost)}</strong>
-            </div>
-          </div>
-
-          {/* Block 2 — Giá bán */}
-          <div style={{ background: "var(--bg)", border: "0.5px solid #E5E7EB", borderRadius: 8, padding: "9px 12px", marginBottom: 10 }}>
-            {/* Row 1: A → B1 — B2 | Gross */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-              <div>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280" }}>GIÁ VỐN A</div>
-                <input type="number" value={cost || ""} onChange={(e) => setCost(Number(e.target.value))} placeholder="Nhập vốn..."
-                  style={{ fontSize: 18, fontWeight: 800, width: 120, border: "none", background: "transparent", borderBottom: "1.5px solid #E5E7EB" }} />
-              </div>
-              <span style={{ fontSize: 16, color: "#D1D5DB" }}>→</span>
-              <div>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280" }}>GIÁ BÁN TỪ (B1)</div>
-                <input type="number" value={sellB1 || ""} onChange={(e) => setSellB1(Number(e.target.value))} placeholder="Giá thấp..." style={{ fontSize: 17, fontWeight: 800, width: 130, border: "none", background: "transparent", borderBottom: "1.5px solid #E5E7EB" }} />
-              </div>
-              <span style={{ fontSize: 14, color: "#D1D5DB" }}>—</span>
-              <div>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280" }}>ĐẾN (B2)</div>
-                <input type="number" value={sellB2 || ""} onChange={(e) => setSellB2(Number(e.target.value))} placeholder="Giá cao..." style={{ fontSize: 17, fontWeight: 800, width: 130, border: "none", background: "transparent", borderBottom: "1.5px solid #E5E7EB" }} />
-              </div>
-              <div style={{ width: 0.5, height: 28, background: "#E5E7EB", margin: "0 6px" }} />
-              <div>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280" }}>GROSS (B−A)</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: gross >= 0 ? "#16A34A" : "#DC2626" }}>
-                  {gross >= 0 ? "+" : ""}{formatVND(gross)} <span style={{ fontSize: 11, fontWeight: 600 }}>({sellB1 > 0 ? (gross / sellB1 * 100).toFixed(1) : 0}%)</span>
-                </div>
-              </div>
-            </div>
-            {/* Row 2: Chi phí inline */}
-            {sellB1 > 0 && (
-              <div style={{ fontSize: 11, color: "#6B7280", display: "flex", gap: 0, flexWrap: "wrap" }}>
-                <span>Phí sàn <strong style={{ color: "#993C1D" }}>{formatVNDCompact(sellB1 * 0.20)} (20%)</strong></span>
-                <span style={{ margin: "0 4px" }}>·</span>
-                <span>Thuế <strong style={{ color: "#3C3489" }}>{formatVNDCompact(sellB1 * 0.015)} (1.5%)</strong></span>
-                <span style={{ margin: "0 4px" }}>·</span>
-                <span>HT sàn <strong style={{ color: "#0C447C" }}>7.000đ</strong></span>
-                <span style={{ margin: "0 4px" }}>·</span>
-                <span>Vận hành <strong style={{ color: "#633806" }}>{formatVNDCompact(sellB1 * 0.10)} (10%)</strong></span>
-                <span style={{ margin: "0 4px" }}>·</span>
-                <span>Ads <strong style={{ color: "#444441" }}>{formatVNDCompact(sellB1 * 0.10)} (10%)</strong></span>
-                <span style={{ margin: "0 4px" }}>·</span>
-                <span>Aff/CTV <strong style={{ color: "#27500A" }}>{formatVNDCompact(sellB1 * 0.10)} (10%)</strong></span>
-              </div>
-            )}
-          </div>
-
-          {/* Block 3 — 2 bảng kịch bản song song */}
-          {sellB1 > 0 && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              <ScenarioTable
-                chips={[{ label: "Shopee", bg: "#FAECE7", color: "#993C1D" }, { label: "TikTok", bg: "#FBEAF0", color: "#993556" }]}
-                subtitle="Sàn 20%+Thuế+HT 7k"
-                scenarios={SCENARIOS_SAN} A={cost} B1={sellB1} B2={sellB2}
-              />
-              <ScenarioTable
-                chips={[{ label: "Facebook", bg: "#E6F1FB", color: "#185FA5" }, { label: "Web/B2B", bg: "#EEEDFE", color: "#3C3489" }]}
-                subtitle="Thuế 1.5%, không phí sàn"
-                scenarios={SCENARIOS_OFF} A={cost} B1={sellB1} B2={sellB2}
-              />
-            </div>
-          )}
-        </div>)}
+        {step === 4 && <Step4Pricing cost={cost} setCost={setCost} sellB1={sellB1} setSellB1={setSellB1} sellB2={sellB2} setSellB2={setSellB2} />}
 
         {/* ─── STEP 5: Listing ─── */}
         {step === 5 && (<div>
