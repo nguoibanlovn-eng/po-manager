@@ -10,11 +10,17 @@ import SyncButton from "../components/SyncButton";
 type SalesItem = { sku: string; product_name: string; channels: string; qty: number; orders: number; revenue: number };
 type SalesSummary = { totalSkus: number; totalOrders: number; totalQty: number; totalRevenue: number };
 
-function daysAgo(d: number): string { const dt = new Date(); dt.setDate(dt.getDate() + d); return dt.toISOString().substring(0, 10); }
+function fmtDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+function daysAgo(d: number): string { const dt = new Date(); dt.setDate(dt.getDate() + d); return fmtDate(dt); }
 function monthRange(offset: number) {
   const now = new Date(); const y = now.getFullYear(); const m = now.getMonth() + offset;
   const first = new Date(y, m, 1); const last = offset === 0 ? now : new Date(y, m + 1, 0);
-  return { from: first.toISOString().substring(0, 10), to: last.toISOString().substring(0, 10) };
+  return { from: fmtDate(first), to: fmtDate(last) };
 }
 
 const CAT_GROUPS = [
