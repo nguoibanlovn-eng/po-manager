@@ -149,7 +149,6 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/fb-pages",      label: "Facebook Pages",     icon: iconFacebook,perm: "fb_pages" },
       { href: "/shopee-ads",    label: "Shopee",             icon: iconShop,    perm: "fb_pages" },
       { href: "/web-app",       label: "Web/App B2B",        icon: iconGlobe,   perm: "deploy" },
-      { href: "/sales-plan",    label: "Kế hoạch bán hàng",  icon: iconTrend,   perm: "deploy" },
       { href: "/launch-plan",   label: "Launch sản phẩm",    icon: iconLaunch,  perm: "deploy" },
       { href: "/inventory",     label: "Quản lý tồn kho",    icon: iconBox,     perm: "inventory" },
     ],
