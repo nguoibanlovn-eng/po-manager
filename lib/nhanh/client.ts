@@ -59,19 +59,23 @@ export async function nhanhFetchAll<T = unknown>(
     b.paginator.size = b.paginator.size || 200;
     b.paginator.page = page;
     const r = await nhanhReq<Record<string, T> | T[]>(endpoint, b);
-    if (!r || r.code !== 1 || !r.data) break;
+    if (!r || r.code !== 1 || !r.data) {
+      console.log(`[nhanhFetchAll] ${endpoint} page ${page}: code=${r?.code}, hasData=${!!r?.data}`);
+      break;
+    }
     let chunk: T[];
-    const d = r.data as Record<string, T> & { orders?: Record<string, T> };
+    const d = r.data as Record<string, unknown>;
     if (d.orders && typeof d.orders === "object") {
-      chunk = Object.values(d.orders);
+      chunk = Object.values(d.orders as Record<string, T>);
     } else if (Array.isArray(r.data)) {
       chunk = r.data as T[];
     } else {
       chunk = Object.values(r.data as Record<string, T>);
     }
+    const totalPages = Number(d.totalPages) || r.paginator?.totalPages || 1;
+    const totalRecords = Number(d.totalRecords) || 0;
+    console.log(`[nhanhFetchAll] ${endpoint} page ${page}/${totalPages}: chunk=${chunk.length}, total=${all.length + chunk.length}, totalRecords=${totalRecords}`);
     all.push(...chunk);
-    // V1: totalPages nằm trong data, KHÔNG phải paginator (giống GAS)
-    const totalPages = (d as Record<string, unknown>).totalPages as number || r.paginator?.totalPages || 1;
     if (page >= totalPages) break;
   }
   return all;

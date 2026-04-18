@@ -30,15 +30,31 @@ export async function GET(req: Request) {
     orderKeys = Object.keys(orders).slice(0, 3);
   }
 
+  // Extract products from first order to debug SKU fields
+  let productFields: string[] = [];
+  let productSample: unknown = null;
+  if (data?.orders && typeof data.orders === "object") {
+    const firstOrder = Object.values(data.orders as Record<string, Record<string, unknown>>)[0];
+    const prods = firstOrder?.products;
+    if (Array.isArray(prods) && prods.length > 0) {
+      productFields = Object.keys(prods[0]);
+      productSample = prods[0];
+    } else if (prods && typeof prods === "object") {
+      const first = Object.values(prods as Record<string, unknown>)[0] as Record<string, unknown>;
+      productFields = Object.keys(first || {});
+      productSample = first;
+    }
+  }
+
   return NextResponse.json({
     code: raw.code,
-    messages: raw.messages,
     paginator_response: raw.paginator,
     data_topLevelKeys: topLevelKeys,
     data_totalPages: data?.totalPages,
+    data_totalRecords: data?.totalRecords,
     data_orderCount: orderCount,
-    data_orderKeys: orderKeys,
-    data_sample: data?.orders ? Object.values(data.orders as Record<string, unknown>)[0] : data,
+    productFields,
+    productSample,
   });
 }
 
