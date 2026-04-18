@@ -104,19 +104,22 @@ export async function backfillLaunchFromDeploys(): Promise<number> {
 /** Auto-create launch plan from a completed deployment. Idempotent by deploy_id in metrics. */
 export async function createLaunchFromDeploy(deploy: {
   deploy_id: string; sku: string | null; product_name: string | null;
-  unit_price: number; sell_price: number; product_desc: string | null;
+  unit_price: number | null; sell_price: number | null; product_desc: string | null;
   fb_done: boolean; shopee_done: boolean; tiktok_done: boolean; web_done: boolean;
   fb_links: string | null; shopee_links: string | null; tiktok_links: string | null; web_links: string | null;
 }, createdBy: string): Promise<string | null> {
   const db = supabaseAdmin();
 
-  // Check if already exists for this deploy_id
-  const { data: existing } = await db
+  // Check if already exists for this deploy_id — use text search on metrics jsonb
+  const { data: allPlans } = await db
     .from("launch_plan")
-    .select("id")
-    .contains("metrics", { deploy_id: deploy.deploy_id })
-    .limit(1);
-  if (existing && existing.length > 0) return existing[0].id;
+    .select("id, metrics")
+    .limit(5000);
+  const existing = (allPlans || []).find((p) => {
+    const m = p.metrics as Record<string, unknown> | null;
+    return m?.deploy_id === deploy.deploy_id;
+  });
+  if (existing) return existing.id;
 
   const channels: string[] = [];
   const listings: Record<string, { links: string[]; done: boolean }> = {};
@@ -139,7 +142,7 @@ export async function createLaunchFromDeploy(deploy: {
   const metrics = {
     deploy_id: deploy.deploy_id,
     product_type: "medium",
-    pricing: { cost: deploy.unit_price, sell_price: deploy.sell_price },
+    pricing: { cost: Number(deploy.unit_price || 0), sell_price: Number(deploy.sell_price || 0) },
     channels_selected: channels.length > 0 ? channels : ["Facebook", "TikTok Shop", "Shopee"],
     listings,
     product_desc: deploy.product_desc,
