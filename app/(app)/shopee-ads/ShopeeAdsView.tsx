@@ -371,7 +371,7 @@ function ComboChart({ data, nhanhTotals, adsTotals, roas }: {
               <div key={d.date} style={{
                 flex: 1, minWidth: 0,
                 height: Math.max(h, d.revenue > 0 ? 4 : 0),
-                background: isFuture ? "rgba(252,165,165,0.25)" : "#66BB6A",
+                background: isFuture ? "rgba(238,77,45,0.15)" : "#EE4D2D",
                 borderRadius: "3px 3px 0 0",
               }} />
             );
@@ -392,9 +392,9 @@ function ComboChart({ data, nhanhTotals, adsTotals, roas }: {
             return (
               <g>
                 <path d={validPts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ")}
-                  fill="none" stroke="#E57373" strokeWidth={2} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+                  fill="none" stroke="#1F2937" strokeWidth={2} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
                 {validPts.map((p, i) => (
-                  <circle key={i} cx={p.x} cy={p.y} r={3.5} fill="#E57373" stroke="#fff" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+                  <circle key={i} cx={p.x} cy={p.y} r={3.5} fill="#1F2937" stroke="#fff" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
                 ))}
               </g>
             );
