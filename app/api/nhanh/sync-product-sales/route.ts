@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/user";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { syncProductSales } from "@/lib/nhanh/sync-product-sales";
 
 export const maxDuration = 300;
@@ -12,6 +13,15 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json().catch(() => ({}));
+
+    // clear=true → xoá toàn bộ data cũ trước khi sync lại
+    if (body.clear) {
+      const db = supabaseAdmin();
+      const { error } = await db.from("product_sales").delete().gte("date", "2000-01-01");
+      if (error) {
+        return NextResponse.json({ ok: false, error: "Xoá data lỗi: " + error.message }, { status: 500 });
+      }
+    }
 
     const from = body.from;
     const to = body.to;

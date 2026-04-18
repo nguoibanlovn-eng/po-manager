@@ -46,13 +46,14 @@ function SyncSalesButton({ onDone, from, to }: { onDone: () => void; from: strin
         cursor.setUTCDate(cursor.getUTCDate() + 1);
       }
 
+      // Chunk đầu tiên gửi clear=true để xoá data cũ (sai filter)
       let totalRows = 0, totalOrders = 0;
       for (let i = 0; i < chunks.length; i++) {
         const c = chunks[i];
         setProgress(`Chunk ${i + 1}/${chunks.length}: ${c.from} → ${c.to}...`);
         const res = await fetch("/api/nhanh/sync-product-sales", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(c),
+          body: JSON.stringify({ ...c, ...(i === 0 ? { clear: true } : {}) }),
         });
         if (!res.ok && res.status >= 500) {
           setProgress(`Lỗi server (${res.status}) — thử lại sau`);
