@@ -49,10 +49,24 @@ export async function GET(req: Request) {
     bySku.set(r.sku, cur);
   }
 
-  let items = Array.from(bySku.values()).map((v) => ({
-    sku: v.sku, product_name: v.product_name, channels: Array.from(v.channels).join(", "),
-    qty: v.qty, orders: v.orders, revenue: v.revenue,
-  }));
+  // Join với products table để lấy sell_price → tính doanh thu ước tính (giống GAS)
+  const allSkus = Array.from(bySku.keys());
+  const priceMap = new Map<string, number>();
+  for (let i = 0; i < allSkus.length; i += 500) {
+    const chunk = allSkus.slice(i, i + 500);
+    const { data: prods } = await db.from("products").select("sku, sell_price").in("sku", chunk);
+    if (prods) for (const p of prods) if (p.sell_price) priceMap.set(p.sku, Number(p.sell_price));
+  }
+
+  let items = Array.from(bySku.values()).map((v) => {
+    const sellPrice = priceMap.get(v.sku) || 0;
+    // Doanh thu ước tính = qty × sell_price catalog (giống GAS)
+    const estRevenue = sellPrice > 0 ? v.qty * sellPrice : v.revenue;
+    return {
+      sku: v.sku, product_name: v.product_name, channels: Array.from(v.channels).join(", "),
+      qty: v.qty, orders: v.orders, revenue: estRevenue,
+    };
+  });
 
   // Sort
   if (sort === "revenue_desc") items.sort((a, b) => b.revenue - a.revenue);

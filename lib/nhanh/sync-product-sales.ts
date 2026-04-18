@@ -6,9 +6,12 @@ import { nhanhV3FetchAll } from "./client";
 
 /**
  * Sync product-level sales from Nhanh.vn V3 order/list.
- * Per-day chunks, không lọc status, cursor pagination.
+ * Per-day chunks, SUCCESS_STATUS whitelist (giống GAS), cursor pagination.
  * Dedup: upsert on (order_id, sku).
  */
+
+// Whitelist status thành công — giống GAS SUCCESS_STATUS
+const SUCCESS_STATUS = new Set([54, 56, 42, 72, 64, 60, 74]);
 
 const CHANNEL_MAP: Record<string, string> = {
   "0": "Admin", "1": "API", "2": "Facebook", "3": "Zalo",
@@ -55,8 +58,10 @@ async function syncV3Day(date: string): Promise<{ orders: number; rows: Row[] }>
 
   for (const o of orders) {
     const info = o.info || {};
+    const status = Number(info.status || 0);
+    // Giống GAS: chỉ lấy đơn thành công
+    if (!SUCCESS_STATUS.has(status)) continue;
     const orderId = String(info.id || "");
-    const status = String(info.status || "");
     const chCode = String(o.channel?.saleChannel || "0");
     let orderDate = date;
     if (info.createdAt) {
@@ -77,7 +82,7 @@ async function syncV3Day(date: string): Promise<{ orders: number; rows: Row[] }>
       rows.push({
         date: orderDate, sku, product_name: String(p.name || ""), order_id: orderId,
         channel: chCode, channel_name: CHANNEL_MAP[chCode] || `Kênh ${chCode}`,
-        qty, unit_price: price, revenue: qty * price, status, synced_at: now,
+        qty, unit_price: price, revenue: qty * price, status: "success", synced_at: now,
       });
     }
   }

@@ -205,7 +205,11 @@ export default function InventoryView({
     } catch { /* */ } finally { setAnalysisLoading(false); }
   }, [salesFrom, salesTo]);
 
-  // Auto-load analysis khi sales data loaded
+  // Auto-load analysis khi mount + khi sales data loaded
+  const [analysisAutoLoaded, setAnalysisAutoLoaded] = useState(false);
+  useEffect(() => {
+    if (!analysisAutoLoaded) { loadAnalysis(); setAnalysisAutoLoaded(true); }
+  }, [analysisAutoLoaded, loadAnalysis]);
   useEffect(() => { if (salesLoaded) loadAnalysis(); }, [salesLoaded, loadAnalysis]);
 
   const filteredAnalysis = useMemo(() => {
