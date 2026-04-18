@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { formatDate, formatVND, toNum } from "@/lib/format";
@@ -369,12 +370,17 @@ function DeployRow({
           </div>
         </div>
         <span className="muted" style={{ fontSize: 11 }}>Mua hàng</span>
+        {p.info_done && (
+          <Link href="/launch-plan" style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, background: "#DCFCE7", color: "#16A34A", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>
+            → Launch
+          </Link>
+        )}
         <button
           className="btn btn-ghost btn-sm"
           onClick={() => setShowDetail(!showDetail)}
           style={{ fontSize: 12 }}
         >
-          Điền info {showDetail ? "▴" : "▾"}
+          {p.info_done ? "Chi tiết" : "Điền info"} {showDetail ? "▴" : "▾"}
         </button>
       </div>
 
@@ -434,17 +440,25 @@ function DeployRow({
             </button>
           </div>
 
-          {/* Status bar: Đã xác nhận */}
+          {/* Status bar: Đã xác nhận → đẩy qua Launch Plan */}
           {p.info_done && (
             <div style={{
               display: "flex", alignItems: "center", justifyContent: "space-between",
               padding: "8px 12px", background: "#F0FDF4", borderRadius: 6, marginBottom: 12,
               border: "1px solid #86EFAC",
             }}>
-              <span style={{ color: "#15803D", fontWeight: 600, fontSize: 13 }}>
-                ✓ Đã xác nhận · Chờ lập kế hoạch bán
-              </span>
+              <div>
+                <span style={{ color: "#15803D", fontWeight: 600, fontSize: 13 }}>
+                  ✓ Đã xác nhận thông tin
+                </span>
+                <span style={{ color: "#6B7280", fontSize: 11, marginLeft: 8 }}>
+                  → Đã tạo ticket Launch Plan
+                </span>
+              </div>
               <div className="row" style={{ gap: 6 }}>
+                <Link href="/launch-plan" className="btn btn-primary btn-xs" style={{ textDecoration: "none" }}>
+                  Xem Launch Plan →
+                </Link>
                 <button className="btn btn-ghost btn-xs" onClick={() => setShowDetail(true)}>Sửa</button>
                 <button className="btn btn-ghost btn-xs" style={{ color: "var(--red)" }} onClick={cancelApproval} disabled={disabled}>
                   Huỷ xác nhận
