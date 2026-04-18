@@ -11,6 +11,8 @@ export type InventoryRow = {
   reserved_qty: number | null;
   sold_30d: number | null;
   last_sync: string | null;
+  cost_price?: number | null;
+  sell_price?: number | null;
 };
 
 export async function listInventory(opts: {
@@ -34,5 +36,26 @@ export async function listInventory(opts: {
   else if (filter === "in_stock") q = q.gt("available_qty", 0);
 
   const { data, count } = await q.range(offset, offset + limit - 1);
-  return { rows: (data as InventoryRow[]) || [], total: count || 0 };
+  const rows = (data as InventoryRow[]) || [];
+
+  // Enrich with price data from products table
+  if (rows.length > 0) {
+    const skus = rows.map((r) => r.sku);
+    const { data: prods } = await db
+      .from("products")
+      .select("sku, cost_price, sell_price")
+      .in("sku", skus);
+    if (prods) {
+      const priceMap = new Map(prods.map((p) => [p.sku, p]));
+      for (const r of rows) {
+        const p = priceMap.get(r.sku);
+        if (p) {
+          r.cost_price = p.cost_price;
+          r.sell_price = p.sell_price;
+        }
+      }
+    }
+  }
+
+  return { rows, total: count || 0 };
 }
