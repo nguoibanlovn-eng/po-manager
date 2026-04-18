@@ -84,6 +84,23 @@ export async function deleteLaunchPlan(id: string) {
   await supabaseAdmin().from("launch_plan").delete().eq("id", id);
 }
 
+/** Backfill: create launch plans for all deployments with info_done but no launch plan yet */
+export async function backfillLaunchFromDeploys(): Promise<number> {
+  const db = supabaseAdmin();
+  const { data: deploys } = await db
+    .from("deployments")
+    .select("deploy_id, sku, product_name, unit_price, sell_price, product_desc, fb_done, shopee_done, tiktok_done, web_done, fb_links, shopee_links, tiktok_links, web_links, created_by")
+    .eq("info_done", true);
+  if (!deploys?.length) return 0;
+
+  let created = 0;
+  for (const d of deploys) {
+    const id = await createLaunchFromDeploy(d as Parameters<typeof createLaunchFromDeploy>[0], d.created_by || "backfill");
+    if (id) created++;
+  }
+  return created;
+}
+
 /** Auto-create launch plan from a completed deployment. Idempotent by deploy_id in metrics. */
 export async function createLaunchFromDeploy(deploy: {
   deploy_id: string; sku: string | null; product_name: string | null;
