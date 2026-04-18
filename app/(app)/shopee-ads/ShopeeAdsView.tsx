@@ -342,7 +342,7 @@ export default function ShopeeAdsView({
 }
 
 /* ═══════════════════════════════════════════════════════════
-   COMBO CHART — green bars (DT) + red line (Ads)
+   COMBO CHART — GAS style: green bars + coral line
    ═══════════════════════════════════════════════════════════ */
 function ComboChart({ data, nhanhTotals, adsTotals, roas }: {
   data: Array<{ date: string; revenue: number; spend: number; orders: number }>;
@@ -352,59 +352,49 @@ function ComboChart({ data, nhanhTotals, adsTotals, roas }: {
 }) {
   const maxRev = Math.max(...data.map((d) => d.revenue), 1);
   const maxSpend = Math.max(...data.map((d) => d.spend), 1);
-  const BAR_H = 170;
-  const chartH = BAR_H - 24;
+  const BAR_H = 180;
+  const chartH = BAR_H - 10;
   const today = new Date().toISOString().substring(0, 10);
-  const labelStep = Math.max(1, Math.ceil(data.length / 12));
+  const labelStep = Math.max(1, Math.ceil(data.length / 15));
+  // Scale ads line to ~60-80% of bar height for visual overlap
+  const adsMaxH = chartH * 0.75;
 
   return (
     <div>
-      {/* Chart area */}
       <div style={{ position: "relative", height: BAR_H }}>
-        {/* Grid lines */}
-        {[0.25, 0.5, 0.75, 1].map((pct) => (
-          <div key={pct} style={{ position: "absolute", bottom: pct * chartH, left: 0, right: 0, borderBottom: "1px dashed #F3F4F6", zIndex: 0 }} />
-        ))}
-
-        {/* Bars */}
-        <div style={{ display: "flex", alignItems: "flex-end", height: BAR_H, position: "relative", zIndex: 1, gap: 2, padding: "0 2px" }}>
-          {data.map((d, i) => {
+        {/* Green bars */}
+        <div style={{ display: "flex", alignItems: "flex-end", height: BAR_H, position: "relative", zIndex: 1, gap: 3, padding: "0 4px" }}>
+          {data.map((d) => {
             const h = maxRev > 0 ? (d.revenue / maxRev) * chartH : 0;
             const isFuture = d.date > today;
-            const isToday = d.date === today;
             return (
-              <div key={d.date} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", minWidth: 0 }}>
-                {d.revenue > 0 && i % labelStep === 0 && (
-                  <div style={{ fontSize: 8, fontWeight: 600, color: "#16A34A", marginBottom: 2, whiteSpace: "nowrap" }}>{formatVNDCompact(d.revenue)}</div>
-                )}
-                <div style={{
-                  width: "80%",
-                  height: Math.max(h, d.revenue > 0 ? 3 : 0),
-                  background: isFuture ? "#D1FAE5" : isToday ? "#4ADE80" : "#22C55E",
-                  borderRadius: "3px 3px 0 0",
-                  opacity: isFuture ? 0.5 : 1,
-                  minWidth: 4,
-                }} />
-              </div>
+              <div key={d.date} style={{
+                flex: 1, minWidth: 0,
+                height: Math.max(h, d.revenue > 0 ? 4 : 0),
+                background: isFuture ? "rgba(252,165,165,0.25)" : "#66BB6A",
+                borderRadius: "3px 3px 0 0",
+              }} />
             );
           })}
         </div>
 
-        {/* Ads line overlay — SVG for precision */}
-        <svg style={{ position: "absolute", top: 0, left: 0, width: "100%", height: BAR_H, pointerEvents: "none", zIndex: 2, overflow: "visible" }}
+        {/* Coral line overlay */}
+        <svg style={{ position: "absolute", top: 0, left: 0, width: "100%", height: BAR_H, pointerEvents: "none", zIndex: 2 }}
           viewBox={`0 0 ${data.length * 100} ${BAR_H}`} preserveAspectRatio="none">
           {(() => {
-            const pts = data.map((d, i) => ({ x: i * 100 + 50, y: BAR_H - (maxSpend > 0 ? (d.spend / maxSpend) * chartH * 0.85 : 0) - 12, val: d.spend }));
+            const pts = data.map((d, i) => ({
+              x: i * 100 + 50,
+              y: BAR_H - (maxSpend > 0 ? (d.spend / maxSpend) * adsMaxH : 0) - 5,
+              val: d.spend,
+            }));
             const validPts = pts.filter((p) => p.val > 0);
             if (validPts.length < 2) return null;
             return (
               <g>
-                <path d={validPts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ")} fill="none" stroke="#EF4444" strokeWidth={2.5} vectorEffect="non-scaling-stroke" />
+                <path d={validPts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ")}
+                  fill="none" stroke="#E57373" strokeWidth={2} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
                 {validPts.map((p, i) => (
-                  <g key={i}>
-                    <circle cx={p.x} cy={p.y} r={5} fill="#fff" stroke="#EF4444" strokeWidth={2} vectorEffect="non-scaling-stroke" />
-                    <circle cx={p.x} cy={p.y} r={2.5} fill="#EF4444" vectorEffect="non-scaling-stroke" />
-                  </g>
+                  <circle key={i} cx={p.x} cy={p.y} r={3.5} fill="#E57373" stroke="#fff" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
                 ))}
               </g>
             );
@@ -412,22 +402,13 @@ function ComboChart({ data, nhanhTotals, adsTotals, roas }: {
         </svg>
       </div>
 
-      {/* Ads spend labels */}
-      <div style={{ display: "flex", gap: 2, padding: "0 2px" }}>
-        {data.map((d, i) => (
-          <div key={`al-${d.date}`} style={{ flex: 1, textAlign: "center", fontSize: 7, color: "#EF4444", fontWeight: 600, minWidth: 0 }}>
-            {d.spend > 0 && i % labelStep === 0 ? formatVNDCompact(d.spend) : ""}
-          </div>
-        ))}
-      </div>
-
       {/* Date labels */}
-      <div style={{ display: "flex", borderTop: "1px solid #E5E7EB", gap: 2, padding: "0 2px" }}>
+      <div style={{ display: "flex", gap: 3, padding: "0 4px", borderTop: "1px solid #E5E7EB" }}>
         {data.map((d, i) => (
-          <div key={`dl-${d.date}`} style={{
-            flex: 1, textAlign: "center", fontSize: 9, padding: "4px 0", minWidth: 0,
-            color: d.date === today ? "#16A34A" : d.date > today ? "#D1D5DB" : "#6B7280",
-            fontWeight: d.date === today ? 700 : 400,
+          <div key={d.date} style={{
+            flex: 1, textAlign: "center", fontSize: 10, padding: "5px 0", minWidth: 0,
+            color: d.date > today ? "#EF4444" : "#6B7280",
+            fontWeight: d.date > today ? 600 : 400,
           }}>
             {i % labelStep === 0 ? d.date.substring(8) : ""}
           </div>
@@ -435,26 +416,26 @@ function ComboChart({ data, nhanhTotals, adsTotals, roas }: {
       </div>
 
       {/* Summary footer */}
-      <div style={{ display: "flex", gap: 0, marginTop: 8, borderRadius: 8, overflow: "hidden", fontSize: 11 }}>
-        <div style={{ flex: 1, padding: "8px 12px", background: "#F0FDF4", display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ color: "#6B7280" }}>DT</span>
-          <strong style={{ color: "#16A34A" }}>{formatVNDCompact(nhanhTotals.revenue)}</strong>
+      <div style={{ display: "flex", gap: 1, marginTop: 8, borderRadius: 8, overflow: "hidden", fontSize: 11 }}>
+        <div style={{ flex: 1, padding: "10px 14px", background: "#F0FDF4" }}>
+          <div style={{ color: "#6B7280", fontSize: 9, marginBottom: 2 }}>Doanh thu</div>
+          <div style={{ fontWeight: 800, color: "#16A34A", fontSize: 15 }}>{formatVNDCompact(nhanhTotals.revenue)}</div>
         </div>
-        <div style={{ flex: 1, padding: "8px 12px", background: "#FEF2F2", display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ color: "#6B7280" }}>Ads</span>
-          <strong style={{ color: "#DC2626" }}>{formatVNDCompact(adsTotals.spend)}</strong>
+        <div style={{ flex: 1, padding: "10px 14px", background: "#FEF2F2" }}>
+          <div style={{ color: "#6B7280", fontSize: 9, marginBottom: 2 }}>Chi phí Ads</div>
+          <div style={{ fontWeight: 800, color: "#DC2626", fontSize: 15 }}>{formatVNDCompact(adsTotals.spend)}</div>
         </div>
-        <div style={{ flex: 1, padding: "8px 12px", background: "#FEF2F2", display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ color: "#6B7280" }}>Tỉ lệ</span>
-          <strong style={{ color: "#DC2626" }}>{nhanhTotals.revenue > 0 ? ((adsTotals.spend / nhanhTotals.revenue) * 100).toFixed(1) : 0}%</strong>
+        <div style={{ flex: 1, padding: "10px 14px", background: "#F9FAFB" }}>
+          <div style={{ color: "#6B7280", fontSize: 9, marginBottom: 2 }}>Ads/DT</div>
+          <div style={{ fontWeight: 800, color: "#D97706", fontSize: 15 }}>{nhanhTotals.revenue > 0 ? ((adsTotals.spend / nhanhTotals.revenue) * 100).toFixed(1) : 0}%</div>
         </div>
-        <div style={{ flex: 1, padding: "8px 12px", background: roas >= 5 ? "#F0FDF4" : "#FEF2F2", display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ color: "#6B7280" }}>ROAS</span>
-          <strong style={{ color: roas >= 5 ? "#16A34A" : "#DC2626" }}>{roas.toFixed(1)}</strong>
+        <div style={{ flex: 1, padding: "10px 14px", background: roas >= 5 ? "#F0FDF4" : "#FEF2F2" }}>
+          <div style={{ color: "#6B7280", fontSize: 9, marginBottom: 2 }}>ROAS</div>
+          <div style={{ fontWeight: 800, color: roas >= 5 ? "#16A34A" : "#DC2626", fontSize: 15 }}>{roas.toFixed(1)}x</div>
         </div>
-        <div style={{ flex: 1, padding: "8px 12px", background: "#F9FAFB", display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ color: "#6B7280" }}>Đơn</span>
-          <strong>{nhanhTotals.orders.toLocaleString("vi-VN")}</strong>
+        <div style={{ flex: 1, padding: "10px 14px", background: "#F9FAFB" }}>
+          <div style={{ color: "#6B7280", fontSize: 9, marginBottom: 2 }}>Đơn hàng</div>
+          <div style={{ fontWeight: 800, fontSize: 15 }}>{nhanhTotals.orders.toLocaleString("vi-VN")}</div>
         </div>
       </div>
     </div>
