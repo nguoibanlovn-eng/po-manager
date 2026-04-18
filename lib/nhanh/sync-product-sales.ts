@@ -131,20 +131,20 @@ export async function syncProductSales(opts: {
   const errors: string[] = [];
   let totalOrders = 0, totalRows = 0, days = 0;
 
+  // Chunk 1 ngày — mỗi ngày fetch riêng để pagination đủ
   let cursor = from;
   while (cursor <= to) {
-    const chunkEnd = addDays(cursor, 6) > to ? to : addDays(cursor, 6);
     try {
-      const result = await syncV3Chunk(cursor, chunkEnd);
+      const result = await syncV3Chunk(cursor, cursor);
       const upserted = await upsertRows(result.rows);
       totalOrders += result.orders;
       totalRows += upserted;
       days++;
-      await new Promise((r) => setTimeout(r, 200));
+      await new Promise((r) => setTimeout(r, 100));
     } catch (e) {
-      errors.push(`${cursor}→${chunkEnd}: ${(e as Error).message}`);
+      errors.push(`${cursor}: ${(e as Error).message}`);
     }
-    cursor = addDays(chunkEnd, 1);
+    cursor = addDays(cursor, 1);
   }
 
   return { totalOrders, totalRows, days, errors };

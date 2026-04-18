@@ -33,13 +33,13 @@ function SyncSalesButton({ onDone, from, to }: { onDone: () => void; from: strin
   async function doSync(clearFirst: boolean) {
     setSyncing(true); setProgress(clearFirst ? "Xoá data cũ..." : "Bắt đầu...");
     try {
-      // Split into chunks of max 30 days
+      // Split into chunks of max 7 days (smaller = more complete data)
       const chunks: Array<{ from: string; to: string }> = [];
       let cursor = new Date(from + "T00:00:00Z");
       const end = new Date(to + "T00:00:00Z");
       while (cursor <= end) {
         const chunkEnd = new Date(cursor);
-        chunkEnd.setUTCDate(chunkEnd.getUTCDate() + 29);
+        chunkEnd.setUTCDate(chunkEnd.getUTCDate() + 6);
         const cTo = chunkEnd > end ? to : chunkEnd.toISOString().substring(0, 10);
         chunks.push({ from: cursor.toISOString().substring(0, 10), to: cTo });
         cursor = new Date(chunkEnd);
