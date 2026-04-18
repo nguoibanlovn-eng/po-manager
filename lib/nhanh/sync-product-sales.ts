@@ -2,17 +2,16 @@ import "server-only";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { nowVN, dateVN } from "@/lib/helpers";
 import { toNum } from "@/lib/format";
-import { nhanhFetchAll } from "./client";
+import { nhanhV3FetchAll, nhanhFetchAll } from "./client";
 
 /**
- * Sync product-level sales from Nhanh.vn — dùng V1 /order/index.
- * Giống GAS _syncProductSalesForDate:
- *   - V1 API, KHÔNG lọc status (lấy tất cả đơn)
- *   - SKU = productCode || sku || code (KHÔNG ưu tiên barcode)
- *   - Dedup: upsert on (order_id, sku)
+ * Sync product-level sales from Nhanh.vn.
+ * 2 luồng — giống GAS:
+ *   V3 (primary): order/list, createdAtFrom/To UNIX timestamp, SUCCESS_STATUS whitelist
+ *   V1 (supplement): /order/index, createdFrom/To date string, không lọc status
+ * Dedup: upsert on (order_id, sku)
  */
 
-// Channel map mở rộng — giống GAS
 const CHANNEL_MAP: Record<string, string> = {
   "0": "Admin", "1": "API", "2": "Facebook", "3": "Zalo",
   "5": "Shopee", "7": "TikTok", "8": "Lazada",
@@ -20,17 +19,20 @@ const CHANNEL_MAP: Record<string, string> = {
   "42": "Kênh 42", "48": "TikTok Shop", "100": "Web/App",
 };
 
-type V1Order = {
-  id?: string | number;
-  orderId?: string | number;
-  statusCode?: string | number;
-  status?: string | number;
-  channel?: string | number;
-  saleChannel?: string | number;
-  createdDateTime?: string;
+const SUCCESS_STATUS = new Set([54, 56, 42, 72, 64, 60, 74]);
+
+type V3Order = {
+  info?: { id?: string | number; status?: string | number; createdAt?: string | number };
+  channel?: { saleChannel?: string | number };
   products?: unknown;
-  orderDetails?: unknown;
-  items?: unknown;
+};
+
+type V1Order = {
+  id?: string | number; orderId?: string | number;
+  statusCode?: string | number; status?: string | number;
+  channel?: string | number; saleChannel?: string | number;
+  createdDateTime?: string;
+  products?: unknown; orderDetails?: unknown; items?: unknown;
 };
 
 type Row = {
@@ -45,19 +47,81 @@ function parseProducts(raw: unknown): Array<Record<string, unknown>> {
   return [];
 }
 
+function extractSkuV3(p: Record<string, unknown>): string {
+  // V3: barcode (dạng 2000214xxx) hoặc code
+  const bc = String(p.barcode || "").trim();
+  if (bc.length > 5) return bc;
+  return String(p.code || bc || "").trim();
+}
+
+function extractSkuV1(p: Record<string, unknown>): string {
+  // V1: productBarcode > productCode > code
+  const bc = String(p.productBarcode || "").trim();
+  if (bc.length > 5) return bc;
+  return String(p.productCode || p.sku || p.code || "").trim();
+}
+
 function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr + "T00:00:00Z");
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().substring(0, 10);
 }
 
-// ─── V1: /order/index — giống GAS _syncProductSalesForDate ──
+// ─── V3: order/list — UNIX timestamp, cursor pagination ──
+async function syncV3Chunk(fromDate: string, toDate: string): Promise<{ orders: number; rows: Row[] }> {
+  const fromTs = Math.floor(new Date(fromDate + "T00:00:00+07:00").getTime() / 1000);
+  const toTs = Math.floor(new Date(toDate + "T23:59:59+07:00").getTime() / 1000);
+
+  console.log(`[V3] ${fromDate}→${toDate} ts=${fromTs}→${toTs}`);
+  const orders = await nhanhV3FetchAll<V3Order>("order/list", {
+    filters: { createdAtFrom: fromTs, createdAtTo: toTs },
+  }, { maxPages: 200 });
+  console.log(`[V3] Got ${orders.length} orders`);
+
+  const now = nowVN();
+  const rows: Row[] = [];
+
+  for (const o of orders) {
+    const info = o.info || {};
+    const status = Number(info.status || 0);
+    if (!SUCCESS_STATUS.has(status)) continue;
+
+    const orderId = String(info.id || "");
+    const chCode = String(o.channel?.saleChannel || "0");
+    let orderDate = fromDate;
+    if (info.createdAt) {
+      try {
+        const ts = Number(info.createdAt);
+        if (ts > 1e9) {
+          const d = new Date(ts * 1000);
+          orderDate = d.toLocaleDateString("sv-SE", { timeZone: "Asia/Ho_Chi_Minh" });
+        }
+      } catch { /* */ }
+    }
+
+    for (const p of parseProducts(o.products)) {
+      const sku = extractSkuV3(p);
+      const qty = toNum(p.quantity || p.qty);
+      const price = toNum(p.price || p.displaySalePrice || p.originalPrice);
+      if (!sku || qty <= 0) continue;
+      rows.push({
+        date: orderDate, sku, product_name: String(p.name || ""), order_id: orderId,
+        channel: chCode, channel_name: CHANNEL_MAP[chCode] || `Kênh ${chCode}`,
+        qty, unit_price: price, revenue: qty * price, status: "success", synced_at: now,
+      });
+    }
+  }
+
+  return { orders: orders.length, rows };
+}
+
+// ─── V1: /order/index — bổ sung đơn V3 bỏ sót ──
 async function syncV1Chunk(from: string, to: string): Promise<{ orders: number; rows: Row[] }> {
-  console.log(`[syncV1] ${from}→${to}`);
+  console.log(`[V1] ${from}→${to}`);
   const orders = await nhanhFetchAll<V1Order>("/order/index", {
     filters: { createdFrom: from, createdTo: to },
   }, 200);
-  console.log(`[syncV1] Got ${orders.length} orders`);
+  console.log(`[V1] Got ${orders.length} orders`);
 
   const now = nowVN();
   const rows: Row[] = [];
@@ -69,13 +133,9 @@ async function syncV1Chunk(from: string, to: string): Promise<{ orders: number; 
     const status = String(o.statusCode || o.status || "");
     const orderDate = String(o.createdDateTime || from).substring(0, 10);
 
-    // GAS: o.products || o.orderDetails || o.items
     const products = parseProducts(o.products || o.orderDetails || o.items);
-    if (!products.length) continue;
-
     for (const item of products) {
-      // V1: productCode thường null → fallback productBarcode
-      const sku = String(item.productCode || item.productBarcode || item.sku || item.code || item.barcode || "").trim();
+      const sku = extractSkuV1(item);
       const name = String(item.productName || item.name || "");
       const qty = toNum(item.quantity || item.qty);
       const price = toNum(item.price || item.unitPrice);
@@ -83,8 +143,7 @@ async function syncV1Chunk(from: string, to: string): Promise<{ orders: number; 
       rows.push({
         date: orderDate, sku, product_name: name, order_id: orderId,
         channel: chCode, channel_name: chName,
-        qty, unit_price: price, revenue: qty * price,
-        status, synced_at: now,
+        qty, unit_price: price, revenue: qty * price, status, synced_at: now,
       });
     }
   }
@@ -109,9 +168,8 @@ async function upsertRows(rows: Row[]): Promise<number> {
 
 // ─── MAIN SYNC ─────────────────────────────────────────────
 /**
- * Sync via V1 /order/index — giống GAS daily sync.
- * Chunk 1 ngày (giống GAS _syncProductSalesForDate chạy từng ngày).
- * Không lọc status — lấy tất cả đơn.
+ * V3 (primary, chunk 7 ngày) → V1 (supplement, chunk 7 ngày).
+ * Upsert dedup trên (order_id, sku) nên không sợ trùng.
  */
 export async function syncProductSales(opts: {
   from?: string; to?: string;
@@ -122,20 +180,35 @@ export async function syncProductSales(opts: {
   const errors: string[] = [];
   let totalOrders = 0, totalRows = 0, days = 0;
 
-  // Chunk 3 ngày (V1 trả ~133 trang/ngày → 3 ngày ≈ 400 trang, maxPages=200)
+  // ── V3: chunk 7 ngày (primary) ──
   let cursor = from;
   while (cursor <= to) {
-    const chunkEnd = addDays(cursor, 2) > to ? to : addDays(cursor, 2);
+    const chunkEnd = addDays(cursor, 6) > to ? to : addDays(cursor, 6);
     try {
-      const result = await syncV1Chunk(cursor, chunkEnd);
-      console.log(`[sync] ${cursor}→${chunkEnd}: ${result.orders} orders, ${result.rows.length} rows`);
+      const result = await syncV3Chunk(cursor, chunkEnd);
       const upserted = await upsertRows(result.rows);
       totalOrders += result.orders;
       totalRows += upserted;
       days++;
       await new Promise((r) => setTimeout(r, 200));
     } catch (e) {
-      errors.push(`${cursor}→${chunkEnd}: ${(e as Error).message}`);
+      errors.push(`V3 ${cursor}→${chunkEnd}: ${(e as Error).message}`);
+    }
+    cursor = addDays(chunkEnd, 1);
+  }
+
+  // ── V1: chunk 7 ngày (supplement — bổ sung đơn V3 miss) ──
+  cursor = from;
+  while (cursor <= to) {
+    const chunkEnd = addDays(cursor, 6) > to ? to : addDays(cursor, 6);
+    try {
+      const result = await syncV1Chunk(cursor, chunkEnd);
+      const upserted = await upsertRows(result.rows);
+      totalOrders += result.orders;
+      totalRows += upserted;
+      await new Promise((r) => setTimeout(r, 200));
+    } catch (e) {
+      errors.push(`V1 ${cursor}→${chunkEnd}: ${(e as Error).message}`);
     }
     cursor = addDays(chunkEnd, 1);
   }
