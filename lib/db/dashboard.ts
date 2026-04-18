@@ -136,6 +136,43 @@ export async function getDashboardStats(monthKey?: string): Promise<DashStats> {
   };
 }
 
+/** Revenue by channel from sales_sync (nhanh.vn) for a date range */
+export async function getRevenueByChannel(from: string, to: string) {
+  const db = supabaseAdmin();
+  const { data } = await db
+    .from("sales_sync")
+    .select("period_from, channel, revenue_net, order_net")
+    .gte("period_from", from)
+    .lte("period_from", to)
+    .order("period_from", { ascending: true })
+    .limit(5000);
+
+  const byChannel = new Map<string, { revenue: number; orders: number }>();
+  const byDate = new Map<string, number>();
+
+  for (const r of data || []) {
+    const ch = String(r.channel || "Khác");
+    const cur = byChannel.get(ch) || { revenue: 0, orders: 0 };
+    cur.revenue += Number(r.revenue_net || 0);
+    cur.orders += Number(r.order_net || 0);
+    byChannel.set(ch, cur);
+
+    const d = String(r.period_from || "");
+    byDate.set(d, (byDate.get(d) || 0) + Number(r.revenue_net || 0));
+  }
+
+  return {
+    channels: Array.from(byChannel.entries())
+      .map(([name, v]) => ({ name, ...v }))
+      .sort((a, b) => b.revenue - a.revenue),
+    daily: Array.from(byDate.entries())
+      .map(([date, revenue]) => ({ date, revenue }))
+      .sort((a, b) => a.date.localeCompare(b.date)),
+    total: Array.from(byChannel.values()).reduce((s, v) => s + v.revenue, 0),
+    totalOrders: Array.from(byChannel.values()).reduce((s, v) => s + v.orders, 0),
+  };
+}
+
 export async function getRecentOrders(limit = 10) {
   const { data } = await supabaseAdmin()
     .from("orders")
