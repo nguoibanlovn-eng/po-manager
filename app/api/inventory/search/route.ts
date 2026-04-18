@@ -17,5 +17,18 @@ export async function GET(req: Request) {
   }
   const { data } = await query.order("available_qty", { ascending: false }).limit(limit);
 
-  return NextResponse.json({ ok: true, items: data || [] });
+  // Enrich with cost_price from products table
+  const items = data || [];
+  if (items.length > 0) {
+    const skus = items.map((r) => r.sku);
+    const { data: prods } = await db.from("products").select("sku, cost_price, sell_price").in("sku", skus);
+    const priceMap = new Map((prods || []).map((p) => [p.sku, p]));
+    for (const item of items) {
+      const p = priceMap.get(item.sku);
+      (item as Record<string, unknown>).cost_price = p?.cost_price || 0;
+      (item as Record<string, unknown>).sell_price = p?.sell_price || 0;
+    }
+  }
+
+  return NextResponse.json({ ok: true, items });
 }

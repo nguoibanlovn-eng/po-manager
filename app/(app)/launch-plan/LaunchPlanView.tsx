@@ -7,7 +7,7 @@ import type { LaunchPlanRow } from "@/lib/db/plans";
 import { deleteLaunchPlanAction, saveLaunchPlanAction } from "./actions";
 
 type Tab = "ready" | "launching" | "done";
-type InvItem = { sku: string; product_name: string; available_qty: number; category: string };
+type InvItem = { sku: string; product_name: string; available_qty: number; category: string; cost_price?: number; sell_price?: number };
 
 const BRAND = "#1D9E75";
 const BRAND2 = "#185FA5";
@@ -238,9 +238,9 @@ export default function LaunchPlanView({ plans }: { plans: LaunchPlanRow[] }) {
             <div key={item.sku} style={{ padding: "8px 14px", borderBottom: "1px solid #F3F4F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <span style={{ fontWeight: 600, fontSize: 12 }}>{item.product_name}</span>
-                <span style={{ fontSize: 10, color: "#6B7280", marginLeft: 8 }}>SKU: {item.sku} · Tồn: {item.available_qty.toLocaleString("vi-VN")}</span>
+                <span style={{ fontSize: 10, color: "#6B7280", marginLeft: 8 }}>SKU: {item.sku} · Tồn: {item.available_qty.toLocaleString("vi-VN")}{item.cost_price ? ` · Vốn: ${formatVND(item.cost_price)}` : ""}</span>
               </div>
-              <button className="btn btn-sm" style={{ background: BRAND, color: "#fff", fontSize: 11 }} onClick={() => { setFormOpen({ sku: item.sku, name: item.product_name }); setInvResults([]); setInvSearch(""); }}>
+              <button className="btn btn-sm" style={{ background: BRAND, color: "#fff", fontSize: 11 }} onClick={() => { setFormOpen({ sku: item.sku, name: item.product_name, cost: item.cost_price || 0 }); setInvResults([]); setInvSearch(""); }}>
                 🚀 Tạo Launch Plan
               </button>
             </div>
@@ -441,7 +441,7 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
   const [step, setStep] = useState(1);
   const [sku] = useState(initial?.sku || defaultSku || "");
   const [name] = useState(initial?.product_name || defaultName || "");
-  const cost = m.phase3?.cost || m.pricing?.cost || defaultCost || 0;
+  const [cost, setCost] = useState(m.phase3?.cost || m.pricing?.cost || defaultCost || 0);
 
   // Step 1 — Loại hàng
   const [horizon, setHorizon] = useState(m.phase1?.horizon || m.product_type || "medium");
@@ -678,7 +678,8 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
               <div>
                 <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280" }}>GIÁ VỐN A</div>
-                <div style={{ fontSize: 18, fontWeight: 800 }}>{formatVND(cost)}</div>
+                <input type="number" value={cost || ""} onChange={(e) => setCost(Number(e.target.value))} placeholder="Nhập vốn..."
+                  style={{ fontSize: 18, fontWeight: 800, width: 120, border: "none", background: "transparent", borderBottom: "1.5px solid #E5E7EB" }} />
               </div>
               <span style={{ fontSize: 16, color: "#D1D5DB" }}>→</span>
               <div>
@@ -717,7 +718,7 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
           </div>
 
           {/* Block 3 — 2 bảng kịch bản song song */}
-          {sellB1 > 0 && cost > 0 && (
+          {sellB1 > 0 && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               <ScenarioTable
                 chips={[{ label: "Shopee", bg: "#FAECE7", color: "#993C1D" }, { label: "TikTok", bg: "#FBEAF0", color: "#993556" }]}
