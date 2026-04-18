@@ -56,7 +56,7 @@ async function syncV1Chunk(from: string, to: string): Promise<{ orders: number; 
   console.log(`[syncV1] ${from}→${to}`);
   const orders = await nhanhFetchAll<V1Order>("/order/index", {
     filters: { createdFrom: from, createdTo: to },
-  }, 50);
+  }, 200);
   console.log(`[syncV1] Got ${orders.length} orders`);
 
   const now = nowVN();
@@ -74,8 +74,8 @@ async function syncV1Chunk(from: string, to: string): Promise<{ orders: number; 
     if (!products.length) continue;
 
     for (const item of products) {
-      // GAS: productCode || sku || code (KHÔNG dùng barcode)
-      const sku = String(item.productCode || item.sku || item.code || "").trim();
+      // V1: productCode thường null → fallback productBarcode
+      const sku = String(item.productCode || item.productBarcode || item.sku || item.code || item.barcode || "").trim();
       const name = String(item.productName || item.name || "");
       const qty = toNum(item.quantity || item.qty);
       const price = toNum(item.price || item.unitPrice);
@@ -122,10 +122,10 @@ export async function syncProductSales(opts: {
   const errors: string[] = [];
   let totalOrders = 0, totalRows = 0, days = 0;
 
-  // Chunk 7 ngày
+  // Chunk 3 ngày (V1 trả ~133 trang/ngày → 3 ngày ≈ 400 trang, maxPages=200)
   let cursor = from;
   while (cursor <= to) {
-    const chunkEnd = addDays(cursor, 6) > to ? to : addDays(cursor, 6);
+    const chunkEnd = addDays(cursor, 2) > to ? to : addDays(cursor, 2);
     try {
       const result = await syncV1Chunk(cursor, chunkEnd);
       console.log(`[sync] ${cursor}→${chunkEnd}: ${result.orders} orders, ${result.rows.length} rows`);
