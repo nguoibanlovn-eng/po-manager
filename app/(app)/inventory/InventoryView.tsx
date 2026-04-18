@@ -133,7 +133,7 @@ export default function InventoryView({
     for (const r of rows) {
       const stock = toNum(r.available_qty);
       totalStock += stock;
-      totalValue += stock * toNum(r.sell_price);
+      totalValue += stock * toNum(r.cost_price); // Giá trị tồn theo giá vốn
     }
     return { totalStock, totalValue };
   }, [rows]);
@@ -181,9 +181,9 @@ export default function InventoryView({
     for (const s of salesItems) salesMap.set(s.sku, s.qty);
     return rows.map((r) => {
       const stock = toNum(r.available_qty);
-      const sold = salesMap.get(r.sku) || toNum(r.sold_30d);
+      const sold = salesMap.get(r.sku) || 0;
       const rate = stock > 0 ? (sold / stock) * 100 : sold > 0 ? 999 : 0;
-      const stockValue = stock * toNum(r.sell_price);
+      const stockValue = stock * toNum(r.cost_price);
       let category: string;
       if (!salesLoaded && sold === 0 && stock > 0) category = "no_data";
       else if (stock <= 0 && sold === 0) category = "no_data";

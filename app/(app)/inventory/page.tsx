@@ -15,7 +15,7 @@ export default async function InventoryPage({
 
   const { rows, total } = await listInventory({
     search: q || undefined,
-    filter: (filter as "all" | "in_stock" | "low_stock" | "out_of_stock") || "all",
+    filter: (filter as "all" | "in_stock" | "low_stock" | "out_of_stock" | "active" | "inactive") || "all",
     limit,
     offset,
   });
