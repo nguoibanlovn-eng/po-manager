@@ -2,28 +2,35 @@ import "server-only";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { nowVN, dateVN } from "@/lib/helpers";
 import { toNum } from "@/lib/format";
-import { nhanhV3FetchAll } from "./client";
+import { nhanhFetchAll } from "./client";
 
 /**
- * Sync product-level sales from Nhanh.vn V3 order/list API.
- * Giống GAS: createdAtFrom/createdAtTo (UNIX timestamp), SUCCESS_STATUS whitelist.
- * Chunk 7 ngày, max 200 trang/chunk.
- * Dedup: upsert on (order_id, sku) — append only.
+ * Sync product-level sales from Nhanh.vn — dùng V1 /order/index.
+ * Giống GAS _syncProductSalesForDate:
+ *   - V1 API, KHÔNG lọc status (lấy tất cả đơn)
+ *   - SKU = productCode || sku || code (KHÔNG ưu tiên barcode)
+ *   - Dedup: upsert on (order_id, sku)
  */
 
+// Channel map mở rộng — giống GAS
 const CHANNEL_MAP: Record<string, string> = {
-  "0": "Admin", "1": "API", "2": "Facebook", "5": "Shopee",
-  "20": "Shopee Levu01", "48": "TikTok Shop",
+  "0": "Admin", "1": "API", "2": "Facebook", "3": "Zalo",
+  "5": "Shopee", "7": "TikTok", "8": "Lazada",
+  "10": "Kênh 10", "20": "Shopee Levu01", "21": "Shopee Velasboost",
+  "42": "Kênh 42", "48": "TikTok Shop", "100": "Web/App",
 };
 
-// Whitelist status thành công (same as GAS SUCCESS_STATUS)
-const SUCCESS_STATUS = new Set([54, 56, 42, 72, 64, 60, 74]);
-
-type V3Order = {
-  info?: { id?: string | number; status?: string | number; createdAt?: string | number };
-  channel?: { saleChannel?: string | number };
-  products?: Array<{ barcode?: string; code?: string; name?: string; quantity?: number | string; price?: number | string; displaySalePrice?: number | string; originalPrice?: number | string }>
-    | Record<string, { barcode?: string; code?: string; name?: string; quantity?: number | string; price?: number | string; displaySalePrice?: number | string; originalPrice?: number | string }>;
+type V1Order = {
+  id?: string | number;
+  orderId?: string | number;
+  statusCode?: string | number;
+  status?: string | number;
+  channel?: string | number;
+  saleChannel?: string | number;
+  createdDateTime?: string;
+  products?: unknown;
+  orderDetails?: unknown;
+  items?: unknown;
 };
 
 type Row = {
@@ -32,16 +39,9 @@ type Row = {
   revenue: number; status: string; synced_at: string;
 };
 
-function extractSku(p: { barcode?: string; code?: string; productCode?: string; sku?: string }): string {
-  // Ưu tiên barcode dạng 2000214xxxxx (>10 ký tự)
-  const bc = String(p.barcode || "").trim();
-  if (bc.length > 10) return bc;
-  return String(p.productCode || p.sku || p.code || bc || "").trim();
-}
-
-function parseProducts(products: unknown): Array<{ productBarcode?: string; barcode?: string; code?: string; productCode?: string; sku?: string; productName?: string; name?: string; quantity?: number | string; qty?: number | string; price?: number | string; unitPrice?: number | string; displaySalePrice?: number | string; originalPrice?: number | string }> {
-  if (Array.isArray(products)) return products;
-  if (products && typeof products === "object") return Object.values(products);
+function parseProducts(raw: unknown): Array<Record<string, unknown>> {
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === "object") return Object.values(raw);
   return [];
 }
 
@@ -51,47 +51,41 @@ function addDays(dateStr: string, days: number): string {
   return d.toISOString().substring(0, 10);
 }
 
-// ─── V3: order/list — filter bằng UNIX timestamp (giống GAS) ──
-async function syncV3Chunk(fromDate: string, toDate: string): Promise<{ orders: number; rows: Row[] }> {
-  // GAS dùng createdAtFrom / createdAtTo (UNIX seconds), KHÔNG phải fromDate/toDate
-  const fromTs = Math.floor(new Date(fromDate + "T00:00:00+07:00").getTime() / 1000);
-  const toTs = Math.floor(new Date(toDate + "T23:59:59+07:00").getTime() / 1000);
-
-  console.log(`[syncV3] ${fromDate}→${toDate} ts=${fromTs}→${toTs}`);
-  const orders = await nhanhV3FetchAll<V3Order>("order/list", {
-    filters: { createdAtFrom: fromTs, createdAtTo: toTs },
-  }, { maxPages: 200 });
-  console.log(`[syncV3] Got ${orders.length} orders`);
+// ─── V1: /order/index — giống GAS _syncProductSalesForDate ──
+async function syncV1Chunk(from: string, to: string): Promise<{ orders: number; rows: Row[] }> {
+  console.log(`[syncV1] ${from}→${to}`);
+  const orders = await nhanhFetchAll<V1Order>("/order/index", {
+    filters: { createdFrom: from, createdTo: to },
+  }, 50);
+  console.log(`[syncV1] Got ${orders.length} orders`);
 
   const now = nowVN();
   const rows: Row[] = [];
 
   for (const o of orders) {
-    const info = o.info || {};
-    const status = Number(info.status || 0);
-    // Whitelist status thành công — giống GAS SUCCESS_STATUS
-    if (!SUCCESS_STATUS.has(status)) continue;
+    const orderId = String(o.id || o.orderId || "");
+    const chCode = String(o.channel || o.saleChannel || "0");
+    const chName = CHANNEL_MAP[chCode] || `Kênh ${chCode}`;
+    const status = String(o.statusCode || o.status || "");
+    const orderDate = String(o.createdDateTime || from).substring(0, 10);
 
-    const orderId = String(info.id || "");
-    const chCode = String(o.channel?.saleChannel || "0");
-    let orderDate = fromDate;
-    if (info.createdAt) {
-      try {
-        const ts = Number(info.createdAt);
-        if (ts > 1e9) {
-          // Format theo VN timezone giống GAS
-          const d = new Date(ts * 1000);
-          orderDate = d.toLocaleDateString("sv-SE", { timeZone: "Asia/Ho_Chi_Minh" });
-        }
-      } catch { /* */ }
-    }
+    // GAS: o.products || o.orderDetails || o.items
+    const products = parseProducts(o.products || o.orderDetails || o.items);
+    if (!products.length) continue;
 
-    for (const p of parseProducts(o.products)) {
-      const sku = extractSku(p);
-      const qty = toNum(p.quantity || p.qty);
-      const price = toNum(p.price || p.displaySalePrice || p.originalPrice);
+    for (const item of products) {
+      // GAS: productCode || sku || code (KHÔNG dùng barcode)
+      const sku = String(item.productCode || item.sku || item.code || "").trim();
+      const name = String(item.productName || item.name || "");
+      const qty = toNum(item.quantity || item.qty);
+      const price = toNum(item.price || item.unitPrice);
       if (!sku || qty <= 0) continue;
-      rows.push({ date: orderDate, sku, product_name: String(p.name || ""), order_id: orderId, channel: chCode, channel_name: CHANNEL_MAP[chCode] || `Kênh ${chCode}`, qty, unit_price: price, revenue: qty * price, status: "success", synced_at: now });
+      rows.push({
+        date: orderDate, sku, product_name: name, order_id: orderId,
+        channel: chCode, channel_name: chName,
+        qty, unit_price: price, revenue: qty * price,
+        status, synced_at: now,
+      });
     }
   }
 
@@ -115,9 +109,9 @@ async function upsertRows(rows: Row[]): Promise<number> {
 
 // ─── MAIN SYNC ─────────────────────────────────────────────
 /**
- * Full sync via V3 order/list (giống GAS — chỉ dùng V3).
- * Chunk 7 ngày, max 200 trang/chunk.
- * Default: last 7 days.
+ * Sync via V1 /order/index — giống GAS daily sync.
+ * Chunk 1 ngày (giống GAS _syncProductSalesForDate chạy từng ngày).
+ * Không lọc status — lấy tất cả đơn.
  */
 export async function syncProductSales(opts: {
   from?: string; to?: string;
@@ -128,20 +122,20 @@ export async function syncProductSales(opts: {
   const errors: string[] = [];
   let totalOrders = 0, totalRows = 0, days = 0;
 
-  // Chunk 7 ngày (giống GAS: 6 ngày chunk)
+  // Chunk 7 ngày
   let cursor = from;
   while (cursor <= to) {
     const chunkEnd = addDays(cursor, 6) > to ? to : addDays(cursor, 6);
     try {
-      const result = await syncV3Chunk(cursor, chunkEnd);
-      console.log(`[sync] Chunk ${cursor}→${chunkEnd}: ${result.orders} orders, ${result.rows.length} product rows`);
+      const result = await syncV1Chunk(cursor, chunkEnd);
+      console.log(`[sync] ${cursor}→${chunkEnd}: ${result.orders} orders, ${result.rows.length} rows`);
       const upserted = await upsertRows(result.rows);
       totalOrders += result.orders;
       totalRows += upserted;
       days++;
       await new Promise((r) => setTimeout(r, 200));
     } catch (e) {
-      errors.push(`V3 ${cursor}→${chunkEnd}: ${(e as Error).message}`);
+      errors.push(`${cursor}→${chunkEnd}: ${(e as Error).message}`);
     }
     cursor = addDays(chunkEnd, 1);
   }

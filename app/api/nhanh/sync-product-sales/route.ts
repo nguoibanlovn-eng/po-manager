@@ -2,47 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/user";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { syncProductSales } from "@/lib/nhanh/sync-product-sales";
-import { nhanhV3 } from "@/lib/nhanh/client";
-
 export const maxDuration = 300;
-
-// GET: test V3 order/list API — xem Nhanh trả gì
-export async function GET(req: Request) {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "ADMIN") return NextResponse.json({ error: "Admin only" }, { status: 403 });
-
-  const { searchParams } = new URL(req.url);
-  const date = searchParams.get("date") || "2026-04-17";
-  const fromTs = Math.floor(new Date(date + "T00:00:00+07:00").getTime() / 1000);
-  const toTs = Math.floor(new Date(date + "T23:59:59+07:00").getTime() / 1000);
-
-  const raw = await nhanhV3<unknown>("order/list", {
-    filters: { createdAtFrom: fromTs, createdAtTo: toTs },
-    paginator: { size: 5 },
-  });
-
-  // Đếm data
-  let dataCount = 0;
-  let dataType = "none";
-  if (raw.data) {
-    dataType = Array.isArray(raw.data) ? "array" : typeof raw.data;
-    if (Array.isArray(raw.data)) dataCount = raw.data.length;
-    else if (typeof raw.data === "object") dataCount = Object.keys(raw.data as Record<string, unknown>).length;
-  }
-
-  return NextResponse.json({
-    test: true,
-    date,
-    fromTs,
-    toTs,
-    code: raw.code,
-    messages: raw.messages,
-    dataType,
-    dataCount,
-    paginator: raw.paginator,
-    sample: Array.isArray(raw.data) ? raw.data[0] : raw.data ? Object.values(raw.data as Record<string, unknown>)[0] : null,
-  });
-}
 
 export async function POST(req: Request) {
   const user = await getCurrentUser();
