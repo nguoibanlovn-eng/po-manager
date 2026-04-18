@@ -25,6 +25,62 @@ const CAT_GROUPS = [
   { k: "no_data", label: "Chưa có data", sub: "Chưa sync bán", bg: "#F1EFE8", color: "#444441", icon: "⚪" },
 ];
 
+/** Sync sales button — splits long ranges into monthly chunks */
+function SyncSalesButton({ onDone, from, to }: { onDone: () => void; from: string; to: string }) {
+  const [syncing, setSyncing] = useState(false);
+  const [progress, setProgress] = useState("");
+
+  async function run() {
+    setSyncing(true); setProgress("Bắt đầu...");
+    try {
+      // Split into chunks of max 30 days
+      const chunks: Array<{ from: string; to: string }> = [];
+      let cursor = new Date(from + "T00:00:00Z");
+      const end = new Date(to + "T00:00:00Z");
+      while (cursor <= end) {
+        const chunkEnd = new Date(cursor);
+        chunkEnd.setUTCDate(chunkEnd.getUTCDate() + 29);
+        const cTo = chunkEnd > end ? to : chunkEnd.toISOString().substring(0, 10);
+        chunks.push({ from: cursor.toISOString().substring(0, 10), to: cTo });
+        cursor = new Date(chunkEnd);
+        cursor.setUTCDate(cursor.getUTCDate() + 1);
+      }
+
+      let totalRows = 0, totalOrders = 0;
+      for (let i = 0; i < chunks.length; i++) {
+        const c = chunks[i];
+        setProgress(`Chunk ${i + 1}/${chunks.length}: ${c.from} → ${c.to}...`);
+        const res = await fetch("/api/nhanh/sync-product-sales", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(c),
+        });
+        const json = await res.json();
+        if (!json.ok) { setProgress(`Lỗi: ${json.error}`); break; }
+        totalRows += json.totalRows || 0;
+        totalOrders += json.totalOrders || 0;
+        setProgress(`Chunk ${i + 1}/${chunks.length} ✓ ${totalRows} dòng`);
+      }
+      setProgress(`✓ Xong: ${totalOrders} đơn → ${totalRows} dòng`);
+      onDone();
+      setTimeout(() => setProgress(""), 5000);
+    } catch (e) {
+      setProgress(`Lỗi: ${(e as Error).message}`);
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <button onClick={run} disabled={syncing}
+        style={{ padding: "4px 12px", borderRadius: 6, fontSize: 11, fontWeight: 600, border: "none", cursor: syncing ? "wait" : "pointer", background: "#EAF3DE", color: "#3B6D11" }}>
+        {syncing ? "Đang sync..." : "⟳ Đồng bộ Nhanh"}
+      </button>
+      {progress && <span style={{ fontSize: 10, color: progress.startsWith("✓") ? "#16A34A" : progress.startsWith("Lỗi") ? "#DC2626" : "#6B7280" }}>{progress}</span>}
+    </div>
+  );
+}
+
 export default function InventoryView({
   rows, total, q, filter, page, totalPages,
 }: {
@@ -233,7 +289,7 @@ export default function InventoryView({
             <div style={{ fontSize: 10, color: "#6B7280" }}>product_sales</div>
           </div>
           <div style={{ display: "flex", gap: 6 }}>
-            <SyncButton url="/api/nhanh/sync-product-sales" label="⟳ Đồng bộ Nhanh" style={{ background: "#EAF3DE", color: "#3B6D11" }} onDone={() => loadSales()} />
+            <SyncSalesButton onDone={() => loadSales()} from={salesFrom} to={salesTo} />
           </div>
         </div>
 
