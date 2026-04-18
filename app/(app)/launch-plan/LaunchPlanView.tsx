@@ -9,42 +9,57 @@ import { deleteLaunchPlanAction, saveLaunchPlanAction } from "./actions";
 type Tab = "ready" | "launching" | "done";
 type InvItem = { sku: string; product_name: string; available_qty: number; category: string };
 
-const CHANNELS = ["Facebook", "TikTok Shop", "Shopee", "Web/B2B", "Live stream"];
-const PRODUCT_TYPES = [
-  { k: "short", label: "Ngắn hạn <3 tháng", color: "#16A34A" },
-  { k: "medium", label: "Trung hạn 3-6T", color: "#D97706" },
-  { k: "long", label: "Dài hạn >6T", color: "#7C3AED" },
-];
-const CONTENT_TARGETS = [
-  { type: "problem", label: "Vấn đề", desc: "Đặt vấn đề — khai thác pain point", color: "#DC2626", defaultVideos: 3 },
-  { type: "demo", label: "Chứng minh", desc: "Demo SP — chứng minh hiệu quả", color: "#16A34A", defaultVideos: 2 },
-  { type: "cta", label: "Chốt đơn", desc: "CTA — tạo urgency, thúc đẩy mua", color: "#3B82F6", defaultVideos: 2 },
-];
-const FORM_STEPS = [
-  { n: 1, label: "Loại hàng" },
-  { n: 2, label: "Khách hàng" },
-  { n: 3, label: "Kênh bán" },
-  { n: 4, label: "Định giá" },
-  { n: 5, label: "Listing" },
-  { n: 6, label: "Nội dung" },
-  { n: 7, label: "Target DS" },
-];
+const BRAND = "#1D9E75";
+const BRAND2 = "#185FA5";
 
-// ─── Metrics type stored in JSONB ────────────────────────
+const HORIZONS = [
+  { k: "short", label: "Ngắn hạn", sub: "<3 tháng", color: "#16A34A" },
+  { k: "medium", label: "Trung hạn", sub: "3-6T", color: "#D97706" },
+  { k: "long", label: "Dài hạn", sub: ">6T", color: "#7C3AED" },
+];
+const LAUNCH_CHANNELS = ["Shopee", "TikTok", "Facebook", "Web"];
+const CH_COLORS: Record<string, string> = { Shopee: "#EE4D2D", TikTok: "#000", Facebook: "#1877F2", Web: "#6366F1" };
+
 type Metrics = {
-  deploy_id?: string;
-  product_desc?: string;
-  product_type?: string; product_type_note?: string;
-  customer?: { group?: string; pain_point?: string; competitors?: string };
-  channels_selected?: string[]; channel_note?: string;
+  deploy_id?: string; product_desc?: string;
+  phase1?: { horizon?: string; customer?: string; pain_point?: string };
+  phase2?: { drive_link?: string; assignees?: string };
+  phase3?: { sell_price?: number; sell_price_2?: number; cost?: number };
+  phase4?: { channels?: Record<string, number>; stock_qty?: number; months?: number; deadline?: string; price_from?: number; price_to?: number };
+  actual?: Record<string, number>; // actual sold per channel
+  tier?: string;
+  channels_selected?: string[];
   pricing?: { cost?: number; sell_price?: number };
   listings?: Record<string, { links?: string[]; done?: boolean }>;
-  content?: { drive_link?: string; assignees?: string; targets?: Array<{ type: string; videos: number; published: number }> };
-  sales_target?: { stock_qty?: number; months?: number; channel_split?: Record<string, number>; price_from?: number; price_to?: number; confirmed?: boolean };
+  sales_target?: { stock_qty?: number; months?: number; channel_split?: Record<string, number>; confirmed?: boolean; price_from?: number; price_to?: number };
+  content?: { drive_link?: string; assignees?: string };
+  customer?: { group?: string; pain_point?: string };
+  product_type?: string;
 };
 
-function getMetrics(plan: LaunchPlanRow): Metrics {
-  return (plan.metrics as Metrics) || {};
+function M(plan: LaunchPlanRow): Metrics { return (plan.metrics as Metrics) || {}; }
+
+function getProgress(m: Metrics): { totalTarget: number; totalActual: number; pct: number; status: string; color: string } {
+  const ch = m.phase4?.channels || m.sales_target?.channel_split || {};
+  const actual = m.actual || {};
+  const totalTarget = Object.values(ch).reduce((s, v) => s + (v || 0), 0);
+  const totalActual = Object.values(actual).reduce((s, v) => s + (v || 0), 0);
+  const pct = totalTarget > 0 ? Math.round((totalActual / totalTarget) * 100) : 0;
+  let status: string, color: string;
+  if (pct >= 100) { status = "Vượt target"; color = "#16A34A"; }
+  else if (pct >= 60) { status = "Đúng tiến độ"; color = "#3B82F6"; }
+  else if (pct >= 40) { status = "Chậm"; color = "#D97706"; }
+  else { status = "Cảnh báo"; color = "#DC2626"; }
+  return { totalTarget, totalActual, pct, status, color };
+}
+
+function getPhaseChecks(m: Metrics): boolean[] {
+  return [
+    !!(m.phase1?.customer || m.customer?.group),
+    !!(m.phase2?.drive_link || m.content?.drive_link),
+    !!((m.phase3?.sell_price || m.pricing?.sell_price) && (m.phase3?.sell_price || m.pricing?.sell_price || 0) > 0),
+    !!(m.phase4?.channels || m.sales_target?.confirmed),
+  ];
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -55,37 +70,41 @@ export default function LaunchPlanView({ plans }: { plans: LaunchPlanRow[] }) {
   const [pending, startTransition] = useTransition();
   const [tab, setTab] = useState<Tab>("ready");
   const [search, setSearch] = useState("");
+  const [filterHorizon, setFilterHorizon] = useState("");
+  const [filterProgress, setFilterProgress] = useState("");
   const [invSearch, setInvSearch] = useState("");
   const [invResults, setInvResults] = useState<InvItem[]>([]);
   const [invLoading, setInvLoading] = useState(false);
-  const [formOpen, setFormOpen] = useState<{ sku?: string; name?: string } | null>(null);
+  const [formOpen, setFormOpen] = useState<{ sku?: string; name?: string; cost?: number } | null>(null);
   const [editPlan, setEditPlan] = useState<LaunchPlanRow | null>(null);
 
-  // Categorize plans
   const ready = useMemo(() => plans.filter((p) => p.stage === "DRAFT" || p.stage === "READY"), [plans]);
   const launching = useMemo(() => plans.filter((p) => p.stage === "LAUNCHED"), [plans]);
   const done = useMemo(() => plans.filter((p) => p.stage === "COMPLETED" || p.stage === "POSTPONED"), [plans]);
 
-  // KPI counts
-  const byType = useMemo(() => {
-    const m = { short: 0, medium: 0, long: 0 };
-    for (const p of plans) {
-      const t = getMetrics(p).product_type;
-      if (t === "short" || t === "medium" || t === "long") m[t]++;
+  // KPIs for Đang launch
+  const launchKpis = useMemo(() => {
+    let totalTarget = 0, totalActual = 0, needAttention = 0;
+    for (const p of launching) {
+      const pr = getProgress(M(p));
+      totalTarget += pr.totalTarget;
+      totalActual += pr.totalActual;
+      if (pr.pct < 40) needAttention++;
     }
-    return m;
-  }, [plans]);
+    const pct = totalTarget > 0 ? Math.round((totalActual / totalTarget) * 100) : 0;
+    return { count: launching.length, totalTarget, totalActual, pct, needAttention };
+  }, [launching]);
 
   // Channel progress
   const channelProgress = useMemo(() => {
-    const total = launching.length || 1;
-    return ["Facebook", "TikTok", "Shopee", "Web/B2B"].map((ch) => {
-      const count = launching.filter((p) => {
-        const m = getMetrics(p);
-        const listings = m.listings || {};
-        return listings[ch]?.done;
-      }).length;
-      return { name: ch, count, pct: Math.round((count / total) * 100) };
+    return LAUNCH_CHANNELS.map((ch) => {
+      let target = 0, actual = 0;
+      for (const p of launching) {
+        const m = M(p);
+        target += (m.phase4?.channels?.[ch] || m.sales_target?.channel_split?.[ch] || 0);
+        actual += (m.actual?.[ch] || 0);
+      }
+      return { name: ch, target, actual, pct: target > 0 ? Math.round((actual / target) * 100) : 0 };
     });
   }, [launching]);
 
@@ -106,107 +125,113 @@ export default function LaunchPlanView({ plans }: { plans: LaunchPlanRow[] }) {
     return () => clearTimeout(t);
   }, [invSearch, searchInventory]);
 
-  // Delete
   function del(id: string, name: string) {
     if (!confirm(`Xoá launch plan "${name}"?`)) return;
-    startTransition(async () => {
-      const r = await deleteLaunchPlanAction(id);
-      if (!r.ok) alert(r.error);
-      else router.refresh();
-    });
+    startTransition(async () => { const r = await deleteLaunchPlanAction(id); if (!r.ok) alert(r.error); else router.refresh(); });
   }
 
-  // Filter by search
-  const filterList = (list: LaunchPlanRow[]) => {
-    if (!search.trim()) return list;
-    const q = search.toLowerCase();
-    return list.filter((p) => (p.product_name || "").toLowerCase().includes(q) || (p.sku || "").toLowerCase().includes(q));
-  };
+  // Filter lists
+  function filterList(list: LaunchPlanRow[]) {
+    let result = list;
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter((p) => (p.product_name || "").toLowerCase().includes(q) || (p.sku || "").toLowerCase().includes(q));
+    }
+    if (filterHorizon) {
+      result = result.filter((p) => (M(p).phase1?.horizon || M(p).product_type) === filterHorizon);
+    }
+    if (filterProgress && tab === "launching") {
+      result = result.filter((p) => getProgress(M(p)).status === filterProgress);
+    }
+    // Sort: cảnh báo lên đầu for launching tab
+    if (tab === "launching") {
+      result.sort((a, b) => getProgress(M(a)).pct - getProgress(M(b)).pct);
+    }
+    return result;
+  }
 
   return (
     <section className="section">
       {/* ═══ HEADER ═══ */}
       <div className="page-hdr">
         <div>
-          <div className="page-title">Launch sản phẩm</div>
+          <div className="page-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, borderRadius: "50%", background: BRAND, color: "#fff", fontSize: 13 }}>🚀</span>
+            Launch sản phẩm
+          </div>
           <div className="page-sub">{plans.length} SP · {launching.length} đang launch · {done.length} hoàn tất</div>
         </div>
       </div>
 
-      {/* ═══ KPIs ═══ */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr) auto auto auto", gap: 10, marginBottom: 12, alignItems: "start" }}>
-        <div className="stat-card" style={{ borderLeft: "4px solid #3B82F6" }}>
-          <div className="sl">SẴN SÀNG</div>
-          <div className="sv">{ready.length}</div>
-          <div className="ss">có info + giá</div>
-        </div>
-        <div className="stat-card" style={{ borderLeft: "4px solid #D97706" }}>
-          <div className="sl">ĐANG LAUNCH</div>
-          <div className="sv">{launching.length}</div>
-          <div className="ss">có kế hoạch</div>
-        </div>
-        <div className="stat-card" style={{ borderLeft: "4px solid #16A34A" }}>
-          <div className="sl">ĐANG SỐNG</div>
-          <div className="sv">0</div>
-          <div className="ss">đã bán</div>
-        </div>
-        <div className="stat-card" style={{ borderLeft: "4px solid #6B7280" }}>
-          <div className="sl">HOÀN TẤT</div>
-          <div className="sv">{done.length}</div>
-        </div>
-
-        {/* Channel progress */}
-        <div className="card" style={{ padding: "10px 14px", minWidth: 160 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: "#6B7280", marginBottom: 6 }}>TIẾN ĐỘ THEO KÊNH</div>
-          {channelProgress.map((ch) => (
-            <div key={ch.name} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3, fontSize: 10 }}>
-              <span style={{ width: 55 }}>{ch.name}</span>
-              <div style={{ flex: 1, height: 5, background: "#F3F4F6", borderRadius: 2, overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${ch.pct}%`, background: "#3B82F6", borderRadius: 2 }} />
+      {/* ═══ KPIs + Channel Progress (only for launching tab) ═══ */}
+      {tab === "launching" && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr) 1fr", gap: 10, marginBottom: 12, alignItems: "start" }}>
+          <div className="stat-card" style={{ borderLeft: `4px solid ${BRAND}` }}>
+            <div className="sl">SẴN SÀNG</div><div className="sv">{ready.length}</div>
+          </div>
+          <div className="stat-card" style={{ borderLeft: "4px solid #D97706" }}>
+            <div className="sl">ĐANG LAUNCH</div><div className="sv">{launchKpis.count}</div>
+          </div>
+          <div className="stat-card" style={{ borderLeft: "4px solid #3B82F6" }}>
+            <div className="sl">ĐÃ BÁN / TARGET</div>
+            <div className="sv">{launchKpis.totalActual} / {launchKpis.totalTarget}</div>
+            <div className="ss">{launchKpis.pct}% hoàn thành</div>
+          </div>
+          <div className="stat-card" style={{ borderLeft: "4px solid #DC2626" }}>
+            <div className="sl">CẦN CHÚ Ý</div>
+            <div className="sv" style={{ color: launchKpis.needAttention > 0 ? "#DC2626" : "#16A34A" }}>{launchKpis.needAttention} SP</div>
+          </div>
+          {/* Channel progress */}
+          <div className="card" style={{ padding: "10px 14px" }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#6B7280", marginBottom: 6 }}>TIẾN ĐỘ THEO KÊNH</div>
+            {channelProgress.map((ch) => (
+              <div key={ch.name} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, fontSize: 10 }}>
+                <span style={{ width: 55, color: CH_COLORS[ch.name], fontWeight: 600 }}>{ch.name}</span>
+                <div style={{ flex: 1, height: 6, background: "#F3F4F6", borderRadius: 3, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${Math.min(ch.pct, 100)}%`, background: CH_COLORS[ch.name], borderRadius: 3 }} />
+                </div>
+                <span style={{ width: 30, textAlign: "right", fontWeight: 600 }}>{ch.pct}%</span>
               </div>
-              <span style={{ width: 25, textAlign: "right", fontWeight: 600 }}>{ch.pct}%</span>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
+      )}
 
-        {/* Product type */}
-        <div className="card" style={{ padding: "10px 14px", minWidth: 120 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: "#6B7280", marginBottom: 6 }}>LOẠI HÀNG</div>
-          {PRODUCT_TYPES.map((pt) => (
-            <div key={pt.k} style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginBottom: 3 }}>
-              <span style={{ color: pt.color, fontWeight: 600 }}>{pt.label.split(" ")[0]}</span>
-              <span style={{ fontWeight: 700 }}>{byType[pt.k as keyof typeof byType]} SP</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ═══ TABS + SEARCH inline ═══ */}
+      {/* ═══ TABS + FILTERS inline ═══ */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
         <div className="mini-tabs" style={{ marginBottom: 0 }}>
           {([["ready", `Sẵn sàng launch ${ready.length}`], ["launching", `Đang launch ${launching.length}`], ["done", "Hoàn tất"]] as const).map(([k, label]) => (
-            <button key={k} className={"mini-tab" + (tab === k ? " active" : "")} onClick={() => setTab(k)} style={{ padding: "8px 16px" }}>{label}</button>
+            <button key={k} className={"mini-tab" + (tab === k ? " active" : "")} onClick={() => setTab(k)}>{label}</button>
           ))}
         </div>
-
-        {/* Search existing plans */}
-        <input placeholder="Tìm SP, SKU..." value={search} onChange={(e) => setSearch(e.target.value)}
-          style={{ padding: "6px 12px", border: "1px solid #E5E7EB", borderRadius: 6, fontSize: 12, width: 180 }} />
-
-        {/* Inventory search — inline */}
+        <select value={filterHorizon} onChange={(e) => setFilterHorizon(e.target.value)} style={{ fontSize: 11 }}>
+          <option value="">Tất cả loại hàng</option>
+          {HORIZONS.map((h) => <option key={h.k} value={h.k}>{h.label}</option>)}
+        </select>
+        {tab === "launching" && (
+          <select value={filterProgress} onChange={(e) => setFilterProgress(e.target.value)} style={{ fontSize: 11 }}>
+            <option value="">Tất cả tiến độ</option>
+            <option value="Vượt target">Vượt target</option>
+            <option value="Đúng tiến độ">Đúng tiến độ</option>
+            <option value="Chậm">Chậm</option>
+            <option value="Cảnh báo">Cảnh báo</option>
+          </select>
+        )}
+        <input placeholder="Tìm SP, SKU..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: 160, fontSize: 12 }} />
+        {/* Inventory search */}
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: "#6B7280", whiteSpace: "nowrap" }}>TÌM SP TRONG KHO:</span>
-          <input placeholder="Tên SP, SKU, barcode..." value={invSearch} onChange={(e) => setInvSearch(e.target.value)}
-            style={{ padding: "6px 12px", border: "1px solid #E5E7EB", borderRadius: 6, fontSize: 12, width: 220 }} />
-          <button className="btn btn-primary btn-xs" onClick={() => searchInventory(invSearch)}>Tìm</button>
+          <span style={{ fontSize: 10, fontWeight: 700, color: BRAND2, whiteSpace: "nowrap" }}>TÌM SP TRONG KHO:</span>
+          <input placeholder="Tên SP, SKU..." value={invSearch} onChange={(e) => setInvSearch(e.target.value)}
+            style={{ padding: "5px 10px", border: `1.5px solid ${BRAND2}`, borderRadius: 6, fontSize: 12, width: 200 }} />
+          <button className="btn btn-sm" style={{ background: BRAND2, color: "#fff" }} onClick={() => searchInventory(invSearch)}>Tìm</button>
         </div>
       </div>
 
-      {/* ═══ INVENTORY SEARCH RESULTS (dropdown-like) ═══ */}
+      {/* Inventory results dropdown */}
       {invResults.length > 0 && (
-        <div className="card" style={{ padding: 0, marginBottom: 12, border: "2px solid #3B82F6" }}>
-          <div style={{ padding: "8px 14px", background: "#EFF6FF", borderBottom: "1px solid #BFDBFE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: "#1D4ED8" }}>Kết quả tìm trong kho ({invResults.length})</span>
+        <div className="card" style={{ padding: 0, marginBottom: 12, border: `2px solid ${BRAND2}` }}>
+          <div style={{ padding: "8px 14px", background: "#EFF6FF", borderBottom: "1px solid #BFDBFE", display: "flex", justifyContent: "space-between" }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: BRAND2 }}>Kết quả ({invResults.length})</span>
             <button className="btn btn-ghost btn-xs" onClick={() => { setInvResults([]); setInvSearch(""); }}>Đóng</button>
           </div>
           {invResults.map((item) => (
@@ -215,38 +240,49 @@ export default function LaunchPlanView({ plans }: { plans: LaunchPlanRow[] }) {
                 <span style={{ fontWeight: 600, fontSize: 12 }}>{item.product_name}</span>
                 <span style={{ fontSize: 10, color: "#6B7280", marginLeft: 8 }}>SKU: {item.sku} · Tồn: {item.available_qty.toLocaleString("vi-VN")}</span>
               </div>
-              <button className="btn btn-primary btn-xs" onClick={() => { setFormOpen({ sku: item.sku, name: item.product_name }); setInvResults([]); setInvSearch(""); }}>
-                Tạo Launch Plan
+              <button className="btn btn-sm" style={{ background: BRAND, color: "#fff", fontSize: 11 }} onClick={() => { setFormOpen({ sku: item.sku, name: item.product_name }); setInvResults([]); setInvSearch(""); }}>
+                🚀 Tạo Launch Plan
               </button>
             </div>
           ))}
         </div>
       )}
 
-      {/* ═══ TAB: SẴN SÀNG LAUNCH — full width ═══ */}
+      {/* ═══ TAB: SẴN SÀNG ═══ */}
       {tab === "ready" && (
         <div className="card" style={{ padding: 0 }}>
           {filterList(ready).map((p) => {
-            const pm = getMetrics(p);
-            const hasDeployId = !!pm.deploy_id;
-            const pt = PRODUCT_TYPES.find((t) => t.k === pm.product_type);
+            const m = M(p);
+            const hz = HORIZONS.find((h) => h.k === (m.phase1?.horizon || m.product_type));
+            const listings = m.listings || {};
             return (
               <div key={p.id} style={{ padding: "10px 14px", borderBottom: "1px solid #F3F4F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 2 }}>
-                    {hasDeployId && <span style={{ fontSize: 8, background: "#16A34A", color: "#fff", borderRadius: 3, padding: "1px 5px", fontWeight: 600 }}>TỪ TRIỂN KHAI</span>}
-                    {pt && <span style={{ fontSize: 8, background: pt.color, color: "#fff", borderRadius: 3, padding: "1px 5px", fontWeight: 600 }}>{pt.label.split(" ")[0]}</span>}
-                    <span style={{ fontWeight: 600, fontSize: 13 }}>{p.product_name}</span>
+                    {m.deploy_id && <span style={{ fontSize: 8, background: BRAND, color: "#fff", borderRadius: 3, padding: "1px 5px", fontWeight: 600 }}>TỪ TRIỂN KHAI</span>}
+                    {hz && <span style={{ fontSize: 8, background: hz.color, color: "#fff", borderRadius: 3, padding: "1px 5px", fontWeight: 600 }}>{hz.label}</span>}
+                    <span style={{ fontWeight: 700, fontSize: 13 }}>{p.product_name}</span>
                   </div>
                   <div style={{ fontSize: 10, color: "#6B7280" }}>
                     SKU: {p.sku || "—"}
-                    {pm.pricing?.sell_price ? ` · Giá: ${formatVND(pm.pricing.sell_price)}` : ""}
-                    {pm.pricing?.cost ? ` · Vốn: ${formatVND(pm.pricing.cost)}` : ""}
+                    {(m.pricing?.sell_price || m.phase3?.sell_price) ? ` · Giá: ${formatVND(m.pricing?.sell_price || m.phase3?.sell_price || 0)}` : ""}
+                  </div>
+                  {/* Deploy channel status */}
+                  <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
+                    {["Facebook", "TikTok", "Shopee", "Web"].map((ch) => {
+                      const key = ch === "TikTok" ? "TikTok Shop" : ch === "Web" ? "Web/B2B" : ch;
+                      const isDone = listings[key]?.done;
+                      return (
+                        <span key={ch} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 3, fontWeight: 600, background: isDone ? CH_COLORS[ch] : "#F3F4F6", color: isDone ? "#fff" : "#9CA3AF" }}>
+                          {ch.substring(0, 2)} {isDone ? "✓" : "—"}
+                        </span>
+                      );
+                    })}
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 4 }}>
-                  <button className="btn btn-primary btn-xs" onClick={() => setEditPlan(p)}>Tạo Launch Plan</button>
-                  <button className="btn btn-ghost btn-xs" style={{ color: "var(--red)" }} onClick={() => del(p.id, p.product_name || "")}>✕</button>
+                  <button className="btn btn-sm" style={{ background: BRAND, color: "#fff", fontSize: 11 }} onClick={() => setEditPlan(p)}>🚀 Tạo Launch Plan</button>
+                  <button className="btn btn-ghost btn-xs" style={{ color: "#DC2626" }} onClick={() => del(p.id, p.product_name || "")}>✕</button>
                 </div>
               </div>
             );
@@ -256,129 +292,97 @@ export default function LaunchPlanView({ plans }: { plans: LaunchPlanRow[] }) {
       )}
 
       {/* ═══ TAB: ĐANG LAUNCH ═══ */}
-      {tab === "launching" && (() => {
-        const filtered = filterList(launching);
-        const totalTarget = filtered.reduce((s, p) => s + (getMetrics(p).sales_target?.stock_qty || 0), 0);
-        const needAttention = filtered.filter((p) => {
-          const m = getMetrics(p);
-          const ct = m.content?.targets || [];
-          const totalVid = ct.reduce((s, t) => s + t.videos, 0);
-          const pubVid = ct.reduce((s, t) => s + t.published, 0);
-          return totalVid > 0 && pubVid / totalVid < 0.5;
-        }).length;
+      {tab === "launching" && (
+        <div>
+          {filterList(launching).map((p) => {
+            const m = M(p);
+            const hz = HORIZONS.find((h) => h.k === (m.phase1?.horizon || m.product_type));
+            const pr = getProgress(m);
+            const phases = getPhaseChecks(m);
+            const phaseLabels = ["Định vị", "Content", "Giá", "Target"];
+            const chTargets = m.phase4?.channels || m.sales_target?.channel_split || {};
+            const chActuals = m.actual || {};
+            const isWarning = pr.pct < 40;
+            const sellPrice = m.phase3?.sell_price || m.pricing?.sell_price || 0;
+            const deadline = m.phase4?.deadline || "";
+            const months = m.phase4?.months || m.sales_target?.months || 0;
 
-        return (
-          <div>
-            {/* Mini KPIs */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 12 }}>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 10, color: "#6B7280" }}>Đang launch</div>
-                <div style={{ fontSize: 22, fontWeight: 800 }}>{filtered.length} <span style={{ fontSize: 11, fontWeight: 400, color: "#6B7280" }}>SP</span></div>
-              </div>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 10, color: "#6B7280" }}>Đã bán / Target</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: "#16A34A" }}>0 / {totalTarget.toLocaleString("vi-VN")}</div>
-              </div>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 10, color: "#6B7280" }}>Hoàn thành</div>
-                <div style={{ fontSize: 22, fontWeight: 800 }}>0%</div>
-              </div>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 10, color: "#6B7280" }}>Cần chú ý</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: needAttention > 0 ? "#DC2626" : "#16A34A" }}>{needAttention} <span style={{ fontSize: 11, fontWeight: 400, color: "#6B7280" }}>SP</span></div>
-              </div>
-            </div>
-
-            {/* Product cards */}
-            {filtered.map((p) => {
-              const m = getMetrics(p);
-              const pt = PRODUCT_TYPES.find((t) => t.k === m.product_type);
-              const chSel = m.channels_selected || [];
-              const listings = m.listings || {};
-              const ct = m.content?.targets || [];
-              const totalVid = ct.reduce((s, t) => s + t.videos, 0);
-              const pubVid = ct.reduce((s, t) => s + t.published, 0);
-              const targetQty = m.sales_target?.stock_qty || 0;
-              const confirmed = m.sales_target?.confirmed;
-              const hasWarning = !confirmed || (totalVid > 0 && pubVid / totalVid < 0.5);
-
-              // Step progress
-              const steps = [
-                { label: "Phân tích", done: !!m.customer?.group },
-                { label: "Định giá", done: (m.pricing?.sell_price || 0) > 0 },
-                { label: "Phân bổ", done: !!m.sales_target?.confirmed },
-                { label: "Nội dung", done: totalVid > 0 && pubVid >= totalVid },
-              ];
-
-              const CHANNEL_COLORS: Record<string, string> = { Facebook: "#1877F2", "TikTok Shop": "#000", Shopee: "#EE4D2D", "Web/B2B": "#6366F1", "Live stream": "#16A34A" };
-              const CHANNEL_SHORT: Record<string, string> = { Facebook: "FB", "TikTok Shop": "TT", Shopee: "SP", "Web/B2B": "Web", "Live stream": "Live" };
-
-              return (
-                <div key={p.id} className="card" style={{ marginBottom: 8, padding: "12px 16px" }}>
-                  <div style={{ display: "flex", gap: 12 }}>
-                    {/* Left: product info */}
-                    <div style={{ width: 280, flexShrink: 0 }}>
-                      <div style={{ display: "flex", gap: 4, marginBottom: 4, flexWrap: "wrap" }}>
-                        {pt && <span style={{ fontSize: 9, background: pt.color, color: "#fff", borderRadius: 3, padding: "1px 6px", fontWeight: 600 }}>{pt.label.split(" ")[0]}</span>}
-                        {hasWarning && <span style={{ fontSize: 9, background: "#DC2626", color: "#fff", borderRadius: 3, padding: "1px 6px", fontWeight: 600 }}>Cảnh báo</span>}
-                      </div>
-                      <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2 }}>{p.product_name}</div>
-                      <div style={{ fontSize: 10, color: "#6B7280", marginBottom: 6 }}>{p.sku || "—"}</div>
-                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                        {chSel.map((ch) => {
-                          const done = listings[ch]?.done;
-                          return (
-                            <span key={ch} style={{
-                              fontSize: 9, padding: "2px 6px", borderRadius: 3, fontWeight: 600,
-                              background: done ? CHANNEL_COLORS[ch] || "#3B82F6" : "#F3F4F6",
-                              color: done ? "#fff" : "#6B7280",
-                            }}>
-                              {CHANNEL_SHORT[ch] || ch} {done ? "✓" : "—"}
-                            </span>
-                          );
-                        })}
-                      </div>
+            return (
+              <div key={p.id} className="card" style={{ marginBottom: 8, padding: "14px 16px", borderLeft: isWarning ? "4px solid #DC2626" : `4px solid ${pr.color}` }}>
+                <div style={{ display: "flex", gap: 12 }}>
+                  {/* Left: product info */}
+                  <div style={{ width: 260, flexShrink: 0 }}>
+                    <div style={{ display: "flex", gap: 4, marginBottom: 4, flexWrap: "wrap" }}>
+                      {hz && <span style={{ fontSize: 9, background: hz.color, color: "#fff", borderRadius: 3, padding: "1px 6px", fontWeight: 600 }}>{hz.label}</span>}
+                      {isWarning && <span style={{ fontSize: 9, background: "#DC2626", color: "#fff", borderRadius: 3, padding: "1px 6px", fontWeight: 600 }}>Cảnh báo</span>}
+                      <span style={{ fontSize: 9, background: pr.color, color: "#fff", borderRadius: 3, padding: "1px 6px", fontWeight: 600 }}>{pr.status}</span>
                     </div>
-
-                    {/* Middle: step progress + sales progress */}
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: "flex", gap: 12, marginBottom: 8 }}>
-                        {steps.map((s) => (
-                          <span key={s.label} style={{ fontSize: 10, color: s.done ? "#16A34A" : "#9CA3AF", display: "flex", alignItems: "center", gap: 3 }}>
-                            <span style={{ width: 10, height: 10, borderRadius: "50%", border: s.done ? "none" : "1.5px solid #D1D5DB", background: s.done ? "#16A34A" : "transparent", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, color: "#fff" }}>
-                              {s.done ? "✓" : ""}
-                            </span>
-                            {s.label}
+                    <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2 }}>{p.product_name}</div>
+                    <div style={{ fontSize: 10, color: "#6B7280", marginBottom: 6 }}>{p.sku || "—"}</div>
+                    {/* Phase checklist */}
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {phaseLabels.map((label, i) => (
+                        <span key={label} style={{ fontSize: 9, color: phases[i] ? "#16A34A" : "#D1D5DB", display: "flex", alignItems: "center", gap: 2 }}>
+                          <span style={{ width: 12, height: 12, borderRadius: "50%", border: phases[i] ? "none" : "1.5px solid #D1D5DB", background: phases[i] ? "#16A34A" : "transparent", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, color: "#fff" }}>
+                            {phases[i] ? "✓" : ""}
                           </span>
-                        ))}
-                      </div>
-                      <div style={{ fontSize: 10, color: "#6B7280", marginBottom: 4 }}>Tiến độ DS · 0/{targetQty} SP</div>
-                      <div style={{ height: 6, background: "#F3F4F6", borderRadius: 3, overflow: "hidden", position: "relative" }}>
-                        <div style={{ height: "100%", width: "0%", background: "#16A34A", borderRadius: 3 }} />
-                        <span style={{ position: "absolute", right: 4, top: -12, fontSize: 9, color: "#6B7280" }}>0%</span>
-                      </div>
-                    </div>
-
-                    {/* Right: target + button */}
-                    <div style={{ width: 100, textAlign: "right", flexShrink: 0 }}>
-                      <div style={{ fontSize: 10, color: "#6B7280" }}>Target</div>
-                      <div style={{ fontSize: 16, fontWeight: 800 }}>{targetQty.toLocaleString("vi-VN")} <span style={{ fontSize: 9, fontWeight: 400 }}>SP</span></div>
-                      <button className="btn btn-ghost btn-xs" style={{ marginTop: 6 }} onClick={() => setEditPlan(p)}>Xem plan</button>
+                          {label}
+                        </span>
+                      ))}
                     </div>
                   </div>
+
+                  {/* Middle: channel progress bars */}
+                  <div style={{ flex: 1 }}>
+                    {LAUNCH_CHANNELS.map((ch) => {
+                      const target = chTargets[ch] || 0;
+                      const actual = chActuals[ch] || 0;
+                      const chPct = target > 0 ? Math.round((actual / target) * 100) : 0;
+                      if (target === 0) return null;
+                      return (
+                        <div key={ch} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                          <span style={{ fontSize: 10, width: 55, color: CH_COLORS[ch], fontWeight: 600 }}>{ch}</span>
+                          <div style={{ flex: 1, height: 8, background: "#F3F4F6", borderRadius: 4, overflow: "hidden" }}>
+                            <div style={{ height: "100%", width: `${Math.min(chPct, 100)}%`, background: CH_COLORS[ch], borderRadius: 4 }} />
+                          </div>
+                          <span style={{ fontSize: 9, width: 55, textAlign: "right", color: "#6B7280" }}>{actual}/{target}</span>
+                          <span style={{ fontSize: 9, width: 30, textAlign: "right", fontWeight: 700, color: chPct >= 100 ? "#16A34A" : chPct >= 40 ? "#3B82F6" : "#DC2626" }}>{chPct}%</span>
+                        </div>
+                      );
+                    })}
+                    {/* Overall progress */}
+                    <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: 10, width: 55, fontWeight: 700 }}>Tổng</span>
+                      <div style={{ flex: 1, height: 10, background: "#F3F4F6", borderRadius: 4, overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${Math.min(pr.pct, 100)}%`, background: pr.color, borderRadius: 4 }} />
+                      </div>
+                      <span style={{ fontSize: 10, width: 55, textAlign: "right", color: "#6B7280" }}>{pr.totalActual}/{pr.totalTarget}</span>
+                      <span style={{ fontSize: 10, width: 30, textAlign: "right", fontWeight: 800, color: pr.color }}>{pr.pct}%</span>
+                    </div>
+                  </div>
+
+                  {/* Right: target + meta */}
+                  <div style={{ width: 120, textAlign: "right", flexShrink: 0 }}>
+                    <div style={{ fontSize: 10, color: "#6B7280" }}>Target</div>
+                    <div style={{ fontSize: 18, fontWeight: 800 }}>{pr.totalTarget} <span style={{ fontSize: 10, fontWeight: 400 }}>SP</span></div>
+                    {sellPrice > 0 && <div style={{ fontSize: 10, color: "#6B7280", marginTop: 2 }}>Giá: {formatVNDCompact(sellPrice)}</div>}
+                    {deadline && <div style={{ fontSize: 10, color: "#6B7280" }}>DL: {deadline}</div>}
+                    {months > 0 && <div style={{ fontSize: 10, color: "#6B7280" }}>{months} tháng</div>}
+                    <button className="btn btn-ghost btn-xs" style={{ marginTop: 6 }} onClick={() => setEditPlan(p)}>✎ Xem plan</button>
+                  </div>
                 </div>
-              );
-            })}
-            {filtered.length === 0 && <div className="muted" style={{ padding: 24, textAlign: "center" }}>Chưa có SP đang launch.</div>}
-          </div>
-        );
-      })()}
+              </div>
+            );
+          })}
+          {filterList(launching).length === 0 && <div className="muted" style={{ padding: 24, textAlign: "center" }}>Chưa có SP đang launch.</div>}
+        </div>
+      )}
 
       {/* ═══ TAB: HOÀN TẤT ═══ */}
       {tab === "done" && (
         <div className="card" style={{ padding: 0 }}>
-          {done.map((p) => (
-            <div key={p.id} style={{ padding: "12px 16px", borderBottom: "1px solid #F3F4F6", display: "flex", justifyContent: "space-between" }}>
+          {filterList(done).map((p) => (
+            <div key={p.id} style={{ padding: "10px 14px", borderBottom: "1px solid #F3F4F6", display: "flex", justifyContent: "space-between" }}>
               <div>
                 <div style={{ fontWeight: 600 }}>{p.product_name}</div>
                 <div style={{ fontSize: 10, color: "#6B7280" }}>SKU: {p.sku || "—"}</div>
@@ -386,20 +390,18 @@ export default function LaunchPlanView({ plans }: { plans: LaunchPlanRow[] }) {
               <span className={`chip ${p.stage === "COMPLETED" ? "chip-green" : "chip-amber"}`}>{p.stage === "COMPLETED" ? "Hoàn tất" : "Hoãn"}</span>
             </div>
           ))}
-          {done.length === 0 && <div className="muted" style={{ padding: 24, textAlign: "center" }}>Chưa có SP hoàn tất.</div>}
+          {filterList(done).length === 0 && <div className="muted" style={{ padding: 24, textAlign: "center" }}>Chưa có SP hoàn tất.</div>}
         </div>
       )}
 
-      {/* ═══ FORM MODAL — 7 steps ═══ */}
+      {/* ═══ FORM MODAL — 4 Phase ═══ */}
       {(formOpen || editPlan) && (
         <LaunchFormModal
           initial={editPlan}
-          defaultSku={formOpen?.sku}
-          defaultName={formOpen?.name}
+          defaultSku={formOpen?.sku} defaultName={formOpen?.name} defaultCost={formOpen?.cost}
           onClose={() => { setFormOpen(null); setEditPlan(null); }}
           onSaved={() => { setFormOpen(null); setEditPlan(null); router.refresh(); }}
-          pending={pending}
-          startTransition={startTransition}
+          pending={pending} startTransition={startTransition}
         />
       )}
     </section>
@@ -407,334 +409,185 @@ export default function LaunchPlanView({ plans }: { plans: LaunchPlanRow[] }) {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   LAUNCH FORM MODAL — 7 steps
+   LAUNCH FORM MODAL — 4 Phases
    ═══════════════════════════════════════════════════════════ */
-function LaunchFormModal({ initial, defaultSku, defaultName, onClose, onSaved, pending, startTransition }: {
+function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClose, onSaved, pending, startTransition }: {
   initial: LaunchPlanRow | null;
-  defaultSku?: string; defaultName?: string;
+  defaultSku?: string; defaultName?: string; defaultCost?: number;
   onClose: () => void; onSaved: () => void;
-  pending: boolean;
-  startTransition: ReturnType<typeof useTransition>[1];
+  pending: boolean; startTransition: ReturnType<typeof useTransition>[1];
 }) {
-  const m = initial ? getMetrics(initial) : {} as Metrics;
-  const [step, setStep] = useState(1);
-  const [sku, setSku] = useState(initial?.sku || defaultSku || "");
-  const [name, setName] = useState(initial?.product_name || defaultName || "");
-  const [stage, setStage] = useState(initial?.stage || "READY");
+  const m = initial ? M(initial) : {} as Metrics;
+  const [phase, setPhase] = useState(1);
+  const [sku] = useState(initial?.sku || defaultSku || "");
+  const [name] = useState(initial?.product_name || defaultName || "");
 
-  // Step 1: Loại hàng
-  const [productType, setProductType] = useState(m.product_type || "medium");
-  const [productTypeNote, setProductTypeNote] = useState(m.product_type_note || "");
+  // Phase 1
+  const [horizon, setHorizon] = useState(m.phase1?.horizon || m.product_type || "medium");
+  const [customer, setCustomer] = useState(m.phase1?.customer || m.customer?.group || "");
+  const [painPoint, setPainPoint] = useState(m.phase1?.pain_point || m.customer?.pain_point || "");
 
-  // Step 2: Khách hàng
-  const [custGroup, setCustGroup] = useState(m.customer?.group || "");
-  const [custPain, setCustPain] = useState(m.customer?.pain_point || "");
-  const [custComp, setCustComp] = useState(m.customer?.competitors || "");
+  // Phase 2
+  const [driveLink, setDriveLink] = useState(m.phase2?.drive_link || m.content?.drive_link || "");
+  const [assignees, setAssignees] = useState(m.phase2?.assignees || m.content?.assignees || "");
 
-  // Step 3: Kênh bán
-  const [channels, setChannels] = useState<string[]>(m.channels_selected || ["Facebook", "TikTok Shop", "Shopee"]);
-  const [channelNote, setChannelNote] = useState(m.channel_note || "");
+  // Phase 3
+  const cost = m.phase3?.cost || m.pricing?.cost || defaultCost || 0;
+  const [sellPrice, setSellPrice] = useState(m.phase3?.sell_price || m.pricing?.sell_price || 0);
+  const [sellPrice2, setSellPrice2] = useState(m.phase3?.sell_price_2 || 0);
+  const markup = cost > 0 ? Math.round(((sellPrice - cost) / cost) * 100) : 0;
 
-  // Step 4: Định giá
-  const [cost, setCost] = useState(m.pricing?.cost || 0);
-  const [sellPrice, setSellPrice] = useState(m.pricing?.sell_price || 0);
+  // Phase 4
+  const [channels, setChannels] = useState<Record<string, number>>(m.phase4?.channels || m.sales_target?.channel_split || { Shopee: 0, TikTok: 0, Facebook: 0, Web: 0 });
+  const [stockQty, setStockQty] = useState(m.phase4?.stock_qty || m.sales_target?.stock_qty || 0);
+  const [months, setMonths] = useState(m.phase4?.months || m.sales_target?.months || 4);
+  const [deadline, setDeadline] = useState(m.phase4?.deadline || "");
+  const [priceFrom, setPriceFrom] = useState(m.phase4?.price_from || m.sales_target?.price_from || 0);
+  const [priceTo, setPriceTo] = useState(m.phase4?.price_to || m.sales_target?.price_to || 0);
 
-  // Step 5: Listing
-  const [listings, setListings] = useState<Record<string, { links: string; done: boolean }>>(
-    Object.fromEntries(CHANNELS.map((ch) => [ch, { links: (m.listings?.[ch]?.links || []).join(", "), done: m.listings?.[ch]?.done || false }]))
-  );
-
-  // Step 6: Nội dung
-  const [driveLink, setDriveLink] = useState(m.content?.drive_link || "");
-  const [assignees, setAssignees] = useState(m.content?.assignees || "");
-  const [contentTargets, setContentTargets] = useState(
-    CONTENT_TARGETS.map((ct) => {
-      const existing = m.content?.targets?.find((t) => t.type === ct.type);
-      return { type: ct.type, videos: existing?.videos ?? ct.defaultVideos, published: existing?.published ?? 0 };
-    })
-  );
-
-  // Step 7: Target
-  const [stockQty, setStockQty] = useState(m.sales_target?.stock_qty || 0);
-  const [months, setMonths] = useState(m.sales_target?.months || 4);
-  const [channelSplit, setChannelSplit] = useState<Record<string, number>>(m.sales_target?.channel_split || { Shopee: 55, TikTok: 25, Facebook: 10, "Web/B2B": 10 });
-  const [priceFrom, setPriceFrom] = useState(m.sales_target?.price_from || 0);
-  const [priceTo, setPriceTo] = useState(m.sales_target?.price_to || 0);
-  const [confirmed, setConfirmed] = useState(m.sales_target?.confirmed || false);
-
-  const gross = sellPrice - cost;
-  const grossPct = sellPrice > 0 ? ((gross / sellPrice) * 100).toFixed(1) : "0";
+  const totalChTarget = Object.values(channels).reduce((s, v) => s + (v || 0), 0);
 
   function save(asStage?: string) {
     if (!name.trim()) return alert("Nhập tên SP");
     const metrics: Metrics = {
-      product_type: productType,
-      product_type_note: productTypeNote,
-      customer: { group: custGroup, pain_point: custPain, competitors: custComp },
-      channels_selected: channels,
-      channel_note: channelNote,
+      ...m,
+      phase1: { horizon, customer, pain_point: painPoint },
+      phase2: { drive_link: driveLink, assignees },
+      phase3: { sell_price: sellPrice, sell_price_2: sellPrice2, cost },
+      phase4: { channels, stock_qty: stockQty, months, deadline, price_from: priceFrom, price_to: priceTo },
+      product_type: horizon,
       pricing: { cost, sell_price: sellPrice },
-      listings: Object.fromEntries(Object.entries(listings).map(([ch, v]) => [ch, { links: v.links.split(",").map((l) => l.trim()).filter(Boolean), done: v.done }])),
-      content: { drive_link: driveLink, assignees, targets: contentTargets },
-      sales_target: { stock_qty: stockQty, months, channel_split: channelSplit, price_from: priceFrom, price_to: priceTo, confirmed },
+      customer: { group: customer, pain_point: painPoint },
+      content: { drive_link: driveLink, assignees },
+      sales_target: { stock_qty: stockQty, months, channel_split: channels, confirmed: true, price_from: priceFrom, price_to: priceTo },
     };
-
     startTransition(async () => {
       const r = await saveLaunchPlanAction(initial?.id || null, {
-        sku: sku || null,
-        product_name: name,
-        stage: asStage || stage,
-        channels: channels.join(","),
-        metrics: metrics as Record<string, unknown>,
-        note: productTypeNote || null,
+        sku: sku || null, product_name: name, stage: asStage || initial?.stage || "READY",
+        channels: Object.keys(channels).filter((k) => channels[k] > 0).join(","),
+        metrics: metrics as Record<string, unknown>, note: null,
       });
-      if (!r.ok) alert(r.error);
-      else onSaved();
+      if (!r.ok) alert(r.error); else onSaved();
     });
   }
 
+  const PHASES = [
+    { n: 1, label: "Định vị SP" },
+    { n: 2, label: "Content" },
+    { n: 3, label: "Định giá" },
+    { n: 4, label: "Target kênh" },
+  ];
+
   return (
     <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", justifyContent: "center", alignItems: "flex-start", paddingTop: 40, overflowY: "auto" }}>
-      <div style={{ background: "#fff", borderRadius: 12, width: "90%", maxWidth: 800, maxHeight: "85vh", overflowY: "auto", padding: "20px 24px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>Tạo Launch Plan</div>
+      <div style={{ background: "#fff", borderRadius: 12, width: "90%", maxWidth: 700, maxHeight: "85vh", overflowY: "auto", padding: "20px 24px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>🚀 Launch Plan</div>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#6B7280" }}>✕</button>
         </div>
 
-        {/* Step navigation */}
-        <div style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "1px solid #E5E7EB", paddingBottom: 8 }}>
-          {FORM_STEPS.map((s) => (
-            <button key={s.n} onClick={() => setStep(s.n)} style={{
-              padding: "4px 12px", fontSize: 11, fontWeight: step === s.n ? 700 : 400,
-              color: step === s.n ? "#3B82F6" : "#6B7280", background: "none", border: "none",
-              borderBottom: step === s.n ? "2px solid #3B82F6" : "2px solid transparent",
-              cursor: "pointer", marginBottom: -9,
+        {/* Product info bar */}
+        <div style={{ padding: "10px 14px", background: "#F0FDF4", borderRadius: 8, marginBottom: 16, border: `1px solid ${BRAND}40` }}>
+          <div style={{ fontWeight: 700, fontSize: 13 }}>{name}</div>
+          <div style={{ fontSize: 10, color: "#6B7280" }}>SKU: {sku} {cost > 0 && `· Vốn: ${formatVND(cost)}`}</div>
+        </div>
+
+        {/* Phase nav */}
+        <div style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "2px solid #E5E7EB" }}>
+          {PHASES.map((s) => (
+            <button key={s.n} onClick={() => setPhase(s.n)} style={{
+              flex: 1, padding: "8px 0", fontSize: 12, fontWeight: phase === s.n ? 700 : 400,
+              color: phase === s.n ? BRAND : "#6B7280", background: "none", border: "none",
+              borderBottom: phase === s.n ? `3px solid ${BRAND}` : "3px solid transparent",
+              cursor: "pointer", marginBottom: -2,
             }}>
-              {s.n} {s.label}
+              {s.n}. {s.label}
             </button>
           ))}
         </div>
 
-        {/* Product info (always shown) */}
-        <div style={{ display: "flex", gap: 12, marginBottom: 16, padding: "10px 14px", background: "#F9FAFB", borderRadius: 8 }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: 13 }}>{name || "Tên sản phẩm"}</div>
-            <div style={{ fontSize: 10, color: "#6B7280" }}>SKU: {sku || "—"} {cost > 0 && `· Vốn: ${formatVND(cost)}`}</div>
-          </div>
-        </div>
-
-        {/* ─── STEP 1: Loại hàng ─── */}
-        {step === 1 && (
+        {/* Phase 1: Định vị */}
+        {phase === 1 && (
           <div>
-            <div style={{ fontWeight: 700, marginBottom: 8 }}>① Loại hàng</div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-              {PRODUCT_TYPES.map((pt) => (
-                <button key={pt.k} onClick={() => setProductType(pt.k)}
-                  style={{ padding: "8px 16px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer",
-                    background: productType === pt.k ? pt.color : "#F3F4F6",
-                    color: productType === pt.k ? "#fff" : "#374151",
-                    border: "none",
-                  }}>
-                  {pt.label}
-                </button>
+            <div style={{ fontWeight: 700, marginBottom: 10 }}>Phase 1 — Định vị sản phẩm</div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 11, fontWeight: 600, color: "#6B7280", display: "block", marginBottom: 4 }}>Loại hàng</label>
+              <div style={{ display: "flex", gap: 8 }}>
+                {HORIZONS.map((h) => (
+                  <button key={h.k} onClick={() => setHorizon(h.k)} style={{
+                    padding: "8px 16px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer",
+                    background: horizon === h.k ? h.color : "#F3F4F6", color: horizon === h.k ? "#fff" : "#374151", border: "none",
+                  }}>{h.label} {h.sub}</button>
+                ))}
+              </div>
+            </div>
+            <div className="form-group" style={{ marginBottom: 10 }}><label>Khách hàng mục tiêu</label><textarea rows={2} value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="Hộ gia đình, tuổi, đặc điểm..." /></div>
+            <div className="form-group"><label>Pain point</label><textarea rows={2} value={painPoint} onChange={(e) => setPainPoint(e.target.value)} placeholder="Lo ngại, vấn đề cần giải quyết..." /></div>
+          </div>
+        )}
+
+        {/* Phase 2: Content */}
+        {phase === 2 && (
+          <div>
+            <div style={{ fontWeight: 700, marginBottom: 10 }}>Phase 2 — Content &amp; hình ảnh</div>
+            <div className="form-group" style={{ marginBottom: 10 }}><label>Link Google Drive folder ảnh/video</label><input value={driveLink} onChange={(e) => setDriveLink(e.target.value)} placeholder="https://drive.google.com/..." /></div>
+            <div className="form-group"><label>Người phụ trách content</label><input value={assignees} onChange={(e) => setAssignees(e.target.value)} placeholder="Minh, Hương, Lan..." /></div>
+          </div>
+        )}
+
+        {/* Phase 3: Định giá */}
+        {phase === 3 && (
+          <div>
+            <div style={{ fontWeight: 700, marginBottom: 10 }}>Phase 3 — Định giá</div>
+            <div className="form-grid fg-3" style={{ marginBottom: 12 }}>
+              <div className="form-group"><label>Giá bán chính</label><input type="number" value={sellPrice || ""} onChange={(e) => setSellPrice(Number(e.target.value))} /></div>
+              <div className="form-group"><label>Giá bán 2 (variant)</label><input type="number" value={sellPrice2 || ""} onChange={(e) => setSellPrice2(Number(e.target.value))} /></div>
+              <div style={{ padding: "8px 0" }}>
+                <div style={{ fontSize: 10, color: "#6B7280" }}>Markup từ vốn</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: markup >= 50 ? "#16A34A" : markup >= 20 ? "#D97706" : "#DC2626" }}>+{markup}%</div>
+                <div style={{ fontSize: 10, color: "#6B7280" }}>Vốn: {formatVND(cost)}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Phase 4: Target */}
+        {phase === 4 && (
+          <div>
+            <div style={{ fontWeight: 700, marginBottom: 10 }}>Phase 4 — Target theo kênh</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 12 }}>
+              {LAUNCH_CHANNELS.map((ch) => (
+                <div key={ch} style={{ border: "1px solid #E5E7EB", borderRadius: 8, padding: "8px 10px", textAlign: "center" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: CH_COLORS[ch] }}>{ch}</div>
+                  <input type="number" value={channels[ch] || ""} min={0} style={{ width: "100%", textAlign: "center", fontSize: 16, fontWeight: 800, border: "none", background: "transparent" }}
+                    onChange={(e) => setChannels({ ...channels, [ch]: Number(e.target.value) })} />
+                  <div style={{ fontSize: 9, color: "#6B7280" }}>SP target</div>
+                </div>
               ))}
             </div>
-            <div className="form-group"><label>GHI CHÚ</label>
-              <textarea rows={2} value={productTypeNote} onChange={(e) => setProductTypeNote(e.target.value)} placeholder="Lý do phân loại, đặc điểm hàng hoá..." />
-            </div>
-          </div>
-        )}
-
-        {/* ─── STEP 2: Khách hàng ─── */}
-        {step === 2 && (
-          <div>
-            <div style={{ fontWeight: 700, marginBottom: 8 }}>② Khách hàng — thị trường</div>
+            <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 12 }}>Tổng target: <strong>{totalChTarget} SP</strong></div>
             <div className="form-grid fg-3" style={{ marginBottom: 10 }}>
-              <div className="form-group"><label>NHÓM KHÁCH HÀNG</label><textarea rows={2} value={custGroup} onChange={(e) => setCustGroup(e.target.value)} placeholder="Hộ gia đình, tuổi, đặc điểm..." /></div>
-              <div className="form-group"><label>NHU CẦU / PAIN POINT</label><textarea rows={2} value={custPain} onChange={(e) => setCustPain(e.target.value)} placeholder="Lo ngại, vấn đề cần giải quyết..." /></div>
-              <div className="form-group"><label>ĐỐI THỦ + GIÁ THAM CHIẾU</label><textarea rows={2} value={custComp} onChange={(e) => setCustComp(e.target.value)} placeholder="Xiaomi 1.2tr · Sharp 2.5tr..." /></div>
+              <div className="form-group"><label>Tồn kho</label><input type="number" value={stockQty || ""} onChange={(e) => setStockQty(Number(e.target.value))} /></div>
+              <div className="form-group"><label>Số tháng</label><input type="number" value={months || ""} onChange={(e) => setMonths(Number(e.target.value))} /></div>
+              <div className="form-group"><label>Deadline</label><input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} /></div>
             </div>
-          </div>
-        )}
-
-        {/* ─── STEP 3: Kênh bán ─── */}
-        {step === 3 && (
-          <div>
-            <div style={{ fontWeight: 700, marginBottom: 8 }}>③ Kênh bán</div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
-              {CHANNELS.map((ch) => {
-                const active = channels.includes(ch);
-                const colors: Record<string, string> = { Facebook: "#1877F2", "TikTok Shop": "#FE2C55", Shopee: "#EE4D2D", "Web/B2B": "#6366F1", "Live stream": "#16A34A" };
-                return (
-                  <button key={ch} onClick={() => setChannels(active ? channels.filter((c) => c !== ch) : [...channels, ch])}
-                    style={{ padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer",
-                      background: active ? colors[ch] || "#3B82F6" : "#F3F4F6",
-                      color: active ? "#fff" : "#374151", border: "none",
-                    }}>
-                    {ch}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="form-group"><label>GHI CHÚ KÊNH</label>
-              <textarea rows={2} value={channelNote} onChange={(e) => setChannelNote(e.target.value)} placeholder="Ưu tiên kênh nào, lý do..." />
-            </div>
-          </div>
-        )}
-
-        {/* ─── STEP 4: Định giá ─── */}
-        {step === 4 && (
-          <div>
-            <div style={{ fontWeight: 700, marginBottom: 8 }}>④ Định giá &amp; chương trình bán</div>
-            <div className="form-grid fg-3" style={{ marginBottom: 12 }}>
-              <div className="form-group"><label>GIÁ VỐN A</label><input type="number" value={cost || ""} onChange={(e) => setCost(Number(e.target.value))} /></div>
-              <div className="form-group"><label>GIÁ BÁN</label><input type="number" value={sellPrice || ""} onChange={(e) => setSellPrice(Number(e.target.value))} /></div>
-              <div style={{ padding: "8px 0" }}>
-                <div style={{ fontSize: 10, color: "#6B7280" }}>Gross (B-A)</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: gross >= 0 ? "#16A34A" : "#DC2626" }}>
-                  {gross >= 0 ? "+" : ""}{formatVND(gross)} ({grossPct}%)
-                </div>
-              </div>
-            </div>
-            {cost > 0 && sellPrice > 0 && (
-              <div className="card" style={{ padding: "10px 14px", background: "#F9FAFB" }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#6B7280", marginBottom: 6 }}>KỊCH BẢN LỢI NHUẬN</div>
-                {[
-                  { label: "Xả hàng", fees: "Sàn 20%", pct: 0.20 },
-                  { label: "Bán thường", fees: "Sàn 20%, Thuế 1.5%, HT 7k, VH 10%", pct: 0.315 },
-                  { label: "Có ads", fees: "Sàn 20%, Thuế 1.5%, HT 7k, VH 10%, Ads 10%", pct: 0.415 },
-                  { label: "Ads + Aff", fees: "Sàn 20%, Thuế 1.5%, HT 7k, VH 10%, Ads 10%, Aff 10%", pct: 0.515 },
-                ].map((s) => {
-                  const feesAmt = sellPrice * s.pct + 7000;
-                  const profit = sellPrice - cost - feesAmt;
-                  const profitPct = sellPrice > 0 ? (profit / sellPrice * 100).toFixed(1) : "0";
-                  return (
-                    <div key={s.label} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 11, borderBottom: "1px solid #E5E7EB" }}>
-                      <span>
-                        <span style={{ fontWeight: 600 }}>① {s.label}</span>
-                        <span style={{ color: "#9CA3AF", marginLeft: 8, fontSize: 9 }}>{s.fees}</span>
-                      </span>
-                      <span style={{ fontWeight: 700, color: profit >= 0 ? "#16A34A" : "#DC2626" }}>
-                        {profit >= 0 ? "+" : ""}{formatVND(profit)} ({profitPct}%)
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ─── STEP 5: Listing ─── */}
-        {step === 5 && (
-          <div>
-            <div style={{ fontWeight: 700, marginBottom: 8 }}>⑤ Listing lên sàn &amp; web</div>
-            {channels.map((ch) => (
-              <div key={ch} style={{ marginBottom: 10, padding: "10px 14px", border: "1px solid #E5E7EB", borderRadius: 8 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                  <span style={{ fontWeight: 700, fontSize: 12 }}>{ch}</span>
-                  <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, cursor: "pointer" }}>
-                    <input type="checkbox" checked={listings[ch]?.done || false}
-                      onChange={(e) => setListings({ ...listings, [ch]: { ...listings[ch], done: e.target.checked } })} />
-                    ĐÃ ĐĂNG
-                  </label>
-                </div>
-                <input placeholder={`Link ${ch} chính...`} value={listings[ch]?.links || ""}
-                  onChange={(e) => setListings({ ...listings, [ch]: { ...listings[ch], links: e.target.value } })}
-                  style={{ width: "100%", fontSize: 11 }} />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* ─── STEP 6: Nội dung ─── */}
-        {step === 6 && (
-          <div>
-            <div style={{ fontWeight: 700, marginBottom: 8 }}>⑥ Sản xuất &amp; đăng tải nội dung</div>
-            <div className="form-grid fg-2" style={{ marginBottom: 12 }}>
-              <div className="form-group"><label>LINK THƯ MỤC DRIVE</label><input value={driveLink} onChange={(e) => setDriveLink(e.target.value)} placeholder="https://drive.google.com/..." /></div>
-              <div className="form-group"><label>NGƯỜI PHỤ TRÁCH</label><input value={assignees} onChange={(e) => setAssignees(e.target.value)} placeholder="+ Thêm nhân viên..." /></div>
-            </div>
-            <div style={{ fontWeight: 700, fontSize: 11, color: "#6B7280", marginBottom: 8 }}>TARGET NỘI DUNG SẢN XUẤT</div>
-            {CONTENT_TARGETS.map((ct, ci) => {
-              const target = contentTargets[ci];
-              return (
-                <div key={ct.type} style={{ marginBottom: 10, padding: "10px 14px", border: "1px solid #E5E7EB", borderRadius: 8 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                    <span style={{ fontSize: 10, background: ct.color, color: "#fff", borderRadius: 4, padding: "2px 8px", fontWeight: 700 }}>{ct.label}</span>
-                    <span style={{ fontSize: 11, fontWeight: 600 }}>{ct.desc}</span>
-                    <span style={{ fontSize: 10, color: "#6B7280", marginLeft: "auto" }}>{target.videos} video · {target.published} đã đăng</span>
-                  </div>
-                  <div style={{ display: "flex", gap: 8, fontSize: 11 }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: 4 }}>Số video:
-                      <input type="number" value={target.videos} min={0} style={{ width: 50 }}
-                        onChange={(e) => { const arr = [...contentTargets]; arr[ci] = { ...target, videos: Number(e.target.value) }; setContentTargets(arr); }} />
-                    </label>
-                    <label style={{ display: "flex", alignItems: "center", gap: 4 }}>Đã đăng:
-                      <input type="number" value={target.published} min={0} style={{ width: 50 }}
-                        onChange={(e) => { const arr = [...contentTargets]; arr[ci] = { ...target, published: Number(e.target.value) }; setContentTargets(arr); }} />
-                    </label>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* ─── STEP 7: Target doanh số ─── */}
-        {step === 7 && (
-          <div>
-            <div style={{ fontWeight: 700, marginBottom: 8 }}>⑦ Target doanh số</div>
-            <div className="form-grid fg-3" style={{ marginBottom: 12 }}>
-              <div className="form-group"><label>Tồn kho cần bán</label><input type="number" value={stockQty || ""} onChange={(e) => setStockQty(Number(e.target.value))} /> <span style={{ fontSize: 10, color: "#6B7280" }}>SP</span></div>
-              <div className="form-group"><label>Thời gian</label><input type="number" value={months || ""} onChange={(e) => setMonths(Number(e.target.value))} /> <span style={{ fontSize: 10, color: "#6B7280" }}>tháng</span></div>
-              <div style={{ padding: "8px 0" }}>
-                <div style={{ fontSize: 10, color: "#6B7280" }}>Cần bán trung bình</div>
-                <div style={{ fontSize: 16, fontWeight: 800 }}>{months > 0 ? Math.ceil(stockQty / months) : "—"} <span style={{ fontSize: 10, fontWeight: 400, color: "#6B7280" }}>SP/tháng</span></div>
-              </div>
-            </div>
-
-            <div style={{ fontWeight: 700, fontSize: 11, color: "#6B7280", marginBottom: 8 }}>PHÂN BỔ THEO KÊNH</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 12 }}>
-              {[{ k: "Shopee", pct: 55 }, { k: "TikTok", pct: 25 }, { k: "Facebook", pct: 10 }, { k: "Web/B2B", pct: 10 }].map((ch) => {
-                const colors: Record<string, string> = { Shopee: "#EE4D2D", TikTok: "#FE2C55", Facebook: "#1877F2", "Web/B2B": "#6366F1" };
-                const val = channelSplit[ch.k] ?? ch.pct;
-                const spMonth = months > 0 && stockQty > 0 ? Math.ceil((stockQty * val / 100) / months) : 0;
-                return (
-                  <div key={ch.k} style={{ border: "1px solid #E5E7EB", borderRadius: 8, padding: "8px 10px", textAlign: "center" }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: colors[ch.k] }}>{ch.k} <span style={{ fontWeight: 400 }}>~{val}%</span></div>
-                    <input type="number" value={val} min={0} max={100} style={{ width: "100%", textAlign: "center", fontSize: 16, fontWeight: 800, border: "none", background: "transparent" }}
-                      onChange={(e) => setChannelSplit({ ...channelSplit, [ch.k]: Number(e.target.value) })} />
-                    <div style={{ fontSize: 9, color: "#6B7280" }}>{spMonth} SP/tháng</div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="form-grid fg-2" style={{ marginBottom: 12 }}>
-              <div className="form-group"><label>Khoảng giá: Từ</label><input type="number" value={priceFrom || ""} onChange={(e) => setPriceFrom(Number(e.target.value))} /></div>
+            <div className="form-grid fg-2">
+              <div className="form-group"><label>Giá thị trường từ</label><input type="number" value={priceFrom || ""} onChange={(e) => setPriceFrom(Number(e.target.value))} /></div>
               <div className="form-group"><label>đến</label><input type="number" value={priceTo || ""} onChange={(e) => setPriceTo(Number(e.target.value))} /></div>
             </div>
-
-            <label style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 14px", background: "#F9FAFB", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 12 }}>
-              <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} style={{ width: 18, height: 18 }} />
-              XÁC NHẬN PLAN
-            </label>
           </div>
         )}
 
-        {/* ─── Footer buttons ─── */}
+        {/* Footer */}
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 20, paddingTop: 16, borderTop: "1px solid #E5E7EB" }}>
-          <div>
-            {step > 1 && <button className="btn btn-ghost btn-sm" onClick={() => setStep(step - 1)}>← Trước</button>}
-          </div>
+          <div>{phase > 1 && <button className="btn btn-ghost btn-sm" onClick={() => setPhase(phase - 1)}>← Trước</button>}</div>
           <div style={{ display: "flex", gap: 8 }}>
             <button className="btn btn-ghost btn-sm" onClick={onClose}>Huỷ</button>
             <button className="btn btn-ghost btn-sm" onClick={() => save("READY")} disabled={pending}>Lưu nháp</button>
-            {step < 7 ? (
-              <button className="btn btn-primary btn-sm" onClick={() => setStep(step + 1)}>Tiếp →</button>
+            {phase < 4 ? (
+              <button className="btn btn-sm" style={{ background: BRAND, color: "#fff" }} onClick={() => setPhase(phase + 1)}>Tiếp →</button>
             ) : (
-              <button className="btn btn-primary btn-sm" onClick={() => save("LAUNCHED")} disabled={pending}>✓ Bắt đầu launch</button>
+              <button className="btn btn-sm" style={{ background: BRAND, color: "#fff" }} onClick={() => save("LAUNCHED")} disabled={pending}>✓ Bắt đầu launch</button>
             )}
           </div>
         </div>
