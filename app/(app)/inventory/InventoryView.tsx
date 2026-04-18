@@ -152,6 +152,9 @@ export default function InventoryView({
     } catch { /* */ } finally { setSalesLoading(false); }
   }, [salesFrom, salesTo, salesChannel, salesSearch, salesSort]);
 
+  // Auto-load sales khi mở trang (30 ngày mặc định)
+  useEffect(() => { loadSales(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   function setDatePreset(key: string) {
     let f: string, t: string;
     if (key === "7d") { f = daysAgo(-7); t = daysAgo(0); }
