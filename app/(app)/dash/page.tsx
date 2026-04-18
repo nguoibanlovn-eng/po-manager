@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getDashboardStats, getRecentOrders, getRevenueByChannel, getYearlySummary } from "@/lib/db/dashboard";
+import { getDashboardStats, getRecentOrders, getRevenueByChannel, getYearlySummary, getYearlyChannelTargets } from "@/lib/db/dashboard";
 import { getChannelTarget } from "@/lib/db/tiktok";
 import { getCurrentUser } from "@/lib/auth/user";
 import { dateVN } from "@/lib/helpers";
@@ -16,6 +16,27 @@ const CHANNEL_COLORS: Record<string, string> = {
   Facebook: "#1877F2", TikTok: "#FE2C55", Shopee: "#EE4D2D",
   Website: "#6366F1", App: "#8B5CF6", "Nội bộ": "#9CA3AF",
 };
+
+const CHANNEL_TARGET_MAP: Record<string, string> = {
+  Facebook: "facebook", TikTok: "tiktok", Shopee: "shopee",
+  Website: "web_b2b", App: "web_b2b", Admin: "web_b2b", API: "web_b2b",
+};
+const YEAR_CHANNELS = [
+  { key: "facebook", label: "Facebook", abbr: "FB", allocPct: "55%", color: "#1877F2" },
+  { key: "tiktok", label: "TikTok", abbr: "TT", allocPct: "25%", color: "#000000" },
+  { key: "shopee", label: "Shopee", abbr: "SP", allocPct: "10%", color: "#EE4D2D" },
+  { key: "web_b2b", label: "Web/App B2B", abbr: "WA", allocPct: "10%", color: "#0EA5E9" },
+];
+const BUDGET_PCT = 0.55;
+const BUDGET_SOURCES = [
+  { name: "TQ Order", pct: 20, color: "#16A34A" },
+  { name: "TQ Trữ sẵn", pct: 35, color: "#3B82F6" },
+  { name: "Nội địa", pct: 45, color: "#7C3AED" },
+];
+
+function fmtTy(v: number): string {
+  return (v / 1e9).toFixed(2) + " tỷ";
+}
 
 export default async function DashPage({
   searchParams,
@@ -39,7 +60,7 @@ export default async function DashPage({
 
   const currentYear = Number(month.split("-")[0]);
 
-  const [user, stats, recent, revMonth, rev7d, fbTarget, tkTarget, spTarget, yearly] = await Promise.all([
+  const [user, stats, recent, revMonth, rev7d, fbTarget, tkTarget, spTarget, yearly, prevYearly, yearChTargets] = await Promise.all([
     getCurrentUser(),
     getDashboardStats(month),
     getRecentOrders(10),
@@ -49,6 +70,8 @@ export default async function DashPage({
     getChannelTarget("tiktok", monthKey),
     getChannelTarget("shopee", monthKey),
     getYearlySummary(currentYear),
+    getYearlySummary(currentYear - 1),
+    getYearlyChannelTargets(currentYear),
   ]);
 
   const totalAdSpend = stats.revenue.adSpend + stats.revenue.shopeeAdSpend + stats.revenue.tiktokAdSpend;
@@ -69,158 +92,397 @@ export default async function DashPage({
   // YEARLY VIEW
   // ═══════════════════════════════════════════════════════
   if (view === "year") {
-    const maxMonthRev = Math.max(...yearly.months.map((m) => m.revenue), 1);
-    const maxMonthTarget = Math.max(...yearly.months.map((m) => m.target), 1);
-    const maxBar = Math.max(maxMonthRev, maxMonthTarget);
-    const nowMonth = now.getMonth() + 1; // 1-based
+    const nowMonth = now.getMonth() + 1;
+    const prevYearRev = prevYearly?.cumRevenue || 0;
+    const growthVsPrev = prevYearRev > 0 ? Math.round(((yearly.yearTarget / prevYearRev) - 1) * 100) : 0;
+    const cumTargetToNow = yearly.months.slice(0, nowMonth).reduce((s, mm) => s + mm.target, 0);
+    const surplus = yearly.cumRevenue - cumTargetToNow;
+    const cumAchievePct = cumTargetToNow > 0 ? Math.round((yearly.cumRevenue / cumTargetToNow) * 100) : 0;
+    const yearPctActual = yearly.yearTarget > 0 ? (yearly.cumRevenue / yearly.yearTarget * 100) : 0;
+    const yearPctRemain = Math.max(0, 100 - yearPctActual);
+    const cumTargetPctOfYear = yearly.yearTarget > 0 ? (cumTargetToNow / yearly.yearTarget * 100) : 0;
+
+    // Channel cumulative revenue (mapped to target keys)
+    const chRevCum: Record<string, number> = {};
+    for (const mm of yearly.months) {
+      for (const [ch, rev] of Object.entries(mm.byChannel)) {
+        const key = CHANNEL_TARGET_MAP[ch] || ch;
+        chRevCum[key] = (chRevCum[key] || 0) + rev;
+      }
+    }
+
+    // Cumulative ads by platform
+    const cumAdsFb = yearly.months.reduce((s, mm) => s + mm.adsFb, 0);
+    const cumAdsShopee = yearly.months.reduce((s, mm) => s + mm.adsShopee, 0);
+    const cumAdsTiktok = yearly.months.reduce((s, mm) => s + mm.adsTiktok, 0);
+    const cumAdsTotal = cumAdsFb + cumAdsShopee + cumAdsTiktok;
+    const adsRevPctYear = yearly.cumRevenue > 0 ? (cumAdsTotal / yearly.cumRevenue * 100) : 0;
+
+    // Budget
+    const budgetTotal = yearly.yearTarget * BUDGET_PCT;
+
+    // Channel targets for year
+    const chTargets: Record<string, number> = {};
+    for (const ch of YEAR_CHANNELS) {
+      chTargets[ch.key] = yearChTargets?.[ch.key] || 0;
+    }
 
     return (
       <section className="section">
+        {/* ─── HEADER ─── */}
         <div className="page-hdr">
           <div>
             <div className="page-title">Dashboard</div>
-            <div className="page-sub">Năm {currentYear} · KH: {formatVNDCompact(yearly.yearTarget)}</div>
+            <div className="page-sub">Năm {currentYear} · KH: {fmtTy(yearly.yearTarget)} · {currentYear - 1}: {fmtTy(prevYearRev)}</div>
           </div>
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             <Link href="/dash?view=month" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Tháng</Link>
-            <Link href="/dash?view=year" className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>Năm</Link>
+            <Link href={`/dash?view=year&month=${currentYear}-01`} className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>Năm</Link>
+            <Link href={`/dash?view=year&month=${currentYear - 1}-01`} className="btn btn-ghost btn-sm" style={{ textDecoration: "none", fontSize: 10 }}>{currentYear - 1} TT</Link>
+            <Link href={`/dash?view=year&month=${currentYear}-01`} className="btn btn-sm" style={{ textDecoration: "none", fontSize: 10, background: "#1F2937", color: "#fff" }}>{currentYear} KH</Link>
+            <Link href={`/dash?view=year&month=${currentYear}-01`} className="btn btn-ghost btn-sm" style={{ fontSize: 12 }}>↻</Link>
           </div>
         </div>
 
-        {/* Year KPIs */}
-        <div className="stat-grid" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))" }}>
-          <div className="stat-card" style={{ borderLeft: "4px solid #16A34A" }}>
-            <div className="sl">DOANH THU LŨY KẾ</div>
-            <div className="sv" style={{ color: "#16A34A" }}>{formatVNDCompact(yearly.cumRevenue)}</div>
-            <div className="ss">T1-T{Math.min(nowMonth, 12)}</div>
-          </div>
-          <div className="stat-card" style={{ borderLeft: "4px solid #3B82F6" }}>
-            <div className="sl">KẾ HOẠCH NĂM</div>
-            <div className="sv">{formatVNDCompact(yearly.yearTarget)}</div>
-            <div className="ss">{yearPct}% đạt</div>
-          </div>
-          <div className="stat-card" style={{ borderLeft: "4px solid #DC2626" }}>
-            <div className="sl">CÒN PHẢI ĐẠT</div>
-            <div className="sv" style={{ color: "#DC2626" }}>{formatVNDCompact(yearRemaining)}</div>
-            <div className="ss">{100 - yearPct}% còn lại</div>
-          </div>
-          <div className="stat-card" style={{ borderLeft: "4px solid #D97706" }}>
-            <div className="sl">CHI PHÍ ADS LŨY KẾ</div>
-            <div className="sv">{formatVNDCompact(yearly.cumAds)}</div>
-            <div className="ss">Ads/DT: {yearAdsPct.toFixed(1)}%</div>
-          </div>
-          <div className="stat-card" style={{ borderLeft: "4px solid #7C3AED" }}>
-            <div className="sl">ROAS NĂM</div>
-            <div className="sv">{yearly.cumAds > 0 ? (yearly.cumRevenue / yearly.cumAds).toFixed(1) : "—"}x</div>
-            <div className="ss">DT / Ads</div>
-          </div>
-        </div>
-
-        {/* Year progress bar */}
-        <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 6, padding: "8px 14px", marginBottom: 12 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 4 }}>
-            <span>Đã đạt <strong style={{ color: "#16A34A" }}>{formatVNDCompact(yearly.cumRevenue)}</strong> ({yearPct}%)</span>
-            <span>KH {currentYear}: <strong>{formatVNDCompact(yearly.yearTarget)}</strong></span>
-            <span>Còn: <strong style={{ color: "#DC2626" }}>{formatVNDCompact(yearRemaining)}</strong></span>
-          </div>
-          <div style={{ height: 18, background: "#F3F4F6", borderRadius: 4, overflow: "hidden", position: "relative" }}>
-            <div style={{ position: "absolute", top: 0, left: 0, height: "100%", width: `${Math.min(yearPct, 100)}%`, background: yearPct >= 100 ? "#16A34A" : "#3B82F6", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ fontSize: 10, fontWeight: 700, color: "#fff" }}>{yearPct}%</span>
+        {/* ─── TOP 3 KPI CARDS ─── */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 12 }}>
+          {/* DOANH THU */}
+          <div className="card" style={{ padding: "12px 16px" }}>
+            <div style={{ fontWeight: 700, fontSize: 11, color: "#6B7280", marginBottom: 8, letterSpacing: 0.5 }}>DOANH THU</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 10, color: "#6B7280" }}>Kế hoạch năm</div>
+                <div style={{ fontSize: 22, fontWeight: 800 }}>{fmtTy(yearly.yearTarget)}</div>
+                <div style={{ fontSize: 10, color: "#16A34A" }}>+{growthVsPrev}% vs {currentYear - 1} ({fmtTy(prevYearRev)})</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: "#6B7280" }}>Đã đạt lũy kế T1–T{nowMonth}</div>
+                <div style={{ fontSize: 22, fontWeight: 800 }}>{fmtTy(yearly.cumRevenue)}</div>
+                <div style={{ fontSize: 10 }}>
+                  {cumAchievePct}% KH · {surplus >= 0
+                    ? <span style={{ color: "#16A34A" }}>Vượt {fmtTy(surplus)}</span>
+                    : <span style={{ color: "#DC2626" }}>Thiếu {fmtTy(Math.abs(surplus))}</span>}
+                </div>
+              </div>
             </div>
-            <div style={{ position: "absolute", top: 0, left: `${Math.round((nowMonth / 12) * 100)}%`, width: 1.5, height: "100%", background: "#000", opacity: 0.3 }} />
+          </div>
+
+          {/* NGÂN SÁCH NHẬP HÀNG */}
+          <div className="card" style={{ padding: "12px 16px" }}>
+            <div style={{ fontWeight: 700, fontSize: 11, color: "#6B7280", marginBottom: 8, letterSpacing: 0.5 }}>NGÂN SÁCH NHẬP HÀNG</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 10, color: "#6B7280" }}>Ngân sách năm</div>
+                <div style={{ fontSize: 22, fontWeight: 800 }}>{fmtTy(budgetTotal)}</div>
+                <div style={{ fontSize: 10, color: "#6B7280" }}>= {Math.round(BUDGET_PCT * 100)}% kế hoạch DT</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: "#6B7280" }}>Đã tiêu lũy kế T1–T{nowMonth}</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: "#9CA3AF" }}>—</div>
+                <div style={{ fontSize: 10, color: "#9CA3AF" }}>Chờ đồng bộ từ Nhập hàng</div>
+              </div>
+            </div>
+          </div>
+
+          {/* CHI PHÍ QUẢNG CÁO */}
+          <div className="card" style={{ padding: "12px 16px" }}>
+            <div style={{ fontWeight: 700, fontSize: 11, color: "#6B7280", marginBottom: 8, letterSpacing: 0.5 }}>CHI PHÍ QUẢNG CÁO</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 10, color: "#6B7280" }}>Tổng chi Ads T1–T{nowMonth}</div>
+                <div style={{ fontSize: 22, fontWeight: 800 }}>{fmtTy(cumAdsTotal)}</div>
+                <div style={{ fontSize: 10, color: "#6B7280" }}>FB {fmtTy(cumAdsFb)} · TT {fmtTy(cumAdsTiktok)} · SP {fmtTy(cumAdsShopee)}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: "#6B7280" }}>Chi Ads / Doanh thu</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: adsRevPctYear < 5 ? "#16A34A" : adsRevPctYear <= 7 ? "#D97706" : "#DC2626" }}>{adsRevPctYear.toFixed(1)}%</div>
+                <div style={{ fontSize: 10 }}>
+                  <span style={{ color: "#16A34A" }}>Xanh &lt;5%</span>{" "}
+                  <span style={{ color: "#D97706" }}>Vàng 5–7%</span>{" "}
+                  <span style={{ color: "#DC2626" }}>Đỏ &gt;7%</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Monthly bar chart T1-T12 */}
-        <div className="card" style={{ marginBottom: 12 }}>
-          <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 8 }}>Doanh thu theo tháng</div>
-          <div style={{ display: "flex", gap: 12, fontSize: 10, color: "#6B7280", marginBottom: 8 }}>
-            <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: "#4ADE80", marginRight: 3, verticalAlign: "middle" }} />Thực tế</span>
-            <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: "#E5E7EB", marginRight: 3, verticalAlign: "middle" }} />Kế hoạch</span>
+        {/* ─── PROGRESS BAR ─── */}
+        <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 6, padding: "10px 16px", marginBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+            <div>
+              <div style={{ fontSize: 10, color: "#6B7280" }}>Đã đạt</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: "#16A34A" }}>
+                {fmtTy(yearly.cumRevenue)} <span style={{ fontSize: 12, fontWeight: 600 }}>↑ {yearPctActual.toFixed(1)}%</span>
+              </div>
+            </div>
+            <div style={{ textAlign: "center", alignSelf: "center" }}>
+              <div style={{ fontSize: 12 }}>KH {currentYear}: <strong>{fmtTy(yearly.yearTarget)}</strong></div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 10, color: "#DC2626" }}>Còn phải đạt</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: "#DC2626" }}>
+                {fmtTy(yearRemaining)} <span style={{ fontSize: 12, fontWeight: 600 }}>↓ {yearPctRemain.toFixed(1)}%</span>
+              </div>
+            </div>
           </div>
-          <div style={{ display: "flex", alignItems: "flex-end", height: 140 }}>
-            {yearly.months.map((m, i) => {
-              const revH = maxBar > 0 ? (m.revenue / maxBar) * 110 : 0;
-              const tgtH = maxBar > 0 ? (m.target / maxBar) * 110 : 0;
-              const isPast = i + 1 <= nowMonth;
+
+          <div style={{ height: 22, background: "#E5E7EB", borderRadius: 4, overflow: "hidden", display: "flex" }}>
+            <div style={{ width: `${Math.min(yearPctActual, 100)}%`, height: "100%", background: "#16A34A", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "4px 0 0 4px", minWidth: yearPctActual > 2 ? 40 : 0 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#fff" }}>{yearPctActual.toFixed(1)}%</span>
+            </div>
+            <div style={{ flex: 1, display: "flex", alignItems: "center", paddingLeft: 8 }}>
+              <span style={{ fontSize: 10, color: "#6B7280" }}>{yearPctRemain.toFixed(1)}% còn lại</span>
+            </div>
+          </div>
+
+          {/* T1-T12 milestones */}
+          <div style={{ display: "flex", marginTop: 8 }}>
+            {yearly.months.map((mm, i) => {
+              const mi = i + 1;
+              const isPast = mi < nowMonth;
+              const isCurrent = mi === nowMonth;
               return (
-                <div key={m.month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end" }}>
-                  {m.revenue > 0 && <div style={{ fontSize: 7, fontWeight: 600, color: "#16A34A", marginBottom: 1 }}>{formatVNDCompact(m.revenue)}</div>}
-                  <div style={{ width: "80%", position: "relative" }}>
-                    {/* Target ghost bar */}
-                    <div style={{ width: "100%", height: Math.max(tgtH, 1), background: "#E5E7EB", borderRadius: "2px 2px 0 0", position: "absolute", bottom: 0 }} />
-                    {/* Actual bar */}
-                    <div style={{ width: "100%", height: Math.max(revH, isPast && m.revenue > 0 ? 2 : 0), background: isPast ? "#4ADE80" : "transparent", borderRadius: "2px 2px 0 0", position: "relative", zIndex: 1 }} />
-                  </div>
+                <div key={mm.month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
+                  <div style={{
+                    width: isPast || isCurrent ? 10 : 8,
+                    height: isPast || isCurrent ? 10 : 8,
+                    borderRadius: "50%",
+                    background: isPast ? "#16A34A" : isCurrent ? "#D97706" : "transparent",
+                    border: isPast || isCurrent ? "none" : "1.5px solid #D1D5DB",
+                  }} />
+                  <div style={{ fontSize: 9, color: isCurrent ? "#D97706" : isPast ? "#374151" : "#D1D5DB", marginTop: 2, fontWeight: isCurrent ? 700 : 400 }}>T{mi}</div>
+                  {isCurrent && (
+                    <div style={{ fontSize: 8, color: "#D97706", marginTop: 1, whiteSpace: "nowrap" }}>
+                      KH T{mi}: {cumTargetPctOfYear.toFixed(1)}%
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
-          <div style={{ display: "flex", borderTop: "1px solid #E5E7EB" }}>
-            {yearly.months.map((m, i) => (
-              <div key={`l-${m.month}`} style={{ flex: 1, textAlign: "center", fontSize: 9, fontWeight: i + 1 === nowMonth ? 700 : 400, color: i + 1 === nowMonth ? "#3B82F6" : "#999", padding: "3px 0" }}>
-                T{i + 1}
-              </div>
-            ))}
-          </div>
         </div>
 
-        {/* Monthly detail table */}
-        <div className="card" style={{ marginBottom: 12, padding: 0 }}>
-          <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)", fontWeight: 700, fontSize: 12 }}>
-            Doanh thu + Ads lũy kế theo tháng
-          </div>
-          <div className="tbl-wrap">
-            <table>
-              <thead><tr>
-                <th>Tháng</th><th className="text-right">KH</th><th className="text-right">Thực tế</th>
-                <th className="text-right">%</th><th className="text-right">Ads</th><th className="text-right">Ads/DT</th>
-                <th className="text-right">Lũy kế DT</th><th className="text-right">Lũy kế Ads</th>
-              </tr></thead>
-              <tbody>
-                {(() => {
-                  let cumRev = 0, cumAd = 0;
-                  return yearly.months.map((m, i) => {
-                    cumRev += m.revenue; cumAd += m.ads;
-                    const pct = m.target > 0 ? Math.round((m.revenue / m.target) * 100) : 0;
-                    const adRatio = m.revenue > 0 ? ((m.ads / m.revenue) * 100).toFixed(1) : "—";
-                    const hasData = m.revenue > 0 || m.ads > 0;
-                    return (
-                      <tr key={m.month} style={{ color: hasData ? undefined : "#D1D5DB" }}>
-                        <td style={{ fontWeight: 600 }}>T{i + 1}</td>
-                        <td className="text-right">{formatVNDCompact(m.target)}</td>
-                        <td className="text-right" style={{ color: hasData ? "#16A34A" : undefined, fontWeight: 600 }}>{hasData ? formatVNDCompact(m.revenue) : "—"}</td>
-                        <td className="text-right" style={{ fontWeight: 700, color: pct >= 100 ? "#16A34A" : pct > 0 ? "#D97706" : undefined }}>{pct > 0 ? `${pct}%` : "—"}</td>
-                        <td className="text-right" style={{ color: "#DC2626" }}>{m.ads > 0 ? formatVNDCompact(m.ads) : "—"}</td>
-                        <td className="text-right">{adRatio}%</td>
-                        <td className="text-right" style={{ fontWeight: 600 }}>{cumRev > 0 ? formatVNDCompact(cumRev) : "—"}</td>
-                        <td className="text-right" style={{ color: "#DC2626" }}>{cumAd > 0 ? formatVNDCompact(cumAd) : "—"}</td>
-                      </tr>
-                    );
-                  });
-                })()}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        {/* ─── 3-COLUMN LAYOUT ─── */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, alignItems: "start" }}>
 
-        {/* Monthly progress bars */}
-        <div className="card" style={{ marginBottom: 12, padding: "12px 14px" }}>
-          <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 8 }}>Tiến độ từng tháng</div>
-          {yearly.months.filter((m) => m.target > 0).map((m, i) => {
-            const pct = m.target > 0 ? Math.round((m.revenue / m.target) * 100) : 0;
-            const color = pct >= 100 ? "#16A34A" : pct > 0 ? "#3B82F6" : "#E5E7EB";
-            return (
-              <div key={m.month} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, width: 24, color: i + 1 === nowMonth ? "#3B82F6" : "#6B7280" }}>T{i + 1}</span>
-                <div style={{ flex: 1, height: 10, background: "#F3F4F6", borderRadius: 2, overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${Math.min(pct, 100)}%`, background: color, borderRadius: 2 }} />
+          {/* ─── LEFT: Doanh thu + Ads từng tháng ─── */}
+          <div className="card" style={{ padding: "12px 14px" }}>
+            <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 4 }}>Doanh thu + Ads từng tháng</div>
+            <div style={{ display: "flex", gap: 4, fontSize: 9, color: "#9CA3AF", marginBottom: 8, alignItems: "center" }}>
+              <span style={{ width: 20 }}>T</span>
+              <span style={{ flex: 1 }}>KH {currentYear} · {currentYear - 1} · % KH</span>
+              <span style={{ width: 50, textAlign: "right" }}>TT</span>
+              <span style={{ width: 40, textAlign: "right" }}>Ads</span>
+              <span style={{ width: 30, textAlign: "right" }}>%DT</span>
+            </div>
+            {yearly.months.map((mm, i) => {
+              const mi = i + 1;
+              const hasData = mm.revenue > 0 || mm.ads > 0;
+              const pctKH = mm.target > 0 ? Math.round((mm.revenue / mm.target) * 100) : 0;
+              const barBg = pctKH >= 100 ? "#DCFCE7" : pctKH >= 70 ? "#FEF3C7" : pctKH > 0 ? "#FEE2E2" : "#F9FAFB";
+              const pctColor = pctKH >= 100 ? "#16A34A" : pctKH >= 70 ? "#D97706" : pctKH > 0 ? "#DC2626" : "#D1D5DB";
+              const prevRev = prevYearly?.months?.[i]?.revenue || 0;
+              const ttVal = hasData ? mm.revenue : mm.target;
+
+              return (
+                <div key={mm.month} style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 3 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, width: 20, color: mi === nowMonth ? "#3B82F6" : "#374151" }}>T{mi}</span>
+                  <div style={{ flex: 1, position: "relative", height: 20, background: "#F9FAFB", borderRadius: 3, overflow: "hidden" }}>
+                    {hasData && (
+                      <div style={{ position: "absolute", top: 0, left: 0, height: "100%", width: `${Math.min(pctKH, 100)}%`, background: barBg, borderRadius: 3 }} />
+                    )}
+                    <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", height: "100%", paddingLeft: 4 }}>
+                      <span style={{ fontSize: 8, color: hasData ? "#374151" : "#D1D5DB", whiteSpace: "nowrap" }}>
+                        KH {fmtTy(mm.target)} · {prevRev > 0 ? fmtTy(prevRev) : "—"}
+                      </span>
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 9, fontWeight: 700, width: 48, textAlign: "right", color: pctColor, whiteSpace: "nowrap" }}>
+                    {pctKH > 0 ? `${pctKH}% KH` : ""}
+                  </span>
+                  <span style={{ fontSize: 9, fontWeight: 600, width: 50, textAlign: "right", color: hasData ? "#374151" : "#D1D5DB" }}>
+                    {ttVal > 0 ? fmtTy(ttVal) : "—"}
+                  </span>
+                  <span style={{ fontSize: 9, width: 40, textAlign: "right", color: "#DC2626" }}>
+                    {mm.ads > 0 ? fmtTy(mm.ads) : "—"}
+                  </span>
+                  <span style={{ fontSize: 9, width: 30, textAlign: "right", color: "#6B7280" }}>
+                    {mm.revenue > 0 && mm.ads > 0 ? `${((mm.ads / mm.revenue) * 100).toFixed(1)}%` : "—"}
+                  </span>
                 </div>
-                <span style={{ fontSize: 9, fontWeight: 600, width: 32, textAlign: "right", color: pct >= 100 ? "#16A34A" : pct > 0 ? "#374151" : "#D1D5DB" }}>{pct > 0 ? `${pct}%` : "—"}</span>
-                <span style={{ fontSize: 9, width: 45, textAlign: "right", color: "#6B7280" }}>{m.revenue > 0 ? formatVNDCompact(m.revenue) : "—"}</span>
+              );
+            })}
+          </div>
+
+          {/* ─── MIDDLE: Kênh bán + Chi phí Ads ─── */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {/* Kênh bán — lũy kế / KH năm */}
+            <div className="card" style={{ padding: "12px 14px" }}>
+              <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 2 }}>Kênh bán — lũy kế / KH năm</div>
+              <div style={{ fontSize: 9, color: "#9CA3AF", marginBottom: 8 }}>Số thực từ SALES_SYNC</div>
+
+              {YEAR_CHANNELS.map((ch) => {
+                const rev = chRevCum[ch.key] || 0;
+                const target = chTargets[ch.key] || 0;
+                const pctCh = target > 0 ? Math.round((rev / target) * 100) : 0;
+                return (
+                  <div key={ch.key} style={{ marginBottom: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: ch.color, flexShrink: 0 }} />
+                        <span style={{ fontSize: 11, fontWeight: 700 }}>{ch.label}</span>
+                        <span style={{ fontSize: 9, background: ch.color, color: "#fff", borderRadius: 3, padding: "0 5px", fontWeight: 600 }}>{ch.allocPct}</span>
+                      </div>
+                      <div style={{ fontSize: 9, color: "#6B7280" }}>
+                        KH: {fmtTy(target)} <span style={{ fontWeight: 700, color: pctCh >= 30 ? "#16A34A" : "#D97706" }}>{pctCh}%</span>
+                      </div>
+                    </div>
+                    <div style={{ height: 8, background: "#F3F4F6", borderRadius: 4, overflow: "hidden", marginBottom: 2 }}>
+                      <div style={{ height: "100%", width: `${Math.min(pctCh, 100)}%`, background: ch.color, borderRadius: 4 }} />
+                    </div>
+                    <div style={{ fontSize: 9, color: "#6B7280" }}>
+                      Lũy kế: {fmtTy(rev)} / KH năm: {fmtTy(target)}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Stacked proportion bar */}
+              <div style={{ display: "flex", height: 20, borderRadius: 10, overflow: "hidden", marginTop: 8 }}>
+                {YEAR_CHANNELS.map((ch) => {
+                  const rev = chRevCum[ch.key] || 0;
+                  const pctBar = yearly.cumRevenue > 0 ? (rev / yearly.cumRevenue * 100) : 0;
+                  if (pctBar < 1) return null;
+                  return (
+                    <div key={ch.key} style={{ width: `${pctBar}%`, background: ch.color, display: "flex", alignItems: "center", justifyContent: "center", minWidth: 20 }}>
+                      <span style={{ fontSize: 8, color: "#fff", fontWeight: 700, whiteSpace: "nowrap" }}>
+                        {pctBar >= 15 ? `${ch.abbr} ${Math.round(pctBar)}%` : ch.abbr}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
+              <div style={{ fontSize: 8, color: "#9CA3AF", marginTop: 2 }}>Tỉ trọng kênh / tổng doanh thu</div>
+            </div>
+
+            {/* Chi phí Ads lũy kế */}
+            <div className="card" style={{ padding: "12px 14px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 12 }}>Chi phí Ads lũy kế</div>
+                  <div style={{ fontSize: 9, color: "#9CA3AF" }}>Ads kênh / DT kênh đó · lũy kế T1–T{nowMonth}</div>
+                </div>
+                <div style={{ display: "flex", gap: 6, fontSize: 9 }}>
+                  <span style={{ color: "#16A34A" }}>&lt;5%</span>
+                  <span style={{ color: "#D97706" }}>5–7%</span>
+                  <span style={{ color: "#DC2626" }}>&gt;7%</span>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
+                <div style={{ background: "#F9FAFB", borderRadius: 6, padding: "8px 10px" }}>
+                  <div style={{ fontSize: 9, color: "#6B7280" }}>Tổng chi Ads</div>
+                  <div style={{ fontSize: 18, fontWeight: 800 }}>{fmtTy(cumAdsTotal)}</div>
+                </div>
+                <div style={{ background: "#F9FAFB", borderRadius: 6, padding: "8px 10px" }}>
+                  <div style={{ fontSize: 9, color: "#6B7280" }}>Ads / DT tổng</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: adsRevPctYear < 5 ? "#16A34A" : adsRevPctYear <= 7 ? "#D97706" : "#DC2626" }}>{adsRevPctYear.toFixed(1)}%</div>
+                  <div style={{ fontSize: 9, color: "#6B7280" }}>{adsRevPctYear < 5 ? "Tốt — dưới 5%" : adsRevPctYear <= 7 ? "Trung bình" : "Cao — trên 7%"}</div>
+                </div>
+              </div>
+
+              {/* Scale bar */}
+              <div style={{ display: "flex", height: 4, borderRadius: 2, overflow: "hidden", marginBottom: 4 }}>
+                <div style={{ flex: 5, background: "#16A34A" }} />
+                <div style={{ flex: 2, background: "#D97706" }} />
+                <div style={{ flex: 4, background: "#DC2626" }} />
+              </div>
+              <div style={{ display: "flex", fontSize: 8, color: "#9CA3AF", marginBottom: 8 }}>
+                <span style={{ flex: 5 }}>0%</span>
+                <span style={{ flex: 2, textAlign: "center" }}>5%</span>
+                <span style={{ flex: 4, textAlign: "center" }}>7%</span>
+                <span>11%+</span>
+              </div>
+
+              {/* Per-channel ads */}
+              {[
+                { label: "Facebook Ads", spend: cumAdsFb, dt: chRevCum.facebook || 0, color: "#1877F2" },
+                { label: "TikTok Ads", spend: cumAdsTiktok, dt: chRevCum.tiktok || 0, color: "#000" },
+                { label: "Shopee Ads", spend: cumAdsShopee, dt: chRevCum.shopee || 0, color: "#EE4D2D" },
+              ].map((ch) => {
+                const pctAd = ch.dt > 0 ? (ch.spend / ch.dt * 100) : 0;
+                const barW = Math.min(pctAd / 11 * 100, 100);
+                const barClr = pctAd < 5 ? "#16A34A" : pctAd <= 7 ? "#D97706" : "#DC2626";
+                return (
+                  <div key={ch.label} style={{ marginBottom: 6 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 2 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: ch.color, flexShrink: 0 }} />
+                      <span style={{ fontSize: 10, fontWeight: 600 }}>{ch.label}</span>
+                      <span style={{ fontSize: 9, color: "#6B7280", marginLeft: "auto" }}>
+                        {fmtTy(ch.spend)} / DT: {fmtTy(ch.dt)}
+                      </span>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: barClr }}>{pctAd.toFixed(2)}%</span>
+                    </div>
+                    <div style={{ height: 6, background: "#F3F4F6", borderRadius: 3, overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${barW}%`, background: barClr, borderRadius: 3 }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ─── RIGHT: Ngân sách nhập hàng + Tiến độ ─── */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {/* Ngân sách nhập hàng */}
+            <div className="card" style={{ padding: "12px 14px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                <div style={{ fontWeight: 700, fontSize: 12 }}>Ngân sách nhập hàng</div>
+                <Link href="/list" style={{ fontSize: 10, color: "var(--blue)" }}>Kết nối</Link>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
+                <div style={{ background: "#EFF6FF", borderRadius: 6, padding: "8px 10px" }}>
+                  <div style={{ fontSize: 9, color: "#3B82F6" }}>KH năm</div>
+                  <div style={{ fontSize: 16, fontWeight: 800 }}>{fmtTy(budgetTotal)}</div>
+                  <div style={{ fontSize: 9, color: "#3B82F6" }}>{Math.round(BUDGET_PCT * 100)}% DT KH</div>
+                </div>
+                <div style={{ background: "#F9FAFB", borderRadius: 6, padding: "8px 10px" }}>
+                  <div style={{ fontSize: 9, color: "#6B7280" }}>Đã nhập</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: "#9CA3AF" }}>—</div>
+                  <div style={{ fontSize: 9, color: "#9CA3AF" }}>Chờ đồng bộ</div>
+                </div>
+              </div>
+
+              {BUDGET_SOURCES.map((src) => (
+                <div key={src.name} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: src.color, flexShrink: 0 }} />
+                  <span style={{ fontSize: 10, fontWeight: 600, flex: 1 }}>{src.name}</span>
+                  <span style={{ fontSize: 9, background: src.color, color: "#fff", borderRadius: 3, padding: "0 5px", fontWeight: 600 }}>{src.pct}%</span>
+                  <span style={{ fontSize: 9, color: "#6B7280" }}>KH: {fmtTy(budgetTotal * src.pct / 100)}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Tiến độ từng tháng */}
+            <div className="card" style={{ padding: "12px 14px" }}>
+              <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 8 }}>Tiến độ từng tháng</div>
+              {yearly.months.map((mm, i) => {
+                const budgetMonth = mm.target * BUDGET_PCT;
+                return (
+                  <div key={mm.month} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, width: 20, color: i + 1 === nowMonth ? "#3B82F6" : "#6B7280" }}>T{i + 1}</span>
+                    <div style={{ flex: 1, height: 6, background: "#F3F4F6", borderRadius: 2, overflow: "hidden" }} />
+                    <span style={{ fontSize: 9, color: "#6B7280", width: 50, textAlign: "right" }}>{fmtTy(budgetMonth)}</span>
+                    <span style={{ fontSize: 9, color: "#9CA3AF" }}>—</span>
+                  </div>
+                );
+              })}
+              <div style={{ fontSize: 9, color: "#9CA3AF", marginTop: 6, borderTop: "1px solid #E5E7EB", paddingTop: 6 }}>
+                Tự cập nhật khi đơn → <strong>Đã về kho</strong>. Chi xem.
+              </div>
+            </div>
+          </div>
         </div>
       </section>
     );

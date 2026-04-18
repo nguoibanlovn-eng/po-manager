@@ -261,6 +261,26 @@ export async function getYearlySummary(year: number) {
   return { year, months, cumRevenue, cumTarget, cumAds, yearTarget: cumTarget };
 }
 
+/** Channel targets aggregated for a full year */
+export async function getYearlyChannelTargets(year: number): Promise<Record<string, number>> {
+  const db = supabaseAdmin();
+  const from = `${year}-01-01`;
+  const to = `${year}-12-31`;
+  const { data } = await db
+    .from("targets")
+    .select("ref_id, rev_target")
+    .eq("type", "channel")
+    .gte("month_key", from)
+    .lte("month_key", to);
+
+  const byChannel: Record<string, number> = {};
+  for (const t of data || []) {
+    const ch = String(t.ref_id || "");
+    byChannel[ch] = (byChannel[ch] || 0) + Number(t.rev_target || 0);
+  }
+  return byChannel;
+}
+
 export async function getRecentOrders(limit = 10) {
   const { data } = await supabaseAdmin()
     .from("orders")
