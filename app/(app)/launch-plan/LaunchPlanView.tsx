@@ -729,13 +729,13 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
               <span style={{ fontSize: 16, color: "#D1D5DB" }}>→</span>
               <div>
                 <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280" }}>GIÁ BÁN TỪ (B1)</div>
-                <input type="number" value={sellB1 || ""} onChange={(e) => setSellB1(Number(e.target.value))} placeholder="Giá thấp..."
+                <input type="text" inputMode="numeric" value={sellB1 ? sellB1.toLocaleString("vi-VN") : ""} onChange={(e) => setSellB1(Number(e.target.value.replace(/\D/g, "")))} placeholder="Giá thấp..."
                   style={{ fontSize: 17, fontWeight: 800, width: 130, border: "none", background: "transparent", borderBottom: "1.5px solid #E5E7EB" }} />
               </div>
               <span style={{ fontSize: 14, color: "#D1D5DB" }}>—</span>
               <div>
                 <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280" }}>ĐẾN (B2)</div>
-                <input type="number" value={sellB2 || ""} onChange={(e) => setSellB2(Number(e.target.value))} placeholder="Giá cao..."
+                <input type="text" inputMode="numeric" value={sellB2 ? sellB2.toLocaleString("vi-VN") : ""} onChange={(e) => setSellB2(Number(e.target.value.replace(/\D/g, "")))} placeholder="Giá cao..."
                   style={{ fontSize: 17, fontWeight: 800, width: 130, border: "none", background: "transparent", borderBottom: "1.5px solid #E5E7EB" }} />
               </div>
               <div style={{ width: 0.5, height: 28, background: "#E5E7EB", margin: "0 6px" }} />
@@ -827,8 +827,8 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
             <div className="form-group"><label>Deadline</label><input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} /></div>
           </div>
           <div className="form-grid fg-2">
-            <div className="form-group"><label>Giá thị trường từ</label><input type="number" value={priceFrom || ""} onChange={(e) => setPriceFrom(Number(e.target.value))} /></div>
-            <div className="form-group"><label>đến</label><input type="number" value={priceTo || ""} onChange={(e) => setPriceTo(Number(e.target.value))} /></div>
+            <div className="form-group"><label>Giá thị trường từ</label><input type="text" inputMode="numeric" value={priceFrom ? priceFrom.toLocaleString("vi-VN") : ""} onChange={(e) => setPriceFrom(Number(e.target.value.replace(/\D/g, "")))} /></div>
+            <div className="form-group"><label>đến</label><input type="text" inputMode="numeric" value={priceTo ? priceTo.toLocaleString("vi-VN") : ""} onChange={(e) => setPriceTo(Number(e.target.value.replace(/\D/g, "")))} /></div>
           </div>
         </div>)}
 
