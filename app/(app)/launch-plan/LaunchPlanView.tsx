@@ -564,7 +564,7 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
           <span style={{ fontSize: 9, color: "#9CA3AF" }}>{subtitle}</span>
         </div>
         {/* Header row */}
-        <div style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr", padding: "5px 10px", background: "var(--bg)", borderBottom: "1px solid #E5E7EB", fontSize: 9, fontWeight: 700, color: "#6B7280" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 110px 110px", padding: "5px 10px", background: "var(--bg)", borderBottom: "1px solid #E5E7EB", fontSize: 9, fontWeight: 700, color: "#6B7280" }}>
           <span>Kịch bản</span>
           <span style={{ textAlign: "right" }}>Lãi @ B1</span>
           <span style={{ textAlign: "right", background: B2 > 0 ? "#EAF3DE" : undefined, color: B2 > 0 ? "#27500A" : "#D1D5DB", padding: "0 4px", borderRadius: 3 }}>Lãi @ B2</span>
@@ -574,7 +574,7 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
           const fee1 = s.calc(B1); const p1 = B1 - A - fee1; const pct1 = B1 > 0 ? (p1 / B1 * 100).toFixed(1) : "0";
           const fee2 = B2 > 0 ? s.calc(B2) : 0; const p2 = B2 > 0 ? B2 - A - fee2 : 0; const pct2 = B2 > 0 ? (p2 / B2 * 100).toFixed(1) : "";
           return (
-            <div key={i} style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr", padding: "6px 10px", borderBottom: "1px solid #F3F4F6", alignItems: "start" }}>
+            <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 110px 110px", padding: "6px 10px", borderBottom: "1px solid #F3F4F6", alignItems: "start" }}>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 12 }}>① {s.label}</div>
                 <div style={{ display: "flex", gap: 3, flexWrap: "wrap", marginTop: 2 }}>
@@ -584,13 +584,13 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
                 </div>
               </div>
               <div style={{ textAlign: "right" }}>
-                <span style={{ fontWeight: 700, fontSize: 12, color: profitColor(p1, B1) }}>{p1 >= 0 ? "+" : ""}{formatVND(p1)}</span>
+                <span style={{ fontWeight: 700, fontSize: 11, color: profitColor(p1, B1) }}>{p1 >= 0 ? "+" : ""}{formatVNDCompact(p1)}</span>
                 <div style={{ fontSize: 9, color: profitColor(p1, B1) }}>{pct1}%</div>
               </div>
               <div style={{ textAlign: "right" }}>
                 {B2 > 0 ? (
                   <>
-                    <span style={{ fontWeight: 700, fontSize: 12, color: profitColor(p2, B2) }}>{p2 >= 0 ? "+" : ""}{formatVND(p2)}</span>
+                    <span style={{ fontWeight: 700, fontSize: 11, color: profitColor(p2, B2) }}>{p2 >= 0 ? "+" : ""}{formatVNDCompact(p2)}</span>
                     <div style={{ fontSize: 9, color: profitColor(p2, B2) }}>{pct2}%</div>
                   </>
                 ) : <span style={{ color: "#D1D5DB", fontSize: 11 }}>—</span>}
@@ -719,9 +719,8 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
           <div style={{ background: "var(--bg)", border: "0.5px solid #E5E7EB", borderRadius: 8, padding: "9px 12px", marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
               <div>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280" }}>GIÁ VỐN A</div>
-                <input type="number" value={cost || ""} onChange={(e) => setCost(Number(e.target.value))} placeholder="Nhập vốn..."
-                  style={{ fontSize: 18, fontWeight: 800, width: 120, border: "none", background: "transparent", borderBottom: "1.5px solid #E5E7EB" }} />
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280" }}>GIÁ VỐN A {gift ? "(+quà)" : ""}</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: "#185FA5" }}>{formatVND(A)}</div>
               </div>
               <span style={{ fontSize: 16, color: "#D1D5DB" }}>→</span>
               <div>
