@@ -519,23 +519,71 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
     });
   }
 
-  function ProfitTable({ title, scenarios, A, B1, B2 }: { title: string; scenarios: typeof SCENARIOS_SAN; A: number; B1: number; B2: number }) {
+  const FEE_CHIPS: Record<string, { bg: string; color: string }> = {
+    "Sàn 20%": { bg: "#FAECE7", color: "#993C1D" }, "Thuế 1.5%": { bg: "#EEEDFE", color: "#3C3489" },
+    "HT 7k": { bg: "#E6F1FB", color: "#0C447C" }, "VH 10%": { bg: "#FAEEDA", color: "#633806" },
+    "Ads 10%": { bg: "#F1EFE8", color: "#444441" }, "Aff 10%": { bg: "#EAF3DE", color: "#27500A" },
+    "CTV 10%": { bg: "#EAF3DE", color: "#27500A" },
+  };
+
+  function profitColor(v: number, B: number): string {
+    const pct = B > 0 ? (v / B) * 100 : 0;
+    if (v < 0) return "#DC2626";
+    if (pct < 5) return "#D97706";
+    return "#16A34A";
+  }
+
+  function ScenarioTable({ chips, subtitle, scenarios, A, B1, B2 }: {
+    chips: Array<{ label: string; bg: string; color: string }>; subtitle: string;
+    scenarios: typeof SCENARIOS_SAN; A: number; B1: number; B2: number;
+  }) {
+    const SCENARIO_FEES: string[][] = [
+      scenarios === SCENARIOS_SAN ? ["Sàn 20%", "Thuế 1.5%", "HT 7k"] : ["Thuế 1.5%"],
+      scenarios === SCENARIOS_SAN ? ["Sàn 20%", "Thuế 1.5%", "HT 7k", "VH 10%"] : ["Thuế 1.5%", "VH 10%"],
+      scenarios === SCENARIOS_SAN ? ["Sàn 20%", "Thuế 1.5%", "HT 7k", "VH 10%", "Ads 10%"] : ["Thuế 1.5%", "VH 10%", "Ads 10%"],
+      scenarios === SCENARIOS_SAN ? ["Sàn 20%", "Thuế 1.5%", "HT 7k", "VH 10%", "Ads 10%", "Aff 10%"] : ["Thuế 1.5%", "VH 10%", "Ads 10%", "CTV 10%"],
+    ];
+
     return (
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 6, color: "#6B7280" }}>{title}</div>
+      <div style={{ border: "0.5px solid #E5E7EB", borderRadius: 8, overflow: "hidden" }}>
+        {/* Header */}
+        <div style={{ padding: "8px 10px", display: "flex", alignItems: "center", gap: 6, borderBottom: "1px solid #E5E7EB" }}>
+          {chips.map((c) => (
+            <span key={c.label} style={{ fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 4, background: c.bg, color: c.color }}>{c.label}</span>
+          ))}
+          <span style={{ fontSize: 9, color: "#9CA3AF" }}>{subtitle}</span>
+        </div>
+        {/* Header row */}
+        <div style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr", padding: "5px 10px", background: "var(--bg)", borderBottom: "1px solid #E5E7EB", fontSize: 9, fontWeight: 700, color: "#6B7280" }}>
+          <span>Kịch bản</span>
+          <span style={{ textAlign: "right" }}>Lãi @ B1</span>
+          <span style={{ textAlign: "right", background: B2 > 0 ? "#EAF3DE" : undefined, color: B2 > 0 ? "#27500A" : "#D1D5DB", padding: "0 4px", borderRadius: 3 }}>Lãi @ B2</span>
+        </div>
+        {/* Rows */}
         {scenarios.map((s, i) => {
-          const fee1 = s.calc(B1); const profit1 = B1 - A - fee1; const pct1 = B1 > 0 ? (profit1 / B1 * 100).toFixed(1) : "0";
-          const fee2 = B2 > 0 ? s.calc(B2) : 0; const profit2 = B2 > 0 ? B2 - A - fee2 : 0; const pct2 = B2 > 0 ? (profit2 / B2 * 100).toFixed(1) : "";
+          const fee1 = s.calc(B1); const p1 = B1 - A - fee1; const pct1 = B1 > 0 ? (p1 / B1 * 100).toFixed(1) : "0";
+          const fee2 = B2 > 0 ? s.calc(B2) : 0; const p2 = B2 > 0 ? B2 - A - fee2 : 0; const pct2 = B2 > 0 ? (p2 / B2 * 100).toFixed(1) : "";
           return (
-            <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: "1px solid #F3F4F6", fontSize: 11 }}>
+            <div key={i} style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr", padding: "6px 10px", borderBottom: "1px solid #F3F4F6", alignItems: "start" }}>
               <div>
-                <span style={{ fontWeight: 600 }}>① {s.label}</span>
-                <div style={{ fontSize: 8, color: "#9CA3AF" }}>{s.fees}</div>
+                <div style={{ fontWeight: 700, fontSize: 12 }}>① {s.label}</div>
+                <div style={{ display: "flex", gap: 3, flexWrap: "wrap", marginTop: 2 }}>
+                  {SCENARIO_FEES[i].map((f) => (
+                    <span key={f} style={{ fontSize: 8, padding: "1px 4px", borderRadius: 3, background: FEE_CHIPS[f]?.bg || "#F3F4F6", color: FEE_CHIPS[f]?.color || "#6B7280", fontWeight: 600 }}>{f}</span>
+                  ))}
+                </div>
               </div>
               <div style={{ textAlign: "right" }}>
-                <span style={{ fontWeight: 700, color: profit1 >= 0 ? "#16A34A" : "#DC2626" }}>{profit1 >= 0 ? "+" : ""}{formatVNDCompact(profit1)}</span>
-                <span style={{ fontSize: 9, color: "#6B7280", marginLeft: 4 }}>{pct1}%</span>
-                {B2 > 0 && <span style={{ fontSize: 9, color: "#9CA3AF", marginLeft: 8 }}>B2: {pct2}%</span>}
+                <span style={{ fontWeight: 700, fontSize: 12, color: profitColor(p1, B1) }}>{p1 >= 0 ? "+" : ""}{formatVND(p1)}</span>
+                <div style={{ fontSize: 9, color: profitColor(p1, B1) }}>{pct1}%</div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                {B2 > 0 ? (
+                  <>
+                    <span style={{ fontWeight: 700, fontSize: 12, color: profitColor(p2, B2) }}>{p2 >= 0 ? "+" : ""}{formatVND(p2)}</span>
+                    <div style={{ fontSize: 9, color: profitColor(p2, B2) }}>{pct2}%</div>
+                  </>
+                ) : <span style={{ color: "#D1D5DB", fontSize: 11 }}>—</span>}
               </div>
             </div>
           );
@@ -603,21 +651,84 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
           <div className="form-group"><label>GHI CHÚ KÊNH</label><textarea rows={2} value={channelNote} onChange={(e) => setChannelNote(e.target.value)} placeholder="Ưu tiên kênh nào, lý do..." /></div>
         </div>)}
 
-        {/* ─── STEP 4: Định giá ─── */}
+        {/* ─── STEP 4: Định giá & chương trình bán ─── */}
         {step === 4 && (<div>
-          <div className="form-grid fg-3" style={{ marginBottom: 12 }}>
-            <div className="form-group"><label>GIÁ VỐN (A)</label><div style={{ fontSize: 16, fontWeight: 800, padding: "6px 0" }}>{formatVND(cost)}</div></div>
-            <div className="form-group"><label>GIÁ BÁN TỪ (B1)</label><input type="number" value={sellB1 || ""} onChange={(e) => setSellB1(Number(e.target.value))} /></div>
-            <div className="form-group"><label>ĐẾN (B2)</label><input type="number" value={sellB2 || ""} onChange={(e) => setSellB2(Number(e.target.value))} /></div>
+          {/* Block 1 — Chương trình bán */}
+          <div style={{ background: "var(--bg)", border: "0.5px solid #E5E7EB", borderRadius: 8, padding: "10px 12px", marginBottom: 10 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280", marginBottom: 6 }}>CHƯƠNG TRÌNH BÁN <span style={{ fontWeight: 400, fontSize: 9, color: "#9CA3AF" }}>— giá vốn quà cộng vào A</span></div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+              <select style={{ width: 140, fontSize: 11 }}><option>Không có</option><option>Tặng kèm quà</option><option>Combo set</option><option>Flash sale</option><option>Giảm trực tiếp</option></select>
+              <span style={{ fontSize: 11, color: "#6B7280" }}>Quà tặng:</span>
+              <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: "#F3F4F6", color: "#9CA3AF" }}>Chưa chọn</span>
+              <button className="btn btn-ghost btn-xs" style={{ fontSize: 10 }}>Đổi</button>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11 }}>
+              <span style={{ color: "#6B7280" }}>Số lượng:</span>
+              <input type="number" defaultValue={1} min={1} style={{ width: 54, textAlign: "center", fontSize: 11 }} />
+              <span style={{ color: "#6B7280" }}>Vốn gốc</span>
+              <strong>{formatVND(cost)}</strong>
+              <span style={{ color: "#6B7280" }}>→</span>
+              <strong style={{ color: "#185FA5" }}>A = {formatVND(cost)}</strong>
+            </div>
           </div>
-          {sellB1 > 0 && (<div style={{ padding: "8px 14px", background: "#F9FAFB", borderRadius: 8, marginBottom: 12, display: "flex", gap: 16 }}>
-            <div>Gross (B1-A): <strong style={{ color: gross >= 0 ? "#16A34A" : "#DC2626" }}>{gross >= 0 ? "+" : ""}{formatVND(gross)} ({sellB1 > 0 ? (gross / sellB1 * 100).toFixed(1) : 0}%)</strong></div>
-            {sellB2 > 0 && <div>Gross (B2-A): <strong style={{ color: sellB2 - cost >= 0 ? "#16A34A" : "#DC2626" }}>{sellB2 - cost >= 0 ? "+" : ""}{formatVND(sellB2 - cost)}</strong></div>}
-          </div>)}
+
+          {/* Block 2 — Giá bán */}
+          <div style={{ background: "var(--bg)", border: "0.5px solid #E5E7EB", borderRadius: 8, padding: "9px 12px", marginBottom: 10 }}>
+            {/* Row 1: A → B1 — B2 | Gross */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280" }}>GIÁ VỐN A</div>
+                <div style={{ fontSize: 18, fontWeight: 800 }}>{formatVND(cost)}</div>
+              </div>
+              <span style={{ fontSize: 16, color: "#D1D5DB" }}>→</span>
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280" }}>GIÁ BÁN TỪ (B1)</div>
+                <input type="number" value={sellB1 || ""} onChange={(e) => setSellB1(Number(e.target.value))} placeholder="Giá thấp..." style={{ fontSize: 17, fontWeight: 800, width: 130, border: "none", background: "transparent", borderBottom: "1.5px solid #E5E7EB" }} />
+              </div>
+              <span style={{ fontSize: 14, color: "#D1D5DB" }}>—</span>
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280" }}>ĐẾN (B2)</div>
+                <input type="number" value={sellB2 || ""} onChange={(e) => setSellB2(Number(e.target.value))} placeholder="Giá cao..." style={{ fontSize: 17, fontWeight: 800, width: 130, border: "none", background: "transparent", borderBottom: "1.5px solid #E5E7EB" }} />
+              </div>
+              <div style={{ width: 0.5, height: 28, background: "#E5E7EB", margin: "0 6px" }} />
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280" }}>GROSS (B−A)</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: gross >= 0 ? "#16A34A" : "#DC2626" }}>
+                  {gross >= 0 ? "+" : ""}{formatVND(gross)} <span style={{ fontSize: 11, fontWeight: 600 }}>({sellB1 > 0 ? (gross / sellB1 * 100).toFixed(1) : 0}%)</span>
+                </div>
+              </div>
+            </div>
+            {/* Row 2: Chi phí inline */}
+            {sellB1 > 0 && (
+              <div style={{ fontSize: 11, color: "#6B7280", display: "flex", gap: 0, flexWrap: "wrap" }}>
+                <span>Phí sàn <strong style={{ color: "#993C1D" }}>{formatVNDCompact(sellB1 * 0.20)} (20%)</strong></span>
+                <span style={{ margin: "0 4px" }}>·</span>
+                <span>Thuế <strong style={{ color: "#3C3489" }}>{formatVNDCompact(sellB1 * 0.015)} (1.5%)</strong></span>
+                <span style={{ margin: "0 4px" }}>·</span>
+                <span>HT sàn <strong style={{ color: "#0C447C" }}>7.000đ</strong></span>
+                <span style={{ margin: "0 4px" }}>·</span>
+                <span>Vận hành <strong style={{ color: "#633806" }}>{formatVNDCompact(sellB1 * 0.10)} (10%)</strong></span>
+                <span style={{ margin: "0 4px" }}>·</span>
+                <span>Ads <strong style={{ color: "#444441" }}>{formatVNDCompact(sellB1 * 0.10)} (10%)</strong></span>
+                <span style={{ margin: "0 4px" }}>·</span>
+                <span>Aff/CTV <strong style={{ color: "#27500A" }}>{formatVNDCompact(sellB1 * 0.10)} (10%)</strong></span>
+              </div>
+            )}
+          </div>
+
+          {/* Block 3 — 2 bảng kịch bản song song */}
           {sellB1 > 0 && cost > 0 && (
-            <div style={{ display: "flex", gap: 16 }}>
-              <ProfitTable title="Trên sàn (Shopee/TikTok)" scenarios={SCENARIOS_SAN} A={cost} B1={sellB1} B2={sellB2} />
-              <ProfitTable title="Ngoài sàn (Facebook/Web)" scenarios={SCENARIOS_OFF} A={cost} B1={sellB1} B2={sellB2} />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <ScenarioTable
+                chips={[{ label: "Shopee", bg: "#FAECE7", color: "#993C1D" }, { label: "TikTok", bg: "#FBEAF0", color: "#993556" }]}
+                subtitle="Sàn 20%+Thuế+HT 7k"
+                scenarios={SCENARIOS_SAN} A={cost} B1={sellB1} B2={sellB2}
+              />
+              <ScenarioTable
+                chips={[{ label: "Facebook", bg: "#E6F1FB", color: "#185FA5" }, { label: "Web/B2B", bg: "#EEEDFE", color: "#3C3489" }]}
+                subtitle="Thuế 1.5%, không phí sàn"
+                scenarios={SCENARIOS_OFF} A={cost} B1={sellB1} B2={sellB2}
+              />
             </div>
           )}
         </div>)}
