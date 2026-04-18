@@ -39,11 +39,13 @@ type V3Order = {
 type V1Order = {
   id?: string | number;
   statusId?: string | number;
+  statusCode?: string | number;
+  statusName?: string;
   saleChannel?: string | number;
-  channel?: { saleChannel?: string | number };
+  channel?: string | number;
   createdDateTime?: string;
-  products?: Array<{ barcode?: string; code?: string; productCode?: string; sku?: string; name?: string; quantity?: number | string; qty?: number | string; price?: number | string; unitPrice?: number | string }>
-    | Record<string, { barcode?: string; code?: string; productCode?: string; sku?: string; name?: string; quantity?: number | string; qty?: number | string; price?: number | string; unitPrice?: number | string }>;
+  products?: Array<{ productBarcode?: string; productCode?: string; barcode?: string; code?: string; sku?: string; productName?: string; name?: string; quantity?: number | string; qty?: number | string; price?: number | string; unitPrice?: number | string }>
+    | Record<string, { productBarcode?: string; productCode?: string; barcode?: string; code?: string; sku?: string; productName?: string; name?: string; quantity?: number | string; qty?: number | string; price?: number | string; unitPrice?: number | string }>;
 };
 
 type Row = {
@@ -59,7 +61,7 @@ function extractSku(p: { barcode?: string; code?: string; productCode?: string; 
   return String(p.productCode || p.sku || p.code || bc || "").trim();
 }
 
-function parseProducts(products: unknown): Array<{ barcode?: string; code?: string; productCode?: string; sku?: string; name?: string; quantity?: number | string; qty?: number | string; price?: number | string; unitPrice?: number | string; originalPrice?: number | string }> {
+function parseProducts(products: unknown): Array<{ productBarcode?: string; barcode?: string; code?: string; productCode?: string; sku?: string; productName?: string; name?: string; quantity?: number | string; qty?: number | string; price?: number | string; unitPrice?: number | string; originalPrice?: number | string }> {
   if (Array.isArray(products)) return products;
   if (products && typeof products === "object") return Object.values(products);
   return [];
@@ -118,21 +120,23 @@ async function syncV1Chunk(from: string, to: string): Promise<{ orders: number; 
 
   for (const o of orders) {
     const orderId = String(o.id || "");
-    const statusId = toNum(o.statusId);
-    if (!V1_OK_STATUS.has(statusId)) continue;
+    // V1 uses statusCode (number) or statusId, some have neither — accept all with valid products
+    const statusCode = toNum(o.statusCode || o.statusId);
+    // If statusCode exists and is not in whitelist, skip. If no statusCode, accept (let products through).
+    if (statusCode > 0 && !V1_OK_STATUS.has(statusCode)) continue;
 
-    const chCode = String(o.saleChannel || o.channel?.saleChannel || "0");
+    const chCode = String(o.saleChannel || o.channel || "0");
     let orderDate = from;
     if (o.createdDateTime) {
       try { orderDate = new Date(o.createdDateTime).toISOString().substring(0, 10); } catch { /* */ }
     }
 
     for (const p of parseProducts(o.products)) {
-      const sku = extractSku(p);
+      const sku = extractSku({ ...p, barcode: p.productBarcode || p.barcode, code: p.productCode || p.code });
       const qty = toNum(p.quantity || p.qty);
       const price = toNum(p.price || p.unitPrice);
       if (!sku || qty <= 0) continue;
-      rows.push({ date: orderDate, sku, product_name: String(p.name || ""), order_id: orderId, channel: chCode, channel_name: CHANNEL_MAP[chCode] || `Kênh ${chCode}`, qty, unit_price: price, revenue: qty * price, status: String(statusId), synced_at: now });
+      rows.push({ date: orderDate, sku, product_name: String(p.productName || p.name || ""), order_id: orderId, channel: chCode, channel_name: CHANNEL_MAP[chCode] || `Kênh ${chCode}`, qty, unit_price: price, revenue: qty * price, status: String(o.statusName || statusCode), synced_at: now });
     }
   }
 
