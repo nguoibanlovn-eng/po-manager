@@ -120,8 +120,15 @@ export async function nhanhV3FetchAll<T = unknown>(
     const b = JSON.parse(JSON.stringify(body));
     b.paginator = cursor ? { size: 200, next: cursor } : { size: 200 };
     const r = await nhanhV3<T[]>(path, b);
-    if (r.code !== 1) break;
-    const chunk = Array.isArray(r.data) ? r.data : [];
+    if (r.code !== 1) {
+      console.warn(`[nhanhV3FetchAll] ${path} page ${page} code=${r.code}`, r.messages);
+      break;
+    }
+    // data có thể là Array hoặc Object {id: {...}, id2: {...}}
+    let chunk: T[];
+    if (Array.isArray(r.data)) chunk = r.data;
+    else if (r.data && typeof r.data === "object") chunk = Object.values(r.data) as T[];
+    else chunk = [];
     all.push(...chunk);
     if (onPage) onPage(chunk, page);
     cursor = r.paginator?.next ?? null;

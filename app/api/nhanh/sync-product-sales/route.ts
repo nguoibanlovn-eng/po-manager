@@ -17,10 +17,11 @@ export async function POST(req: Request) {
     // clear=true → xoá toàn bộ data cũ trước khi sync lại
     if (body.clear) {
       const db = supabaseAdmin();
-      const { error } = await db.from("product_sales").delete().gte("date", "2000-01-01");
+      const { error, count } = await db.from("product_sales").delete({ count: "exact" }).gte("date", "2000-01-01");
       if (error) {
         return NextResponse.json({ ok: false, error: "Xoá data lỗi: " + error.message }, { status: 500 });
       }
+      console.log(`[sync] Cleared ${count} old rows`);
     }
 
     const from = body.from;

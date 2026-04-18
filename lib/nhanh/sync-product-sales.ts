@@ -57,9 +57,11 @@ async function syncV3Chunk(fromDate: string, toDate: string): Promise<{ orders: 
   const fromTs = Math.floor(new Date(fromDate + "T00:00:00+07:00").getTime() / 1000);
   const toTs = Math.floor(new Date(toDate + "T23:59:59+07:00").getTime() / 1000);
 
+  console.log(`[syncV3] ${fromDate}→${toDate} ts=${fromTs}→${toTs}`);
   const orders = await nhanhV3FetchAll<V3Order>("order/list", {
     filters: { createdAtFrom: fromTs, createdAtTo: toTs },
   }, { maxPages: 200 });
+  console.log(`[syncV3] Got ${orders.length} orders`);
 
   const now = nowVN();
   const rows: Row[] = [];
@@ -132,6 +134,7 @@ export async function syncProductSales(opts: {
     const chunkEnd = addDays(cursor, 6) > to ? to : addDays(cursor, 6);
     try {
       const result = await syncV3Chunk(cursor, chunkEnd);
+      console.log(`[sync] Chunk ${cursor}→${chunkEnd}: ${result.orders} orders, ${result.rows.length} product rows`);
       const upserted = await upsertRows(result.rows);
       totalOrders += result.orders;
       totalRows += upserted;

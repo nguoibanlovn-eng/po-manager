@@ -65,7 +65,8 @@ function SyncSalesButton({ onDone, from, to }: { onDone: () => void; from: strin
         if (!json.ok) { setProgress(`Lỗi: ${json.error}`); break; }
         totalRows += json.totalRows || 0;
         totalOrders += json.totalOrders || 0;
-        setProgress(`Chunk ${i + 1}/${chunks.length} ✓ ${totalRows} dòng`);
+        const errCount = json.errors?.length || 0;
+        setProgress(`Chunk ${i + 1}/${chunks.length} ✓ ${totalOrders} đơn → ${totalRows} dòng${errCount ? ` (${errCount} lỗi)` : ""}`);
       }
       setProgress(`✓ Xong: ${totalOrders} đơn → ${totalRows} dòng`);
       onDone();
