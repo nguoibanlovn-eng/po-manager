@@ -668,20 +668,22 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
           <div style={{ background: "var(--bg)", border: "0.5px solid #E5E7EB", borderRadius: 8, padding: "10px 12px", marginBottom: 10 }}>
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280", marginBottom: 6 }}>CHƯƠNG TRÌNH BÁN <span style={{ fontWeight: 400, fontSize: 9, color: "#9CA3AF" }}>— giá vốn quà cộng vào A</span></div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
-              <select value={promoType} onChange={(e) => setPromoType(e.target.value)} style={{ width: 140, fontSize: 11 }}>
+              <select value={promoType} onChange={(e) => { setPromoType(e.target.value); if (e.target.value !== "gift") { setGift(null); setShowGiftSearch(false); } }} style={{ width: 140, fontSize: 11 }}>
                 <option value="none">Không có</option><option value="gift">Tặng kèm quà</option><option value="combo">Combo set</option><option value="flash">Flash sale</option><option value="discount">Giảm trực tiếp</option>
               </select>
-              <span style={{ fontSize: 11, color: "#6B7280" }}>Quà tặng:</span>
-              {gift ? (
-                <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: "#EAF3DE", color: "#3B6D11", fontWeight: 600 }}>{gift.name} ({formatVND(gift.cost)})</span>
-              ) : (
-                <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: "#F3F4F6", color: "#9CA3AF" }}>Chưa chọn</span>
-              )}
-              <button type="button" className="btn btn-ghost btn-xs" style={{ fontSize: 10 }} onClick={() => setShowGiftSearch(!showGiftSearch)}>
-                {gift ? "Đổi" : "Chọn"}
-              </button>
+              {promoType === "gift" && (<>
+                <span style={{ fontSize: 11, color: "#6B7280" }}>Quà tặng:</span>
+                {gift ? (
+                  <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: "#EAF3DE", color: "#3B6D11", fontWeight: 600 }}>{gift.name} ({formatVND(gift.cost)})</span>
+                ) : (
+                  <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: "#F3F4F6", color: "#9CA3AF" }}>Chưa chọn</span>
+                )}
+                <button type="button" className="btn btn-ghost btn-xs" style={{ fontSize: 10 }} onClick={() => setShowGiftSearch(!showGiftSearch)}>
+                  {gift ? "Đổi" : "Chọn"}
+                </button>
+              </>)}
             </div>
-            {showGiftSearch && (
+            {promoType === "gift" && showGiftSearch && (
               <div style={{ marginBottom: 8, padding: "8px 10px", background: "#fff", border: "1.5px solid #185FA5", borderRadius: 8 }}>
                 <input placeholder="Tìm SP quà tặng trong kho..." value={giftSearch}
                   onChange={(e) => {
@@ -706,10 +708,12 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
               </div>
             )}
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, flexWrap: "wrap" }}>
-              <span style={{ color: "#6B7280" }}>Số lượng:</span>
-              <input type="number" value={giftQty} min={1} onChange={(e) => setGiftQty(Math.max(1, Number(e.target.value)))} style={{ width: 54, textAlign: "center", fontSize: 11 }} />
+              {promoType === "gift" && gift && (<>
+                <span style={{ color: "#6B7280" }}>Số lượng:</span>
+                <input type="number" value={giftQty} min={1} onChange={(e) => setGiftQty(Math.max(1, Number(e.target.value)))} style={{ width: 54, textAlign: "center", fontSize: 11 }} />
+              </>)}
               <span style={{ color: "#6B7280" }}>Vốn gốc</span><strong>{formatVND(cost)}</strong>
-              {gift && <span style={{ color: "#6B7280" }}>+ Quà {formatVND(gift.cost)} × {giftQty} = {formatVND(giftCostTotal)}</span>}
+              {gift && promoType === "gift" && <span style={{ color: "#6B7280" }}>+ Quà {formatVND(gift.cost)} × {giftQty} = {formatVND(giftCostTotal)}</span>}
               <span style={{ color: "#6B7280" }}>→</span>
               <strong style={{ color: "#185FA5", fontSize: 13 }}>A = {formatVND(A)}</strong>
             </div>
