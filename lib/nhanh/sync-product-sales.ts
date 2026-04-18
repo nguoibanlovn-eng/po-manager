@@ -71,10 +71,8 @@ async function syncV3Day(date: string): Promise<{ orders: number; rows: Row[] }>
     for (const p of parseProducts(o.products)) {
       const sku = String(p.barcode || p.code || "").trim();
       const qty = toNum(p.quantity || p.qty);
-      // Giá thực: priceAfterVAT (sau discount) > price - discount > price
-      const discount = toNum(p.discount || p.discountAmount);
-      const rawPrice = toNum(p.price || p.displaySalePrice || p.originalPrice);
-      const price = toNum(p.priceAfterVAT) || (discount > 0 ? rawPrice - discount : rawPrice);
+      // Doanh thu = qty × price (giá bán cho khách, giống GAS)
+      const price = toNum(p.price || p.displaySalePrice);
       if (!sku || qty <= 0) continue;
       rows.push({
         date: orderDate, sku, product_name: String(p.name || ""), order_id: orderId,
