@@ -181,77 +181,77 @@ export default function LaunchPlanView({ plans }: { plans: LaunchPlanRow[] }) {
         </div>
       </div>
 
-      {/* ═══ TABS ═══ */}
-      <div style={{ display: "flex", gap: 0, marginBottom: 12 }}>
-        {([["ready", `Sẵn sàng launch ${ready.length}`], ["launching", `Đang launch ${launching.length}`], ["done", "Hoàn tất"]] as const).map(([k, label]) => (
-          <button key={k} className={"mini-tab" + (tab === k ? " active" : "")} onClick={() => setTab(k)} style={{ padding: "8px 16px" }}>{label}</button>
-        ))}
+      {/* ═══ TABS + SEARCH inline ═══ */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+        <div className="mini-tabs" style={{ marginBottom: 0 }}>
+          {([["ready", `Sẵn sàng launch ${ready.length}`], ["launching", `Đang launch ${launching.length}`], ["done", "Hoàn tất"]] as const).map(([k, label]) => (
+            <button key={k} className={"mini-tab" + (tab === k ? " active" : "")} onClick={() => setTab(k)} style={{ padding: "8px 16px" }}>{label}</button>
+          ))}
+        </div>
+
+        {/* Search existing plans */}
+        <input placeholder="Tìm SP, SKU..." value={search} onChange={(e) => setSearch(e.target.value)}
+          style={{ padding: "6px 12px", border: "1px solid #E5E7EB", borderRadius: 6, fontSize: 12, width: 180 }} />
+
+        {/* Inventory search — inline */}
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: "#6B7280", whiteSpace: "nowrap" }}>TÌM SP TRONG KHO:</span>
+          <input placeholder="Tên SP, SKU, barcode..." value={invSearch} onChange={(e) => setInvSearch(e.target.value)}
+            style={{ padding: "6px 12px", border: "1px solid #E5E7EB", borderRadius: 6, fontSize: 12, width: 220 }} />
+          <button className="btn btn-primary btn-xs" onClick={() => searchInventory(invSearch)}>Tìm</button>
+        </div>
       </div>
 
-      {/* ═══ TAB: SẴN SÀNG LAUNCH ═══ */}
-      {tab === "ready" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          {/* Existing plans */}
-          <div>
-            <div style={{ marginBottom: 8 }}>
-              <input placeholder="Tìm SP, SKU..." value={search} onChange={(e) => setSearch(e.target.value)}
-                style={{ width: "100%", padding: "8px 12px", border: "1px solid #E5E7EB", borderRadius: 6, fontSize: 12 }} />
-            </div>
-            <div className="card" style={{ padding: 0, maxHeight: 500, overflowY: "auto" }}>
-              {filterList(ready).map((p) => {
-                const pm = getMetrics(p);
-                const hasDeployId = !!pm.deploy_id;
-                const pt = PRODUCT_TYPES.find((t) => t.k === pm.product_type);
-                return (
-                  <div key={p.id} style={{ padding: "10px 14px", borderBottom: "1px solid #F3F4F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 2 }}>
-                        {hasDeployId && <span style={{ fontSize: 8, background: "#16A34A", color: "#fff", borderRadius: 3, padding: "1px 5px", fontWeight: 600 }}>TỪ TRIỂN KHAI</span>}
-                        {pt && <span style={{ fontSize: 8, background: pt.color, color: "#fff", borderRadius: 3, padding: "1px 5px", fontWeight: 600 }}>{pt.label.split(" ")[0]}</span>}
-                        <span style={{ fontWeight: 600, fontSize: 12 }}>{p.product_name}</span>
-                      </div>
-                      <div style={{ fontSize: 10, color: "#6B7280" }}>
-                        SKU: {p.sku || "—"}
-                        {pm.pricing?.sell_price ? ` · Giá: ${formatVND(pm.pricing.sell_price)}` : ""}
-                        {pm.pricing?.cost ? ` · Vốn: ${formatVND(pm.pricing.cost)}` : ""}
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", gap: 4 }}>
-                      <button className="btn btn-primary btn-xs" onClick={() => setEditPlan(p)}>Tạo Launch Plan</button>
-                      <button className="btn btn-ghost btn-xs" style={{ color: "var(--red)" }} onClick={() => del(p.id, p.product_name || "")}>✕</button>
-                    </div>
-                  </div>
-                );
-              })}
-              {filterList(ready).length === 0 && <div className="muted" style={{ padding: 24, textAlign: "center" }}>Không có SP sẵn sàng.</div>}
-            </div>
+      {/* ═══ INVENTORY SEARCH RESULTS (dropdown-like) ═══ */}
+      {invResults.length > 0 && (
+        <div className="card" style={{ padding: 0, marginBottom: 12, border: "2px solid #3B82F6" }}>
+          <div style={{ padding: "8px 14px", background: "#EFF6FF", borderBottom: "1px solid #BFDBFE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#1D4ED8" }}>Kết quả tìm trong kho ({invResults.length})</span>
+            <button className="btn btn-ghost btn-xs" onClick={() => { setInvResults([]); setInvSearch(""); }}>Đóng</button>
           </div>
+          {invResults.map((item) => (
+            <div key={item.sku} style={{ padding: "8px 14px", borderBottom: "1px solid #F3F4F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <span style={{ fontWeight: 600, fontSize: 12 }}>{item.product_name}</span>
+                <span style={{ fontSize: 10, color: "#6B7280", marginLeft: 8 }}>SKU: {item.sku} · Tồn: {item.available_qty.toLocaleString("vi-VN")}</span>
+              </div>
+              <button className="btn btn-primary btn-xs" onClick={() => { setFormOpen({ sku: item.sku, name: item.product_name }); setInvResults([]); setInvSearch(""); }}>
+                Tạo Launch Plan
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
-          {/* Inventory search */}
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", marginBottom: 4 }}>TÌM SP TRONG KHO — ĐỂ LAUNCH MỚI</div>
-            <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-              <input placeholder="Tên SP, SKU, barcode..." value={invSearch} onChange={(e) => setInvSearch(e.target.value)}
-                style={{ flex: 1, padding: "8px 12px", border: "1px solid #E5E7EB", borderRadius: 6, fontSize: 12 }} />
-              <button className="btn btn-primary btn-sm" onClick={() => searchInventory(invSearch)}>Tìm</button>
-            </div>
-            <div className="card" style={{ padding: 0, maxHeight: 500, overflowY: "auto" }}>
-              {invLoading && <div className="muted" style={{ padding: 16, textAlign: "center" }}>Đang tìm...</div>}
-              {!invLoading && invResults.map((item) => (
-                <div key={item.sku} style={{ padding: "10px 14px", borderBottom: "1px solid #F3F4F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 12 }}>{item.product_name}</div>
-                    <div style={{ fontSize: 10, color: "#6B7280" }}>SKU: {item.sku} · Tồn: {item.available_qty.toLocaleString("vi-VN")}</div>
+      {/* ═══ TAB: SẴN SÀNG LAUNCH — full width ═══ */}
+      {tab === "ready" && (
+        <div className="card" style={{ padding: 0 }}>
+          {filterList(ready).map((p) => {
+            const pm = getMetrics(p);
+            const hasDeployId = !!pm.deploy_id;
+            const pt = PRODUCT_TYPES.find((t) => t.k === pm.product_type);
+            return (
+              <div key={p.id} style={{ padding: "10px 14px", borderBottom: "1px solid #F3F4F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 2 }}>
+                    {hasDeployId && <span style={{ fontSize: 8, background: "#16A34A", color: "#fff", borderRadius: 3, padding: "1px 5px", fontWeight: 600 }}>TỪ TRIỂN KHAI</span>}
+                    {pt && <span style={{ fontSize: 8, background: pt.color, color: "#fff", borderRadius: 3, padding: "1px 5px", fontWeight: 600 }}>{pt.label.split(" ")[0]}</span>}
+                    <span style={{ fontWeight: 600, fontSize: 13 }}>{p.product_name}</span>
                   </div>
-                  <button className="btn btn-primary btn-xs" onClick={() => setFormOpen({ sku: item.sku, name: item.product_name })}>
-                    Tạo Launch Plan
-                  </button>
+                  <div style={{ fontSize: 10, color: "#6B7280" }}>
+                    SKU: {p.sku || "—"}
+                    {pm.pricing?.sell_price ? ` · Giá: ${formatVND(pm.pricing.sell_price)}` : ""}
+                    {pm.pricing?.cost ? ` · Vốn: ${formatVND(pm.pricing.cost)}` : ""}
+                  </div>
                 </div>
-              ))}
-              {!invLoading && invResults.length === 0 && invSearch && <div className="muted" style={{ padding: 16, textAlign: "center" }}>Không tìm thấy.</div>}
-              {!invLoading && !invSearch && <div className="muted" style={{ padding: 16, textAlign: "center", fontSize: 11 }}>Nhập tên SP hoặc SKU để tìm trong kho.</div>}
-            </div>
-          </div>
+                <div style={{ display: "flex", gap: 4 }}>
+                  <button className="btn btn-primary btn-xs" onClick={() => setEditPlan(p)}>Tạo Launch Plan</button>
+                  <button className="btn btn-ghost btn-xs" style={{ color: "var(--red)" }} onClick={() => del(p.id, p.product_name || "")}>✕</button>
+                </div>
+              </div>
+            );
+          })}
+          {filterList(ready).length === 0 && <div className="muted" style={{ padding: 24, textAlign: "center" }}>Không có SP sẵn sàng.</div>}
         </div>
       )}
 
