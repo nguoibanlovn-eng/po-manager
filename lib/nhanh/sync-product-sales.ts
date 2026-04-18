@@ -6,7 +6,7 @@ import { nhanhV3FetchAll } from "./client";
 
 /**
  * Sync product-level sales from Nhanh.vn V3 order/list.
- * V3: createdAtFrom/To UNIX timestamp, SUCCESS_STATUS whitelist, cursor pagination.
+ * KHÔNG lọc status — lấy tất cả đơn giống GAS daily sync.
  * Dedup: upsert on (order_id, sku).
  */
 
@@ -17,7 +17,11 @@ const CHANNEL_MAP: Record<string, string> = {
   "42": "Kênh 42", "48": "TikTok Shop", "100": "Web/App",
 };
 
-const SUCCESS_STATUS = new Set([54, 56, 42, 72, 64, 60, 74]);
+// Chỉ bỏ đơn hoàn/huỷ rõ ràng (status kết thúc bằng 7 hoặc 8)
+function isReturnOrCancel(status: number): boolean {
+  const last = status % 10;
+  return last === 7 || last === 8;
+}
 
 type V3Order = {
   info?: { id?: string | number; status?: string | number; createdAt?: string | number };
@@ -67,7 +71,8 @@ async function syncV3Chunk(fromDate: string, toDate: string): Promise<{ orders: 
   for (const o of orders) {
     const info = o.info || {};
     const status = Number(info.status || 0);
-    if (!SUCCESS_STATUS.has(status)) continue;
+    // Chỉ bỏ đơn hoàn/huỷ (ending 7/8) — giữ tất cả status khác giống GAS daily sync
+    if (isReturnOrCancel(status)) continue;
 
     const orderId = String(info.id || "");
     const chCode = String(o.channel?.saleChannel || "0");
@@ -90,7 +95,7 @@ async function syncV3Chunk(fromDate: string, toDate: string): Promise<{ orders: 
       rows.push({
         date: orderDate, sku, product_name: String(p.name || ""), order_id: orderId,
         channel: chCode, channel_name: CHANNEL_MAP[chCode] || `Kênh ${chCode}`,
-        qty, unit_price: price, revenue: qty * price, status: "success", synced_at: now,
+        qty, unit_price: price, revenue: qty * price, status: String(status), synced_at: now,
       });
     }
   }
