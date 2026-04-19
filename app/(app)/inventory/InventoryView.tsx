@@ -31,23 +31,25 @@ const CAT_GROUPS = [
   { k: "no_data", label: "Chưa có data", sub: "Chưa sync bán", bg: "#F1EFE8", color: "#444441", icon: "⚪" },
 ];
 
-/** Sync sales button — splits long ranges into monthly chunks */
+/** Sync sales button — V3+V1 per day, chunks 3 ngày */
 function SyncSalesButton({ onDone, from, to }: { onDone: () => void; from: string; to: string }) {
   const [syncing, setSyncing] = useState(false);
   const [progress, setProgress] = useState("");
+  const [logs, setLogs] = useState<string[]>([]);
 
   async function doSync(clearFirst: boolean) {
     setSyncing(true); setProgress(clearFirst ? "Xoá data cũ..." : "Bắt đầu...");
+    setLogs([]);
     try {
-      // Split into chunks of max 7 days (V3 only, ~10s/day → 7 days ≈ 70s < 300s timeout)
+      // Chunk 3 ngày (V3+V1 per day ≈ 40s/day → 3 days ≈ 120s < 300s)
       const chunks: Array<{ from: string; to: string }> = [];
       let cursor = new Date(from + "T00:00:00Z");
       const end = new Date(to + "T00:00:00Z");
       while (cursor <= end) {
         const chunkEnd = new Date(cursor);
-        chunkEnd.setUTCDate(chunkEnd.getUTCDate() + 6);
-        const cTo = chunkEnd > end ? to : chunkEnd.toISOString().substring(0, 10);
-        chunks.push({ from: cursor.toISOString().substring(0, 10), to: cTo });
+        chunkEnd.setUTCDate(chunkEnd.getUTCDate() + 2);
+        const cTo = chunkEnd > end ? to : fmtDate(chunkEnd);
+        chunks.push({ from: fmtDate(cursor), to: cTo });
         cursor = new Date(chunkEnd);
         cursor.setUTCDate(cursor.getUTCDate() + 1);
       }
@@ -68,17 +70,16 @@ function SyncSalesButton({ onDone, from, to }: { onDone: () => void; from: strin
         }
         const text = await res.text();
         let json;
-        try { json = JSON.parse(text); } catch { setProgress(`Lỗi: response không hợp lệ — ${text.substring(0, 100)}`); break; }
+        try { json = JSON.parse(text); } catch { setProgress(`Lỗi: response không hợp lệ`); break; }
         if (!json.ok) { setProgress(`Lỗi: ${json.error}`); break; }
         totalRows += json.totalRows || 0;
         totalOrders += json.totalOrders || 0;
-        const errCount = json.errors?.length || 0;
-        const errMsg = errCount ? ` — ${json.errors[0]}` : "";
-        setProgress(`Chunk ${i + 1}/${chunks.length} ✓ ${totalOrders} đơn → ${totalRows} dòng${errMsg}`);
+        // Append logs from API
+        if (json.logs) setLogs((prev) => [...prev, ...json.logs]);
+        setProgress(`Chunk ${i + 1}/${chunks.length} ✓ ${totalOrders.toLocaleString()} đơn → ${totalRows.toLocaleString()} dòng`);
       }
-      setProgress(`✓ Xong: ${totalOrders} đơn → ${totalRows} dòng`);
+      setProgress(`✓ Xong: ${totalOrders.toLocaleString()} đơn → ${totalRows.toLocaleString()} dòng`);
       onDone();
-      setTimeout(() => setProgress(""), 8000);
     } catch (e) {
       setProgress(`Lỗi: ${(e as Error).message}`);
     } finally {
@@ -87,16 +88,23 @@ function SyncSalesButton({ onDone, from, to }: { onDone: () => void; from: strin
   }
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-      <button onClick={() => doSync(false)} disabled={syncing}
-        style={{ padding: "4px 12px", borderRadius: 6, fontSize: 11, fontWeight: 600, border: "none", cursor: syncing ? "wait" : "pointer", background: "#EAF3DE", color: "#3B6D11" }}>
-        {syncing ? "Đang sync..." : "⟳ Đồng bộ Nhanh"}
-      </button>
-      <button onClick={() => { if (confirm("Xoá toàn bộ data bán cũ rồi sync lại?")) doSync(true); }} disabled={syncing}
-        style={{ padding: "4px 10px", borderRadius: 6, fontSize: 10, fontWeight: 600, border: "1px solid #FECACA", cursor: syncing ? "wait" : "pointer", background: "#FEF2F2", color: "#DC2626" }}>
-        Xoá & Sync lại
-      </button>
-      {progress && <span style={{ fontSize: 10, color: progress.startsWith("✓") ? "#16A34A" : progress.startsWith("Lỗi") ? "#DC2626" : "#6B7280", maxWidth: 400 }}>{progress}</span>}
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+        <button onClick={() => doSync(false)} disabled={syncing}
+          style={{ padding: "4px 12px", borderRadius: 6, fontSize: 11, fontWeight: 600, border: "none", cursor: syncing ? "wait" : "pointer", background: "#EAF3DE", color: "#3B6D11" }}>
+          {syncing ? "Đang sync..." : "⟳ Đồng bộ Nhanh"}
+        </button>
+        <button onClick={() => { if (confirm("Xoá toàn bộ data bán cũ rồi sync lại?")) doSync(true); }} disabled={syncing}
+          style={{ padding: "4px 10px", borderRadius: 6, fontSize: 10, fontWeight: 600, border: "1px solid #FECACA", cursor: syncing ? "wait" : "pointer", background: "#FEF2F2", color: "#DC2626" }}>
+          Xoá & Sync lại
+        </button>
+        {progress && <span style={{ fontSize: 10, color: progress.startsWith("✓") ? "#16A34A" : progress.startsWith("Lỗi") ? "#DC2626" : "#6B7280" }}>{progress}</span>}
+      </div>
+      {logs.length > 0 && (
+        <div style={{ marginTop: 6, maxHeight: 150, overflow: "auto", fontSize: 9, fontFamily: "monospace", background: "#F9FAFB", border: "1px solid #E5E7EB", borderRadius: 6, padding: "4px 8px" }}>
+          {logs.map((l, i) => <div key={i} style={{ color: l.startsWith("ERROR") ? "#DC2626" : l.startsWith("  →") ? "#16A34A" : "#374151" }}>{l}</div>)}
+        </div>
+      )}
     </div>
   );
 }
