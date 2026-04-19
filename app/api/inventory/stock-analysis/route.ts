@@ -11,49 +11,47 @@ export async function GET(req: Request) {
   const to = searchParams.get("to") || "";
 
   const db = supabaseAdmin();
-
-  // 1. Load ALL products (sku, stock, cost_price)
-  const allProducts: Array<{ sku: string; product_name: string; stock: number; cost_price: number; sell_price: number }> = [];
-  let off = 0;
   const PG = 1000;
-  while (true) {
-    const { data } = await db.from("products")
-      .select("sku, product_name, stock, cost_price, sell_price")
-      .range(off, off + PG - 1);
-    if (!data || data.length === 0) break;
-    allProducts.push(...data);
-    if (data.length < PG) break;
-    off += PG;
-  }
 
-  // 2. Load sales data aggregated by SKU (if date range provided)
-  const salesMap = new Map<string, number>();
-  if (from && to) {
-    let sOff = 0;
+  // Fetch products + sales in parallel
+  const productsPromise = (async () => {
+    const all: Array<{ sku: string; product_name: string; stock: number; cost_price: number }> = [];
+    let off = 0;
+    while (true) {
+      const { data } = await db.from("products")
+        .select("sku, product_name, stock, cost_price")
+        .range(off, off + PG - 1);
+      if (!data || data.length === 0) break;
+      all.push(...data);
+      if (data.length < PG) break;
+      off += PG;
+    }
+    return all;
+  })();
+
+  const salesPromise = (async () => {
+    const map = new Map<string, number>();
+    if (!from || !to) return map;
+    let off = 0;
     while (true) {
       const { data } = await db.from("product_sales")
         .select("sku, qty")
         .gte("date", from).lte("date", to)
-        .range(sOff, sOff + PG - 1);
+        .range(off, off + PG - 1);
       if (!data || data.length === 0) break;
-      for (const r of data) {
-        salesMap.set(r.sku, (salesMap.get(r.sku) || 0) + Number(r.qty || 0));
-      }
+      for (const r of data) map.set(r.sku, (map.get(r.sku) || 0) + Number(r.qty || 0));
       if (data.length < PG) break;
-      sOff += PG;
+      off += PG;
     }
-  }
+    return map;
+  })();
 
-  // 3. Categorize each product
+  const [allProducts, salesMap] = await Promise.all([productsPromise, salesPromise]);
+
+  // Categorize
   const counts = { no_sale: 0, slow: 0, normal: 0, good: 0, no_data: 0 };
-  const items: Array<{
-    sku: string; product_name: string; stock: number; sold: number;
-    rate: number; category: string; stockValue: number; cost_price: number;
-  }> = [];
-
   const hasSalesData = salesMap.size > 0;
-
-  for (const p of allProducts) {
+  const items = allProducts.map((p) => {
     const stock = Math.max(0, Number(p.stock || 0));
     const sold = salesMap.get(p.sku) || 0;
     const rate = stock > 0 ? (sold / stock) * 100 : sold > 0 ? 999 : 0;
@@ -68,13 +66,8 @@ export async function GET(req: Request) {
     else category = "good";
 
     counts[category as keyof typeof counts]++;
-    items.push({ sku: p.sku, product_name: p.product_name, stock, sold, rate, category, stockValue, cost_price: Number(p.cost_price || 0) });
-  }
-
-  return NextResponse.json({
-    ok: true,
-    total: allProducts.length,
-    counts,
-    items, // full list — frontend filters/sorts/paginates
+    return { sku: p.sku, product_name: p.product_name, stock, sold, rate, category, stockValue, cost_price: Number(p.cost_price || 0) };
   });
+
+  return NextResponse.json({ ok: true, total: allProducts.length, counts, items });
 }

@@ -13,28 +13,46 @@ export async function GET(req: Request) {
   const channel = searchParams.get("channel") || "";
   const q = searchParams.get("q") || "";
   const sort = searchParams.get("sort") || "revenue_desc";
-  const limit = Math.min(Number(searchParams.get("limit")) || 200, 500);
-  const offset = Number(searchParams.get("offset")) || 0;
 
   const db = supabaseAdmin();
 
-  // Aggregate product_sales by SKU
-  // Since Supabase REST doesn't support GROUP BY, fetch raw + aggregate in JS
-  const allData: Array<{ sku: string; product_name: string; channel_name: string; qty: number; revenue: number; date: string }> = [];
-  let off = 0;
+  // Fetch sales + products in parallel
   const PG = 1000;
-  while (true) {
-    let query = db.from("product_sales")
-      .select("sku, product_name, channel_name, qty, revenue, date")
-      .gte("date", from).lte("date", to);
-    if (channel) query = query.eq("channel_name", channel);
-    if (q) query = query.or(`sku.ilike.%${q}%,product_name.ilike.%${q}%`);
-    const { data: page } = await query.range(off, off + PG - 1);
-    if (!page || page.length === 0) break;
-    allData.push(...page);
-    if (page.length < PG) break;
-    off += PG;
-  }
+
+  // 1. Fetch all sales (large batches)
+  const salesPromise = (async () => {
+    const all: Array<{ sku: string; product_name: string; channel_name: string; qty: number; revenue: number }> = [];
+    let off = 0;
+    while (true) {
+      let query = db.from("product_sales")
+        .select("sku, product_name, channel_name, qty, revenue")
+        .gte("date", from).lte("date", to);
+      if (channel) query = query.eq("channel_name", channel);
+      if (q) query = query.or(`sku.ilike.%${q}%,product_name.ilike.%${q}%`);
+      const { data } = await query.range(off, off + PG - 1);
+      if (!data || data.length === 0) break;
+      all.push(...data);
+      if (data.length < PG) break;
+      off += PG;
+    }
+    return all;
+  })();
+
+  // 2. Pre-fetch all products sell_price (parallel)
+  const pricePromise = (async () => {
+    const map = new Map<string, number>();
+    let off = 0;
+    while (true) {
+      const { data } = await db.from("products").select("sku, sell_price").range(off, off + PG - 1);
+      if (!data || data.length === 0) break;
+      for (const p of data) if (p.sell_price) map.set(p.sku, Number(p.sell_price));
+      if (data.length < PG) break;
+      off += PG;
+    }
+    return map;
+  })();
+
+  const [allData, priceMap] = await Promise.all([salesPromise, pricePromise]);
 
   // Aggregate by SKU
   const bySku = new Map<string, { sku: string; product_name: string; channels: Set<string>; qty: number; orders: number; revenue: number }>();
@@ -49,18 +67,8 @@ export async function GET(req: Request) {
     bySku.set(r.sku, cur);
   }
 
-  // Join với products table để lấy sell_price → tính doanh thu ước tính (giống GAS)
-  const allSkus = Array.from(bySku.keys());
-  const priceMap = new Map<string, number>();
-  for (let i = 0; i < allSkus.length; i += 500) {
-    const chunk = allSkus.slice(i, i + 500);
-    const { data: prods } = await db.from("products").select("sku, sell_price").in("sku", chunk);
-    if (prods) for (const p of prods) if (p.sell_price) priceMap.set(p.sku, Number(p.sell_price));
-  }
-
   let items = Array.from(bySku.values()).map((v) => {
     const sellPrice = priceMap.get(v.sku) || 0;
-    // Doanh thu ước tính = qty × sell_price catalog (giống GAS)
     const estRevenue = sellPrice > 0 ? v.qty * sellPrice : v.revenue;
     return {
       sku: v.sku, product_name: v.product_name, channels: Array.from(v.channels).join(", "),
@@ -74,19 +82,15 @@ export async function GET(req: Request) {
   else if (sort === "qty_desc") items.sort((a, b) => b.qty - a.qty);
   else if (sort === "qty_asc") items.sort((a, b) => a.qty - b.qty);
 
-  // Summary
+  // Summary (tính trên toàn bộ, không paginate)
   const totalSkus = items.length;
   const totalOrders = items.reduce((s, i) => s + i.orders, 0);
   const totalQty = items.reduce((s, i) => s + i.qty, 0);
   const totalRevenue = items.reduce((s, i) => s + i.revenue, 0);
 
-  // Paginate
-  const paginated = items.slice(offset, offset + limit);
-
   return NextResponse.json({
     ok: true,
-    items: paginated,
-    total: totalSkus,
+    items, // gửi hết, frontend paginate
     summary: { totalSkus, totalOrders, totalQty, totalRevenue },
     channels: Array.from(channels).filter(Boolean).sort(),
     from, to,

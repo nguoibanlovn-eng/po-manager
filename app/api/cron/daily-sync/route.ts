@@ -6,6 +6,7 @@ import { syncTiktokAds } from "@/lib/tiktok/sync";
 import { syncAllShopsOrders, syncAllShopsReturns } from "@/lib/tiktok/shop-sync";
 import { refreshAllShopeeTokens } from "@/lib/shopee/api";
 import { syncProductSales } from "@/lib/nhanh/sync-product-sales";
+import { refreshCustomerStats } from "@/lib/db/refresh-customer-stats";
 
 export const maxDuration = 300;
 
@@ -33,6 +34,7 @@ export async function POST(req: Request) {
     { name: "product_sales",      fn: () => syncProductSales({}) },
     { name: "tiktok_shop_orders", fn: () => syncAllShopsOrders({}) },
     { name: "tiktok_shop_returns", fn: () => syncAllShopsReturns({}) },
+    { name: "customer_stats",    fn: () => refreshCustomerStats() },
   ] as const;
 
   const settled = await Promise.allSettled(jobs.map((j) => j.fn()));

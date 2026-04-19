@@ -25,6 +25,9 @@ const SUCCESS_STATUS = new Set([54, 56, 42, 72, 64, 60, 74]);
 type V3Order = {
   info?: { id?: string | number; status?: string | number; createdAt?: string | number };
   channel?: { saleChannel?: string | number };
+  customer?: { customerId?: string | number; customerMobile?: string };
+  customerId?: string | number;
+  customerMobile?: string;
   products?: unknown;
 };
 
@@ -33,13 +36,14 @@ type V1Order = {
   statusCode?: string | number; status?: string | number;
   channel?: string | number; saleChannel?: string | number;
   createdDateTime?: string;
+  customerId?: string | number; customerMobile?: string;
   products?: unknown; orderDetails?: unknown; items?: unknown;
 };
 
 type Row = {
   date: string; sku: string; product_name: string; order_id: string;
   channel: string; channel_name: string; qty: number; unit_price: number;
-  revenue: number; status: string; synced_at: string;
+  revenue: number; status: string; synced_at: string; customer_id: string;
 };
 
 function parseProducts(raw: unknown): Array<Record<string, unknown>> {
@@ -76,6 +80,7 @@ async function syncV3Day(date: string): Promise<{ orders: number; rows: Row[]; s
     const orderId = String(info.id || "");
     const chCode = String(o.channel?.saleChannel || "0");
     const chName = CHANNEL_MAP[chCode] || `Kênh ${chCode}`;
+    const customerId = String(o.customer?.customerId || o.customerId || o.customerMobile || "");
     let orderDate = date;
     if (info.createdAt) {
       try {
@@ -93,6 +98,7 @@ async function syncV3Day(date: string): Promise<{ orders: number; rows: Row[]; s
         date: orderDate, sku, product_name: String(p.name || ""), order_id: orderId,
         channel: chCode, channel_name: chName,
         qty, unit_price: price, revenue: qty * price, status: "success", synced_at: now,
+        customer_id: customerId,
       });
       channels[chName] = (channels[chName] || 0) + qty;
     }
@@ -120,6 +126,7 @@ async function syncV1Day(date: string): Promise<{ orders: number; rows: Row[]; l
     const chName = CHANNEL_MAP[chCode] || `Kênh ${chCode}`;
     const status = String(o.statusCode || o.status || "");
     const orderDate = String(o.createdDateTime || date).substring(0, 10);
+    const customerId = String(o.customerId || o.customerMobile || "");
 
     const products = parseProducts(o.products || o.orderDetails || o.items);
     for (const item of products) {
@@ -133,6 +140,7 @@ async function syncV1Day(date: string): Promise<{ orders: number; rows: Row[]; l
         date: orderDate, sku, product_name: name, order_id: orderId,
         channel: chCode, channel_name: chName,
         qty, unit_price: price, revenue: qty * price, status, synced_at: now,
+        customer_id: customerId,
       });
       channels[chName] = (channels[chName] || 0) + qty;
     }

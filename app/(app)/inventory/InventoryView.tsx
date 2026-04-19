@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatVND, formatVNDCompact, toNum } from "@/lib/format";
-import type { InventoryRow } from "@/lib/db/inventory";
+import type { InventoryRow, InventoryStats } from "@/lib/db/inventory";
 import SyncButton from "../components/SyncButton";
 
 type SalesItem = { sku: string; product_name: string; channels: string; qty: number; orders: number; revenue: number };
@@ -24,11 +24,11 @@ function monthRange(offset: number) {
 }
 
 const CAT_GROUPS = [
-  { k: "no_sale", label: "Không bán", sub: "0 đơn / 30 ngày", bg: "#FCEBEB", color: "#A32D2D", icon: "🔴" },
-  { k: "slow", label: "Bán chậm", sub: "< 10% tồn/tháng", bg: "#FAEEDA", color: "#854F0B", icon: "🟡" },
-  { k: "normal", label: "Bình thường", sub: "10–30%", bg: "#E6F1FB", color: "#185FA5", icon: "🔵" },
-  { k: "good", label: "Bán tốt", sub: "> 30% hoặc hết hàng", bg: "#EAF3DE", color: "#3B6D11", icon: "🟢" },
-  { k: "no_data", label: "Chưa có data", sub: "Chưa sync bán", bg: "#F1EFE8", color: "#444441", icon: "⚪" },
+  { k: "no_sale", label: "Không bán", sub: "0 đơn / 30 ngày", bg: "#FCEBEB", color: "#A32D2D" },
+  { k: "slow", label: "Bán chậm", sub: "< 10% tồn/tháng", bg: "#FAEEDA", color: "#854F0B" },
+  { k: "normal", label: "Bình thường", sub: "10–30%", bg: "#E6F1FB", color: "#185FA5" },
+  { k: "good", label: "Bán tốt", sub: "> 30% hoặc hết hàng", bg: "#EAF3DE", color: "#3B6D11" },
+  { k: "no_data", label: "Chưa có data", sub: "Chưa sync bán", bg: "#F5F5F4", color: "#57534E" },
 ];
 
 /** Sync sales button — V3+V1 per day, chunks 3 ngày */
@@ -110,11 +110,24 @@ function SyncSalesButton({ onDone, from, to }: { onDone: () => void; from: strin
 }
 
 export default function InventoryView({
-  rows, total, q, filter, page, totalPages,
+  rows, total, q, filter, sort, category, stats, page, totalPages,
 }: {
-  rows: InventoryRow[]; total: number; q: string; filter: string; page: number; totalPages: number;
+  rows: InventoryRow[]; total: number; q: string; filter: string; sort: string; category: string; stats: InventoryStats; page: number; totalPages: number;
 }) {
   const router = useRouter();
+
+  // Build URL with filter params
+  function buildUrl(params: Record<string, string>) {
+    const p = new URLSearchParams({ q, filter, sort, category, page: "1" });
+    for (const [k, v] of Object.entries(params)) p.set(k, v);
+    if (!p.get("q")) p.delete("q");
+    if (p.get("filter") === "all") p.delete("filter");
+    if (p.get("sort") === "stock_desc") p.delete("sort");
+    if (!p.get("category")) p.delete("category");
+    if (p.get("page") === "1") p.delete("page");
+    const qs = p.toString();
+    return `/inventory${qs ? `?${qs}` : ""}`;
+  }
 
   // ─── Bảng 2 state ───
   const [salesItems, setSalesItems] = useState<SalesItem[]>([]);
@@ -134,6 +147,8 @@ export default function InventoryView({
   // ─── Bảng 3 state ───
   const [analysisFilter, setAnalysisFilter] = useState("all");
   const [analysisSort, setAnalysisSort] = useState("value_desc");
+  const [analysisSearch, setAnalysisSearch] = useState("");
+  const [analysisPage, setAnalysisPage] = useState(1);
 
   // ─── Bảng 1 totals ───
   const categories = useMemo(() => {
@@ -152,9 +167,16 @@ export default function InventoryView({
     return { totalStock, totalValue };
   }, [rows]);
 
+  // ─── Sync status ───
+  const [syncStatus, setSyncStatus] = useState<{ lastSync: string | null; today: string; todayRows: number; yesterdayRows: number } | null>(null);
+  useEffect(() => {
+    fetch("/api/inventory/sync-status").then((r) => r.json()).then((j) => { if (j.ok) setSyncStatus(j); }).catch(() => {});
+  }, []);
+
   // ─── Bảng 2: Load sales ───
+  const [salesError, setSalesError] = useState("");
   const loadSales = useCallback(async (from?: string, to?: string) => {
-    setSalesLoading(true);
+    setSalesLoading(true); setSalesError("");
     try {
       const f = from || salesFrom; const t = to || salesTo;
       const params = new URLSearchParams({ from: f, to: t, sort: salesSort });
@@ -163,7 +185,8 @@ export default function InventoryView({
       const res = await fetch(`/api/inventory/product-sales?${params}`);
       const json = await res.json();
       if (json.ok) { setSalesItems(json.items || []); setSalesSummary(json.summary || null); setSalesChannels(json.channels || []); setSalesLoaded(true); setSalesPage(1); }
-    } catch { /* */ } finally { setSalesLoading(false); }
+      else { setSalesError(`API: ${json.error || res.status}`); }
+    } catch (e) { setSalesError(`Fetch: ${(e as Error).message}`); } finally { setSalesLoading(false); }
   }, [salesFrom, salesTo, salesChannel, salesSearch, salesSort]);
 
   // Auto-load sales khi mở trang (30 ngày mặc định)
@@ -199,8 +222,9 @@ export default function InventoryView({
   const [analysisTotal, setAnalysisTotal] = useState(0);
   const [analysisLoading, setAnalysisLoading] = useState(false);
 
+  const [analysisError, setAnalysisError] = useState("");
   const loadAnalysis = useCallback(async () => {
-    setAnalysisLoading(true);
+    setAnalysisLoading(true); setAnalysisError("");
     try {
       const params = new URLSearchParams({ from: salesFrom, to: salesTo });
       const res = await fetch(`/api/inventory/stock-analysis?${params}`);
@@ -209,8 +233,8 @@ export default function InventoryView({
         setAnalysisItems(json.items || []);
         setAnalysisCounts(json.counts || {});
         setAnalysisTotal(json.total || 0);
-      }
-    } catch { /* */ } finally { setAnalysisLoading(false); }
+      } else { setAnalysisError(`API: ${json.error || res.status}`); }
+    } catch (e) { setAnalysisError(`Fetch: ${(e as Error).message}`); } finally { setAnalysisLoading(false); }
   }, [salesFrom, salesTo]);
 
   // Auto-load analysis khi mount + khi sales data loaded
@@ -223,20 +247,35 @@ export default function InventoryView({
   const filteredAnalysis = useMemo(() => {
     let list = analysisFilter === "all" ? analysisItems : analysisItems.filter((a) => a.category === analysisFilter);
     if (analysisSort === "value_desc") list = [...list].sort((a, b) => b.stockValue - a.stockValue);
-    else if (analysisSort === "rate_desc") list = [...list].sort((a, b) => b.rate - a.rate);
-    else if (analysisSort === "sold_desc") list = [...list].sort((a, b) => b.sold - a.sold);
     else if (analysisSort === "stock_desc") list = [...list].sort((a, b) => b.stock - a.stock);
+    else if (analysisSort === "stock_asc") list = [...list].sort((a, b) => a.stock - b.stock);
+    else if (analysisSort === "rate_desc") list = [...list].sort((a, b) => b.rate - a.rate);
+    else if (analysisSort === "rate_asc") list = [...list].filter((a) => a.sold > 0).sort((a, b) => a.rate - b.rate);
+    else if (analysisSort === "no_sold") list = [...list].filter((a) => a.sold === 0 && a.stock > 0).sort((a, b) => b.stock - a.stock);
+    else if (analysisSort === "sold_desc") list = [...list].sort((a, b) => b.sold - a.sold);
+    else if (analysisSort === "sold_asc") list = [...list].sort((a, b) => a.sold - b.sold);
     return list;
   }, [analysisItems, analysisFilter, analysisSort]);
 
+  const searchedAnalysis = useMemo(() => {
+    if (!analysisSearch) return filteredAnalysis;
+    const q = analysisSearch.toLowerCase();
+    return filteredAnalysis.filter((a) => a.sku.toLowerCase().includes(q) || (a.product_name || "").toLowerCase().includes(q));
+  }, [filteredAnalysis, analysisSearch]);
+
+  const ANALYSIS_PG = 50;
+  const analysisTotalPages = Math.ceil(searchedAnalysis.length / ANALYSIS_PG);
+  const analysisPaginated = searchedAnalysis.slice((analysisPage - 1) * ANALYSIS_PG, analysisPage * ANALYSIS_PG);
+
   const analysisGroupTotals = useMemo(() => {
     const t = { count: 0, stock: 0, sold: 0, value: 0 };
-    for (const a of filteredAnalysis) { t.count++; t.stock += a.stock; t.sold += a.sold; t.value += a.stockValue; }
+    for (const a of searchedAnalysis) { t.count++; t.stock += a.stock; t.sold += a.sold; t.value += a.stockValue; }
     return t;
-  }, [filteredAnalysis]);
+  }, [searchedAnalysis]);
 
   return (
     <section className="section">
+      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
       {/* ═══ HEADER ═══ */}
       <div className="page-hdr">
         <div>
@@ -251,65 +290,106 @@ export default function InventoryView({
       </div>
 
       {/* ═════════════════════════════════════════════════════════
-         CARD 1 — DANH SÁCH SẢN PHẨM
+         DANH SÁCH SẢN PHẨM
          ═════════════════════════════════════════════════════════ */}
-      <div className="card" style={{ marginBottom: 14, padding: 0 }}>
-        <form style={{ padding: "8px 14px", borderBottom: "1px solid var(--border)", display: "flex", gap: 6, alignItems: "center", background: "var(--bg)", fontSize: 11 }}>
-          <input type="text" name="q" defaultValue={q} placeholder="Tìm SKU, tên..." style={{ width: 180, fontSize: 11 }} />
-          <select name="filter" defaultValue={filter} style={{ fontSize: 11 }}>
-            <option value="all">Tất cả tình trạng</option>
-            <option value="in_stock">Còn hàng</option>
-            <option value="low_stock">Sắp hết (≤10)</option>
-            <option value="out_of_stock">Hết hàng</option>
-          </select>
-          <select style={{ fontSize: 11 }} disabled><option>Đang bán · tồn nhiều nhất</option><option>Tồn nhiều nhất</option><option>Tồn ít nhất</option><option>Giá trị tồn cao nhất</option><option>Tên A→Z</option></select>
-          <button type="submit" className="btn btn-primary btn-xs">Lọc</button>
-          <span style={{ marginLeft: "auto", fontSize: 10, color: "#6B7280" }}>{total.toLocaleString("vi-VN")} SP</span>
-        </form>
-
-        <div className="tbl-wrap" style={{ maxHeight: 280, overflowY: "auto" }}>
-          <table>
-            <thead><tr>
-              <th style={{ width: 110 }}>SKU</th><th>Tên sản phẩm</th>
-              <th className="text-right" style={{ width: 65 }}>Tồn kho</th>
-              <th className="text-right" style={{ width: 80 }}>Giá vốn</th>
-              <th className="text-right" style={{ width: 80 }}>Giá bán</th>
-              <th style={{ width: 50 }}></th>
-            </tr></thead>
-            <tbody>
-              {rows.map((r) => {
-                const avail = toNum(r.available_qty);
-                return (
-                  <tr key={r.sku}>
-                    <td style={{ fontFamily: "monospace", fontSize: 10 }}>{r.sku}</td>
-                    <td style={{ fontSize: 11 }}>{r.product_name || "—"}</td>
-                    <td className="text-right" style={{ fontWeight: 600 }}>{avail > 0 ? avail.toLocaleString("vi-VN") : "—"}</td>
-                    <td className="text-right muted" style={{ fontSize: 11 }}>{toNum(r.cost_price) > 0 ? formatVND(toNum(r.cost_price)) : "—"}</td>
-                    <td className="text-right" style={{ fontWeight: 600, fontSize: 11 }}>{toNum(r.sell_price) > 0 ? formatVND(toNum(r.sell_price)) : "—"}</td>
-                    <td>{avail <= 0 && <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 3, background: "#FEE2E2", color: "#DC2626" }}>Hết</span>}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Footer totals */}
-        <div style={{ padding: "8px 14px", borderTop: "1px solid var(--border)", background: "var(--bg)", display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 600, color: "#6B7280" }}>
-          <span>Tổng: {total.toLocaleString("vi-VN")} SKU</span>
-          <span>Tồn: {invTotals.totalStock.toLocaleString("vi-VN")}</span>
-          <span>Giá trị tồn: <span style={{ color: "#16A34A" }}>{formatVNDCompact(invTotals.totalValue)}</span></span>
-        </div>
-
-        {totalPages > 1 && (
-          <div style={{ padding: "6px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #F3F4F6" }}>
-            <span className="muted" style={{ fontSize: 10 }}>Trang {page}/{totalPages}</span>
-            <div style={{ display: "flex", gap: 4 }}>
-              {page > 1 && <Link href={`/inventory?q=${q}&filter=${filter}&page=${page - 1}`} className="btn btn-ghost btn-xs" style={{ textDecoration: "none" }}>←</Link>}
-              {page < totalPages && <Link href={`/inventory?q=${q}&filter=${filter}&page=${page + 1}`} className="btn btn-ghost btn-xs" style={{ textDecoration: "none" }}>→</Link>}
+      <div style={{ marginBottom: 14 }}>
+        {/* KPI Cards */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 10 }}>
+          {[
+            { label: "Tổng sản phẩm", value: stats.totalProducts.toLocaleString("vi-VN"), color: "#6366F1", bg: "#EEF2FF" },
+            { label: "Còn hàng", value: stats.inStock.toLocaleString("vi-VN"), color: "#16A34A", bg: "#F0FDF4" },
+            { label: "Tồn kho", value: stats.totalStock.toLocaleString("vi-VN"), color: "#D97706", bg: "#FFFBEB" },
+            { label: "Giá trị tồn", value: formatVNDCompact(stats.totalValue), color: "#DC2626", bg: "#FEF2F2" },
+          ].map((k) => (
+            <div key={k.label} className="card" style={{ padding: "10px 14px", background: k.bg, border: "none" }}>
+              <div style={{ fontSize: 10, color: "#6B7280", fontWeight: 500 }}>{k.label}</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: k.color, marginTop: 2 }}>{k.value}</div>
             </div>
+          ))}
+        </div>
+
+        <div className="card" style={{ padding: 0 }}>
+          {/* Header */}
+          <div style={{ padding: "8px 14px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ fontWeight: 700, fontSize: 13 }}>Danh sách sản phẩm</div>
+            <span style={{ fontSize: 10, color: "#6B7280" }}>{total.toLocaleString("vi-VN")} SP</span>
           </div>
-        )}
+
+          {/* Filter bar */}
+          <form action="/inventory" style={{ padding: "8px 14px", borderBottom: "1px solid var(--border)", display: "flex", gap: 6, alignItems: "center", background: "var(--bg)", fontSize: 11 }}>
+            <input type="text" name="q" defaultValue={q} placeholder="Tìm SKU, tên..."
+              style={{ width: 150, fontSize: 11, padding: "4px 8px", border: "1px solid #D1D5DB", borderRadius: 6 }} />
+            <select name="filter" defaultValue={filter} style={{ fontSize: 11, padding: "4px 6px", border: "1px solid #D1D5DB", borderRadius: 6 }}
+              onChange={(e) => router.push(buildUrl({ filter: e.target.value }))}>
+              <option value="all">Tất cả tình trạng</option>
+              <option value="in_stock">Còn hàng</option>
+              <option value="low_stock">Sắp hết (≤10)</option>
+              <option value="out_of_stock">Hết hàng</option>
+            </select>
+            <select name="sort" defaultValue={sort} style={{ fontSize: 11, padding: "4px 6px", border: "1px solid #D1D5DB", borderRadius: 6 }}
+              onChange={(e) => router.push(buildUrl({ sort: e.target.value }))}>
+              <option value="stock_desc">Tồn nhiều nhất</option>
+              <option value="stock_asc">Tồn ít nhất</option>
+              <option value="value_desc">Giá trị tồn cao nhất</option>
+              <option value="name_asc">Tên A→Z</option>
+            </select>
+            <button type="submit" className="btn btn-primary btn-xs">Lọc</button>
+            <span style={{ marginLeft: "auto", fontSize: 10, color: "#6B7280" }}>{total.toLocaleString("vi-VN")} SP</span>
+          </form>
+
+          {/* Table */}
+          <div className="tbl-wrap" style={{ maxHeight: 340, overflowY: "auto" }}>
+            <table>
+              <thead><tr>
+                <th style={{ width: 110 }}>SKU</th>
+                <th>Tên sản phẩm</th>
+                <th style={{ width: 70 }}>Danh mục</th>
+                <th className="text-right" style={{ width: 60 }}>Tồn</th>
+                <th className="text-right" style={{ width: 80 }}>Giá vốn</th>
+                <th className="text-right" style={{ width: 80 }}>Giá bán</th>
+                <th style={{ width: 45 }}>Trạng thái</th>
+              </tr></thead>
+              <tbody>
+                {rows.map((r) => {
+                  const avail = toNum(r.available_qty);
+                  return (
+                    <tr key={r.sku}>
+                      <td style={{ fontFamily: "monospace", fontSize: 10 }}>{r.sku}</td>
+                      <td style={{ fontSize: 11, maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.product_name || "—"}</td>
+                      <td style={{ fontSize: 10, color: "#6B7280" }}>{r.category || "—"}</td>
+                      <td className="text-right" style={{ fontWeight: 600 }}>{avail > 0 ? avail.toLocaleString("vi-VN") : <span style={{ color: "#9CA3AF" }}>0</span>}</td>
+                      <td className="text-right muted" style={{ fontSize: 11 }}>{toNum(r.cost_price) > 0 ? formatVND(toNum(r.cost_price)) : "—"}</td>
+                      <td className="text-right" style={{ fontWeight: 600, fontSize: 11 }}>{toNum(r.sell_price) > 0 ? formatVND(toNum(r.sell_price)) : "—"}</td>
+                      <td>
+                        {avail <= 0
+                          ? <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 3, background: "#FEE2E2", color: "#DC2626" }}>Hết</span>
+                          : avail <= 10
+                            ? <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 3, background: "#FEF3C7", color: "#D97706" }}>Ít</span>
+                            : null}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Footer + pagination */}
+          <div style={{ padding: "8px 14px", borderTop: "1px solid var(--border)", background: "var(--bg)", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, fontWeight: 600, color: "#6B7280" }}>
+            <div style={{ display: "flex", gap: 14 }}>
+              <span>Tổng {total.toLocaleString("vi-VN")} SP</span>
+              <span>Tồn: {invTotals.totalStock.toLocaleString("vi-VN")}</span>
+              <span>Giá trị: <span style={{ color: "#16A34A" }}>{formatVNDCompact(invTotals.totalValue)}</span></span>
+            </div>
+            {totalPages > 1 && (
+              <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                <span style={{ fontSize: 10 }}>Trang {page}/{totalPages}</span>
+                {page > 1 && <Link href={buildUrl({ page: String(page - 1) })} className="btn btn-ghost btn-xs" style={{ textDecoration: "none" }}>←</Link>}
+                {page < totalPages && <Link href={buildUrl({ page: String(page + 1) })} className="btn btn-ghost btn-xs" style={{ textDecoration: "none" }}>→</Link>}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* ═════════════════════════════════════════════════════════
@@ -321,8 +401,22 @@ export default function InventoryView({
             <div style={{ fontWeight: 700, fontSize: 13 }}>Bảng 1 — Dữ liệu bán hàng</div>
             <div style={{ fontSize: 10, color: "#6B7280" }}>product_sales</div>
           </div>
-          <div style={{ display: "flex", gap: 6 }}>
-            <SyncSalesButton onDone={() => loadSales()} from={salesFrom} to={salesTo} />
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            {syncStatus && (
+              <div style={{
+                fontSize: 10, padding: "3px 10px", borderRadius: 4, fontWeight: 600,
+                background: syncStatus.todayRows > 0 ? "#F0FDF4" : syncStatus.yesterdayRows > 0 ? "#FFFBEB" : "#FEF2F2",
+                color: syncStatus.todayRows > 0 ? "#16A34A" : syncStatus.yesterdayRows > 0 ? "#D97706" : "#DC2626",
+              }}>
+                {syncStatus.todayRows > 0
+                  ? `✓ Hôm nay: ${syncStatus.todayRows} dòng`
+                  : syncStatus.yesterdayRows > 0
+                    ? `⚠ Hôm qua: ${syncStatus.yesterdayRows} dòng · Hôm nay chưa sync`
+                    : `✕ Chưa có data gần đây`}
+                {syncStatus.lastSync && <span style={{ opacity: 0.7 }}> · Sync lần cuối: {syncStatus.lastSync.substring(0, 16)}</span>}
+              </div>
+            )}
+            <SyncSalesButton onDone={() => { loadSales(); fetch("/api/inventory/sync-status").then(r => r.json()).then(j => { if (j.ok) setSyncStatus(j); }); }} from={salesFrom} to={salesTo} />
           </div>
         </div>
 
@@ -344,8 +438,16 @@ export default function InventoryView({
           </div>
         </div>
 
+        {/* Loading indicator */}
+        {salesLoading && (
+          <div style={{ padding: "12px 14px", textAlign: "center", color: "#6B7280", fontSize: 12, borderBottom: "1px solid var(--border)", background: "#F9FAFB" }}>
+            <span style={{ display: "inline-block", animation: "spin 1s linear infinite", marginRight: 6 }}>⟳</span>
+            Đang tải dữ liệu bán hàng...
+          </div>
+        )}
+
         {/* KPI cards */}
-        {salesSummary && (
+        {salesSummary && !salesLoading && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", borderBottom: "1px solid var(--border)" }}>
             {[
               { label: "Tổng SKU bán", value: salesSummary.totalSkus.toLocaleString("vi-VN"), color: "#3B82F6" },
@@ -410,7 +512,7 @@ export default function InventoryView({
           </div>
         ) : (
           <div className="muted" style={{ padding: 28, textAlign: "center", fontSize: 12 }}>
-            {salesLoading ? "Đang tải..." : "Bấm ⟳ Đồng bộ Nhanh hoặc chọn khoảng ngày → ✓ Áp dụng"}
+            {salesLoading ? "Đang tải..." : salesError ? <span style={{ color: "#DC2626" }}>Lỗi: {salesError}</span> : "Bấm ⟳ Đồng bộ Nhanh hoặc chọn khoảng ngày → ✓ Áp dụng"}
           </div>
         )}
 
@@ -430,92 +532,137 @@ export default function InventoryView({
          CARD 3 — PHÂN TÍCH BÁN / TỒN KHO
          ═════════════════════════════════════════════════════════ */}
       <div className="card" style={{ padding: 0 }}>
-        <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        {/* Header */}
+        <div style={{ padding: "10px 16px", borderBottom: "1px solid #E5E7EB", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 13 }}>Bảng 2 — Phân tích bán / tồn kho</div>
-            <div style={{ fontSize: 10, color: "#6B7280" }}>sold_30d ÷ stock × 100% · dùng chung khoảng ngày Bảng 1</div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>Bảng 2 — Phân tích bán / tồn kho</div>
+            <div style={{ fontSize: 10, color: "#6B7280" }}>sold_30d ÷ stock × 100% · {salesFrom} → {salesTo}</div>
           </div>
-          {salesLoaded && <span style={{ fontSize: 9, background: "#E6F1FB", color: "#185FA5", padding: "2px 8px", borderRadius: 4, fontWeight: 600 }}>{salesFrom} → {salesTo}</span>}
+          <span style={{ fontSize: 10, background: "#E6F1FB", color: "#185FA5", padding: "3px 10px", borderRadius: 4, fontWeight: 600 }}>
+            {salesFrom} → {salesTo}
+          </span>
         </div>
 
-        {/* 5 group cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 0, borderBottom: "1px solid var(--border)" }}>
+        {/* 5 KPI cards — flat style */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 0, borderBottom: "1px solid #E5E7EB" }}>
           {CAT_GROUPS.map((c) => {
             const active = analysisFilter === c.k;
             const count = analysisCounts[c.k] || 0;
             return (
-              <button key={c.k} onClick={() => setAnalysisFilter(active ? "all" : c.k)}
+              <button key={c.k} onClick={() => { setAnalysisFilter(active ? "all" : c.k); setAnalysisPage(1); }}
                 style={{
-                  padding: 12, border: "none", cursor: "pointer", textAlign: "left",
-                  background: c.bg, borderRight: "1px solid #fff",
-                  outline: active ? `1.5px solid ${c.color}` : "none", outlineOffset: -1,
+                  padding: "12px 16px", cursor: "pointer", textAlign: "left",
+                  background: c.bg,
+                  border: active ? `2px solid ${c.color}` : "1px solid #E5E7EB",
+                  borderRadius: 0,
+                  transition: "all 0.15s",
                 }}>
-                <div style={{ fontSize: 11, color: c.color, fontWeight: 600 }}>{c.label}</div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: c.color, margin: "4px 0" }}>{count}</div>
-                <div style={{ fontSize: 9, color: c.color, opacity: 0.7 }}>{c.sub}</div>
+                <div style={{ fontSize: 10, color: c.color, fontWeight: 600, marginBottom: 2 }}>{c.label}</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: c.color, lineHeight: 1.1 }}>{count}</div>
+                <div style={{ fontSize: 9, color: c.color, opacity: 0.6, marginTop: 3 }}>{c.sub}</div>
               </button>
             );
           })}
         </div>
 
         {/* Toolbar */}
-        <div style={{ padding: "8px 14px", borderBottom: "1px solid #F3F4F6", display: "flex", gap: 6, alignItems: "center", fontSize: 11 }}>
-          <select value={analysisFilter} onChange={(e) => setAnalysisFilter(e.target.value)} style={{ fontSize: 11 }}>
-            <option value="all">Tất cả nhóm</option>
-            {CAT_GROUPS.map((c) => <option key={c.k} value={c.k}>{c.label}</option>)}
-          </select>
-          <select value={analysisSort} onChange={(e) => setAnalysisSort(e.target.value)} style={{ fontSize: 11 }}>
+        <div style={{ padding: "8px 16px", borderBottom: "1px solid #F3F4F6", display: "flex", gap: 6, alignItems: "center", fontSize: 11 }}>
+          <input placeholder="Tìm SKU, tên SP..." value={analysisSearch} onChange={(e) => { setAnalysisSearch(e.target.value); setAnalysisPage(1); }}
+            style={{ width: 150, fontSize: 11, padding: "4px 8px", border: "1px solid #D1D5DB", borderRadius: 6 }} />
+          <select value={analysisSort} onChange={(e) => setAnalysisSort(e.target.value)}
+            style={{ fontSize: 11, padding: "4px 6px", border: "1px solid #D1D5DB", borderRadius: 6 }}>
             <option value="value_desc">Giá trị tồn cao nhất</option>
-            <option value="rate_desc">% bán/tồn cao nhất</option>
-            <option value="sold_desc">SL bán nhiều nhất</option>
             <option value="stock_desc">Tồn nhiều nhất</option>
+            <option value="stock_asc">Tồn ít nhất</option>
+            <option value="rate_asc">Bán chậm nhất</option>
+            <option value="no_sold">Không có lượt bán</option>
+            <option value="rate_desc">Bán nhanh nhất</option>
+            <option value="sold_desc">Bán nhiều nhất</option>
+            <option value="sold_asc">Bán ít nhất</option>
           </select>
-          <span style={{ marginLeft: "auto", fontSize: 10, color: "#6B7280" }}>{filteredAnalysis.length} kết quả</span>
+          {analysisFilter !== "all" && (
+            <button onClick={() => { setAnalysisFilter("all"); setAnalysisPage(1); }}
+              style={{ fontSize: 10, padding: "3px 8px", borderRadius: 4, border: "none", cursor: "pointer",
+                background: CAT_GROUPS.find((c) => c.k === analysisFilter)?.bg, color: CAT_GROUPS.find((c) => c.k === analysisFilter)?.color, fontWeight: 600 }}>
+              ✕ {CAT_GROUPS.find((c) => c.k === analysisFilter)?.label}
+            </button>
+          )}
+          <span style={{ marginLeft: "auto", fontSize: 10, color: "#6B7280" }}>{searchedAnalysis.length.toLocaleString("vi-VN")} sản phẩm</span>
         </div>
 
         {/* Warning box for no_data */}
         {analysisFilter === "no_data" && (
-          <div style={{ margin: "8px 14px", padding: "10px 14px", background: "#E6F1FB", borderRadius: 8, fontSize: 11, color: "#185FA5" }}>
+          <div style={{ margin: "8px 16px", padding: "10px 14px", background: "#E6F1FB", borderRadius: 8, fontSize: 11, color: "#185FA5" }}>
             Các SP này chưa có data bán hàng. Bấm <strong>⟳ Đồng bộ Nhanh</strong> ở Bảng 1 để kéo dữ liệu bán theo SKU.
           </div>
         )}
 
         {/* Table */}
-        <div className="tbl-wrap" style={{ maxHeight: 400, overflowY: "auto" }}>
+        <div className="tbl-wrap" style={{ maxHeight: 500, overflowY: "auto" }}>
           <table>
             <thead><tr>
-              <th style={{ width: 110 }}>SKU</th><th>Tên sản phẩm</th>
-              <th className="text-right" style={{ width: 65 }}>Tồn</th>
-              <th className="text-right" style={{ width: 60 }}>Bán</th>
-              <th className="text-right" style={{ width: 80 }}>Giá trị tồn</th>
-              <th className="text-right" style={{ width: 60 }}>Tỉ lệ</th>
-              <th style={{ width: 70 }}>Nhóm</th>
+              <th style={{ width: 100 }}>SKU</th>
+              <th>Tên sản phẩm</th>
+              <th className="text-right" style={{ width: 60 }}>Tồn kho</th>
+              <th className="text-right" style={{ width: 60 }}>Bán 30D</th>
+              <th style={{ width: 140 }}>% Bán/Tồn</th>
+              <th className="text-right" style={{ width: 75 }}>Giá vốn</th>
+              <th className="text-right" style={{ width: 105 }}>Giá trị tồn</th>
             </tr></thead>
             <tbody>
-              {filteredAnalysis.slice(0, 200).map((a) => {
-                const cg = CAT_GROUPS.find((c) => c.k === a.category);
+              {analysisPaginated.map((a, idx) => {
+                const pct = a.rate > 0 ? Math.min(a.rate, 100) : 0;
+                const barColor = a.category === "no_sale" ? "#EF4444" : a.category === "slow" ? "#F59E0B" : a.category === "normal" ? "#3B82F6" : "#22C55E";
+                const rateColor = a.rate > 100 ? (a.rate > 200 ? "#DC2626" : "#D97706") : a.category === "no_sale" ? "#EF4444" : a.category === "slow" ? "#D97706" : "#16A34A";
                 return (
-                  <tr key={a.sku}>
-                    <td style={{ fontFamily: "monospace", fontSize: 10 }}>{a.sku}</td>
-                    <td style={{ fontSize: 11 }}>{a.product_name || "—"}</td>
-                    <td className="text-right" style={{ fontWeight: 600 }}>{a.stock > 0 ? a.stock.toLocaleString("vi-VN") : "—"}</td>
-                    <td className="text-right">{a.sold > 0 ? a.sold.toLocaleString("vi-VN") : "—"}</td>
-                    <td className="text-right muted" style={{ fontSize: 11 }}>{a.stockValue > 0 ? formatVNDCompact(a.stockValue) : "—"}</td>
-                    <td className="text-right" style={{ fontWeight: 700, color: cg?.color }}>{a.rate > 0 && a.rate < 999 ? `${a.rate.toFixed(1)}%` : "—"}</td>
-                    <td><span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 3, background: cg?.bg, color: cg?.color }}>{cg?.label || "—"}</span></td>
+                  <tr key={`${a.sku}-${idx}`}>
+                    <td style={{ fontFamily: "'SF Mono',Menlo,monospace", fontSize: 10, color: "#374151" }}>{a.sku}</td>
+                    <td style={{ fontSize: 11, maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.product_name || "—"}</td>
+                    <td className="text-right" style={{ fontWeight: 700 }}>{a.stock > 0 ? a.stock.toLocaleString("vi-VN") : "—"}</td>
+                    <td className="text-right" style={{ fontWeight: 700 }}>{a.sold > 0 ? a.sold.toLocaleString("vi-VN") : "—"}</td>
+                    <td>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <div style={{ flex: 1, height: 8, background: "#F3F4F6", borderRadius: 4, overflow: "hidden" }}>
+                          <div style={{
+                            width: `${pct}%`, height: "100%", background: barColor,
+                            borderRadius: 4, transition: "width 0.3s",
+                            minWidth: pct > 0 ? 3 : 0,
+                          }} />
+                        </div>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: rateColor, minWidth: 32, textAlign: "right" }}>
+                          {a.rate > 0 && a.rate < 9999 ? `${Math.round(a.rate)}%` : "—"}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="text-right" style={{ fontSize: 11, color: "#9CA3AF" }}>{a.cost_price > 0 ? formatVND(a.cost_price) : "—"}</td>
+                    <td className="text-right" style={{ fontWeight: 700, color: "#16A34A" }}>{a.stockValue > 0 ? formatVND(a.stockValue) : "—"}</td>
                   </tr>
                 );
               })}
+              {searchedAnalysis.length === 0 && (
+                <tr><td colSpan={7} className="muted" style={{ textAlign: "center", padding: 20 }}>
+                  {analysisError ? <span style={{ color: "#DC2626" }}>Lỗi: {analysisError}</span> : analysisLoading ? "Đang tải..." : "Không có data."}
+                </td></tr>
+              )}
             </tbody>
           </table>
         </div>
 
-        {/* Footer totals */}
-        <div style={{ padding: "8px 14px", borderTop: "1px solid var(--border)", background: "var(--bg)", display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 600, color: "#6B7280" }}>
-          <span>Nhóm: {analysisFilter === "all" ? "Tất cả" : CAT_GROUPS.find((c) => c.k === analysisFilter)?.label} ({analysisGroupTotals.count} SKU)</span>
-          <span>Tồn: {analysisGroupTotals.stock.toLocaleString("vi-VN")}</span>
-          <span>Bán: {analysisGroupTotals.sold.toLocaleString("vi-VN")}</span>
-          <span>Giá trị: <span style={{ color: "#16A34A" }}>{formatVNDCompact(analysisGroupTotals.value)}</span></span>
+        {/* Footer */}
+        <div style={{ padding: "8px 16px", borderTop: "1px solid #E5E7EB", background: "#F9FAFB", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, fontWeight: 600, color: "#6B7280" }}>
+          <div style={{ display: "flex", gap: 16 }}>
+            <span>Tổng {analysisGroupTotals.count.toLocaleString("vi-VN")} SP</span>
+            <span>Tổng tồn {analysisGroupTotals.stock.toLocaleString("vi-VN")}</span>
+            <span>Bán 30d <span style={{ color: "#3B82F6", fontWeight: 800 }}>{analysisGroupTotals.sold.toLocaleString("vi-VN")}</span></span>
+            <span>Giá trị tồn <span style={{ color: "#16A34A", fontWeight: 800 }}>{formatVND(analysisGroupTotals.value)}</span></span>
+          </div>
+          {analysisTotalPages > 1 && (
+            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+              <span style={{ fontSize: 10 }}>Trang {analysisPage}/{analysisTotalPages}</span>
+              <button className="btn btn-ghost btn-xs" disabled={analysisPage <= 1} onClick={() => setAnalysisPage(analysisPage - 1)}>←</button>
+              <button className="btn btn-ghost btn-xs" disabled={analysisPage >= analysisTotalPages} onClick={() => setAnalysisPage(analysisPage + 1)}>→</button>
+            </div>
+          )}
         </div>
       </div>
     </section>

@@ -20,7 +20,7 @@ const CHANNELS: { key: Channel; label: string; color: string }[] = [
   { key: "web", label: "Web/B2B", color: "#0EA5E9" },
 ];
 
-const PAGE_SIZE = 100;
+const PAGE_SIZE = 20;
 
 type StatusFilter = "all" | "todo" | "done";
 type TimeFilter = "all" | "today" | "7d" | "month" | "custom";
@@ -40,7 +40,7 @@ export default function DeployView({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>((filter as StatusFilter) || "all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>((filter as StatusFilter) || "todo");
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
   const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
   const [search, setSearch] = useState("");
@@ -52,10 +52,10 @@ export default function DeployView({
   // ── Filter by status ──
   const statusFiltered = useMemo(() => {
     if (statusFilter === "todo") {
-      return groups.map((g) => ({ ...g, products: g.products.filter((p) => p.status !== "done") })).filter((g) => g.products.length > 0);
+      return groups.map((g) => ({ ...g, products: g.products.filter((p) => !p.info_done) })).filter((g) => g.products.length > 0);
     }
     if (statusFilter === "done") {
-      return groups.map((g) => ({ ...g, products: g.products.filter((p) => p.status === "done") })).filter((g) => g.products.length > 0);
+      return groups.map((g) => ({ ...g, products: g.products.filter((p) => p.info_done) })).filter((g) => g.products.length > 0);
     }
     return groups;
   }, [groups, statusFilter]);
@@ -139,26 +139,26 @@ export default function DeployView({
       </div>
 
       {/* ═══ KPI CARDS ═══ */}
-      <div className="stat-grid" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
-        <div className="stat-card c-red">
-          <div className="sl">CHỜ ĐIỀN</div>
-          <div className="sv">{stats.needInfo}</div>
-          <div className="muted" style={{ fontSize: 11 }}>SP cần xử lý</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 14 }}>
+        <div style={{ padding: "12px 16px", background: "#FEF2F2", borderRadius: 8, border: "1px solid #FECACA" }}>
+          <div style={{ fontSize: 10, color: "#991B1B", fontWeight: 600 }}>VIỆC MỚI</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: "#DC2626", margin: "2px 0" }}>{stats.needInfo}</div>
+          <div style={{ fontSize: 10, color: "#B91C1C" }}>SP cần xử lý</div>
         </div>
-        <div className="stat-card c-green">
-          <div className="sl">ĐÃ XONG</div>
-          <div className="sv">{stats.infoDone}</div>
-          <div className="muted" style={{ fontSize: 11 }}>tổng cộng</div>
+        <div style={{ padding: "12px 16px", background: "#F0FDF4", borderRadius: 8, border: "1px solid #BBF7D0" }}>
+          <div style={{ fontSize: 10, color: "#166534", fontWeight: 600 }}>ĐÃ XONG</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: "#16A34A", margin: "2px 0" }}>{stats.infoDone}</div>
+          <div style={{ fontSize: 10, color: "#15803D" }}>tổng cộng</div>
         </div>
-        <div className="stat-card c-blue">
-          <div className="sl">TỈ LỆ</div>
-          <div className="sv">{stats.pct}%</div>
-          <div className="muted" style={{ fontSize: 11 }}>{stats.infoDone} / {stats.total} SP</div>
+        <div style={{ padding: "12px 16px", background: "#EFF6FF", borderRadius: 8, border: "1px solid #BFDBFE" }}>
+          <div style={{ fontSize: 10, color: "#1E40AF", fontWeight: 600 }}>TỈ LỆ</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: "#2563EB", margin: "2px 0" }}>{stats.pct}%</div>
+          <div style={{ fontSize: 10, color: "#1D4ED8" }}>{stats.infoDone} / {stats.total} SP</div>
         </div>
-        <div className="stat-card c-amber">
-          <div className="sl">ĐANG LỌC</div>
-          <div className="sv">{stats.showing}</div>
-          <div className="muted" style={{ fontSize: 11 }}>SP hiện tại</div>
+        <div style={{ padding: "12px 16px", background: "#FFFBEB", borderRadius: 8, border: "1px solid #FDE68A" }}>
+          <div style={{ fontSize: 10, color: "#92400E", fontWeight: 600 }}>ĐANG LỌC</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: "#D97706", margin: "2px 0" }}>{stats.showing}</div>
+          <div style={{ fontSize: 10, color: "#B45309" }}>SP hiện tại</div>
         </div>
       </div>
 
@@ -166,7 +166,7 @@ export default function DeployView({
       <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
         {/* Status filter */}
         <div className="mini-tabs" style={{ marginBottom: 0 }}>
-          {([["all", "Tất cả"], ["todo", "Chờ điền"], ["done", "Đã xong"]] as const).map(([k, v]) => (
+          {([["todo", `Việc mới (${stats.needInfo})`], ["done", `Đã xong (${stats.infoDone})`], ["all", `Tất cả (${stats.total})`]] as const).map(([k, v]) => (
             <button key={k} className={"mini-tab" + (statusFilter === k ? " active" : "")} onClick={() => { setStatusFilter(k); setPage(1); }}>
               {v}
             </button>
@@ -240,7 +240,7 @@ function OrderGroup({
   group: DeployGroup; canApprove: boolean; disabled: boolean;
   startTransition: (fn: () => Promise<void>) => void; refresh: () => void;
 }) {
-  const todoCount = group.products.filter((p) => p.status !== "done").length;
+  const todoCount = group.products.filter((p) => !p.info_done).length;
   const [expanded, setExpanded] = useState(todoCount > 0);
 
   return (
@@ -369,11 +369,19 @@ function DeployRow({
             {hasPrice && <span className="chip chip-blue" style={{ fontSize: 9, padding: "1px 5px" }}>Giá: {formatVND(p.sell_price)}</span>}
           </div>
         </div>
-        <span className="muted" style={{ fontSize: 11 }}>Mua hàng</span>
-        {p.info_done && (
-          <Link href="/launch-plan" style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, background: "#DCFCE7", color: "#16A34A", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>
-            → Launch
-          </Link>
+        {p.info_done ? (
+          <>
+            <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, background: "#DCFCE7", color: "#16A34A", fontWeight: 600, whiteSpace: "nowrap" }}>
+              ✓ Đã xong
+            </span>
+            <Link href="/launch-plan" style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, background: "#EFF6FF", color: "#2563EB", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>
+              → Launch
+            </Link>
+          </>
+        ) : (
+          <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, background: "#FEF3C7", color: "#D97706", fontWeight: 600, whiteSpace: "nowrap" }}>
+            Chờ điền
+          </span>
         )}
         <button
           className="btn btn-ghost btn-sm"
