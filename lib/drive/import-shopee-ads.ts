@@ -82,8 +82,14 @@ export async function scanAndImportShopeeAds(opts: {
 
   const errors: string[] = [];
   let imported = 0;
+  const startTime = Date.now();
+  const MAX_TIME = 250_000; // Stop before 300s timeout
 
   for (const f of toImport) {
+    if (Date.now() - startTime > MAX_TIME) {
+      logs.push(`Timeout approaching, stopped at ${imported} files. Run again for remaining.`);
+      break;
+    }
     try {
       const csv = await downloadCsv(f.id);
       const result = await uploadShopeeCsv(csv);
@@ -95,8 +101,6 @@ export async function scanAndImportShopeeAds(opts: {
     } catch (e) {
       errors.push(`${f.shop}/${f.date}: ${(e as Error).message}`);
     }
-    // Minimal delay to avoid rate limit
-    await new Promise((r) => setTimeout(r, 100));
   }
 
   logs.push(`Done: ${imported} imported, ${errors.length} errors`);
