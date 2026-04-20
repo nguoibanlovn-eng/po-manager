@@ -156,16 +156,14 @@ export async function syncFbAds(opts: {
   const errors: string[] = [];
   let fetched = 0;
 
-  // Build ad_account_id → page_name map from pages table
-  const { data: pagesData } = await db.from("pages").select("ad_account_id, page_name").not("ad_account_id", "is", null);
+  // Fetch ad account names from FB API
   const acctNameMap = new Map<string, string>();
-  for (const p of pagesData || []) {
-    if (p.ad_account_id && p.page_name) {
-      const name = String(p.page_name).replace(/^FACEBOOK - /, "");
-      const existing = acctNameMap.get(p.ad_account_id);
-      if (!existing) acctNameMap.set(p.ad_account_id, name);
-      else if (!existing.includes(name)) acctNameMap.set(p.ad_account_id, existing + " + " + name);
-    }
+  for (const acctId of accounts) {
+    try {
+      const nameRes = await fetch(`${FB_GRAPH}/${encodeURIComponent(acctId)}?fields=name&access_token=${token}`);
+      const nameJson = (await nameRes.json()) as { name?: string };
+      if (nameJson.name) acctNameMap.set(acctId, nameJson.name);
+    } catch { /* ignore */ }
   }
 
   for (const acctId of accounts) {

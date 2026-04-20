@@ -600,7 +600,7 @@ function PageCard({ page, ads, insights, nhanhRevenue, from, to }: {
       {page.ad_account_id && (
         <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)" }}>
           <div style={{ fontSize: 9, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", marginBottom: 4 }}>Facebook Ads</div>
-          <div className="muted" style={{ fontSize: 10, marginBottom: 4 }}>{pageAds.accountName || page.page_name?.replace(/^FACEBOOK - /, "") || page.ad_account_id}</div>
+          <div className="muted" style={{ fontSize: 10, marginBottom: 4 }}>{pageAds.accountName ? `${pageAds.accountName} (${page.ad_account_id})` : page.ad_account_id}</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 12px", fontSize: 11 }}>
             <div>CHI PHÍ <strong style={{ color: "var(--red)" }}>{formatVNDCompact(pageAds.spend)}</strong></div>
             <div>REACH <strong style={{ color: "var(--blue)" }}>{pageAds.reach.toLocaleString("vi-VN")}</strong></div>
