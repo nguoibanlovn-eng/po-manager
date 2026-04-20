@@ -35,14 +35,13 @@ export async function listShopeeAds(opts: {
   const db = supabaseAdmin();
   let q = db.from("shopee_ads").select("*").order("date", { ascending: false });
   if (opts.from && opts.to) {
-    // Use period_from for daily granularity
-    q = q.gte("period_from", opts.from).lte("period_from", opts.to);
+    q = q.gte("date", opts.from).lte("date", opts.to);
   } else if (opts.monthKey) {
     const from = `${opts.monthKey}-01`;
     const [y, m] = opts.monthKey.split("-").map(Number);
     const lastDay = new Date(y, m, 0).getDate();
     const to = `${opts.monthKey}-${String(lastDay).padStart(2, "0")}`;
-    q = q.gte("period_from", from).lte("period_from", to);
+    q = q.gte("date", from).lte("date", to);
   }
   if (opts.shop) q = q.eq("shop", opts.shop);
   const { data } = await q.limit(10000);
