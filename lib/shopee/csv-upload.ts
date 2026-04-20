@@ -121,10 +121,13 @@ export async function uploadShopeeCsv(csvText: string, shopOverride?: string): P
       const spend = toNum((cells[iSpend] || "0").replace(/[,\s]/g, ""));
       if (!spend && spend !== 0) continue;
 
-      const dateRaw = iStart >= 0 ? cells[iStart] || "" : "";
-      let date = uploadMonth + "-01";
-      const m = dateRaw.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
-      if (m) date = `${m[3]}-${m[2]}-${m[1]}`;
+      // Use report date (periodFrom), not campaign start date
+      let date = periodFrom || uploadMonth + "-01";
+      if (!periodFrom) {
+        const dateRaw = iStart >= 0 ? cells[iStart] || "" : "";
+        const m = dateRaw.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+        if (m) date = `${m[3]}-${m[2]}-${m[1]}`;
+      }
 
       rows.push({
         date,
