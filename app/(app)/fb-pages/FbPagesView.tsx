@@ -918,10 +918,7 @@ function RevenueDetailSection({ data }: { data: FbNhanhRow[] }) {
           return (
             <div key={s.name} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", borderBottom: "1px solid var(--border)" }}>
               <span style={{ color, fontSize: 10 }}>●</span>
-              <div style={{ width: 180, flexShrink: 0 }}>
-                <span style={{ fontSize: 11, fontWeight: 500 }}>Facebook - {s.name}</span>
-                {hasPrev && prevRev > 0 && <div style={{ fontSize: 8, color: "#9CA3AF" }}>CK: {formatVNDCompact(prevRev)}</div>}
-              </div>
+              <span style={{ width: 160, flexShrink: 0, fontSize: 11, fontWeight: 500 }}>Facebook - {s.name}</span>
               <div style={{ display: "flex", alignItems: "flex-end", gap: 1, height: 20, flex: 1, minWidth: 60 }}>
                 {vals.map((v, j) => {
                   const mx = Math.max(...vals);
@@ -932,7 +929,10 @@ function RevenueDetailSection({ data }: { data: FbNhanhRow[] }) {
               <span style={{ fontSize: 9, fontWeight: 600, width: 50, textAlign: "right", color: chgVsPrev > 0 ? "var(--green)" : chgVsPrev < 0 ? "var(--red)" : "var(--muted)" }}>
                 {hasPrev && prevRev > 0 ? (chgVsPrev > 0 ? `▲+${chgVsPrev}%` : chgVsPrev < 0 ? `▼${chgVsPrev}%` : "0%") : "—"}
               </span>
-              <span style={{ fontSize: 11, fontWeight: 700, width: 55, textAlign: "right" }}>{formatVNDCompact(s.revenue)}</span>
+              <div style={{ width: 90, textAlign: "right", flexShrink: 0 }}>
+                <div style={{ fontSize: 11, fontWeight: 700 }}>{formatVNDCompact(s.revenue)}</div>
+                {hasPrev && prevRev > 0 && <div style={{ fontSize: 8, color: "#9CA3AF" }}>CK: {formatVNDCompact(prevRev)}</div>}
+              </div>
               <span style={{ fontSize: 9, color: "var(--muted)", width: 28, textAlign: "right" }}>{pct}%</span>
             </div>
           );
