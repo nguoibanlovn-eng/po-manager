@@ -285,43 +285,48 @@ function OverviewTab({ ads, nhanhRevenue, adsTotals, nhanhTotals, roas, from, to
         <LineChart nhanhRevenue={nhanhRevenue} />
       </Collapsible>
 
-      {/* SO SÁNH DOANH THU THEO NGÀY */}
-      <Collapsible title="SO SÁNH DOANH THU THEO NGÀY" defaultOpen badge={<><span className="chip chip-amber" style={{ fontSize: 9 }}>NHANH.VN</span><span className="chip chip-green" style={{ marginLeft: 4, fontSize: 9 }}>TIKTOK SHOP</span></>}>
+      {/* DOANH THU & ADS THEO NGÀY */}
+      <Collapsible title="DOANH THU & ADS THEO NGÀY" defaultOpen badge={<span className="chip chip-amber" style={{ fontSize: 9 }}>NHANH.VN</span>}>
         <div className="tbl-wrap">
           <table>
             <thead><tr>
-              <th>NGÀY</th><th className="text-right">DT NHANH.VN</th><th className="text-right">SPEND</th><th className="text-right">ROAS</th><th className="text-right">GMV SHOP</th><th className="text-right">ĐƠN</th><th className="text-right">ROAS SHOP</th>
+              <th>NGÀY</th><th className="text-right">DOANH THU</th><th className="text-right">ĐƠN</th><th className="text-right">TB/ĐƠN</th><th className="text-right">SPEND ADS</th><th className="text-right">ROAS</th><th className="text-right">ADS/DT</th>
             </tr></thead>
             <tbody>
               {dailyComparison.map((d) => {
-                const roasShop = d.spend > 0 ? d.gmvShop / d.spend : 0;
+                const avgOrder = d.orders > 0 ? d.revenue / d.orders : 0;
+                const adsRatio = d.revenue > 0 ? (d.spend / d.revenue) * 100 : 0;
                 return (
                 <tr key={d.date}>
                   <td style={{ fontWeight: 600 }}>{d.date.substring(5)}</td>
                   <td className="text-right" style={{ color: "var(--green)" }}>{formatVNDCompact(d.revenue)}</td>
-                  <td className="text-right" style={{ color: "var(--red)" }}>{formatVNDCompact(d.spend)}</td>
-                  <td className="text-right font-bold" style={{ color: d.roas >= 12 ? "var(--green)" : d.roas >= 10 ? "var(--amber)" : "var(--red)" }}>
+                  <td className="text-right">{d.orders}</td>
+                  <td className="text-right muted">{avgOrder > 0 ? formatVNDCompact(avgOrder) : "—"}</td>
+                  <td className="text-right" style={{ color: "var(--red)" }}>{d.spend > 0 ? formatVNDCompact(d.spend) : "0"}</td>
+                  <td className="text-right font-bold" style={{ color: d.roas >= 12 ? "var(--green)" : d.roas >= 10 ? "var(--amber)" : d.roas > 0 ? "var(--red)" : "var(--muted)" }}>
                     {d.spend > 0 ? d.roas.toFixed(1) : "—"}
                   </td>
-                  <td className="text-right" style={{ color: "var(--blue)" }}>{formatVNDCompact(d.gmvShop)}</td>
-                  <td className="text-right muted">{d.orders}</td>
-                  <td className="text-right font-bold" style={{ color: roasShop >= 12 ? "var(--green)" : roasShop >= 10 ? "var(--amber)" : roasShop > 0 ? "var(--red)" : "var(--muted)" }}>
-                    {d.spend > 0 && d.gmvShop > 0 ? roasShop.toFixed(1) : "—"}
+                  <td className="text-right" style={{ color: adsRatio > 10 ? "var(--red)" : adsRatio > 0 ? "var(--amber)" : "var(--muted)" }}>
+                    {d.spend > 0 ? `${adsRatio.toFixed(1)}%` : "—"}
                   </td>
                 </tr>
                 );
               })}
-              {dailyComparison.length > 0 && (
+              {dailyComparison.length > 0 && (() => {
+                const totalAvg = nhanhTotals.orders > 0 ? nhanhTotals.revenue / nhanhTotals.orders : 0;
+                const totalAdsRatio = nhanhTotals.revenue > 0 ? (adsTotals.spend / nhanhTotals.revenue) * 100 : 0;
+                return (
                 <tr style={{ fontWeight: 700, background: "#1a1a1a", color: "#fff" }}>
                   <td>Tổng kỳ</td>
                   <td className="text-right">{formatVNDCompact(nhanhTotals.revenue)}</td>
+                  <td className="text-right">{nhanhTotals.orders}</td>
+                  <td className="text-right">{totalAvg > 0 ? formatVNDCompact(totalAvg) : "—"}</td>
                   <td className="text-right">{formatVNDCompact(adsTotals.spend)}</td>
                   <td className="text-right">{roas.toFixed(1)}</td>
-                  <td className="text-right">{formatVNDCompact(dailyComparison.reduce((s, d) => s + d.gmvShop, 0))}</td>
-                  <td className="text-right">{nhanhTotals.orders}</td>
-                  <td className="text-right">{adsTotals.spend > 0 ? (dailyComparison.reduce((s, d) => s + d.gmvShop, 0) / adsTotals.spend).toFixed(1) : "—"}</td>
+                  <td className="text-right">{totalAdsRatio > 0 ? `${totalAdsRatio.toFixed(1)}%` : "—"}</td>
                 </tr>
-              )}
+                );
+              })()}
             </tbody>
           </table>
         </div>
