@@ -100,15 +100,22 @@ export async function listWebNhanhRevenue(from: string, to: string): Promise<FbN
   // Web/App B2B sources:
   // Bán sỉ: WEB - Bán sỉ/bán buôn, WEB - LynkID
   // Bán lẻ: lovu.vn, velasboost.vn, App Lỗ Vũ, Muagimuadi
+  // API channel: when source has web keywords → web revenue (Drive data)
+  // When source = "API" (from V3 sync, no detail) → include ALL as web revenue
+  // because API channel on Nhanh is primarily web orders (lovu.vn, velasboost.vn, etc.)
   const { data: apiData } = await db
     .from("sales_sync")
     .select("period_from, source, revenue_net, order_net")
     .eq("channel", "API")
-    .or("source.ilike.%lovu%,source.ilike.%velasboost%,source.ilike.%App Lỗ Vũ%,source.ilike.%WEB%,source.ilike.%muagimuadi%")
     .gte("period_from", from)
     .lte("period_from", to)
     .order("period_from", { ascending: true })
     .limit(1000);
+  // Filter: include web-keyword sources OR generic "API" source (V3 sync)
+  const webApiData = (apiData || []).filter((r) => {
+    const src = (r.source || "").toLowerCase();
+    return src === "api" || ["lovu", "velasboost", "app lỗ vũ", "web", "muagimuadi", "lynkid", "bán sỉ"].some((kw) => src.includes(kw));
+  });
   const { data: adminData } = await db
     .from("sales_sync")
     .select("period_from, source, revenue_net, order_net")
@@ -118,7 +125,7 @@ export async function listWebNhanhRevenue(from: string, to: string): Promise<FbN
     .lte("period_from", to)
     .order("period_from", { ascending: true })
     .limit(1000);
-  return [...(apiData || []), ...(adminData || [])].map((r) => ({
+  return [...webApiData, ...(adminData || [])].map((r) => ({
     date: r.period_from,
     source: r.source || "",
     revenue: Number(r.revenue_net || 0),

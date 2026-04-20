@@ -154,8 +154,18 @@ export async function syncInventory(): Promise<{ inserted: number }> {
 // V3 order structure
 type V3SalesOrder = {
   info?: { createdAt?: number; status?: number };
-  channel?: { saleChannel?: number; pageId?: string };
+  channel?: { saleChannel?: number; pageId?: string; shopId?: string; appOrderId?: string };
   products?: Array<{ price?: number; priceAfterVAT?: number; quantity?: number }>;
+};
+
+// V3 status codes to EXCLUDE (cancelled, returned, failed)
+const SKIP_STATUSES = new Set([72, 73, 74, 75]);
+
+// Shopee shopId → shop name (from Shopee Open API)
+const SHOPEE_SHOP_MAP: Record<string, string> = {
+  "10091288": "Levu01",
+  "303340636": "Velasboost",
+  "998924544": "FlaskWay",
 };
 
 // Nhanh saleChannel ID → category name
@@ -217,6 +227,10 @@ export async function syncSalesByChannel(opts: {
     const ts = o.info?.createdAt;
     const date = ts ? new Date(ts * 1000).toISOString().substring(0, 10) : null;
     if (!date || date < from || date > to) continue;
+
+    // Skip cancelled/returned orders
+    const status = o.info?.status ?? 0;
+    if (SKIP_STATUSES.has(status)) continue;
     inRangeCount++;
 
     const chId = String(o.channel?.saleChannel ?? "__other__");
@@ -226,6 +240,10 @@ export async function syncSalesByChannel(opts: {
     let source = chName;
     if (chId === "20" && o.channel?.pageId) {
       source = pageNameMap.get(o.channel.pageId) || o.channel.pageId;
+    }
+    // For Shopee orders, use shopId → shop name
+    if (chId === "42" && o.channel?.shopId) {
+      source = SHOPEE_SHOP_MAP[o.channel.shopId] || o.channel.shopId;
     }
 
     // Revenue = sum of priceAfterVAT × qty (giá khách trả, sau discount)
