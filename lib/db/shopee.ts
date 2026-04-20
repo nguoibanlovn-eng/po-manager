@@ -44,8 +44,15 @@ export async function listShopeeAds(opts: {
     q = q.gte("date", from).lte("date", to);
   }
   if (opts.shop) q = q.eq("shop", opts.shop);
-  const { data } = await q.limit(10000);
-  return (data as ShopeeAdsRow[]) || [];
+  // Supabase caps at 1000 rows/query — paginate to get all
+  const all: ShopeeAdsRow[] = [];
+  for (let page = 0; page < 10; page++) {
+    const { data } = await q.range(page * 1000, (page + 1) * 1000 - 1);
+    if (!data || data.length === 0) break;
+    all.push(...(data as ShopeeAdsRow[]));
+    if (data.length < 1000) break;
+  }
+  return all;
 }
 
 export async function listShopeeDaily(monthKey?: string): Promise<ShopeeDailyRow[]> {
