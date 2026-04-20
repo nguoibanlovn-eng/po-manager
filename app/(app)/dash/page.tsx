@@ -60,7 +60,7 @@ export default async function DashPage({
 
   const currentYear = Number(month.split("-")[0]);
 
-  const [user, stats, recent, revMonth, rev7d, fbTarget, tkTarget, spTarget, yearly, prevYearly, yearChTargets] = await Promise.all([
+  const [user, stats, recent, revMonth, rev7d, fbTarget, tkTarget, spTarget, wbTarget, yearly, prevYearly, yearChTargets] = await Promise.all([
     getCurrentUser(),
     getDashboardStats(month),
     getRecentOrders(10),
@@ -69,6 +69,7 @@ export default async function DashPage({
     getChannelTarget("facebook", monthKey),
     getChannelTarget("tiktok", monthKey),
     getChannelTarget("shopee", monthKey),
+    getChannelTarget("web_b2b", monthKey),
     getYearlySummary(currentYear),
     getYearlySummary(currentYear - 1),
     getYearlyChannelTargets(currentYear),
@@ -512,89 +513,168 @@ export default async function DashPage({
       </div>
 
       {/* ═══ ROW 1: Top KPIs ═══ */}
-      <div className="stat-grid" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))" }}>
-        <div className="stat-card" style={{ borderLeft: "4px solid #16A34A" }}>
-          <div className="sl">DOANH THU THÁNG</div>
-          <div className="sv" style={{ color: "#16A34A" }}>{formatVNDCompact(revMonth.total)}</div>
-          <div className="ss">nhanh.vn · {revMonth.totalOrders.toLocaleString("vi-VN")} đơn</div>
-        </div>
-        <div className="stat-card" style={{ borderLeft: "4px solid #DC2626" }}>
-          <div className="sl">CHI PHÍ ADS</div>
-          <div className="sv" style={{ color: "#DC2626" }}>{formatVNDCompact(totalAdSpend)}</div>
-          <div className="ss">FB + Shopee + TikTok</div>
-        </div>
-        <div className="stat-card" style={{ borderLeft: "4px solid #3B82F6" }}>
-          <div className="sl">ADS / DOANH THU</div>
-          <div className="sv">{adsPct.toFixed(1)}%</div>
-          <div className="ss">ROAS {overallRoas.toFixed(1)}x</div>
-        </div>
-        <div className="stat-card" style={{ borderLeft: "4px solid #7C3AED" }}>
-          <div className="sl">CÔNG NỢ</div>
-          <div className="sv" style={{ color: stats.finance.outstanding > 0 ? "#DC2626" : "#16A34A" }}>{formatVNDCompact(stats.finance.outstanding)}</div>
-          <div className="ss">TT {formatVNDCompact(stats.finance.totalDeposited)}</div>
-        </div>
-        <div className="stat-card" style={{ borderLeft: "4px solid #D97706" }}>
-          <div className="sl">THIỆT HẠI</div>
-          <div className="sv" style={{ color: stats.damage.pendingItems > 0 ? "#DC2626" : "#16A34A" }}>{stats.damage.pendingItems > 0 ? formatVNDCompact(stats.damage.pendingValue) : "0"}</div>
-          <div className="ss">{stats.damage.pendingItems} SP chờ xử lý</div>
-        </div>
-      </div>
+      {(() => {
+        // Tiến độ doanh thu so với timeline
+        const totalTarget = (fbTarget || 0) + (tkTarget || 0) + (spTarget || 0) + (wbTarget || 0);
+        const dayOfMonth = Math.min(new Date().getDate(), lastDay);
+        const timePct = dayOfMonth / lastDay;
+        const revPct = totalTarget > 0 ? revMonth.total / totalTarget : 1;
+        // xanh = đạt/vượt timeline, vàng = chậm nhẹ (<80% timeline), đỏ = chậm nặng (<60%)
+        const revStatus = revPct >= timePct ? "green" : revPct >= timePct * 0.8 ? "yellow" : "red";
+        // ads: <=5% xanh, 5-7% vàng, >7% đỏ
+        const adsStatus = adsPct <= 5 ? "green" : adsPct <= 7 ? "yellow" : "red";
+        // công nợ: 0 = xanh, >0 = đỏ
+        const debtStatus = stats.finance.outstanding <= 0 ? "green" : "red";
+        // thiệt hại: 0 = xanh, >0 = đỏ
+        const dmgStatus = stats.damage.pendingItems <= 0 ? "green" : "red";
+
+        const S = { green: { bg: "#F0FDF4", border: "#BBF7D0", text: "#166534" }, yellow: { bg: "#FFFBEB", border: "#FDE68A", text: "#92400E" }, red: { bg: "#FEF2F2", border: "#FECACA", text: "#991B1B" } };
+
+        const cards = [
+          { label: "DOANH THU THÁNG", value: formatVNDCompact(revMonth.total), sub: `${revMonth.totalOrders.toLocaleString("vi-VN")} đơn`, s: S[revStatus] },
+          { label: "CHI PHÍ ADS", value: formatVNDCompact(totalAdSpend), sub: "FB + Shopee + TikTok", s: S[adsStatus] },
+          { label: "ADS / DOANH THU", value: `${adsPct.toFixed(1)}%`, sub: `ROAS ${overallRoas.toFixed(1)}x`, s: S[adsStatus] },
+          { label: "CÔNG NỢ", value: formatVNDCompact(stats.finance.outstanding), sub: `TT ${formatVNDCompact(stats.finance.totalDeposited)}`, s: S[debtStatus] },
+          { label: "THIỆT HẠI", value: stats.damage.pendingItems > 0 ? formatVNDCompact(stats.damage.pendingValue) : "0", sub: `${stats.damage.pendingItems} SP chờ xử lý`, s: S[dmgStatus] },
+        ];
+
+        return (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8, marginBottom: 10 }}>
+            {cards.map((k) => (
+              <div key={k.label} style={{ padding: "10px 14px", background: k.s.bg, borderRadius: 8, border: `1px solid ${k.s.border}` }}>
+                <div style={{ fontSize: 9, fontWeight: 600, color: k.s.text, letterSpacing: ".3px" }}>{k.label}</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: k.s.text, margin: "2px 0" }}>{k.value}</div>
+                <div style={{ fontSize: 9, color: k.s.text, opacity: 0.6 }}>{k.sub}</div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
+      {/* ═══ TIẾN ĐỘ TỔNG THÁNG ═══ */}
+      {(() => {
+        const totalTarget = (fbTarget || 0) + (tkTarget || 0) + (spTarget || 0) + (wbTarget || 0);
+        const dayOfMonth = Math.min(new Date().getDate(), lastDay);
+        const timePct = Math.round((dayOfMonth / lastDay) * 100);
+        const revPct = totalTarget > 0 ? Math.round((revMonth.total / totalTarget) * 100) : 0;
+        const avgDaily = dayOfMonth > 0 ? revMonth.total / dayOfMonth : 0;
+        const projected = avgDaily * lastDay;
+        const projPct = totalTarget > 0 ? Math.round((projected / totalTarget) * 100) : 0;
+        return totalTarget > 0 ? (
+          <div className="card" style={{ marginBottom: 10, padding: "10px 16px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <div style={{ fontSize: 12, fontWeight: 700 }}>Tiến độ tháng {month.substring(5)}</div>
+              <div style={{ fontSize: 10, color: "#6B7280" }}>
+                Ngày {dayOfMonth}/{lastDay} · {timePct}% thời gian · TB {formatVNDCompact(avgDaily)}/ngày
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ flex: 1, height: 10, background: "#F3F4F6", borderRadius: 5, overflow: "hidden", position: "relative" }}>
+                <div style={{ width: `${Math.min(revPct, 100)}%`, height: "100%", background: revPct >= 100 ? "#22C55E" : revPct >= timePct ? "#3B82F6" : "#F59E0B", borderRadius: 5, transition: "width 0.3s" }} />
+                <div style={{ position: "absolute", left: `${timePct}%`, top: 0, width: 1, height: "100%", background: "#DC2626", opacity: 0.5 }} />
+              </div>
+              <span style={{ fontSize: 11, fontWeight: 700, color: revPct >= timePct ? "#16A34A" : "#D97706", minWidth: 35 }}>{revPct}%</span>
+            </div>
+            <div style={{ display: "flex", gap: 16, marginTop: 4, fontSize: 10, color: "#6B7280" }}>
+              <span>Đạt <b style={{ color: "#16A34A" }}>{formatVNDCompact(revMonth.total)}</b></span>
+              <span>KH <b>{formatVNDCompact(totalTarget)}</b></span>
+              <span>Còn <b style={{ color: "#D97706" }}>{formatVNDCompact(Math.max(0, totalTarget - revMonth.total))}</b></span>
+              <span>Dự kiến <b style={{ color: projPct >= 100 ? "#16A34A" : "#DC2626" }}>{formatVNDCompact(projected)}</b> ({projPct}%)</span>
+            </div>
+          </div>
+        ) : null;
+      })()}
 
       {/* ═══ ROW 2: Channel revenue + Ads breakdown + 7-day chart ═══ */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 12 }}>
-        {/* Channel revenue stacked */}
-        <div className="card" style={{ padding: "12px 14px" }}>
-          <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 8 }}>Doanh thu theo kênh</div>
-          {revMonth.channels.map((ch) => {
-            const pct = revMonth.total > 0 ? (ch.revenue / revMonth.total) * 100 : 0;
-            const color = CHANNEL_COLORS[ch.name] || "#6B7280";
-            return (
-              <div key={ch.name} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                <span style={{ width: 8, height: 8, borderRadius: 2, background: color, flexShrink: 0 }} />
-                <span style={{ fontSize: 11, flex: 1 }}>{ch.name}</span>
-                <div style={{ width: 80, height: 8, background: "#F3F4F6", borderRadius: 2, overflow: "hidden" }}>
-                  <div style={{ width: `${Math.min(pct, 100)}%`, height: "100%", background: color, borderRadius: 2 }} />
-                </div>
-                <span style={{ fontSize: 10, fontWeight: 600, width: 50, textAlign: "right" }}>{formatVNDCompact(ch.revenue)}</span>
-                <span style={{ fontSize: 9, color: "#9CA3AF", width: 28, textAlign: "right" }}>{pct.toFixed(0)}%</span>
+        {/* Channel revenue vs target */}
+        {(() => {
+          const dayOfMonth = Math.min(new Date().getDate(), lastDay);
+          const timePct = dayOfMonth / lastDay;
+          const mainChannels = [
+            { name: "Facebook", target: fbTarget || 0 },
+            { name: "TikTok", target: tkTarget || 0 },
+            { name: "Shopee", target: spTarget || 0 },
+            { name: "Web/App B2B", target: wbTarget || 0 },
+          ];
+          const chRevMap: Record<string, number> = {};
+          revMonth.channels.forEach((c) => { chRevMap[c.name] = c.revenue; });
+          const wbNames = ["Website", "App", "API", "Admin", "Nội bộ"];
+          const wbRevenue = wbNames.reduce((s, n) => s + (chRevMap[n] || 0), 0);
+          return (
+            <div className="card" style={{ padding: "12px 14px" }}>
+              <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 8 }}>DT theo kênh</div>
+              <div style={{ display: "grid", gridTemplateColumns: "60px 1fr 55px 55px 32px", gap: "0 6px", alignItems: "center", fontSize: 10, color: "#9CA3AF", marginBottom: 4 }}>
+                <span>Kênh</span><span></span><span style={{ textAlign: "right" }}>Đạt</span><span style={{ textAlign: "right" }}>KH</span><span style={{ textAlign: "right" }}>%</span>
               </div>
-            );
-          })}
-          <div style={{ borderTop: "1px solid var(--border)", marginTop: 6, paddingTop: 6, display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700 }}>
-            <span>Tổng</span>
-            <span style={{ color: "#16A34A" }}>{formatVNDCompact(revMonth.total)}</span>
-          </div>
-        </div>
+              {mainChannels.map((ch) => {
+                const actual = ch.name === "Web/App B2B" ? wbRevenue : (chRevMap[ch.name] || 0);
+                const targetPct = ch.target > 0 ? Math.round((actual / ch.target) * 100) : 0;
+                const revRatio = ch.target > 0 ? actual / ch.target : 1;
+                const clr = revRatio >= timePct ? "#16A34A" : revRatio >= timePct * 0.8 ? "#D97706" : "#DC2626";
+                const barW = ch.target > 0 ? Math.min(targetPct, 100) : 0;
+                return (
+                  <div key={ch.name} style={{ display: "grid", gridTemplateColumns: "60px 1fr 55px 55px 32px", gap: "0 6px", alignItems: "center", marginBottom: 5 }}>
+                    <span style={{ fontSize: 11, fontWeight: 600 }}>{ch.name}</span>
+                    <div style={{ height: 8, background: "#F3F4F6", borderRadius: 2, overflow: "hidden", position: "relative" }}>
+                      <div style={{ width: `${barW}%`, height: "100%", background: clr, borderRadius: 2 }} />
+                      <div style={{ position: "absolute", top: 0, left: `${Math.round(timePct * 100)}%`, width: 1, height: "100%", background: "#000", opacity: 0.3 }} />
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 700, textAlign: "right", color: clr }}>{formatVNDCompact(actual)}</span>
+                    <span style={{ fontSize: 10, textAlign: "right", color: "#6B7280" }}>{formatVNDCompact(ch.target)}</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, textAlign: "right", color: clr }}>{targetPct}%</span>
+                  </div>
+                );
+              })}
+              <div style={{ borderTop: "1px solid var(--border)", marginTop: 4, paddingTop: 6, display: "grid", gridTemplateColumns: "60px 1fr 55px 55px 32px", gap: "0 6px", fontSize: 11, fontWeight: 700 }}>
+                <span>Tổng</span><span></span>
+                <span style={{ textAlign: "right", color: "#16A34A" }}>{formatVNDCompact(revMonth.total)}</span>
+                <span style={{ textAlign: "right", color: "#6B7280" }}>{formatVNDCompact(mainChannels.reduce((s, c) => s + c.target, 0))}</span>
+                <span style={{ textAlign: "right", color: "#16A34A" }}>{mainChannels.reduce((s, c) => s + c.target, 0) > 0 ? Math.round((revMonth.total / mainChannels.reduce((s, c) => s + c.target, 0)) * 100) : 0}%</span>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Ads breakdown */}
-        <div className="card" style={{ padding: "12px 14px" }}>
-          <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 8 }}>Chi phí Ads theo kênh</div>
-          {[
+        {(() => {
+          const chRevenues: Record<string, number> = {};
+          revMonth.channels.forEach((c) => { chRevenues[c.name] = c.revenue; });
+          const adsChannels = [
             { name: "Facebook", spend: stats.revenue.adSpend, color: "#1877F2" },
             { name: "Shopee", spend: stats.revenue.shopeeAdSpend, color: "#EE4D2D" },
             { name: "TikTok", spend: stats.revenue.tiktokAdSpend, color: "#FE2C55" },
-          ].map((ch) => {
-            const pct = totalAdSpend > 0 ? (ch.spend / totalAdSpend) * 100 : 0;
-            return (
-              <div key={ch.name} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                <span style={{ width: 8, height: 8, borderRadius: 2, background: ch.color, flexShrink: 0 }} />
-                <span style={{ fontSize: 11, flex: 1 }}>{ch.name}</span>
-                <div style={{ width: 80, height: 8, background: "#F3F4F6", borderRadius: 2, overflow: "hidden" }}>
-                  <div style={{ width: `${Math.min(pct, 100)}%`, height: "100%", background: ch.color, borderRadius: 2 }} />
-                </div>
-                <span style={{ fontSize: 10, fontWeight: 600, width: 50, textAlign: "right", color: "#DC2626" }}>{formatVNDCompact(ch.spend)}</span>
-                <span style={{ fontSize: 9, color: "#9CA3AF", width: 28, textAlign: "right" }}>{pct.toFixed(0)}%</span>
+          ];
+          return (
+            <div className="card" style={{ padding: "12px 14px" }}>
+              <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 8 }}>Chi phí Ads theo kênh</div>
+              {adsChannels.map((ch) => {
+                const pct = totalAdSpend > 0 ? (ch.spend / totalAdSpend) * 100 : 0;
+                const chRev = chRevenues[ch.name] || 0;
+                const chAdsPct = chRev > 0 ? (ch.spend / chRev) * 100 : 0;
+                const clr = chAdsPct <= 5 ? "#16A34A" : chAdsPct <= 7 ? "#D97706" : "#DC2626";
+                return (
+                  <div key={ch.name} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: 2, background: clr, flexShrink: 0 }} />
+                    <span style={{ fontSize: 11, flex: 1 }}>{ch.name}</span>
+                    <div style={{ width: 80, height: 8, background: "#F3F4F6", borderRadius: 2, overflow: "hidden" }}>
+                      <div style={{ width: `${Math.min(pct, 100)}%`, height: "100%", background: clr, borderRadius: 2 }} />
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 600, width: 50, textAlign: "right", color: clr }}>{formatVNDCompact(ch.spend)}</span>
+                    <span style={{ fontSize: 9, color: clr, width: 28, textAlign: "right" }}>{chAdsPct.toFixed(0)}%</span>
+                  </div>
+                );
+              })}
+              <div style={{ borderTop: "1px solid var(--border)", marginTop: 6, paddingTop: 6, display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700 }}>
+                <span>Tổng</span>
+                <span style={{ color: adsPct <= 5 ? "#16A34A" : adsPct <= 7 ? "#D97706" : "#DC2626" }}>{formatVNDCompact(totalAdSpend)}</span>
               </div>
-            );
-          })}
-          <div style={{ borderTop: "1px solid var(--border)", marginTop: 6, paddingTop: 6, display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700 }}>
-            <span>Tổng</span>
-            <span style={{ color: "#DC2626" }}>{formatVNDCompact(totalAdSpend)}</span>
-          </div>
-          <div style={{ marginTop: 6, fontSize: 10, color: "#6B7280" }}>
-            Tỉ lệ Ads/DT: <strong style={{ color: adsPct > 10 ? "#DC2626" : "#16A34A" }}>{adsPct.toFixed(1)}%</strong> · ROAS: <strong style={{ color: overallRoas >= 10 ? "#16A34A" : "#DC2626" }}>{overallRoas.toFixed(1)}x</strong>
-          </div>
-        </div>
+              <div style={{ marginTop: 6, fontSize: 10, color: "#6B7280" }}>
+                Tỉ lệ Ads/DT: <strong style={{ color: adsPct <= 5 ? "#16A34A" : adsPct <= 7 ? "#D97706" : "#DC2626" }}>{adsPct.toFixed(1)}%</strong> · ROAS: <strong style={{ color: overallRoas >= 10 ? "#16A34A" : "#DC2626" }}>{overallRoas.toFixed(1)}x</strong>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* 7-day revenue chart */}
         <div className="card" style={{ padding: "12px 14px" }}>
@@ -602,11 +682,13 @@ export default async function DashPage({
           <div style={{ fontSize: 10, color: "#9CA3AF", marginBottom: 8 }}>
             Cao nhất <strong style={{ color: "#16A34A" }}>{formatVNDCompact(best7d.revenue)}</strong> {best7d.date.substring(5)} · TB <strong>{formatVNDCompact(avg7d)}</strong>/ngày
           </div>
-          <div style={{ display: "flex", alignItems: "flex-end", height: 80, gap: 0 }}>
+          <div style={{ display: "flex", alignItems: "flex-end", height: 80 }}>
             {rev7d.daily.map((d) => {
               const h = (d.revenue / max7d) * 60;
               return (
-                <div key={d.date} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end" }}>
+                <div key={d.date}
+                  title={`${d.date}\n${d.revenue.toLocaleString("vi-VN")}đ`}
+                  style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", cursor: "default", height: "100%" }}>
                   <div style={{ width: "80%", height: Math.max(h, 2), background: "#4ADE80", borderRadius: 2 }} />
                 </div>
               );
@@ -622,33 +704,6 @@ export default async function DashPage({
         </div>
       </div>
 
-      {/* ═══ ROW 3: Channel targets ═══ */}
-      <div className="card" style={{ marginBottom: 12, padding: "12px 14px" }}>
-        <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 8 }}>Mục tiêu theo kênh (tháng {month.substring(5)})</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-          {[
-            { name: "Facebook", target: fbTarget, actual: revMonth.channels.find((c) => c.name === "Facebook")?.revenue || 0, color: "#1877F2" },
-            { name: "TikTok", target: tkTarget, actual: revMonth.channels.find((c) => c.name === "TikTok")?.revenue || 0, color: "#FE2C55" },
-            { name: "Shopee", target: spTarget, actual: revMonth.channels.find((c) => c.name === "Shopee")?.revenue || 0, color: "#EE4D2D" },
-          ].map((ch) => {
-            const pct = ch.target > 0 ? Math.round((ch.actual / ch.target) * 100) : 0;
-            const dayPct = Math.round((now.getDate() / lastDay) * 100);
-            const ahead = pct >= dayPct;
-            return (
-              <div key={ch.name} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, width: 60 }}>{ch.name}</span>
-                <div style={{ flex: 1, height: 12, background: "#F3F4F6", borderRadius: 3, overflow: "hidden", position: "relative" }}>
-                  <div style={{ position: "absolute", top: 0, left: 0, height: "100%", width: `${Math.min(pct, 100)}%`, background: ch.color, borderRadius: 3, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {pct > 15 && <span style={{ fontSize: 8, fontWeight: 700, color: "#fff" }}>{pct}%</span>}
-                  </div>
-                  <div style={{ position: "absolute", top: 0, left: `${dayPct}%`, width: 1, height: "100%", background: "#000", opacity: 0.3 }} />
-                </div>
-                <span style={{ fontSize: 9, fontWeight: 600, color: ahead ? "#16A34A" : "#DC2626", width: 40, textAlign: "right" }}>{formatVNDCompact(ch.actual)}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
 
       {/* ═══ ROW 4: Pipeline + Inventory + Sức khoẻ ═══ */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 12 }}>
@@ -673,21 +728,29 @@ export default async function DashPage({
         </div>
 
         {/* Inventory */}
-        <div className="card" style={{ padding: "12px 14px" }}>
-          <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 8 }}>Tồn kho</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
-              <span>Tổng SKU</span><span style={{ fontWeight: 700 }}>{stats.inventory.totalSkus.toLocaleString("vi-VN")}</span>
+        {(() => {
+          const oosRatio = stats.inventory.totalSkus > 0 ? stats.inventory.outOfStock / stats.inventory.totalSkus : 0;
+          const oosColor = oosRatio <= 0.3 ? "#16A34A" : oosRatio <= 0.5 ? "#D97706" : "#DC2626";
+          const lowRatio = stats.inventory.totalSkus > 0 ? stats.inventory.lowStock / stats.inventory.totalSkus : 0;
+          const lowColor = lowRatio <= 0.1 ? "#16A34A" : lowRatio <= 0.2 ? "#D97706" : "#DC2626";
+          return (
+            <div className="card" style={{ padding: "12px 14px" }}>
+              <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 8 }}>Tồn kho</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+                  <span>Tổng SKU</span><span style={{ fontWeight: 700 }}>{stats.inventory.totalSkus.toLocaleString("vi-VN")}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+                  <span style={{ color: oosColor }}>Hết hàng</span><span style={{ fontWeight: 700, color: oosColor }}>{stats.inventory.outOfStock.toLocaleString("vi-VN")}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+                  <span style={{ color: lowColor }}>Sắp hết (≤5)</span><span style={{ fontWeight: 700, color: lowColor }}>{stats.inventory.lowStock.toLocaleString("vi-VN")}</span>
+                </div>
+              </div>
+              <Link href="/inventory" style={{ fontSize: 10, color: "var(--blue)", marginTop: 6, display: "block" }}>Chi tiết →</Link>
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#DC2626" }}>
-              <span>Hết hàng</span><span style={{ fontWeight: 700 }}>{stats.inventory.outOfStock.toLocaleString("vi-VN")}</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#D97706" }}>
-              <span>Sắp hết (≤5)</span><span style={{ fontWeight: 700 }}>{stats.inventory.lowStock.toLocaleString("vi-VN")}</span>
-            </div>
-          </div>
-          <Link href="/inventory" style={{ fontSize: 10, color: "var(--blue)", marginTop: 6, display: "block" }}>Chi tiết →</Link>
-        </div>
+          );
+        })()}
 
         {/* Sức khoẻ vận hành */}
         <div className="card" style={{ padding: "12px 14px" }}>

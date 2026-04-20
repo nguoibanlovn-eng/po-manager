@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatVND, formatVNDCompact, toNum } from "@/lib/format";
 import type { InventoryRow, InventoryStats } from "@/lib/db/inventory";
 import SyncButton from "../components/SyncButton";
+import Collapsible from "../components/Collapsible";
 
 type SalesItem = { sku: string; product_name: string; channels: string; qty: number; orders: number; revenue: number };
 type SalesSummary = { totalSkus: number; totalOrders: number; totalQty: number; totalRevenue: number };
@@ -531,18 +532,8 @@ export default function InventoryView({
       {/* ═════════════════════════════════════════════════════════
          CARD 3 — PHÂN TÍCH BÁN / TỒN KHO
          ═════════════════════════════════════════════════════════ */}
-      <div className="card" style={{ padding: 0 }}>
-        {/* Header */}
-        <div style={{ padding: "10px 16px", borderBottom: "1px solid #E5E7EB", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>Bảng 2 — Phân tích bán / tồn kho</div>
-            <div style={{ fontSize: 10, color: "#6B7280" }}>sold_30d ÷ stock × 100% · {salesFrom} → {salesTo}</div>
-          </div>
-          <span style={{ fontSize: 10, background: "#E6F1FB", color: "#185FA5", padding: "3px 10px", borderRadius: 4, fontWeight: 600 }}>
-            {salesFrom} → {salesTo}
-          </span>
-        </div>
-
+      <Collapsible title="Bảng 2 — Phân tích bán / tồn kho" defaultOpen={false} badge={<span style={{ fontSize: 10, background: "#E6F1FB", color: "#185FA5", padding: "3px 10px", borderRadius: 4, fontWeight: 600 }}>{salesFrom} → {salesTo}</span>}>
+      <div style={{ padding: 0 }}>
         {/* 5 KPI cards — flat style */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 0, borderBottom: "1px solid #E5E7EB" }}>
           {CAT_GROUPS.map((c) => {
@@ -665,6 +656,7 @@ export default function InventoryView({
           )}
         </div>
       </div>
+      </Collapsible>
     </section>
   );
 }

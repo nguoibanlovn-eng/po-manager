@@ -39,16 +39,41 @@ function stageStyleFor(stage: string | null | undefined) {
 }
 
 // Progress % theo stage — research workflow (6 bước)
-const RESEARCH_STEPS = ["Giao việc", "Nghiên cứu", "Duyệt", "Đặt mẫu", "Kiểm tra", "Kết quả"];
+const RESEARCH_STEPS = ["Đề xuất", "Nghiên cứu", "Duyệt", "Đặt mẫu", "Kiểm tra", "Kết quả"];
 const PRODUCTION_STEPS = [
   "Tạo ticket", "Nghiên cứu", "Duyệt B1", "Giao TK", "Thiết kế",
   "Duyệt 2A", "NCC+Tracking", "Chờ mẫu về", "Duyệt mẫu", "Đặt hàng",
 ];
 
+// Map stage tiếng Anh → tiếng Việt
+const STAGE_ALIAS: Record<string, string> = {
+  idea: "Đề xuất", new: "Đề xuất", propose: "Đề xuất",
+  research: "Nghiên cứu", researching: "Nghiên cứu",
+  review: "Duyệt", approval: "Duyệt", pending: "Duyệt",
+  sample: "Đặt mẫu", ordering: "Đặt mẫu",
+  testing: "Kiểm tra", test: "Kiểm tra", qc: "Kiểm tra",
+  done: "Kết quả", result: "Kết quả", approved: "Kết quả",
+  rejected: "Loại bỏ", reject: "Loại bỏ", cancel: "Loại bỏ",
+  design: "Thiết kế", supplier: "NCC+Tracking", ncc: "NCC+Tracking",
+  production: "Đặt hàng",
+};
+
+function resolveStage(stage: string | null): string {
+  if (!stage) return "";
+  const lower = stage.toLowerCase().trim();
+  if (STAGE_ALIAS[lower]) return STAGE_ALIAS[lower];
+  // Try Vietnamese match
+  for (const k of Object.keys(STAGE_STYLE)) {
+    if (lower.includes(k.toLowerCase())) return k;
+  }
+  return stage;
+}
+
 function progressFor(stage: string | null, type: "research" | "production"): number {
   if (!stage) return 0;
+  const resolved = resolveStage(stage);
   const steps = type === "production" ? PRODUCTION_STEPS : RESEARCH_STEPS;
-  const idx = steps.findIndex((s) => stage.toLowerCase().includes(s.toLowerCase()));
+  const idx = steps.findIndex((s) => resolved.toLowerCase().includes(s.toLowerCase()));
   if (idx < 0) return 0;
   return Math.round(((idx + 1) / steps.length) * 100);
 }
@@ -146,23 +171,23 @@ export default function RdView({ items, users = [] }: { items: RdItem[]; users?:
         </div>
       </div>
 
-      {/* 4 KPI cards */}
-      <div className="stat-grid" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
-        <div className="stat-card c-amber">
-          <div className="sl">Đang nghiên cứu</div>
-          <div className="sv">{stats.researching}</div>
+      {/* 4 KPI cards — flat color */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 14 }}>
+        <div style={{ padding: "12px 16px", background: "#FFFBEB", borderRadius: 8, border: "1px solid #FDE68A" }}>
+          <div style={{ fontSize: 10, color: "#92400E", fontWeight: 600 }}>ĐANG NGHIÊN CỨU</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#D97706", margin: "2px 0" }}>{stats.researching}</div>
         </div>
-        <div className="stat-card c-blue">
-          <div className="sl">Chờ duyệt</div>
-          <div className="sv">{stats.pendingApproval}</div>
+        <div style={{ padding: "12px 16px", background: "#EFF6FF", borderRadius: 8, border: "1px solid #BFDBFE" }}>
+          <div style={{ fontSize: 10, color: "#1E40AF", fontWeight: 600 }}>CHỜ DUYỆT</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#2563EB", margin: "2px 0" }}>{stats.pendingApproval}</div>
         </div>
-        <div className="stat-card c-green">
-          <div className="sl">Nhập bán tháng này</div>
-          <div className="sv">{stats.imported}</div>
+        <div style={{ padding: "12px 16px", background: "#F0FDF4", borderRadius: 8, border: "1px solid #BBF7D0" }}>
+          <div style={{ fontSize: 10, color: "#166534", fontWeight: 600 }}>NHẬP BÁN THÁNG NÀY</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#16A34A", margin: "2px 0" }}>{stats.imported}</div>
         </div>
-        <div className="stat-card c-red">
-          <div className="sl">Loại bỏ</div>
-          <div className="sv">{stats.rejected}</div>
+        <div style={{ padding: "12px 16px", background: "#FEF2F2", borderRadius: 8, border: "1px solid #FECACA" }}>
+          <div style={{ fontSize: 10, color: "#991B1B", fontWeight: 600 }}>LOẠI BỎ</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#DC2626", margin: "2px 0" }}>{stats.rejected}</div>
         </div>
       </div>
 
@@ -176,25 +201,38 @@ export default function RdView({ items, users = [] }: { items: RdItem[]; users?:
         />
       )}
 
-      {/* Items list */}
+      {/* Items table */}
       {filtered.length === 0 ? (
         <div className="card muted" style={{ padding: 24, textAlign: "center" }}>
           Không có SP nào trong tab này.
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {filtered.map((it) => (
-            <RdRow
-              key={it.id}
-              item={it}
-              tab={tab}
-              onOpen={() => setDetailItem(it)}
-              onEdit={() => setEditing(it)}
-              disabled={pending}
-              startTransition={startTransition}
-              refresh={() => router.refresh()}
-            />
-          ))}
+        <div className="card" style={{ padding: 0 }}>
+          <div className="tbl-wrap" style={{ maxHeight: 500, overflowY: "auto" }}>
+            <table>
+              <thead><tr>
+                <th style={{ width: 80 }}>Giai đoạn</th>
+                <th>Sản phẩm</th>
+                <th style={{ width: 200 }}>Tiến độ</th>
+                <th style={{ width: 90 }}>Cập nhật</th>
+                <th style={{ width: 60 }}></th>
+              </tr></thead>
+              <tbody>
+                {filtered.map((it) => (
+                  <RdRow
+                    key={it.id}
+                    item={it}
+                    tab={tab}
+                    onOpen={() => setDetailItem(it)}
+                    onEdit={() => setEditing(it)}
+                    disabled={pending}
+                    startTransition={startTransition}
+                    refresh={() => router.refresh()}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -246,63 +284,66 @@ function RdRow({
     });
   }
 
+  const updatedDate = item.updated_at ? String(item.updated_at).substring(0, 10) : "—";
+  const barColor = realProgress >= 80 ? "#22C55E" : realProgress >= 40 ? "#F59E0B" : realProgress > 0 ? "#3B82F6" : "#D1D5DB";
+  const pipelineSteps = tab === "production" ? PRODUCTION_STEPS : RESEARCH_STEPS;
+  const resolved = resolveStage(item.stage);
+  const currentStepIdx = pipelineSteps.findIndex((s) => resolved.toLowerCase().includes(s.toLowerCase()));
+  const currentStep = currentStepIdx >= 0 ? pipelineSteps[currentStepIdx] : null;
+
   return (
-    <div
-      className="card"
-      style={{
-        padding: "14px 16px",
-        display: "flex",
-        alignItems: "center",
-        gap: 14,
-        cursor: "pointer",
-      }}
-      onClick={onOpen}
-    >
-      <span
-        className="chip"
-        style={{
-          background: style.bg,
-          color: style.color,
-          borderColor: style.border,
-          flexShrink: 0,
-          fontSize: 10,
-          padding: "3px 8px",
-        }}
-      >
-        {item.stage || "Đề xuất"}
-      </span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 700, fontSize: 14 }}>{item.name || "(không tên)"}</div>
+    <tr onClick={onOpen} style={{ cursor: "pointer" }}>
+      <td>
+        <span style={{
+          fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 4,
+          background: style.bg, color: style.color, border: `1px solid ${style.border}`,
+          whiteSpace: "nowrap",
+        }}>
+          {item.stage || "Đề xuất"}
+        </span>
+      </td>
+      <td>
+        <div style={{ fontWeight: 700, fontSize: 13 }}>{item.name || "(không tên)"}</div>
         {description && (
-          <div className="muted" style={{ fontSize: 12, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 400 }}>
             {description}
           </div>
         )}
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: realProgress >= 80 ? "var(--green)" : realProgress >= 40 ? "var(--amber)" : "var(--subtle)", minWidth: 40, textAlign: "right" }}>
-          {realProgress}%
+      </td>
+      <td>
+        <div style={{ display: "flex", gap: 2, alignItems: "center", marginBottom: 3 }}>
+          {pipelineSteps.map((s, si) => {
+            const done = si < (currentStepIdx >= 0 ? currentStepIdx : -1);
+            const active = si === currentStepIdx;
+            return (
+              <div key={s} title={s} style={{
+                flex: 1, height: 6, borderRadius: 3,
+                background: done ? barColor : active ? barColor : "#E5E7EB",
+                opacity: active ? 1 : done ? 0.5 : 0.3,
+              }} />
+            );
+          })}
         </div>
-        <button
-          type="button"
-          className="btn btn-ghost btn-xs"
-          onClick={(e) => { e.stopPropagation(); onEdit(); }}
+        <div style={{ fontSize: 10, color: "#6B7280" }}>
+          {currentStep ? (
+            <><span style={{ fontWeight: 600, color: barColor }}>Bước {(currentStepIdx || 0) + 1}/{pipelineSteps.length}</span> · {currentStep}</>
+          ) : (
+            <span style={{ color: "#D1D5DB" }}>Chưa bắt đầu</span>
+          )}
+        </div>
+      </td>
+      <td style={{ fontSize: 11, color: "#9CA3AF" }}>{updatedDate}</td>
+      <td>
+        <div style={{ display: "flex", gap: 4 }} onClick={(e) => e.stopPropagation()}>
+          <button type="button" className="btn btn-ghost btn-xs" onClick={onEdit} disabled={disabled} title="Sửa">✏️</button>
+          <button type="button" className="btn btn-ghost btn-xs" style={{ color: "var(--red)" }} onClick={del}
           disabled={disabled}
-          title="Sửa info cơ bản"
         >
-          ✏️
-        </button>
-        <button
-          type="button"
-          className="btn btn-ghost btn-xs"
-          style={{ color: "var(--red)" }}
-          onClick={(e) => { e.stopPropagation(); del(); }}
-          disabled={disabled}
-        >
-          🗑
-        </button>
-      </div>
-    </div>
+            🗑
+          </button>
+        </div>
+      </td>
+    </tr>
   );
 }
 

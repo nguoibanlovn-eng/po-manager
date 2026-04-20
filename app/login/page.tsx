@@ -44,9 +44,7 @@ export default function LoginPage() {
     <div id="login-screen">
       <div className="login-card">
         <div className="login-logo" style={{ marginBottom: 8 }}>
-          <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-.5px" }}>
-            <em>Lỗ Vũ</em> PO
-          </div>
+          <img src="/logo-lovu.jpg" alt="Lỗ Vũ" style={{ width: 180, height: "auto", borderRadius: 8 }} />
         </div>
         <div className="login-sub">Hệ thống quản lý nhập hàng v7.0</div>
         <div className="login-divider" />

@@ -16,7 +16,10 @@ export default function Shell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("sb-col") === "1";
+    return false;
+  });
   const [mobile, setMobile] = useState(false);
 
   useEffect(() => {
@@ -49,13 +52,13 @@ export default function Shell({
           id="sidebar-toggle"
           className="btn-ghost"
           style={{ width: 30, height: 30, padding: 0, borderRadius: 6 }}
-          onClick={() => setCollapsed((c) => !c)}
+          onClick={() => setCollapsed((c) => { const v = !c; localStorage.setItem("sb-col", v ? "1" : "0"); return v; })}
           aria-label="Toggle sidebar"
         >
           ☰
         </button>
-        <Link href="/list" className="logo" style={{ cursor: "pointer", textDecoration: "none" }}>
-          <em>Lỗ Vũ</em> PO
+        <Link href="/dash" className="logo" style={{ cursor: "pointer", textDecoration: "none", display: "flex", alignItems: "center" }}>
+          <img src="/logo-lovu.jpg" alt="Lỗ Vũ" style={{ height: 28, width: "auto", borderRadius: 4 }} />
         </Link>
         <div id="search-wrap">
           <span className="si">🔍</span>
@@ -63,10 +66,14 @@ export default function Shell({
         </div>
         <div className="spacer" />
         <div id="pill" className="ok">✓ Sẵn sàng</div>
-        <div id="user-badge" onClick={logout} title="Đăng xuất">
+        <div id="user-badge">
           <span id="user-name">{user.name || user.email}</span>
           <span id="user-role-badge" className={`role-badge role-${user.role}`}>{roleLabel}</span>
         </div>
+        <button onClick={logout} title="Đăng xuất"
+          style={{ background: "none", border: "1px solid #E5E7EB", borderRadius: 6, padding: "4px 10px", fontSize: 11, color: "#6B7280", cursor: "pointer", marginLeft: 6 }}>
+          Đăng xuất
+        </button>
       </div>
 
       {/* LAYOUT */}
@@ -79,18 +86,19 @@ export default function Shell({
             if (!visible.length) return null;
             return (
               <div key={section.title}>
-                <div className="nav-section" style={{ display: "block" }}>{section.title}</div>
+                <div className="nav-section">{section.title}</div>
                 {visible.map((it) => (
-                  <Link
-                    key={it.href}
-                    href={it.href}
-                    className={
-                      "nav-item" + (pathname === it.href ? " active" : "")
-                    }
-                  >
-                    {it.icon}
-                    <span className="nav-label">{it.label}</span>
-                  </Link>
+                  <div key={it.href} className="nav-tip-wrap" data-tip={it.label}>
+                    <Link
+                      href={it.href}
+                      className={
+                        "nav-item" + (pathname === it.href ? " active" : "")
+                      }
+                    >
+                      {it.icon}
+                      <span className="nav-label">{it.label}</span>
+                    </Link>
+                  </div>
                 ))}
               </div>
             );

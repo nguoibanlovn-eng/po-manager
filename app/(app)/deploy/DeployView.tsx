@@ -11,6 +11,7 @@ import {
   unconfirmChannelAction,
   updateInfoAction,
 } from "./actions";
+import Collapsible from "../components/Collapsible";
 
 /* ─── Constants ─────────────────────────────────────────── */
 const CHANNELS: { key: Channel; label: string; color: string }[] = [
@@ -213,20 +214,22 @@ export default function DeployView({
       )}
 
       {/* ═══ GROUPS ═══ */}
-      {paginated.length === 0 ? (
-        <div className="card muted" style={{ padding: 24, textAlign: "center" }}>Không có phiếu nào.</div>
-      ) : (
-        paginated.map((g) => (
-          <OrderGroup
-            key={g.order_id}
-            group={g}
-            canApprove={canApprove}
-            disabled={pending}
-            startTransition={startTransition}
-            refresh={() => router.refresh()}
-          />
-        ))
-      )}
+      <Collapsible title="Danh sách phiếu triển khai" defaultOpen badge={<span style={{ fontSize: 10, color: "#6B7280" }}>{totalProducts} SP</span>}>
+        {paginated.length === 0 ? (
+          <div className="card muted" style={{ padding: 24, textAlign: "center" }}>Không có phiếu nào.</div>
+        ) : (
+          paginated.map((g) => (
+            <OrderGroup
+              key={g.order_id}
+              group={g}
+              canApprove={canApprove}
+              disabled={pending}
+              startTransition={startTransition}
+              refresh={() => router.refresh()}
+            />
+          ))
+        )}
+      </Collapsible>
     </section>
   );
 }

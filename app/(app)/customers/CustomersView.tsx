@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { formatVND, toNum } from "@/lib/format";
 import type { CustomerRow, CustomerStats } from "@/lib/db/customers";
+import Collapsible from "../components/Collapsible";
 
 function fmtDate(d: string | null) {
   if (!d) return "—";
@@ -107,8 +108,7 @@ export default function CustomersView({
 
       {/* Email Marketing Panel */}
       {showEmail && (
-        <div className="card" style={{ marginBottom: 14, padding: 16 }}>
-          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>✉ Gửi Email Marketing</div>
+        <Collapsible title="Gửi Email Marketing" defaultOpen>
           <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 10 }}>
             Segment hiện tại: {city || "Tất cả tỉnh"} · {minOrders ? `Mua ${minOrders}+ lần` : "Tất cả"} · {total.toLocaleString("vi-VN")} khách
           </div>
@@ -137,11 +137,12 @@ export default function CustomersView({
               )}
             </div>
           </div>
-        </div>
+        </Collapsible>
       )}
 
       {/* Table Card */}
-      <div className="card" style={{ padding: 0 }}>
+      <Collapsible title="Danh sách khách hàng" defaultOpen badge={<span style={{ fontSize: 10, color: "#6B7280" }}>{total.toLocaleString("vi-VN")} khách</span>}>
+      <div style={{ padding: 0 }}>
         {/* Filters — 1 hàng ngang */}
         <div style={{ padding: "8px 16px", borderBottom: "1px solid #E5E7EB", display: "flex", gap: 6, alignItems: "center", fontSize: 11 }}>
           <form action="/customers" style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -220,6 +221,7 @@ export default function CustomersView({
           )}
         </div>
       </div>
+      </Collapsible>
     </section>
   );
 }
