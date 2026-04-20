@@ -50,6 +50,8 @@ export default function ShopeeAdsView({
   const [uploading, setUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState<string | null>(null);
   const [shopeeShops, setShopeeShops] = useState<Array<{ shop_id: string; shop_name: string; token_ok: boolean; expire_in_hours: number }>>([]);
+  const [sortBy, setSortBy] = useState<"spend" | "roas" | "orders" | "revenue" | "clicks">("spend");
+  const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
 
   function quickRange(qr: { from: string; to: string }) { router.push(`/shopee-ads?from=${qr.from}&to=${qr.to}`); }
   function apply() { router.push(`/shopee-ads?from=${f}&to=${t}`); }
@@ -134,6 +136,25 @@ export default function ShopeeAdsView({
     }
     return Array.from(m.entries()).map(([name, v]) => ({ name, ...v, roas: v.spend > 0 ? v.revenue / v.spend : 0, ratio: v.revenue > 0 ? (v.spend / v.revenue) * 100 : 0 })).sort((a, b) => b.revenue - a.revenue);
   }, [nhanhRevenue, filteredAds]);
+
+  // ── Sorted campaigns (aggregated by name) ──
+  const sortedCampaigns = useMemo(() => {
+    const m = new Map<string, { name: string; shop: string; spend: number; clicks: number; orders: number; revenue: number; roas: number }>();
+    for (const a of filteredAds) {
+      const key = (a.campaign_name || "—") + "||" + (a.shop || "");
+      const c = m.get(key) || { name: a.campaign_name || "—", shop: a.shop || "—", spend: 0, clicks: 0, orders: 0, revenue: 0, roas: 0 };
+      c.spend += toNum(a.spend); c.clicks += toNum(a.clicks); c.orders += toNum(a.orders); c.revenue += toNum(a.revenue);
+      m.set(key, c);
+    }
+    const arr = Array.from(m.values()).map((c) => ({ ...c, roas: c.spend > 0 ? c.revenue / c.spend : 0 }));
+    arr.sort((a, b) => sortDir === "desc" ? b[sortBy] - a[sortBy] : a[sortBy] - b[sortBy]);
+    return arr;
+  }, [filteredAds, sortBy, sortDir]);
+
+  function toggleSort(col: typeof sortBy) {
+    if (sortBy === col) setSortDir((d) => d === "desc" ? "asc" : "desc");
+    else { setSortBy(col); setSortDir("desc"); }
+  }
 
   // ── Top campaigns ──
   const topCampaigns = useMemo(() => {
@@ -307,31 +328,51 @@ export default function ShopeeAdsView({
           <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)", fontWeight: 700, fontSize: 12 }}>
             Chiến dịch · {filteredAds.length}
           </div>
-          <div style={{ display: "flex", gap: 12, padding: "6px 14px", background: "#F9FAFB", borderBottom: "1px solid var(--border)", fontSize: 10, color: "#6B7280" }}>
+          <div style={{ display: "flex", gap: 12, padding: "6px 14px", background: "#F9FAFB", borderBottom: "1px solid var(--border)", fontSize: 10, color: "#6B7280", alignItems: "center", flexWrap: "wrap" }}>
             <span>Chi tiêu <strong style={{ color: "#DC2626" }}>{formatVNDCompact(totals.spend)}</strong></span>
             <span>DT ads <strong>{formatVNDCompact(totals.revenue)}</strong></span>
             <span>ROAS ads <strong style={{ color: totals.spend > 0 && totals.revenue / totals.spend >= 5 ? "#16A34A" : "#DC2626" }}>{totals.spend > 0 ? (totals.revenue / totals.spend).toFixed(1) : "—"}x</strong></span>
             <span>{totals.clicks.toLocaleString("vi-VN")} clicks</span>
+            <span style={{ marginLeft: "auto", display: "flex", gap: 4, alignItems: "center" }}>
+              <span style={{ fontSize: 9, color: "#9CA3AF" }}>Sắp xếp:</span>
+              {(["spend", "roas", "orders", "revenue", "clicks"] as const).map((col) => {
+                const labels: Record<string, string> = { spend: "Chi phí", roas: "ROAS", orders: "Đơn", revenue: "DT", clicks: "Click" };
+                const active = sortBy === col;
+                return (
+                  <button key={col} onClick={() => toggleSort(col)}
+                    style={{ fontSize: 9, padding: "1px 6px", borderRadius: 3, border: "1px solid", cursor: "pointer",
+                      borderColor: active ? "#3B82F6" : "#D1D5DB", background: active ? "#EFF6FF" : "#fff", color: active ? "#2563EB" : "#6B7280", fontWeight: active ? 700 : 400 }}>
+                    {labels[col]}{active ? (sortDir === "desc" ? " ↓" : " ↑") : ""}
+                  </button>
+                );
+              })}
+            </span>
           </div>
           <div className="tbl-wrap" style={{ maxHeight: 400, overflowY: "auto" }}>
             <table>
-              <thead><tr><th>CHIẾN DỊCH</th><th>SHOP</th><th className="text-right">CHI TIÊU</th><th className="text-right">CLICK</th><th className="text-right">ĐƠN</th><th className="text-right">DT ADS</th><th className="text-right">ROAS</th></tr></thead>
+              <thead><tr>
+                <th>CHIẾN DỊCH</th><th>SHOP</th>
+                <SortTh col="spend" label="CHI TIÊU" sortBy={sortBy} sortDir={sortDir} toggle={toggleSort} />
+                <SortTh col="clicks" label="CLICK" sortBy={sortBy} sortDir={sortDir} toggle={toggleSort} />
+                <SortTh col="orders" label="ĐƠN" sortBy={sortBy} sortDir={sortDir} toggle={toggleSort} />
+                <SortTh col="revenue" label="DT ADS" sortBy={sortBy} sortDir={sortDir} toggle={toggleSort} />
+                <SortTh col="roas" label="ROAS" sortBy={sortBy} sortDir={sortDir} toggle={toggleSort} />
+              </tr></thead>
               <tbody>
-                {filteredAds.slice(0, 200).map((a) => {
-                  const r = toNum(a.roas);
+                {sortedCampaigns.slice(0, 200).map((a, i) => {
                   return (
-                    <tr key={a.id}>
-                      <td style={{ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={a.campaign_name || ""}>{a.campaign_name || "—"}</td>
-                      <td className="muted" style={{ fontSize: 10 }}>{a.shop || "—"}</td>
-                      <td className="text-right" style={{ color: "var(--red)", fontWeight: 600 }}>{formatVNDCompact(toNum(a.spend))}</td>
-                      <td className="text-right muted">{toNum(a.clicks).toLocaleString("vi-VN")}</td>
-                      <td className="text-right">{toNum(a.orders)}</td>
-                      <td className="text-right">{formatVNDCompact(toNum(a.revenue))}</td>
-                      <td className="text-right font-bold" style={{ color: r >= 5 ? "var(--green)" : "var(--red)" }}>{r.toFixed(1)}x</td>
+                    <tr key={a.name + a.shop + i}>
+                      <td style={{ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={a.name}>{a.name}</td>
+                      <td className="muted" style={{ fontSize: 10 }}>{a.shop}</td>
+                      <td className="text-right" style={{ color: "var(--red)", fontWeight: 600 }}>{formatVNDCompact(a.spend)}</td>
+                      <td className="text-right muted">{a.clicks.toLocaleString("vi-VN")}</td>
+                      <td className="text-right">{a.orders}</td>
+                      <td className="text-right">{formatVNDCompact(a.revenue)}</td>
+                      <td className="text-right font-bold" style={{ color: a.roas >= 5 ? "var(--green)" : "var(--red)" }}>{a.roas.toFixed(1)}x</td>
                     </tr>
                   );
                 })}
-                {filteredAds.length === 0 && <tr><td colSpan={7} className="muted" style={{ textAlign: "center", padding: 24 }}>Không có campaign nào.</td></tr>}
+                {sortedCampaigns.length === 0 && <tr><td colSpan={7} className="muted" style={{ textAlign: "center", padding: 24 }}>Không có campaign nào.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -510,5 +551,16 @@ function ComboChart({ data, nhanhTotals, adsTotals, roas }: {
         </div>
       </div>
     </div>
+  );
+}
+
+/* ═══ Sortable table header ═══ */
+type SortCol = "spend" | "roas" | "orders" | "revenue" | "clicks";
+function SortTh({ col, label, sortBy, sortDir, toggle }: { col: SortCol; label: string; sortBy: SortCol; sortDir: "asc" | "desc"; toggle: (c: SortCol) => void }) {
+  const active = sortBy === col;
+  return (
+    <th className="text-right" style={{ cursor: "pointer", userSelect: "none", color: active ? "#2563EB" : undefined }} onClick={() => toggle(col)}>
+      {label}{active ? (sortDir === "desc" ? " ↓" : " ↑") : ""}
+    </th>
   );
 }
