@@ -808,7 +808,10 @@ function RevenueDetailSection({ data }: { data: FbNhanhRow[] }) {
           <span style={{ fontSize: 12 }}>Chi tiết {period === "month" ? "tháng này" : period === "custom" ? "tuỳ chọn" : `${period} ngày`}</span>
           <span className="chip chip-green" style={{ fontSize: 9 }}>{formatVNDCompact(totals.revenue)} / {byDate.length} ngày</span>
         </div>
-        <span className="muted" style={{ fontSize: 10 }}>{dateRange}</span>
+        <div style={{ textAlign: "right" }}>
+          <div className="muted" style={{ fontSize: 10 }}>{dateRange}</div>
+          {hasPrev && <div style={{ fontSize: 9, color: "#9CA3AF" }}>So sánh: {prevCutoff.substring(5)} → {prevCutoffTo.substring(5)}</div>}
+        </div>
       </div>
 
       {/* 3 Stat cards */}
