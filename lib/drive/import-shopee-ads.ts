@@ -58,8 +58,13 @@ async function downloadCsv(fileId: string): Promise<string> {
   return res.text();
 }
 
-/** List all Shopee ads CSV files from Drive */
+/** List all Shopee ads CSV files from Drive (flat or nested) */
 export async function listShopeeAdsFiles(): Promise<DriveFile[]> {
+  // First try: scan root folder directly for CSV files
+  const rootFiles = await listFilesInFolder(FOLDER_ID, "");
+  if (rootFiles.length > 0) return rootFiles;
+
+  // Fallback: scan subfolders (Levu, Velasboost)
   const folders = await listShopFolders();
   const allFiles: DriveFile[] = [];
   for (const folder of folders) {
