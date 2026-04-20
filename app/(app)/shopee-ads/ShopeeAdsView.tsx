@@ -233,7 +233,7 @@ export default function ShopeeAdsView({
 
       {/* ═══ HIỆU QUẢ THEO SHOP — stacked chart ═══ */}
       {shopPerf.length > 0 && (
-        <Collapsible title="Hiệu quả theo Shop" defaultOpen={false} badge={
+        <Collapsible title="Hiệu quả theo Shop" defaultOpen={true} badge={
           <span style={{ fontSize: 10, color: "#6B7280" }}>{shopPerf.length} shops</span>
         }>
           <div style={{ display: "flex", gap: 12, fontSize: 10, color: "#6B7280", marginBottom: 10 }}>
