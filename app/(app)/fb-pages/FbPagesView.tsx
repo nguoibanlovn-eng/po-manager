@@ -918,11 +918,11 @@ function RevenueDetailSection({ data }: { data: FbNhanhRow[] }) {
           return (
             <div key={s.name} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", borderBottom: "1px solid var(--border)" }}>
               <span style={{ color, fontSize: 10 }}>●</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ width: 180, flexShrink: 0 }}>
                 <span style={{ fontSize: 11, fontWeight: 500 }}>Facebook - {s.name}</span>
                 {hasPrev && prevRev > 0 && <div style={{ fontSize: 8, color: "#9CA3AF" }}>CK: {formatVNDCompact(prevRev)}</div>}
               </div>
-              <div style={{ display: "flex", alignItems: "flex-end", gap: 1, height: 20, width: 70 }}>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 1, height: 20, flex: 1, minWidth: 60 }}>
                 {vals.map((v, j) => {
                   const mx = Math.max(...vals);
                   const h = mx > 0 ? (v / mx) * 16 : 0;
