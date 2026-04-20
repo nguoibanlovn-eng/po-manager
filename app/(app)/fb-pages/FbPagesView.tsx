@@ -699,15 +699,23 @@ function ChannelDetail({ nhanhRevenue, nhanhBySource, nhanhTotal }: {
 
 /* ── Revenue Detail Section (30 days) ── */
 function RevenueDetailSection({ data }: { data: FbNhanhRow[] }) {
-  const [period, setPeriod] = useState<7 | 14 | 30>(30);
+  const [period, setPeriod] = useState<7 | 14 | 30 | "month" | "custom">("month");
   const [mode, setMode] = useState<"total" | "channel">("total");
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const now = new Date();
+  const monthStart = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`;
+  const [customFrom, setCustomFrom] = useState(monthStart);
+  const [customTo, setCustomTo] = useState(fmt(now));
 
   // Filter by period
-  const cutoff = useMemo(() => {
+  const { cutoff, cutoffTo } = useMemo(() => {
+    if (period === "month") return { cutoff: monthStart, cutoffTo: fmt(now) };
+    if (period === "custom") return { cutoff: customFrom, cutoffTo: customTo };
     const d = new Date(); d.setDate(d.getDate() - period);
-    return d.toISOString().substring(0, 10);
-  }, [period]);
-  const filtered = useMemo(() => data.filter((r) => r.date >= cutoff), [data, cutoff]);
+    return { cutoff: d.toISOString().substring(0, 10), cutoffTo: fmt(now) };
+  }, [period, customFrom, customTo, monthStart]); // eslint-disable-line react-hooks/exhaustive-deps
+  const filtered = useMemo(() => data.filter((r) => r.date >= cutoff && r.date <= cutoffTo), [data, cutoff, cutoffTo]);
 
   // Totals
   const totals = useMemo(() => filtered.reduce(
@@ -760,8 +768,8 @@ function RevenueDetailSection({ data }: { data: FbNhanhRow[] }) {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 12 }}>Chi tiết {period} ngày</span>
-          <span className="chip chip-green" style={{ fontSize: 9 }}>{formatVNDCompact(totals.revenue)} / {period} ngày</span>
+          <span style={{ fontSize: 12 }}>Chi tiết {period === "month" ? "tháng này" : period === "custom" ? "tuỳ chọn" : `${period} ngày`}</span>
+          <span className="chip chip-green" style={{ fontSize: 9 }}>{formatVNDCompact(totals.revenue)} / {byDate.length} ngày</span>
         </div>
         <span className="muted" style={{ fontSize: 10 }}>{dateRange}</span>
       </div>
@@ -786,13 +794,28 @@ function RevenueDetailSection({ data }: { data: FbNhanhRow[] }) {
       </div>
 
       {/* Period + mode filter */}
-      <div style={{ display: "flex", gap: 6, marginBottom: 10, alignItems: "center" }}>
+      <div style={{ display: "flex", gap: 6, marginBottom: 10, alignItems: "center", flexWrap: "wrap" }}>
         {([7, 14, 30] as const).map((p) => (
           <button key={p} className="btn btn-ghost btn-xs" onClick={() => setPeriod(p)}
             style={{ background: period === p ? "var(--blue)" : undefined, color: period === p ? "#fff" : undefined }}>
             {p} ngày
           </button>
         ))}
+        <button className="btn btn-ghost btn-xs" onClick={() => setPeriod("month")}
+          style={{ background: period === "month" ? "var(--blue)" : undefined, color: period === "month" ? "#fff" : undefined }}>
+          Tháng này
+        </button>
+        <button className="btn btn-ghost btn-xs" onClick={() => setPeriod("custom")}
+          style={{ background: period === "custom" ? "var(--blue)" : undefined, color: period === "custom" ? "#fff" : undefined }}>
+          Tuỳ chọn
+        </button>
+        {period === "custom" && (
+          <>
+            <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} style={{ fontSize: 11, width: 120 }} />
+            <span className="muted">→</span>
+            <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} style={{ fontSize: 11, width: 120 }} />
+          </>
+        )}
         <span style={{ width: 1, height: 16, background: "var(--border)", margin: "0 4px" }} />
         <button className="btn btn-ghost btn-xs" onClick={() => setMode("total")}
           style={{ background: mode === "total" ? "var(--blue)" : undefined, color: mode === "total" ? "#fff" : undefined }}>
