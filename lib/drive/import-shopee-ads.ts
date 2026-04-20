@@ -22,24 +22,29 @@ async function listShopFolders(): Promise<{ id: string; name: string }[]> {
   return folders;
 }
 
-/** List CSV files in a shop subfolder */
+/** List CSV files in a shop folder (handles both flat and nested month subfolders) */
 async function listFilesInFolder(folderId: string, shopName: string): Promise<DriveFile[]> {
   const url = `https://drive.google.com/embeddedfolderview?id=${folderId}&hl=en`;
   const res = await fetch(url);
   const html = await res.text();
   const files: DriveFile[] = [];
   const entries = html.split('class="flip-entry"');
+
   for (const entry of entries) {
     const idMatch = entry.match(/id="entry-([a-zA-Z0-9_-]{20,})"/);
     const nameMatch = entry.match(/flip-entry-title">([^<]+)/);
-    if (idMatch && nameMatch) {
-      const name = decodeURIComponent(nameMatch[1].replace(/\+/g, " "));
-      // Extract date from filename: ...Shopee-DD_MM_YYYY-DD_MM_YYYY.csv
-      const dateMatch = name.match(/(\d{2})_(\d{2})_(\d{4})-\d{2}_\d{2}_\d{4}/);
-      if (dateMatch) {
-        const [, dd, mm, yyyy] = dateMatch;
-        files.push({ id: idMatch[1], name, date: `${yyyy}-${mm}-${dd}`, shop: shopName });
-      }
+    if (!idMatch || !nameMatch) continue;
+    const name = decodeURIComponent(nameMatch[1].replace(/\+/g, " "));
+
+    // Check if it's a CSV file (has date pattern)
+    const dateMatch = name.match(/(\d{2})_(\d{2})_(\d{4})-\d{2}_\d{2}_\d{4}/);
+    if (dateMatch) {
+      const [, dd, mm, yyyy] = dateMatch;
+      files.push({ id: idMatch[1], name, date: `${yyyy}-${mm}-${dd}`, shop: shopName });
+    } else {
+      // Might be a subfolder (e.g. "Tháng 1") — recurse
+      const subFiles = await listFilesInFolder(idMatch[1], shopName);
+      files.push(...subFiles);
     }
   }
   return files.sort((a, b) => b.date.localeCompare(a.date));
