@@ -68,30 +68,37 @@ export async function listShopeeAdsFiles(): Promise<DriveFile[]> {
 export async function scanAndImportShopeeAds(opts: {
   from?: string;
   to?: string;
-} = {}): Promise<{ imported: number; skipped: number; errors: string[] }> {
+} = {}): Promise<{ imported: number; skipped: number; errors: string[]; logs: string[] }> {
   const from = opts.from || "2000-01-01";
   const to = opts.to || "9999-12-31";
+  const logs: string[] = [];
 
   const allFiles = await listShopeeAdsFiles();
+  logs.push(`Found ${allFiles.length} files total`);
+
+  const toImport = allFiles.filter((f) => f.date >= from && f.date <= to);
+  const skipped = allFiles.length - toImport.length;
+  logs.push(`Importing ${toImport.length} files (skipped ${skipped})`);
+
   const errors: string[] = [];
   let imported = 0;
-  let skipped = 0;
 
-  for (const f of allFiles) {
-    if (f.date < from || f.date > to) { skipped++; continue; }
+  for (const f of toImport) {
     try {
       const csv = await downloadCsv(f.id);
       const result = await uploadShopeeCsv(csv);
       if (result.ok) {
         imported++;
       } else {
-        errors.push(`${f.shop}/${f.name}: ${result.error}`);
+        errors.push(`${f.shop}/${f.date}: ${result.error}`);
       }
     } catch (e) {
-      errors.push(`${f.shop}/${f.name}: ${(e as Error).message}`);
+      errors.push(`${f.shop}/${f.date}: ${(e as Error).message}`);
     }
-    await new Promise((r) => setTimeout(r, 300));
+    // Minimal delay to avoid rate limit
+    await new Promise((r) => setTimeout(r, 100));
   }
 
-  return { imported, skipped, errors };
+  logs.push(`Done: ${imported} imported, ${errors.length} errors`);
+  return { imported, skipped, errors, logs };
 }

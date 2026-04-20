@@ -67,13 +67,13 @@ export async function uploadShopeeCsv(csvText: string, shopOverride?: string): P
       }
     }
 
-    // Find header row
+    // Find header row — use parseCsvLine for consistency with data parsing
     let headerIdx = -1;
     let header: string[] = [];
     for (let i = 0; i < Math.min(rawLines.length, 20); i++) {
       if (!rawLines[i]) continue;
-      const cells = rawLines[i].split(",").map((h) => h.replace(/^"|"$/g, "").trim().toLowerCase());
-      const hasSpend = cells.some((c) => c === "chi phí" || c.startsWith("chi phí"));
+      const cells = parseCsvLine(rawLines[i]).map((h) => h.replace(/^"|"$/g, "").trim().toLowerCase());
+      const hasSpend = cells.some((c) => c === "chi phí");
       const hasRevenue = cells.some((c) => c === "doanh số" || c.startsWith("doanh số"));
       const hasClicks = cells.some((c) => c.includes("lượt click") || c === "clicks");
       if ((hasSpend && hasRevenue) || (hasSpend && hasClicks) || cells.length >= 10) {
