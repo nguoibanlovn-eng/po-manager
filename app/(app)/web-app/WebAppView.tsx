@@ -32,6 +32,8 @@ const QUICK_RANGES = [
 
 const WEB_KEYWORDS = ["Bán sỉ", "bán buôn", "App Lỗ Vũ", "LynkID", "lovu", "Muagimuadi", "velasboost", "WEB"];
 function isWebSource(src: string): boolean {
+  // "API" source from V3 sync = web orders (no detailed source available)
+  if (src === "API") return true;
   return WEB_KEYWORDS.some((kw) => src.toLowerCase().includes(kw.toLowerCase()));
 }
 
