@@ -33,26 +33,34 @@ export async function listShopeeAds(opts: {
   shop?: string;
 } = {}): Promise<ShopeeAdsRow[]> {
   const db = supabaseAdmin();
-  let q = db.from("shopee_ads").select("*").order("date", { ascending: false });
+  // Build filter — use gte + lt (not lte) because date column is DATE type
+  const filters: { from?: string; to?: string } = {};
   if (opts.from && opts.to) {
-    q = q.gte("date", opts.from).lte("date", opts.to);
+    filters.from = opts.from;
+    // Add 1 day to 'to' for lt comparison
+    const toDate = new Date(opts.to + "T00:00:00Z");
+    toDate.setUTCDate(toDate.getUTCDate() + 1);
+    filters.to = toDate.toISOString().substring(0, 10);
   } else if (opts.monthKey) {
-    const from = `${opts.monthKey}-01`;
+    filters.from = `${opts.monthKey}-01`;
     const [y, m] = opts.monthKey.split("-").map(Number);
-    const lastDay = new Date(y, m, 0).getDate();
-    const to = `${opts.monthKey}-${String(lastDay).padStart(2, "0")}`;
-    q = q.gte("date", from).lte("date", to);
+    filters.to = `${y}-${String(m + 1).padStart(2, "0")}-01`;
+    if (m === 12) filters.to = `${y + 1}-01-01`;
   }
-  if (opts.shop) q = q.eq("shop", opts.shop);
-  // Supabase caps at 1000 rows/query — paginate to get all
+
+  // Paginate to bypass Supabase 1000 row limit
   const all: ShopeeAdsRow[] = [];
   for (let page = 0; page < 10; page++) {
+    let q = db.from("shopee_ads").select("*");
+    if (filters.from) q = q.gte("date", filters.from);
+    if (filters.to) q = q.lt("date", filters.to);
+    if (opts.shop) q = q.eq("shop", opts.shop);
     const { data } = await q.range(page * 1000, (page + 1) * 1000 - 1);
     if (!data || data.length === 0) break;
     all.push(...(data as ShopeeAdsRow[]));
     if (data.length < 1000) break;
   }
-  return all;
+  return all.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 }
 
 export async function listShopeeDaily(monthKey?: string): Promise<ShopeeDailyRow[]> {
