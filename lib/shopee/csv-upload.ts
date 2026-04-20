@@ -45,7 +45,12 @@ export async function uploadShopeeCsv(csvText: string, shopOverride?: string): P
       const ml = rawLines[i];
       if (!shopOverride && ml.toLowerCase().includes("tên gian hàng")) {
         const sp = ml.split(",");
-        if (sp[1] && !shopName) shopName = sp[1].trim().replace(/^"|"$/g, "");
+        if (sp[1] && !shopName) {
+          shopName = sp[1].trim().replace(/^"|"$/g, "");
+          // Normalize shop names
+          const SHOP_NAMES: Record<string, string> = { "velasboost": "Velasboost", "levu01": "Levu01" };
+          shopName = SHOP_NAMES[shopName.toLowerCase()] || shopName;
+        }
       }
       if (ml.toLowerCase().includes("khoảng thời gian")) {
         const parts = ml.split(",");
