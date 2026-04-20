@@ -156,6 +156,18 @@ export async function syncFbAds(opts: {
   const errors: string[] = [];
   let fetched = 0;
 
+  // Build ad_account_id → page_name map from pages table
+  const { data: pagesData } = await db.from("pages").select("ad_account_id, page_name").not("ad_account_id", "is", null);
+  const acctNameMap = new Map<string, string>();
+  for (const p of pagesData || []) {
+    if (p.ad_account_id && p.page_name) {
+      const name = String(p.page_name).replace(/^FACEBOOK - /, "");
+      const existing = acctNameMap.get(p.ad_account_id);
+      if (!existing) acctNameMap.set(p.ad_account_id, name);
+      else if (!existing.includes(name)) acctNameMap.set(p.ad_account_id, existing + " + " + name);
+    }
+  }
+
   for (const acctId of accounts) {
     try {
       const timeRange = JSON.stringify({ since: from, until: to });
@@ -183,7 +195,7 @@ export async function syncFbAds(opts: {
         return {
           date,
           ad_account_id: acctId,
-          account_name: null,
+          account_name: acctNameMap.get(acctId) || null,
           spend: toNum(row.spend),
           impressions: toNum(row.impressions),
           clicks: toNum(row.clicks),
