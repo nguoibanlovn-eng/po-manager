@@ -123,11 +123,14 @@ async function shopeeGet(shopId: string, path: string, extraParams: Record<strin
   let token = await getShopToken(shopId);
   if (!token?.access_token) return { error: "no_token", message: `Chưa kết nối shop ${shopId}` };
 
-  // Auto refresh if expiring in < 30 min
-  if (token.expire_at > 0 && Math.floor(Date.now() / 1000) > token.expire_at - 1800) {
+  // Auto refresh if expired or expiring in < 1 hour
+  const now = Math.floor(Date.now() / 1000);
+  if (token.expire_at > 0 && now > token.expire_at - 3600) {
     const newAccess = await refreshToken(shopId);
     if (newAccess) {
       token = { ...token, access_token: newAccess };
+    } else if (now > token.expire_at) {
+      return { error: "token_expired", message: `Token shop ${shopId} đã hết hạn, cần kết nối lại` };
     }
   }
 
@@ -176,12 +179,11 @@ export async function listConnectedShops(): Promise<Array<{
   });
 }
 
-/** Proactively refresh all Shopee tokens expiring within 2 hours */
+/** Proactively refresh ALL Shopee tokens (Shopee only gives 4h tokens) */
 export async function refreshAllShopeeTokens(): Promise<{ refreshed: number; errors: string[] }> {
   const db = supabaseAdmin();
-  const now = Math.floor(Date.now() / 1000);
-  const threshold = now + 7200; // 2 hours
-  const { data } = await db.from("shopee_tokens").select("shop_id, shop_name, expire_at").lt("expire_at", threshold);
+  // Always refresh all tokens — Shopee tokens only last 4 hours
+  const { data } = await db.from("shopee_tokens").select("shop_id, shop_name, expire_at");
   const errors: string[] = [];
   let refreshed = 0;
   for (const t of data || []) {

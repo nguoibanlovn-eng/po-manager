@@ -95,6 +95,37 @@ export async function listFbNhanhRevenue(from: string, to: string): Promise<FbNh
   }));
 }
 
+export async function listWebNhanhRevenue(from: string, to: string): Promise<FbNhanhRow[]> {
+  const db = supabaseAdmin();
+  // Web/App B2B sources:
+  // Bán sỉ: WEB - Bán sỉ/bán buôn, WEB - LynkID
+  // Bán lẻ: lovu.vn, velasboost.vn, App Lỗ Vũ, Muagimuadi
+  const { data: apiData } = await db
+    .from("sales_sync")
+    .select("period_from, source, revenue_net, order_net")
+    .eq("channel", "API")
+    .or("source.ilike.%lovu%,source.ilike.%velasboost%,source.ilike.%App Lỗ Vũ%,source.ilike.%WEB%,source.ilike.%muagimuadi%")
+    .gte("period_from", from)
+    .lte("period_from", to)
+    .order("period_from", { ascending: true })
+    .limit(1000);
+  const { data: adminData } = await db
+    .from("sales_sync")
+    .select("period_from, source, revenue_net, order_net")
+    .eq("channel", "Admin")
+    .or("source.ilike.%WEB%,source.ilike.%lovu%,source.ilike.%velasboost%,source.ilike.%App Lỗ Vũ%,source.ilike.%muagimuadi%,source.ilike.%LynkID%,source.ilike.%Bán sỉ%")
+    .gte("period_from", from)
+    .lte("period_from", to)
+    .order("period_from", { ascending: true })
+    .limit(1000);
+  return [...(apiData || []), ...(adminData || [])].map((r) => ({
+    date: r.period_from,
+    source: r.source || "",
+    revenue: Number(r.revenue_net || 0),
+    orders: Number(r.order_net || 0),
+  }));
+}
+
 export function summarizeAds(rows: AdsRow[]) {
   return rows.reduce(
     (acc, r) => ({

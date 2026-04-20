@@ -151,89 +151,178 @@ export async function syncInventory(): Promise<{ inserted: number }> {
 }
 
 // ─── SALES (by channel) ──────────────────────────────────────
-type NhanhOrder = {
-  channel?: { saleChannel?: string | number };
-  info?: { status?: number | string };
-  products?: Array<{ price?: number; quantity?: number }>;
+// V3 order structure
+type V3SalesOrder = {
+  info?: { createdAt?: number; status?: number };
+  channel?: { saleChannel?: number; pageId?: string };
+  products?: Array<{ price?: number; priceAfterVAT?: number; quantity?: number }>;
+};
+
+// Nhanh saleChannel ID → category name
+const CHANNEL_MAP: Record<string, string> = {
+  "20": "Facebook",
+  "42": "Shopee",
+  "48": "TikTok",
+  "1": "Admin",
+  "10": "API",
 };
 
 export async function syncSalesByChannel(opts: {
   from?: string;
   to?: string;
-} = {}): Promise<{ channels: number; orders: number }> {
-  const from = opts.from || "2026-01-01";
+} = {}): Promise<{ channels: number; orders: number; logs?: string[] }> {
   const to = opts.to || dateVN();
+  const from = opts.from || dateVN(null, -7);
   const db = supabaseAdmin();
+  const logs: string[] = [];
 
-  // Load source names
-  const sourceMap = new Map<string, string>([
-    ["1", "Facebook (legacy)"],
-    ["10", "Facebook (legacy 2)"],
-    ["48", "TikTok Shop"],
-  ]);
-  const srcR = await nhanhReq<Array<{ id: string | number; name: string }>>(
-    "/order/source",
-    {},
-  );
-  if (srcR.code === 1 && Array.isArray(srcR.data)) {
-    for (const s of srcR.data) sourceMap.set(String(s.id), String(s.name));
-  }
-
-  const orders = await import("./client").then(({ nhanhFetchAll }) =>
-    nhanhFetchAll<NhanhOrder>("/order/index", {
-      filters: { createdFrom: from, createdTo: to },
-    }, 30),
-  );
-
-  const byChannel = new Map<
-    string,
-    { name: string; orders: number; cancel: number; rev: number; revCancel: number }
-  >();
-  for (const o of orders) {
-    const pid = String(o.channel?.saleChannel || "__other__");
-    if (!byChannel.has(pid)) {
-      byChannel.set(pid, {
-        name: sourceMap.get(pid) || pid,
-        orders: 0, cancel: 0, rev: 0, revCancel: 0,
-      });
+  // Load FB page names from insights_cache (has FB page_id → page_name)
+  const { data: insightsPages } = await db.from("insights_cache")
+    .select("page_id, page_name")
+    .order("date", { ascending: false })
+    .limit(500);
+  const pageNameMap = new Map<string, string>();
+  for (const p of insightsPages || []) {
+    if (p.page_id && p.page_name && !pageNameMap.has(p.page_id)) {
+      pageNameMap.set(p.page_id, p.page_name);
     }
-    const rec = byChannel.get(pid)!;
-    rec.orders++;
-    const status = toNum(o.info?.status);
-    const cancelled = [6, 9, 10, 11, 13].includes(status);
-    const amt = (o.products || []).reduce(
-      (s, p) => s + toNum(p.price) * toNum(p.quantity || 1),
-      0,
-    );
-    if (cancelled) { rec.cancel++; rec.revCancel += amt; }
-    else rec.rev += amt;
   }
 
-  const rows = Array.from(byChannel.entries())
-    .filter(([pid]) => pid !== "__other__")
-    .map(([pid, r]) => ({
-      channel: pid,
-      source: r.name,
-      period_from: from,
-      period_to: to,
-      order_total: r.orders,
-      order_cancel: r.cancel,
-      order_net: r.orders - r.cancel,
-      revenue_total: r.rev + r.revCancel,
-      revenue_cancel: r.revCancel,
-      revenue_net: r.rev,
-      order_success: r.orders - r.cancel,
-      revenue_success: r.rev,
+  // V3 API returns orders sorted by newest first
+  // Stop early when we've passed the date range (no need to fetch all 20k orders)
+  logs.push(`[syncSales] Fetching orders via V3... (from=${from}, to=${to})`);
+  const allOrders = await nhanhV3FetchAll<V3SalesOrder>("order/list", {}, {
+    maxPages: 200,
+    onPage: (chunk, page) => {
+      // V3 returns newest first — stop when oldest order in chunk is before date range
+      const oldest = chunk.reduce((min, o) => {
+        const ts = o.info?.createdAt || Infinity;
+        return ts < min ? ts : min;
+      }, Infinity);
+      const oldestDate = oldest < Infinity ? new Date(oldest * 1000).toISOString().substring(0, 10) : from;
+      if (oldestDate < from) {
+        logs.push(`[syncSales] Stopped at page ${page} (reached ${oldestDate})`);
+        return false; // stop pagination
+      }
+    },
+  });
+  logs.push(`[syncSales] Fetched ${allOrders.length} orders`);
+
+  // Group by (date, channel, source)
+  type Bucket = { orders: number; rev: number };
+  const buckets = new Map<string, Bucket>();
+  let inRangeCount = 0;
+
+  for (const o of allOrders) {
+    const ts = o.info?.createdAt;
+    const date = ts ? new Date(ts * 1000).toISOString().substring(0, 10) : null;
+    if (!date || date < from || date > to) continue;
+    inRangeCount++;
+
+    const chId = String(o.channel?.saleChannel ?? "__other__");
+    const chName = CHANNEL_MAP[chId] || chId;
+
+    // For Facebook orders, use pageId → page name
+    let source = chName;
+    if (chId === "20" && o.channel?.pageId) {
+      source = pageNameMap.get(o.channel.pageId) || o.channel.pageId;
+    }
+
+    // Revenue = sum of priceAfterVAT × qty (giá khách trả, sau discount)
+    const rev = (o.products || []).reduce(
+      (s, p) => s + toNum(p.priceAfterVAT ?? p.price) * toNum(p.quantity || 1), 0,
+    );
+
+    const key = `${date}|${chName}|${source}`;
+    const b = buckets.get(key) || { orders: 0, rev: 0 };
+    b.orders++;
+    b.rev += rev;
+    buckets.set(key, b);
+  }
+
+  logs.push(`[syncSales] In range ${from}→${to}: ${inRangeCount} orders`);
+
+  // Check which dates already have Drive data (Drive imports ALL channels at once,
+  // so a date with >= 3 distinct channels = complete Drive import → skip entirely)
+  const apiDates = new Set<string>();
+  for (const [key] of buckets) apiDates.add(key.split("|")[0]);
+
+  const { data: existingRows } = await db.from("sales_sync")
+    .select("period_from, channel")
+    .gte("period_from", from)
+    .lte("period_from", to)
+    .limit(10000);
+  // Count distinct channels per date
+  const channelsByDate = new Map<string, Set<string>>();
+  for (const r of existingRows || []) {
+    const d = r.period_from as string;
+    if (!channelsByDate.has(d)) channelsByDate.set(d, new Set());
+    channelsByDate.get(d)!.add(r.channel as string);
+  }
+
+  // Dates with >= 3 distinct channels = Drive data (has Facebook + Shopee + TikTok), skip
+  const newDates = [...apiDates].filter((d) => (channelsByDate.get(d)?.size || 0) < 3);
+  const skippedDates = [...apiDates].filter((d) => (channelsByDate.get(d)?.size || 0) >= 3);
+  if (skippedDates.length) {
+    logs.push(`[syncSales] Skipped ${skippedDates.length} days (have Drive data): ${skippedDates.slice(-3).join(", ")}`);
+  }
+
+  // Delete old data for new dates (replace with fresh API data)
+  for (const d of newDates) {
+    await db.from("sales_sync").delete().eq("period_from", d).eq("period_to", d);
+  }
+  if (newDates.length) logs.push(`[syncSales] Writing ${newDates.length} days: ${newDates.join(", ")}`);
+
+  // Write to DB — only new dates
+  const rows = Array.from(buckets.entries())
+    .filter(([key]) => newDates.includes(key.split("|")[0]))
+    .map(([key, b]) => {
+    const parts = key.split("|");
+    const date = parts[0];
+    const channel = parts[1];
+    const source = parts[2];
+    return {
+      channel,
+      source,
+      period_from: date,
+      period_to: date,
+      order_total: b.orders,
+      order_cancel: 0,
+      order_net: b.orders,
+      revenue_total: b.rev,
+      revenue_cancel: 0,
+      revenue_net: b.rev,
+      order_success: b.orders,
+      revenue_success: b.rev,
       synced_at: nowVN(),
-    }));
+    };
+  });
 
   if (rows.length) {
-    const { error } = await db
-      .from("sales_sync")
-      .upsert(rows, { onConflict: "channel,source,period_from,period_to" });
-    if (error) throw error;
+    for (let i = 0; i < rows.length; i += 200) {
+      const chunk = rows.slice(i, i + 200);
+      const { error } = await db
+        .from("sales_sync")
+        .upsert(chunk, { onConflict: "channel,source,period_from,period_to" });
+      if (error) throw error;
+    }
   }
-  return { channels: rows.length, orders: orders.length };
+
+  // Log summary per day
+  const byDate = new Map<string, { orders: number; rev: number }>();
+  for (const [key, b] of buckets) {
+    const date = key.split("|")[0];
+    const d = byDate.get(date) || { orders: 0, rev: 0 };
+    d.orders += b.orders;
+    d.rev += b.rev;
+    byDate.set(date, d);
+  }
+  for (const [date, d] of [...byDate.entries()].sort()) {
+    logs.push(`  ${date}: ${d.orders} đơn, ${(d.rev / 1e6).toFixed(1)}M`);
+  }
+
+  logs.push(`[syncSales] Saved ${rows.length} rows`);
+  return { channels: rows.length, orders: allOrders.length, logs };
 }
 
 // ─── CUSTOMERS (aggregate from orders) ───────────────────────
@@ -255,7 +344,7 @@ export async function syncCustomersFromOrders(opts: {
   const db = supabaseAdmin();
 
   const { nhanhFetchAll } = await import("./client");
-  const orders = await nhanhFetchAll<NhanhOrder & NhanhCustomer>(
+  const orders = await nhanhFetchAll<V3SalesOrder & NhanhCustomer>(
     "/order/index",
     { filters: { createdFrom: from, createdTo: to } },
     50,
@@ -292,7 +381,7 @@ export async function syncCustomersFromOrders(opts: {
     const rec = byId.get(id)!;
     rec.total_orders++;
     const amt = (o.products || []).reduce(
-      (s, p) => s + toNum(p.price) * toNum(p.quantity || 1),
+      (s: number, p: { price?: number; quantity?: number }) => s + toNum(p.price) * toNum(p.quantity || 1),
       0,
     );
     rec.total_revenue += amt;

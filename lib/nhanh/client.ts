@@ -116,7 +116,7 @@ export async function nhanhV3<T = unknown>(
 export async function nhanhV3FetchAll<T = unknown>(
   path: string,
   body: Record<string, unknown> = {},
-  opts: { maxPages?: number; onPage?: (chunk: T[], page: number) => void } = {},
+  opts: { maxPages?: number; onPage?: (chunk: T[], page: number) => boolean | void } = {},
 ): Promise<T[]> {
   const { maxPages = 200, onPage } = opts;
   const all: T[] = [];
@@ -129,13 +129,13 @@ export async function nhanhV3FetchAll<T = unknown>(
       console.warn(`[nhanhV3FetchAll] ${path} page ${page} code=${r.code}`, r.messages);
       break;
     }
-    // data có thể là Array hoặc Object {id: {...}, id2: {...}}
     let chunk: T[];
     if (Array.isArray(r.data)) chunk = r.data;
     else if (r.data && typeof r.data === "object") chunk = Object.values(r.data) as T[];
     else chunk = [];
     all.push(...chunk);
-    if (onPage) onPage(chunk, page);
+    // onPage returns false to stop early
+    if (onPage && onPage(chunk, page) === false) break;
     cursor = r.paginator?.next ?? null;
     if (!cursor) break;
     await new Promise((res) => setTimeout(res, 100));

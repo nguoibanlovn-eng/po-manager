@@ -5,16 +5,103 @@ import { toNum } from "@/lib/format";
 
 const FB_GRAPH = "https://graph.facebook.com/v19.0";
 
-function adsToken(): string {
-  const t = process.env.FB_ACCESS_TOKEN;
-  if (!t) throw new Error("Thiếu FB_ACCESS_TOKEN trong .env.local");
-  return t;
+// ─── Token management (DB-backed with auto-refresh) ─────────
+
+type FbToken = { token_type: string; access_token: string; expire_at: number; updated_at: string };
+
+async function getDbToken(): Promise<FbToken | null> {
+  const { data } = await supabaseAdmin()
+    .from("fb_tokens")
+    .select("*")
+    .eq("token_type", "user")
+    .maybeSingle();
+  return data as FbToken | null;
 }
 
-function pageToken(): string {
-  const t = process.env.FB_PAGE_ACCESS_TOKEN;
-  if (!t) throw new Error("Thiếu FB_PAGE_ACCESS_TOKEN trong .env.local");
-  return t;
+async function saveDbToken(accessToken: string, expireAt: number) {
+  await supabaseAdmin().from("fb_tokens").upsert({
+    token_type: "user",
+    access_token: accessToken,
+    expire_at: expireAt,
+    updated_at: nowVN(),
+  }, { onConflict: "token_type" });
+}
+
+/** Exchange short-lived or long-lived token for a new long-lived token (60 days) */
+export async function exchangeForLongLived(inputToken: string): Promise<{ token: string; expiresIn: number }> {
+  const appId = process.env.FB_APP_ID;
+  const appSecret = process.env.FB_APP_SECRET;
+  if (!appId || !appSecret) throw new Error("Thiếu FB_APP_ID hoặc FB_APP_SECRET");
+
+  const url = `${FB_GRAPH}/oauth/access_token?grant_type=fb_exchange_token`
+    + `&client_id=${appId}&client_secret=${appSecret}`
+    + `&fb_exchange_token=${inputToken}`;
+  const res = await fetch(url);
+  const json = await res.json() as { access_token?: string; expires_in?: number; error?: { message?: string } };
+  if (json.error) throw new Error(`FB exchange token: ${json.error.message}`);
+  if (!json.access_token) throw new Error("FB exchange: không nhận được access_token");
+  return { token: json.access_token, expiresIn: json.expires_in || 5184000 };
+}
+
+/** Save a new FB token — exchanges for long-lived and stores in DB */
+export async function saveFbToken(inputToken: string): Promise<{ ok: boolean; expiresInDays: number }> {
+  const { token, expiresIn } = await exchangeForLongLived(inputToken);
+  const expireAt = Math.floor(Date.now() / 1000) + expiresIn;
+  await saveDbToken(token, expireAt);
+  return { ok: true, expiresInDays: Math.floor(expiresIn / 86400) };
+}
+
+/** Refresh FB token if expiring within 7 days */
+export async function refreshFbToken(): Promise<{ refreshed: boolean; error?: string; expiresInDays?: number }> {
+  const dbToken = await getDbToken();
+  if (!dbToken?.access_token) return { refreshed: false, error: "Chưa có FB token trong DB" };
+
+  const now = Math.floor(Date.now() / 1000);
+  const daysLeft = (dbToken.expire_at - now) / 86400;
+
+  // Only refresh if expiring within 7 days
+  if (daysLeft > 7) return { refreshed: false, expiresInDays: Math.floor(daysLeft) };
+
+  try {
+    const { token, expiresIn } = await exchangeForLongLived(dbToken.access_token);
+    const expireAt = Math.floor(Date.now() / 1000) + expiresIn;
+    await saveDbToken(token, expireAt);
+    return { refreshed: true, expiresInDays: Math.floor(expiresIn / 86400) };
+  } catch (e) {
+    return { refreshed: false, error: (e as Error).message };
+  }
+}
+
+/** Get FB token status */
+export async function getFbTokenStatus(): Promise<{ hasToken: boolean; tokenOk: boolean; expireInDays: number }> {
+  const dbToken = await getDbToken();
+  if (!dbToken?.access_token) return { hasToken: false, tokenOk: false, expireInDays: 0 };
+  const now = Math.floor(Date.now() / 1000);
+  const daysLeft = Math.max(0, Math.floor((dbToken.expire_at - now) / 86400));
+  return { hasToken: true, tokenOk: dbToken.expire_at > now, expireInDays: daysLeft };
+}
+
+/** Get active token — DB first, fallback to env */
+async function getActiveToken(): Promise<string> {
+  // Try DB first
+  const dbToken = await getDbToken();
+  if (dbToken?.access_token) {
+    const now = Math.floor(Date.now() / 1000);
+    if (dbToken.expire_at > now) return dbToken.access_token;
+    // Try refresh if expired but token exists
+    const appId = process.env.FB_APP_ID;
+    if (appId) {
+      try {
+        const { token, expiresIn } = await exchangeForLongLived(dbToken.access_token);
+        await saveDbToken(token, Math.floor(Date.now() / 1000) + expiresIn);
+        return token;
+      } catch { /* fall through to env */ }
+    }
+  }
+  // Fallback to env vars
+  const envToken = process.env.FB_ACCESS_TOKEN || process.env.FB_PAGE_ACCESS_TOKEN;
+  if (!envToken) throw new Error("Không có FB token. Vào Cấu hình → Facebook để thêm token.");
+  return envToken;
 }
 
 /** Quick token validity check */
@@ -24,7 +111,7 @@ async function validateToken(token: string, label: string): Promise<void> {
   if (json.error) {
     const msg = json.error.message || "Token không hợp lệ";
     if (msg.includes("expired")) {
-      throw new Error(`${label} đã hết hạn. Vui lòng tạo token mới tại Facebook Developer.`);
+      throw new Error(`${label} đã hết hạn. Vào Cấu hình → Facebook để cập nhật token.`);
     }
     throw new Error(`${label}: ${msg}`);
   }
@@ -57,8 +144,8 @@ export async function syncFbAds(opts: {
   from?: string;
   to?: string;
 } = {}): Promise<{ fetched: number; accounts: number; errors: string[] }> {
-  const token = adsToken();
-  await validateToken(token, "FB_ACCESS_TOKEN");
+  const token = await getActiveToken();
+  await validateToken(token, "FB Token");
   const from = opts.from || dateVN(null, -7);
   const to = opts.to || dateVN();
   const accounts = await fetchAdAccounts();
@@ -154,8 +241,8 @@ export async function syncFbPageInsights(opts: { days?: number } = {}): Promise<
   pages: number;
   errors: string[];
 }> {
-  const token = pageToken();
-  await validateToken(token, "FB_PAGE_ACCESS_TOKEN");
+  const token = await getActiveToken();
+  await validateToken(token, "FB Token");
   const days = opts.days || 30;
 
   // Get page-specific tokens from FB (required for insights API)

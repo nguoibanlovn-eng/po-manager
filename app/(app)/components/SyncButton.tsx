@@ -7,11 +7,13 @@ export default function SyncButton({
   label,
   onDone,
   style,
+  body,
 }: {
   url: string;
   label: string;
   onDone?: () => void;
   style?: React.CSSProperties;
+  body?: Record<string, unknown>;
 }) {
   const [syncing, setSyncing] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -23,37 +25,59 @@ export default function SyncButton({
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: "{}",
+        body: JSON.stringify(body || {}),
       });
       if (res.redirected || res.url.includes("/login")) {
-        setResult("Chưa đăng nhập");
+        setResult("❌ Chưa đăng nhập");
         return;
       }
       const json = await res.json();
       if (json.ok) {
-        const detail = json.fetched != null ? `✓ ${json.fetched} dòng` : "OK";
-        setResult(detail);
-        if (json.errors?.length) console.warn("Sync warnings:", json.errors);
+        // Build summary from response
+        const parts: string[] = [];
+        if (json.imported?.length != null) parts.push(`${json.imported.length} ngày`);
+        if (json.fetched != null) parts.push(`${json.fetched} dòng`);
+        if (json.channels != null) parts.push(`${json.channels} kênh`);
+        if (json.orders != null) parts.push(`${json.orders} đơn`);
+        if (json.skipped) parts.push(`bỏ qua ${json.skipped}`);
+
+        // Drive import details
+        if (json.imported?.length > 0) {
+          const dates = json.imported.map((r: { date: string; rows: number }) => `${r.date.substring(5)}(${r.rows})`);
+          parts.push(dates.join(" "));
+        }
+
+        // Logs from sync
+        if (json.logs?.length) {
+          const lastLogs = json.logs.filter((l: string) => !l.startsWith("[")).slice(-5);
+          if (lastLogs.length) parts.push(lastLogs.join(" · "));
+        }
+
+        if (json.errors?.length) parts.push(`⚠${json.errors.length} lỗi`);
+
+        setResult("✓ " + (parts.join(" · ") || "Xong"));
         onDone?.();
       } else {
-        const msg = json.error || "Lỗi không xác định";
-        setResult(msg);
-        console.error("Sync error:", msg);
+        setResult("❌ " + (json.error || "Lỗi không xác định"));
       }
     } catch (e) {
-      setResult((e as Error).message);
+      setResult("❌ " + (e as Error).message);
     } finally {
       setSyncing(false);
-      setTimeout(() => setResult(null), 4000);
+      setTimeout(() => setResult(null), 8000);
     }
   }
+
+  const isOk = result?.startsWith("✓");
+  const isErr = result?.startsWith("❌");
 
   return (
     <button
       className="btn btn-ghost btn-xs"
       onClick={run}
       disabled={syncing}
-      style={{ minWidth: 70, ...style }}
+      title={result || undefined}
+      style={{ minWidth: 70, maxWidth: result ? 500 : undefined, ...style }}
     >
       {syncing ? (
         <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -66,13 +90,21 @@ export default function SyncButton({
               borderRadius: "50%",
               display: "inline-block",
               animation: "spin .6s linear infinite",
+              flexShrink: 0,
             }}
           />
           Đang sync...
         </span>
       ) : result ? (
-        <span style={{ color: result.startsWith("✓") || result === "OK" ? "var(--green)" : "var(--red)" }}>
-          {result === "OK" ? "✓ Xong" : result.substring(0, 40)}
+        <span style={{
+          color: isOk ? "var(--green)" : isErr ? "var(--red)" : "var(--text)",
+          fontSize: 10,
+          lineHeight: 1.3,
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}>
+          {result}
         </span>
       ) : (
         label

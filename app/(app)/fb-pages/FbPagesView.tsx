@@ -6,14 +6,18 @@ import { formatDate, formatVND, formatVNDCompact, toNum } from "@/lib/format";
 import type { AdsRow, FbNhanhRow, InsightsRow, PageRow } from "@/lib/db/ads";
 import SyncButton from "../components/SyncButton";
 import TargetProgressBar from "../components/TargetProgressBar";
+import Collapsible from "../components/Collapsible";
+import AutoSyncToday from "../components/AutoSyncToday";
 
 type Summary = { spend: number; impressions: number; clicks: number; reach: number; purchase_value: number };
 
-function daysAgo(d: number): string { const dt = new Date(); dt.setDate(dt.getDate() + d); return dt.toISOString().substring(0, 10); }
+function daysAgo(d: number): string { const dt = new Date(); dt.setDate(dt.getDate() + d); const pad = (n: number) => String(n).padStart(2, "0"); return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`; }
 function monthRange(offset: number) {
   const now = new Date(); const y = now.getFullYear(); const m = now.getMonth() + offset;
   const first = new Date(y, m, 1); const last = offset === 0 ? now : new Date(y, m + 1, 0);
-  return { from: first.toISOString().substring(0, 10), to: last.toISOString().substring(0, 10) };
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  return { from: fmt(first), to: fmt(last) };
 }
 
 const QUICK_RANGES = [
@@ -38,6 +42,10 @@ export default function FbPagesView({
   const router = useRouter();
   const [f, setF] = useState(from);
   const [t, setT] = useState(to);
+  const [prevFrom, setPrevFrom] = useState(from);
+  const [prevTo, setPrevTo] = useState(to);
+  if (from !== prevFrom) { setF(from); setPrevFrom(from); }
+  if (to !== prevTo) { setT(to); setPrevTo(to); }
   const [search, setSearch] = useState("");
 
   function apply() { router.push(`/fb-pages?from=${f}&to=${t}`); }
@@ -162,6 +170,7 @@ export default function FbPagesView({
 
   return (
     <section className="section">
+      <AutoSyncToday onDone={() => router.refresh()} />
       {/* ═══ TARGET PROGRESS ═══ */}
       <TargetProgressBar channel="Facebook" monthTarget={monthTarget} monthActual={monthActual} monthKey={monthKey} color="#1877F2" />
 
@@ -174,7 +183,8 @@ export default function FbPagesView({
         <div className="row" style={{ gap: 6, flexWrap: "wrap", alignItems: "center" }}>
           <SyncButton url="/api/fb/sync-ads" label="⟳ Sync Ads" onDone={() => router.refresh()} style={{ background: "#EFF6FF", border: "1px solid #93C5FD" }} />
           <SyncButton url="/api/fb/sync-insights" label="⟳ Sync Insights" onDone={() => router.refresh()} style={{ background: "#F0FDF4", border: "1px solid #86EFAC" }} />
-          <SyncButton url="/api/nhanh/sync-sales" label="⟳ Sync Nhanh" onDone={() => router.refresh()} style={{ background: "#FFF7ED", border: "1px solid #FDBA74" }} />
+          <SyncButton url="/api/nhanh/sync-sales" label="⟳ Sync Nhanh" body={{ from, to }} onDone={() => router.refresh()} style={{ background: "#FFF7ED", border: "1px solid #FDBA74" }} />
+          <SyncButton url="/api/drive/scan" label="📂 Quét Drive" body={{ from, to }} onDone={() => router.refresh()} style={{ background: "#F3E8FF", border: "1px solid #C084FC" }} />
           <button className="btn btn-ghost btn-xs" onClick={() => router.refresh()}>↻ Tải lại</button>
         </div>
       </div>
@@ -208,15 +218,21 @@ export default function FbPagesView({
       </div>
 
       {/* ═══ CHI PHÍ ADS THEO NGÀY ═══ */}
-      <AdsSection ads={ads} adsByDate={adsByDate} summary={summary} prevAds={prevAds} prevSummary={prevSummary} from={from} to={to} />
+      <Collapsible title="CHI PHÍ ADS THEO NGÀY" defaultOpen={true}>
+        <AdsSection ads={ads} adsByDate={adsByDate} summary={summary} prevAds={prevAds} prevSummary={prevSummary} from={from} to={to} />
+      </Collapsible>
 
       {/* ═══ DOANH THU CHI TIẾT 30 NGÀY ═══ */}
-      {nhanh30d.length > 0 && <RevenueDetailSection data={nhanh30d} />}
+      {nhanh30d.length > 0 && (
+        <Collapsible title="DOANH THU CHI TIẾT 30 NGÀY" defaultOpen={true} badge={<span className="chip chip-green" style={{ fontSize: 9 }}>{formatVNDCompact(nhanhTotals.revenue)}</span>}>
+          <RevenueDetailSection data={nhanh30d} />
+        </Collapsible>
+      )}
 
       {/* ═══ HIỆU QUẢ ADS THEO PAGE — stacked chart ═══ */}
       {pageRevenueAds.length > 0 && (
-        <div className="card" style={{ marginBottom: 14 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>HIỆU QUẢ ADS THEO PAGE</div>
+        <Collapsible title="HIỆU QUẢ ADS THEO PAGE" defaultOpen={false} badge={<span className="chip" style={{ fontSize: 9 }}>{pageRevenueAds.length} pages</span>}>
+          <div>
           <div style={{ fontSize: 10, color: "#9CA3AF", marginBottom: 10 }}>
             Doanh thu (Nhanh.vn) vs Chi phí Ads · Tỉ lệ chi phí / doanh thu · ROAS = DT / Spend
           </div>
@@ -307,15 +323,18 @@ export default function FbPagesView({
               </div>
             );
           })()}
-        </div>
+          </div>
+        </Collapsible>
       )}
 
       {/* ═══ PAGE CARDS ═══ */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 10 }}>
-        {filteredPages.filter((p) => p.nhanh_id || p.ad_account_id).map((p) => (
-          <PageCard key={p.page_id} page={p} ads={ads} insights={insights} nhanhRevenue={nhanhRevenue} from={from} to={to} />
-        ))}
-      </div>
+      <Collapsible title={`PAGE CARDS (${filteredPages.filter((p) => p.nhanh_id || p.ad_account_id).length})`} defaultOpen={false}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 10 }}>
+          {filteredPages.filter((p) => p.nhanh_id || p.ad_account_id).map((p) => (
+            <PageCard key={p.page_id} page={p} ads={ads} insights={insights} nhanhRevenue={nhanhRevenue} from={from} to={to} />
+          ))}
+        </div>
+      </Collapsible>
     </section>
   );
 }
@@ -341,10 +360,9 @@ function AdsSection({ ads, adsByDate, summary, prevAds = [], prevSummary, from, 
   const prevMonth = from ? new Date(new Date(from).setMonth(new Date(from).getMonth() - 1)).toISOString().substring(0, 7) : "";
 
   return (
-    <div className="card" style={{ marginBottom: 14 }}>
+    <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-        <span style={{ fontWeight: 700, fontSize: 13 }}>CHI PHÍ ADS THEO NGÀY</span>
-        {prevMonth && <span className="muted" style={{ fontSize: 10 }}>— Tháng {prevMonth}</span>}
+        {prevMonth && <span className="muted" style={{ fontSize: 10 }}>so với Tháng {prevMonth}</span>}
       </div>
 
       {/* Stat cards row */}
@@ -386,7 +404,7 @@ function AdsSection({ ads, adsByDate, summary, prevAds = [], prevSummary, from, 
 
 /* ── Combined bar (current) + line (prev month) chart ── */
 function AdsOverlayChart({ current, prev }: { current: [string, number][]; prev: [string, number][] }) {
-  if (current.length === 0) return <div className="muted" style={{ padding: 20, textAlign: "center" }}>Không có data.</div>;
+  const [hover, setHover] = useState<number | null>(null);
 
   const prevByDay = useMemo(() => {
     const m = new Map<number, number>();
@@ -396,6 +414,8 @@ function AdsOverlayChart({ current, prev }: { current: [string, number][]; prev:
     }
     return m;
   }, [prev]);
+
+  if (current.length === 0) return <div className="muted" style={{ padding: 20, textAlign: "center" }}>Không có data.</div>;
 
   const merged = current.map(([d, v]) => {
     const day = new Date(d).getDate();
@@ -408,33 +428,68 @@ function AdsOverlayChart({ current, prev }: { current: [string, number][]; prev:
 
   return (
     <div>
-      {/* Bar chart — pure flex, each column = flex:1 */}
       <div style={{ display: "flex", alignItems: "flex-end", height: BAR_H, position: "relative" }}>
-        {merged.map((m) => {
+        {merged.map((m, i) => {
           const h = max > 0 ? (m.val / max) * (BAR_H - 28) : 0;
           return (
-            <div key={m.date} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end" }}>
-              <div style={{ fontSize: 9, fontWeight: 600, marginBottom: 2, whiteSpace: "nowrap" }}>{formatVNDCompact(m.val)}</div>
-              <div style={{ width: "85%", height: Math.max(h, 2), background: "#86EFAC", borderRadius: 2 }} />
+            <div key={m.date}
+              onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}
+              style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", cursor: "default", height: "100%" }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", flex: 1, width: "100%" }}>
+                {hover === i && <div style={{ fontSize: 9, fontWeight: 600, marginBottom: 2, whiteSpace: "nowrap" }}>{formatVNDCompact(m.val)}</div>}
+                <div style={{ width: "85%", height: Math.max(h, 2), background: hover === i ? "#4ADE80" : "#86EFAC", borderRadius: 2, transition: "background 0.1s" }} />
+              </div>
             </div>
           );
         })}
-        {/* Prev period dashed line overlay */}
+        {/* Prev period line + dots */}
         {merged.length > 1 && (() => {
+          const VB_W = 1000;
           const pts = merged.map((m, i) => {
             if (m.prevVal === null) return null;
-            const pct = (i + 0.5) / merged.length;
-            const yPct = max > 0 ? 1 - m.prevVal / max : 1;
-            return { left: `${pct * 100}%`, top: `${yPct * (BAR_H - 28) + 14}px`, val: m.prevVal };
-          }).filter(Boolean) as { left: string; top: string; val: number }[];
-          return pts.map((p, i) => (
-            <div key={`dot-${i}`} style={{
-              position: "absolute", left: p.left, top: p.top,
-              width: 6, height: 6, borderRadius: "50%", background: "var(--blue)",
-              transform: "translate(-50%, -50%)", opacity: 0.7, zIndex: 2,
-            }} />
-          ));
+            const x = (i + 0.5) / merged.length * VB_W;
+            const y = max > 0 ? (1 - m.prevVal / max) * (BAR_H - 28) + 14 : BAR_H - 14;
+            return { x, y, val: m.prevVal };
+          }).filter(Boolean) as { x: number; y: number; val: number }[];
+          return (
+            <svg viewBox={`0 0 ${VB_W} ${BAR_H}`} preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 2, overflow: "visible" }}>
+              {pts.length > 1 && <polyline
+                fill="none"
+                stroke="#3B82F6"
+                strokeWidth={2}
+                strokeDasharray="6 3"
+                points={pts.map((p) => `${p.x},${p.y}`).join(" ")}
+                vectorEffect="non-scaling-stroke"
+              />}
+              {pts.map((p, i) => (
+                <circle key={`dot-${i}`} cx={p.x} cy={p.y} r={4} fill="#3B82F6" stroke="#fff" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+              ))}
+            </svg>
+          );
         })()}
+        {/* Tooltip */}
+        {hover !== null && merged[hover] && (
+          <div style={{
+            position: "absolute",
+            left: `${((hover + 0.5) / merged.length) * 100}%`,
+            top: 4, transform: "translateX(-50%)",
+            background: "#1F2937", color: "#fff", borderRadius: 6, padding: "6px 10px",
+            fontSize: 11, pointerEvents: "none", zIndex: 50, whiteSpace: "nowrap",
+            boxShadow: "0 4px 12px rgba(0,0,0,.3)",
+          }}>
+            <div style={{ fontWeight: 700, color: "#D1D5DB", marginBottom: 3 }}>{merged[hover].date}</div>
+            <div style={{ lineHeight: 1.6 }}>
+              <span style={{ color: "#9CA3AF" }}>Hiện tại: </span>
+              <span style={{ fontWeight: 700 }}>{formatVNDCompact(merged[hover].val)}</span>
+            </div>
+            {merged[hover].prevVal !== null && (
+              <div style={{ lineHeight: 1.6 }}>
+                <span style={{ color: "#9CA3AF" }}>Tháng trước: </span>
+                <span style={{ fontWeight: 700 }}>{formatVNDCompact(merged[hover].prevVal!)}</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Date labels — same flex:1 = perfect alignment */}
@@ -701,11 +756,11 @@ function RevenueDetailSection({ data }: { data: FbNhanhRow[] }) {
   const dateRange = byDate.length > 0 ? `${byDate[0][0].substring(5)} → ${byDate[byDate.length - 1][0].substring(5)}` : "";
 
   return (
-    <div className="card" style={{ marginBottom: 14 }}>
+    <div>
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontWeight: 700, fontSize: 13 }}>Doanh thu chi tiết {period} ngày</span>
+          <span style={{ fontSize: 12 }}>Chi tiết {period} ngày</span>
           <span className="chip chip-green" style={{ fontSize: 9 }}>{formatVNDCompact(totals.revenue)} / {period} ngày</span>
         </div>
         <span className="muted" style={{ fontSize: 10 }}>{dateRange}</span>

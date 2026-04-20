@@ -5,14 +5,19 @@ import { useMemo, useState } from "react";
 import { formatDate, formatVND, formatVNDCompact, toNum } from "@/lib/format";
 import type { TiktokAdsRow, TiktokChannelRow, TiktokNhanhRow, TiktokProductStat } from "@/lib/db/tiktok";
 import SyncButton from "../components/SyncButton";
+import AutoSyncToday from "../components/AutoSyncToday";
 import TargetProgressBar from "../components/TargetProgressBar";
+import Collapsible from "../components/Collapsible";
 
 type Tab = "overview" | "ads" | "channel" | "shop" | "products";
+
+const _pad = (n: number) => String(n).padStart(2, "0");
+const _fmt = (d: Date) => `${d.getFullYear()}-${_pad(d.getMonth() + 1)}-${_pad(d.getDate())}`;
 
 function daysAgo(d: number): string {
   const dt = new Date();
   dt.setDate(dt.getDate() + d);
-  return dt.toISOString().substring(0, 10);
+  return _fmt(dt);
 }
 
 function monthRange(offset: number): { from: string; to: string } {
@@ -21,10 +26,7 @@ function monthRange(offset: number): { from: string; to: string } {
   const m = now.getMonth() + offset;
   const first = new Date(y, m, 1);
   const last = offset === 0 ? now : new Date(y, m + 1, 0);
-  return {
-    from: first.toISOString().substring(0, 10),
-    to: last.toISOString().substring(0, 10),
-  };
+  return { from: _fmt(first), to: _fmt(last) };
 }
 
 const QUICK_RANGES: { key: string; label: string; from: string; to: string }[] = [
@@ -59,6 +61,10 @@ export default function SalesLeaderView({
   const [tab, setTab] = useState<Tab>("overview");
   const [f, setF] = useState(from);
   const [t, setT] = useState(to);
+  const [prevFrom, setPrevFrom] = useState(from);
+  const [prevTo, setPrevTo] = useState(to);
+  if (from !== prevFrom) { setF(from); setPrevFrom(from); }
+  if (to !== prevTo) { setT(to); setPrevTo(to); }
 
   function apply() { router.push(`/sales-leader?from=${f}&to=${t}`); }
   function quickRange(qr: { from: string; to: string }) {
@@ -80,6 +86,7 @@ export default function SalesLeaderView({
 
   return (
     <section className="section">
+      <AutoSyncToday onDone={() => router.refresh()} />
       {/* ═══ HEADER ═══ */}
       <div className="page-hdr">
         <div>
@@ -101,7 +108,7 @@ export default function SalesLeaderView({
           <input type="date" value={t} onChange={(e) => setT(e.target.value)} style={{ fontSize: 12, width: 130 }} />
           <button className="btn btn-primary btn-xs" onClick={apply}>Áp dụng</button>
           <span style={{ width: 1, height: 20, background: "var(--border)" }} />
-          <SyncButton url="/api/nhanh/sync-sales" label="NHANH.VN" onDone={() => router.refresh()} />
+          <SyncButton url="/api/nhanh/sync-sales" label="NHANH.VN" body={{ from, to }} onDone={() => router.refresh()} />
           <SyncButton url="/api/tiktok/sync-ads" label="Sync Ads" onDone={() => router.refresh()} />
           <SyncButton url="/api/tiktok/sync-shop-orders" label="Sync Orders" onDone={() => router.refresh()} />
           <CsvUploadButton onDone={() => router.refresh()} />
@@ -232,14 +239,7 @@ function OverviewTab({ ads, nhanhRevenue, adsTotals, nhanhTotals, roas, from, to
   return (
     <>
       {/* TÀI KHOẢN ADS */}
-      <div className="card" style={{ marginBottom: 14 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-          <div>
-            <span style={{ fontWeight: 700 }}>TÀI KHOẢN ADS</span>
-            <span className="muted" style={{ fontSize: 11, marginLeft: 8 }}>TIKTOK ADS</span>
-          </div>
-          <span className="muted" style={{ fontSize: 11 }}>{adsByAdv.length} tài khoản · {formatVND(adsTotals.spend)}</span>
-        </div>
+      <Collapsible title="TÀI KHOẢN ADS" defaultOpen badge={<span className="muted" style={{ fontSize: 11 }}>{adsByAdv.length} tài khoản · {formatVND(adsTotals.spend)}</span>}>
         <div className="muted" style={{ fontSize: 11, marginBottom: 6 }}>Chi tiêu theo ngày</div>
         <SimpleBar data={adsByDate.map(([d, v]) => [d, v.spend] as [string, number])} color="#FF6B8A" />
 
@@ -264,17 +264,10 @@ function OverviewTab({ ads, nhanhRevenue, adsTotals, nhanhTotals, roas, from, to
             </tbody>
           </table>
         </div>
-      </div>
+      </Collapsible>
 
       {/* TIKTOK SHOP API — shop cards */}
-      <div className="card" style={{ marginBottom: 14 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-          <div>
-            <span style={{ fontWeight: 700 }}>TIKTOK SHOP API</span>
-            <span className="chip chip-green" style={{ marginLeft: 8, fontSize: 9 }}>TIKTOK SHOP</span>
-          </div>
-          <span className="muted" style={{ fontSize: 11 }}>{from} → {to}</span>
-        </div>
+      <Collapsible title="TIKTOK SHOP API" defaultOpen badge={<span className="muted" style={{ fontSize: 11 }}>{from} → {to}</span>}>
         <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(shopCards.length, 4)}, 1fr)`, gap: 10 }}>
           {shopCards.map((s) => (
             <div key={s.name} className="card" style={{ padding: 12, border: "1px solid var(--border)" }}>
@@ -285,35 +278,15 @@ function OverviewTab({ ads, nhanhRevenue, adsTotals, nhanhTotals, roas, from, to
             </div>
           ))}
         </div>
-      </div>
+      </Collapsible>
 
       {/* GMV SHOP THEO NGÀY — line chart */}
-      <div className="card" style={{ marginBottom: 14 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-          <div>
-            <span style={{ fontWeight: 700 }}>GMV SHOP THEO NGÀY</span>
-            {shopCards.map((s, i) => (
-              <span key={s.name} style={{ marginLeft: 10, fontSize: 11 }}>
-                <span style={{ color: LINE_COLORS[i % LINE_COLORS.length] }}>●</span> {s.name}
-              </span>
-            ))}
-          </div>
-        </div>
+      <Collapsible title="GMV SHOP THEO NGÀY" defaultOpen badge={<>{shopCards.map((s, i) => (<span key={s.name} style={{ marginLeft: 10, fontSize: 11 }}><span style={{ color: LINE_COLORS[i % LINE_COLORS.length] }}>●</span> {s.name}</span>))}</>}>
         <LineChart nhanhRevenue={nhanhRevenue} />
-      </div>
+      </Collapsible>
 
       {/* SO SÁNH DOANH THU THEO NGÀY */}
-      <div className="card" style={{ marginBottom: 14, padding: 0 }}>
-        <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-          <div>
-            <span style={{ fontWeight: 700 }}>SO SÁNH DOANH THU THEO NGÀY</span>
-            <span className="chip chip-amber" style={{ marginLeft: 8, fontSize: 9 }}>NHANH.VN</span>
-            <span className="chip chip-green" style={{ marginLeft: 4, fontSize: 9 }}>TIKTOK SHOP</span>
-          </div>
-          <div style={{ display: "flex", gap: 8, fontSize: 10 }}>
-            <span>ROAS: <span style={{ color: "var(--red)" }}>● &lt;10</span> <span style={{ color: "var(--amber)" }}>● 10-12</span> <span style={{ color: "var(--green)" }}>● &gt;12</span></span>
-          </div>
-        </div>
+      <Collapsible title="SO SÁNH DOANH THU THEO NGÀY" defaultOpen badge={<><span className="chip chip-amber" style={{ fontSize: 9 }}>NHANH.VN</span><span className="chip chip-green" style={{ marginLeft: 4, fontSize: 9 }}>TIKTOK SHOP</span></>}>
         <div className="tbl-wrap">
           <table>
             <thead><tr>
@@ -352,15 +325,14 @@ function OverviewTab({ ads, nhanhRevenue, adsTotals, nhanhTotals, roas, from, to
             </tbody>
           </table>
         </div>
-      </div>
+      </Collapsible>
 
       {/* CẢNH BÁO TỰ ĐỘNG */}
-      <div className="card" style={{ marginBottom: 14 }}>
-        <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 12, textTransform: "uppercase", color: "var(--muted)" }}>Cảnh báo tự động</div>
+      <Collapsible title="Cảnh báo tự động" defaultOpen={false}>
         {roas >= 10 && <div style={{ fontSize: 12, color: "var(--green)", marginBottom: 4 }}>● ROAS {roas.toFixed(2)}x — hiệu quả ads tốt</div>}
         {roas > 0 && roas < 10 && <div style={{ fontSize: 12, color: "var(--red)", marginBottom: 4 }}>● ROAS {roas.toFixed(2)}x — cần tối ưu ads</div>}
         {adsTotals.spend === 0 && <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>● Chưa có data ads trong kỳ</div>}
-      </div>
+      </Collapsible>
     </>
   );
 }

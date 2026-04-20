@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { formatDate, formatVND, toNum } from "@/lib/format";
 import type { Item, OrderListItem } from "@/lib/types";
 import { confirmShelfAction, saveQcAction } from "./actions";
+import Collapsible from "../components/Collapsible";
 
 const QC_OPTIONS = ["Chưa QC", "Đang QC", "Đã QC xong", "Lỗi NCC"];
 const RET_OPTIONS = ["Chưa xử lý", "Đã liên hệ NCC", "Đã hoàn cọc", "Đã hoàn tiền", "Hoàn tất"];
@@ -60,16 +61,18 @@ export default function TechView({
           {activeTab === "active" ? "Không có đơn nào đang chờ QC." : "Chưa có đơn hoàn thành."}
         </div>
       ) : (
-        orders.map((o) => (
-          <OrderQcCard
-            key={o.order_id}
-            order={o}
-            initialItems={itemsByOrder[o.order_id] || []}
-            disabled={pending}
-            onSaved={() => router.refresh()}
-            startTransition={startTransition}
-          />
-        ))
+        <Collapsible title={`Danh sách đơn (${orders.length})`} defaultOpen>
+          {orders.map((o) => (
+            <OrderQcCard
+              key={o.order_id}
+              order={o}
+              initialItems={itemsByOrder[o.order_id] || []}
+              disabled={pending}
+              onSaved={() => router.refresh()}
+              startTransition={startTransition}
+            />
+          ))}
+        </Collapsible>
       )}
     </section>
   );
@@ -88,7 +91,7 @@ function OrderQcCard({
   onSaved: () => void;
   startTransition: ReturnType<typeof useTransition>[1];
 }) {
-  const [expanded, setExpanded] = useState(order.stage === "ARRIVED");
+  const [expanded, setExpanded] = useState(false);
   const [items, setItems] = useState<EditableItem[]>(() => initialItems);
 
   function patch(line_id: string, fields: Partial<EditableItem>) {

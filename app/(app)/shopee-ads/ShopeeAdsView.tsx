@@ -5,15 +5,19 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { formatVND, formatVNDCompact, toNum } from "@/lib/format";
 import type { ShopeeAdsRow, ShopeeDailyRow } from "@/lib/db/shopee";
 import SyncButton from "../components/SyncButton";
+import AutoSyncToday from "../components/AutoSyncToday";
 import TargetProgressBar from "../components/TargetProgressBar";
+import Collapsible from "../components/Collapsible";
 
 type NhanhRow = { date: string; source: string; revenue: number; orders: number };
 
-function daysAgo(d: number): string { const dt = new Date(); dt.setDate(dt.getDate() + d); return dt.toISOString().substring(0, 10); }
+const _pad = (n: number) => String(n).padStart(2, "0");
+const _fmt = (d: Date) => `${d.getFullYear()}-${_pad(d.getMonth() + 1)}-${_pad(d.getDate())}`;
+function daysAgo(d: number): string { const dt = new Date(); dt.setDate(dt.getDate() + d); return _fmt(dt); }
 function monthRange(offset: number) {
   const now = new Date(); const y = now.getFullYear(); const m = now.getMonth() + offset;
   const first = new Date(y, m, 1); const last = offset === 0 ? now : new Date(y, m + 1, 0);
-  return { from: first.toISOString().substring(0, 10), to: last.toISOString().substring(0, 10) };
+  return { from: _fmt(first), to: _fmt(last) };
 }
 
 const QUICK_RANGES = [
@@ -37,6 +41,10 @@ export default function ShopeeAdsView({
   const router = useRouter();
   const [f, setF] = useState(from);
   const [t, setT] = useState(to);
+  const [prevFrom, setPrevFrom] = useState(from);
+  const [prevTo, setPrevTo] = useState(to);
+  if (from !== prevFrom) { setF(from); setPrevFrom(from); }
+  if (to !== prevTo) { setT(to); setPrevTo(to); }
   const [activeShop, setActiveShop] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -98,9 +106,17 @@ export default function ShopeeAdsView({
     for (const r of nhanhRevenue) { const c = nhMap.get(r.date) || { revenue: 0, orders: 0 }; c.revenue += r.revenue; c.orders += r.orders; nhMap.set(r.date, c); }
     const adMap = new Map<string, number>();
     for (const a of filteredAds) { const d = String(a.period_from || a.date).substring(0, 10); adMap.set(d, (adMap.get(d) || 0) + toNum(a.spend)); }
-    const allDates = new Set([...nhMap.keys(), ...adMap.keys()]);
-    return Array.from(allDates).sort().map((d) => ({ date: d, revenue: nhMap.get(d)?.revenue || 0, spend: adMap.get(d) || 0, orders: nhMap.get(d)?.orders || 0 }));
-  }, [nhanhRevenue, filteredAds]);
+    // Fill tất cả ngày trong khoảng from→to (không bỏ trống)
+    const result: Array<{ date: string; revenue: number; spend: number; orders: number }> = [];
+    const cursor = new Date(from + "T00:00:00Z");
+    const end = new Date(to + "T00:00:00Z");
+    while (cursor <= end) {
+      const d = cursor.toISOString().substring(0, 10);
+      result.push({ date: d, revenue: nhMap.get(d)?.revenue || 0, spend: adMap.get(d) || 0, orders: nhMap.get(d)?.orders || 0 });
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
+    }
+    return result;
+  }, [nhanhRevenue, filteredAds, from, to]);
 
   // ── Shop performance ──
   const shopPerf = useMemo(() => {
@@ -135,6 +151,7 @@ export default function ShopeeAdsView({
 
   return (
     <section className="section">
+      <AutoSyncToday onDone={() => router.refresh()} />
       {/* ═══ TARGET PROGRESS ═══ */}
       <TargetProgressBar channel="Shopee" monthTarget={monthTarget} monthActual={monthActual} monthKey={monthKey} color="#EE4D2D" />
 
@@ -145,7 +162,7 @@ export default function ShopeeAdsView({
           <div className="page-sub">{from} → {to} · {filteredAds.length} campaigns</div>
         </div>
         <div className="row" style={{ gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-          <SyncButton url="/api/nhanh/sync-sales" label="⟳ Sync Nhanh" onDone={() => router.refresh()} style={{ background: "#FFF7ED", border: "1px solid #FDBA74" }} />
+          <SyncButton url="/api/nhanh/sync-sales" label="⟳ Sync Nhanh" body={{ from, to }} onDone={() => router.refresh()} style={{ background: "#FFF7ED", border: "1px solid #FDBA74" }} />
           <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={onUpload} style={{ display: "none" }} />
           <button className="btn btn-ghost btn-xs" onClick={() => fileRef.current?.click()} disabled={uploading}
             style={{ background: "#F0FDF4", border: "1px solid #86EFAC" }}>
@@ -199,26 +216,25 @@ export default function ShopeeAdsView({
 
       {/* ═══ COMBO CHART: Bar (DT) + Line (Ads) ═══ */}
       {dailyChart.length > 0 && (
-        <div className="card" style={{ marginBottom: 14, padding: "14px 16px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <div style={{ fontWeight: 700, fontSize: 13 }}>Doanh thu &amp; Chi phí ads theo ngày</div>
-            <div style={{ display: "flex", gap: 14, fontSize: 10, color: "#6B7280" }}>
-              <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <span style={{ width: 10, height: 10, borderRadius: 2, background: "linear-gradient(180deg, #4ADE80, #16A34A)" }} />DT Nhanh
-              </span>
-              <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <span style={{ width: 10, height: 3, borderRadius: 2, background: "#EF4444" }} />Chi phí ads
-              </span>
-            </div>
+        <Collapsible title="Doanh thu & Chi phí ads theo ngày" defaultOpen={true} badge={
+          <div style={{ display: "flex", gap: 14, fontSize: 10, color: "#6B7280" }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <span style={{ width: 10, height: 10, borderRadius: 2, background: "linear-gradient(180deg, #4ADE80, #16A34A)" }} />DT Nhanh
+            </span>
+            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <span style={{ width: 10, height: 3, borderRadius: 2, background: "#EF4444" }} />Chi phí ads
+            </span>
           </div>
+        }>
           <ComboChart data={dailyChart} nhanhTotals={nhanhTotals} adsTotals={{ spend: totals.spend }} roas={roas} />
-        </div>
+        </Collapsible>
       )}
 
       {/* ═══ HIỆU QUẢ THEO SHOP — stacked chart ═══ */}
       {shopPerf.length > 0 && (
-        <div className="card" style={{ marginBottom: 14 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Hiệu quả theo Shop</div>
+        <Collapsible title="Hiệu quả theo Shop" defaultOpen={false} badge={
+          <span style={{ fontSize: 10, color: "#6B7280" }}>{shopPerf.length} shops</span>
+        }>
           <div style={{ display: "flex", gap: 12, fontSize: 10, color: "#6B7280", marginBottom: 10 }}>
             <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: "#EE4D2D", marginRight: 3, verticalAlign: "middle" }} />Doanh thu</span>
             <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: "#F87171", marginRight: 3, verticalAlign: "middle" }} />Chi phí Ads</span>
@@ -278,11 +294,14 @@ export default function ShopeeAdsView({
               </div>
             );
           })()}
-        </div>
+        </Collapsible>
       )}
 
       {/* ═══ CAMPAIGNS TABLE + TOP SIDEBAR ═══ */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 10, marginBottom: 14 }}>
+      <Collapsible title="Chiến dịch & Từ khoá" defaultOpen={false} badge={
+        <span style={{ fontSize: 10, color: "#6B7280" }}>{filteredAds.length} campaigns</span>
+      }>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 10 }}>
         <div className="card" style={{ padding: 0 }}>
           <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)", fontWeight: 700, fontSize: 12 }}>
             Chiến dịch · {filteredAds.length}
@@ -336,7 +355,8 @@ export default function ShopeeAdsView({
             {topCampaigns.length === 0 && <div className="muted" style={{ padding: 12, textAlign: "center", fontSize: 11 }}>Không có data.</div>}
           </div>
         </div>
-      </div>
+        </div>
+      </Collapsible>
     </section>
   );
 }
@@ -350,35 +370,49 @@ function ComboChart({ data, nhanhTotals, adsTotals, roas }: {
   adsTotals: { spend: number };
   roas: number;
 }) {
+  const [hover, setHover] = useState<number | null>(null);
   const maxRev = Math.max(...data.map((d) => d.revenue), 1);
   const maxSpend = Math.max(...data.map((d) => d.spend), 1);
   const BAR_H = 180;
   const chartH = BAR_H - 10;
   const today = new Date().toISOString().substring(0, 10);
   const labelStep = Math.max(1, Math.ceil(data.length / 15));
-  // Scale ads line to ~60-80% of bar height for visual overlap
   const adsMaxH = chartH * 0.75;
 
   return (
     <div>
-      <div style={{ position: "relative", height: BAR_H }}>
-        {/* Green bars */}
-        <div style={{ display: "flex", alignItems: "flex-end", height: BAR_H, position: "relative", zIndex: 1, gap: 3, padding: "0 4px" }}>
-          {data.map((d) => {
+      <div data-chart style={{ position: "relative", height: BAR_H }}>
+        {/* Bars */}
+        <div style={{ display: "flex", alignItems: "flex-end", height: BAR_H, position: "relative", zIndex: 1, padding: "0 4px" }}>
+          {data.map((d, i) => {
             const h = maxRev > 0 ? (d.revenue / maxRev) * chartH : 0;
             const isFuture = d.date > today;
             return (
-              <div key={d.date} style={{
-                flex: 1, minWidth: 0,
-                height: Math.max(h, d.revenue > 0 ? 4 : 0),
-                background: isFuture ? "rgba(238,77,45,0.15)" : "#EE4D2D",
-                borderRadius: "3px 3px 0 0",
-              }} />
+              <div key={d.date} style={{ flex: 1, minWidth: 0, padding: "0 1px" }}>
+                <div style={{
+                  width: "100%",
+                  height: d.revenue > 0 ? Math.max(h, 4) : isFuture ? chartH * 0.08 : chartH * 0.03,
+                  background: hover === i
+                    ? "#C2410C"
+                    : isFuture ? "rgba(238,77,45,0.08)" : d.revenue > 0 ? "#EE4D2D" : "rgba(238,77,45,0.12)",
+                  borderRadius: "3px 3px 0 0",
+                  transition: "background 0.1s",
+                }} />
+              </div>
             );
           })}
         </div>
 
-        {/* Coral line overlay */}
+        {/* Invisible hover zones — on top */}
+        <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: BAR_H, display: "flex", zIndex: 4, padding: "0 4px" }}>
+          {data.map((_, i) => (
+            <div key={i}
+              onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}
+              style={{ flex: 1, cursor: "default" }} />
+          ))}
+        </div>
+
+        {/* Line overlay */}
         <svg style={{ position: "absolute", top: 0, left: 0, width: "100%", height: BAR_H, pointerEvents: "none", zIndex: 2 }}
           viewBox={`0 0 ${data.length * 100} ${BAR_H}`} preserveAspectRatio="none">
           {(() => {
@@ -400,15 +434,51 @@ function ComboChart({ data, nhanhTotals, adsTotals, roas }: {
             );
           })()}
         </svg>
+
+        {/* Tooltip */}
+        {hover !== null && data[hover] && (
+          <div style={{
+            position: "absolute",
+            left: `${((hover + 0.5) / data.length) * 100}%`,
+            top: 8, transform: "translateX(-50%)",
+            background: "#1F2937", color: "#fff", borderRadius: 6, padding: "8px 12px",
+            fontSize: 11, pointerEvents: "none", zIndex: 50, whiteSpace: "nowrap",
+            boxShadow: "0 4px 12px rgba(0,0,0,.3)",
+          }}>
+            <div style={{ fontWeight: 700, color: "#D1D5DB", marginBottom: 4 }}>{data[hover].date}</div>
+            <div style={{ display: "flex", gap: 6, alignItems: "center", lineHeight: 1.6 }}>
+              <span style={{ width: 8, height: 8, borderRadius: 2, background: "#EE4D2D" }} />
+              <span style={{ color: "#9CA3AF" }}>Doanh thu:</span>
+              <span style={{ fontWeight: 700 }}>{formatVNDCompact(data[hover].revenue)}</span>
+            </div>
+            <div style={{ display: "flex", gap: 6, alignItems: "center", lineHeight: 1.6 }}>
+              <span style={{ width: 8, height: 8, borderRadius: 2, background: "#1F2937", border: "1px solid #fff" }} />
+              <span style={{ color: "#9CA3AF" }}>Chi phí ads:</span>
+              <span style={{ fontWeight: 700 }}>{formatVNDCompact(data[hover].spend)}</span>
+            </div>
+            <div style={{ display: "flex", gap: 6, alignItems: "center", lineHeight: 1.6 }}>
+              <span style={{ width: 8, height: 8, borderRadius: 2, background: "#22C55E" }} />
+              <span style={{ color: "#9CA3AF" }}>Đơn hàng:</span>
+              <span style={{ fontWeight: 700 }}>{data[hover].orders}</span>
+            </div>
+            {data[hover].spend > 0 && (
+              <div style={{ display: "flex", gap: 6, alignItems: "center", lineHeight: 1.6 }}>
+                <span style={{ width: 8, height: 8, borderRadius: 2, background: "#F59E0B" }} />
+                <span style={{ color: "#9CA3AF" }}>ROAS:</span>
+                <span style={{ fontWeight: 700 }}>{(data[hover].revenue / data[hover].spend).toFixed(1)}x</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Date labels */}
-      <div style={{ display: "flex", gap: 3, padding: "0 4px", borderTop: "1px solid #E5E7EB" }}>
+      <div style={{ display: "flex", padding: "0 4px", borderTop: "1px solid #E5E7EB" }}>
         {data.map((d, i) => (
           <div key={d.date} style={{
             flex: 1, textAlign: "center", fontSize: 10, padding: "5px 0", minWidth: 0,
-            color: d.date > today ? "#EF4444" : "#6B7280",
-            fontWeight: d.date > today ? 600 : 400,
+            color: hover === i ? "#EE4D2D" : d.date > today ? "#EF4444" : "#6B7280",
+            fontWeight: hover === i || d.date > today ? 600 : 400,
           }}>
             {i % labelStep === 0 ? d.date.substring(8) : ""}
           </div>
