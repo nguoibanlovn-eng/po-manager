@@ -717,11 +717,26 @@ function RevenueDetailSection({ data }: { data: FbNhanhRow[] }) {
   }, [period, customFrom, customTo, monthStart]); // eslint-disable-line react-hooks/exhaustive-deps
   const filtered = useMemo(() => data.filter((r) => r.date >= cutoff && r.date <= cutoffTo), [data, cutoff, cutoffTo]);
 
+  // Previous period (same duration, shifted back)
+  const { prevCutoff, prevCutoffTo } = useMemo(() => {
+    const fromD = new Date(cutoff + "T00:00:00");
+    const toD = new Date(cutoffTo + "T00:00:00");
+    const days = Math.round((toD.getTime() - fromD.getTime()) / 86400000) + 1;
+    const prevTo = new Date(fromD); prevTo.setDate(prevTo.getDate() - 1);
+    const prevFrom = new Date(prevTo); prevFrom.setDate(prevFrom.getDate() - days + 1);
+    return { prevCutoff: fmt(prevFrom), prevCutoffTo: fmt(prevTo) };
+  }, [cutoff, cutoffTo]); // eslint-disable-line react-hooks/exhaustive-deps
+  const prevFiltered = useMemo(() => data.filter((r) => r.date >= prevCutoff && r.date <= prevCutoffTo), [data, prevCutoff, prevCutoffTo]);
+
   // Totals
   const totals = useMemo(() => filtered.reduce(
     (a, r) => ({ revenue: a.revenue + r.revenue, orders: a.orders + r.orders }),
     { revenue: 0, orders: 0 },
   ), [filtered]);
+  const prevTotals = useMemo(() => prevFiltered.reduce(
+    (a, r) => ({ revenue: a.revenue + r.revenue, orders: a.orders + r.orders }),
+    { revenue: 0, orders: 0 },
+  ), [prevFiltered]);
 
   // By date (total)
   const byDate = useMemo(() => {
@@ -729,6 +744,13 @@ function RevenueDetailSection({ data }: { data: FbNhanhRow[] }) {
     for (const r of filtered) m.set(r.date, (m.get(r.date) || 0) + r.revenue);
     return Array.from(m.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [filtered]);
+
+  // Previous period by date (aligned by index, not by date)
+  const prevByDate = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of prevFiltered) m.set(r.date, (m.get(r.date) || 0) + r.revenue);
+    return Array.from(m.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [prevFiltered]);
 
   // By date per source (for stacked/channel mode)
   const { sources, byDateBySource } = useMemo(() => {
@@ -759,9 +781,24 @@ function RevenueDetailSection({ data }: { data: FbNhanhRow[] }) {
     return Array.from(m.entries()).map(([name, v]) => ({ name, ...v })).sort((a, b) => b.revenue - a.revenue);
   }, [filtered]);
 
+  // Previous period by source
+  const prevBySource = useMemo(() => {
+    const m = new Map<string, { revenue: number; orders: number }>();
+    for (const r of prevFiltered) {
+      const cur = m.get(r.source) || { revenue: 0, orders: 0 };
+      cur.revenue += r.revenue; cur.orders += r.orders;
+      m.set(r.source, cur);
+    }
+    return m;
+  }, [prevFiltered]);
+
   const avg = byDate.length > 0 ? totals.revenue / byDate.length : 0;
+  const prevAvg = prevByDate.length > 0 ? prevTotals.revenue / prevByDate.length : 0;
   const maxDay = byDate.length > 0 ? byDate.reduce((best, [d, v]) => v > best.v ? { d, v } : best, { d: "", v: 0 }) : { d: "", v: 0 };
+  const prevMaxDay = prevByDate.length > 0 ? prevByDate.reduce((best, [d, v]) => v > best.v ? { d, v } : best, { d: "", v: 0 }) : { d: "", v: 0 };
   const dateRange = byDate.length > 0 ? `${byDate[0][0].substring(5)} → ${byDate[byDate.length - 1][0].substring(5)}` : "";
+  const pctChange = (cur: number, prev: number) => prev > 0 ? Math.round(((cur - prev) / prev) * 100) : 0;
+  const hasPrev = prevTotals.revenue > 0;
 
   return (
     <div>
@@ -780,16 +817,19 @@ function RevenueDetailSection({ data }: { data: FbNhanhRow[] }) {
           <div className="muted" style={{ fontSize: 9, textTransform: "uppercase" }}>Tổng doanh thu</div>
           <div style={{ fontSize: 16, fontWeight: 800 }}>{formatVNDCompact(totals.revenue)}</div>
           <div className="muted" style={{ fontSize: 9 }}>{totals.orders.toLocaleString("vi-VN")} đơn thành công</div>
+          {hasPrev && <PrevBadge cur={totals.revenue} prev={prevTotals.revenue} />}
         </div>
         <div style={{ padding: "6px 8px", background: "#FAFAFA", borderRadius: 6 }}>
           <div className="muted" style={{ fontSize: 9, textTransform: "uppercase" }}>Trung bình / ngày</div>
           <div style={{ fontSize: 16, fontWeight: 800 }}>{formatVNDCompact(avg)}</div>
           <div className="muted" style={{ fontSize: 9 }}>{byDate.length} ngày</div>
+          {hasPrev && <PrevBadge cur={avg} prev={prevAvg} />}
         </div>
         <div style={{ padding: "6px 8px", background: "#FAFAFA", borderRadius: 6 }}>
           <div className="muted" style={{ fontSize: 9, textTransform: "uppercase" }}>Ngày cao nhất</div>
           <div style={{ fontSize: 16, fontWeight: 800, color: "var(--green)" }}>{formatVNDCompact(maxDay.v)}</div>
           <div className="muted" style={{ fontSize: 9 }}>{maxDay.d}</div>
+          {hasPrev && prevMaxDay.v > 0 && <div style={{ fontSize: 8, color: "#9CA3AF", marginTop: 2 }}>CK: {formatVNDCompact(prevMaxDay.v)} ({prevMaxDay.d.substring(5)})</div>}
         </div>
       </div>
 
@@ -829,9 +869,34 @@ function RevenueDetailSection({ data }: { data: FbNhanhRow[] }) {
 
       {/* SVG Chart */}
       {mode === "total" ? (
-        <RevenueTotalChart data={byDate} />
+        <RevenueTotalChart data={byDate} prevData={prevByDate} />
       ) : (
         <RevenueStackedChart dates={byDate.map(([d]) => d)} sources={sources} byDateBySource={byDateBySource} />
+      )}
+
+      {/* Comparison footer */}
+      {hasPrev && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1, marginTop: 12, borderRadius: 8, overflow: "hidden", fontSize: 11 }}>
+          <div style={{ padding: "8px 12px", background: "#F0FDF4" }}>
+            <div style={{ fontSize: 9, color: "#6B7280", marginBottom: 2 }}>KỲ NÀY</div>
+            <div style={{ fontWeight: 800, color: "#16A34A", fontSize: 14 }}>{formatVNDCompact(totals.revenue)}</div>
+            <div style={{ fontSize: 9, color: "#6B7280" }}>{totals.orders.toLocaleString("vi-VN")} đơn</div>
+          </div>
+          <div style={{ padding: "8px 12px", background: "#F9FAFB" }}>
+            <div style={{ fontSize: 9, color: "#6B7280", marginBottom: 2 }}>CÙNG KỲ</div>
+            <div style={{ fontWeight: 800, color: "#6B7280", fontSize: 14 }}>{formatVNDCompact(prevTotals.revenue)}</div>
+            <div style={{ fontSize: 9, color: "#6B7280" }}>{prevTotals.orders.toLocaleString("vi-VN")} đơn · {prevCutoff.substring(5)} → {prevCutoffTo.substring(5)}</div>
+          </div>
+          <div style={{ padding: "8px 12px", background: pctChange(totals.revenue, prevTotals.revenue) >= 0 ? "#F0FDF4" : "#FEF2F2" }}>
+            <div style={{ fontSize: 9, color: "#6B7280", marginBottom: 2 }}>TĂNG TRƯỞNG</div>
+            <div style={{ fontWeight: 800, fontSize: 14, color: pctChange(totals.revenue, prevTotals.revenue) >= 0 ? "#16A34A" : "#DC2626" }}>
+              {pctChange(totals.revenue, prevTotals.revenue) >= 0 ? "▲" : "▼"} {Math.abs(pctChange(totals.revenue, prevTotals.revenue))}%
+            </div>
+            <div style={{ fontSize: 9, color: "#6B7280" }}>
+              {totals.orders - prevTotals.orders >= 0 ? "+" : ""}{(totals.orders - prevTotals.orders).toLocaleString("vi-VN")} đơn
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Channel detail with sparklines */}
@@ -846,13 +911,17 @@ function RevenueDetailSection({ data }: { data: FbNhanhRow[] }) {
           // daily sparkline
           const dates = byDate.map(([d]) => d);
           const vals = dates.map((d) => byDateBySource.get(d)?.get(s.name) || 0);
-          const last = vals.length > 0 ? vals[vals.length - 1] : 0;
-          const prev = vals.length > 1 ? vals[vals.length - 2] : last;
-          const change = prev > 0 ? Math.round(((last - prev) / prev) * 100) : 0;
+          // Compare with previous period
+          const prevSrc = prevBySource.get(s.name);
+          const prevRev = prevSrc?.revenue || 0;
+          const chgVsPrev = prevRev > 0 ? Math.round(((s.revenue - prevRev) / prevRev) * 100) : 0;
           return (
             <div key={s.name} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", borderBottom: "1px solid var(--border)" }}>
               <span style={{ color, fontSize: 10 }}>●</span>
-              <span style={{ flex: 1, fontSize: 11, fontWeight: 500 }}>Facebook - {s.name}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ fontSize: 11, fontWeight: 500 }}>Facebook - {s.name}</span>
+                {hasPrev && prevRev > 0 && <div style={{ fontSize: 8, color: "#9CA3AF" }}>CK: {formatVNDCompact(prevRev)}</div>}
+              </div>
               <div style={{ display: "flex", alignItems: "flex-end", gap: 1, height: 20, width: 70 }}>
                 {vals.map((v, j) => {
                   const mx = Math.max(...vals);
@@ -860,8 +929,8 @@ function RevenueDetailSection({ data }: { data: FbNhanhRow[] }) {
                   return <div key={j} style={{ flex: 1, height: Math.max(h, 1), background: color, borderRadius: 1, opacity: 0.7 }} />;
                 })}
               </div>
-              <span style={{ fontSize: 9, fontWeight: 600, width: 40, textAlign: "right", color: change > 0 ? "var(--green)" : change < 0 ? "var(--red)" : "var(--muted)" }}>
-                {change > 0 ? `▲+${change}%` : change < 0 ? `▼${change}%` : "—"}
+              <span style={{ fontSize: 9, fontWeight: 600, width: 50, textAlign: "right", color: chgVsPrev > 0 ? "var(--green)" : chgVsPrev < 0 ? "var(--red)" : "var(--muted)" }}>
+                {hasPrev && prevRev > 0 ? (chgVsPrev > 0 ? `▲+${chgVsPrev}%` : chgVsPrev < 0 ? `▼${chgVsPrev}%` : "0%") : "—"}
               </span>
               <span style={{ fontSize: 11, fontWeight: 700, width: 55, textAlign: "right" }}>{formatVNDCompact(s.revenue)}</span>
               <span style={{ fontSize: 9, color: "var(--muted)", width: 28, textAlign: "right" }}>{pct}%</span>
@@ -873,22 +942,35 @@ function RevenueDetailSection({ data }: { data: FbNhanhRow[] }) {
   );
 }
 
-/* ── Revenue Total bar chart (HTML flex) ── */
-function RevenueTotalChart({ data }: { data: [string, number][] }) {
+/* ── Revenue Total bar chart with ghost prev bars ── */
+function RevenueTotalChart({ data, prevData = [] }: { data: [string, number][]; prevData?: [string, number][] }) {
   if (data.length === 0) return null;
-  const max = Math.max(...data.map(([, v]) => v), 1);
+  const allMax = Math.max(...data.map(([, v]) => v), ...prevData.map(([, v]) => v), 1);
   const BAR_H = 160;
   const labelStep = Math.max(1, Math.floor(data.length / 12));
 
   return (
     <div>
       <div style={{ display: "flex", alignItems: "flex-end", height: BAR_H }}>
-        {data.map(([d, v]) => {
-          const h = max > 0 ? (v / max) * (BAR_H - 24) : 0;
+        {data.map(([d, v], i) => {
+          const h = allMax > 0 ? (v / allMax) * (BAR_H - 24) : 0;
+          const prevV = prevData[i]?.[1] || 0;
+          const prevH = allMax > 0 ? (prevV / allMax) * (BAR_H - 24) : 0;
           return (
-            <div key={d} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end" }}>
+            <div key={d} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", position: "relative" }}>
               <div style={{ fontSize: 7, fontWeight: 600, marginBottom: 1, whiteSpace: "nowrap" }}>{formatVNDCompact(v)}</div>
-              <div style={{ width: "85%", height: Math.max(h, 2), background: "#60A5FA", borderRadius: 2 }} />
+              <div style={{ width: "85%", position: "relative" }}>
+                {/* Ghost bar (previous period) */}
+                {prevV > 0 && (
+                  <div style={{
+                    position: "absolute", bottom: 0, left: 0, width: "100%",
+                    height: Math.max(prevH, 2), background: "#60A5FA", opacity: 0.15,
+                    borderRadius: 2, border: "1px dashed rgba(96,165,250,0.4)",
+                  }} />
+                )}
+                {/* Current bar */}
+                <div style={{ position: "relative", width: "100%", height: Math.max(h, 2), background: "#60A5FA", borderRadius: 2 }} />
+              </div>
             </div>
           );
         })}
@@ -900,6 +982,12 @@ function RevenueTotalChart({ data }: { data: [string, number][] }) {
           </div>
         ))}
       </div>
+      {prevData.length > 0 && (
+        <div style={{ display: "flex", gap: 12, fontSize: 9, color: "#9CA3AF", justifyContent: "flex-end", marginTop: 2 }}>
+          <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 1, background: "#60A5FA", marginRight: 3, verticalAlign: "middle" }} />Kỳ này</span>
+          <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 1, background: "#60A5FA", opacity: 0.2, marginRight: 3, verticalAlign: "middle", border: "1px dashed rgba(96,165,250,0.5)" }} />Cùng kỳ</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -947,6 +1035,17 @@ function RevenueStackedChart({ dates, sources, byDateBySource }: {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+/* ── Previous period comparison badge ── */
+function PrevBadge({ cur, prev }: { cur: number; prev: number }) {
+  const pct = prev > 0 ? Math.round(((cur - prev) / prev) * 100) : 0;
+  const up = pct >= 0;
+  return (
+    <div style={{ fontSize: 8, marginTop: 2, color: up ? "#16A34A" : "#DC2626", fontWeight: 600 }}>
+      {up ? "▲" : "▼"}{up ? "+" : ""}{pct}% <span style={{ color: "#9CA3AF", fontWeight: 400 }}>vs {formatVNDCompact(prev)} CK</span>
     </div>
   );
 }

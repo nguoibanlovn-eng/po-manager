@@ -28,8 +28,8 @@ export default async function FbPagesPage({
   const prevFromStr = prevFrom.toISOString().substring(0, 10);
   const prevToStr = prevTo.toISOString().substring(0, 10);
 
-  // Always fetch 30 days nhanh for "Doanh thu chi tiết" section
-  const nhanh30From = dateVN(null, -30);
+  // Fetch 90 days nhanh for "Doanh thu chi tiết" section (needs prev period for comparison)
+  const nhanh30From = dateVN(null, -90);
   const nhanh30To = dateVN();
 
   const [pages, ads, insights, nhanhRevenue, monthTarget, monthNhanh, prevAds, nhanh30d] = await Promise.all([
