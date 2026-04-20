@@ -146,13 +146,18 @@ export async function uploadShopeeCsv(csvText: string, shopOverride?: string): P
     if (!rows.length) return { ok: false, error: "Không parse được dòng nào." };
 
     const db = supabaseAdmin();
-    // Replace (shop, month) — delete existing then insert
-    await db
-      .from("shopee_ads")
-      .delete()
-      .eq("shop", shopName)
-      .gte("date", `${uploadMonth}-01`)
-      .lte("date", `${uploadMonth}-31`);
+    // Replace (shop, date) — delete for this specific date range then insert
+    if (periodFrom && periodTo) {
+      await db.from("shopee_ads").delete()
+        .eq("shop", shopName)
+        .gte("date", periodFrom)
+        .lte("date", periodTo);
+    } else {
+      await db.from("shopee_ads").delete()
+        .eq("shop", shopName)
+        .gte("date", `${uploadMonth}-01`)
+        .lte("date", `${uploadMonth}-31`);
+    }
 
     const BATCH = 500;
     for (let i = 0; i < rows.length; i += BATCH) {
