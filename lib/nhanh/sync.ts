@@ -168,6 +168,13 @@ const SHOPEE_SHOP_MAP: Record<string, string> = {
   "998924544": "FlaskWay",
 };
 
+// TikTok shopId → shop name (from Nhanh V3 order data)
+const TIKTOK_SHOP_MAP: Record<string, string> = {
+  "7495209800128629683": "Lỗ Vũ 1",
+  "7494954420886079683": "Velasboost",
+  "7494688600083827363": "Vuabanlo Shop",
+};
+
 // Nhanh saleChannel ID → category name
 const CHANNEL_MAP: Record<string, string> = {
   "20": "Facebook",
@@ -244,6 +251,10 @@ export async function syncSalesByChannel(opts: {
     // For Shopee orders, use shopId → shop name
     if (chId === "42" && o.channel?.shopId) {
       source = SHOPEE_SHOP_MAP[o.channel.shopId] || o.channel.shopId;
+    }
+    // For TikTok orders, use shopId → shop name
+    if (chId === "48" && o.channel?.shopId) {
+      source = TIKTOK_SHOP_MAP[o.channel.shopId] || o.channel.shopId;
     }
 
     // Revenue = sum of priceAfterVAT × qty (giá khách trả, sau discount)
