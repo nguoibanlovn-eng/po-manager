@@ -244,9 +244,13 @@ export async function syncSalesByChannel(opts: {
     const status = o.info?.status ?? 0;
     if (SKIP_STATUSES.has(status)) continue;
     inRangeCount++;
-    const isSuccess = SUCCESS_STATUSES.has(status);
 
     const chId = String(o.channel?.saleChannel ?? "__other__");
+    // API (10) and Admin (1) channels rarely update status on Nhanh,
+    // so treat all non-cancelled orders as success for these channels.
+    const isSuccess = (chId === "10" || chId === "1")
+      ? true  // API/Admin: all non-cancelled = success
+      : SUCCESS_STATUSES.has(status);
     const chName = CHANNEL_MAP[chId] || chId;
 
     // For Facebook orders, use pageId → page name
