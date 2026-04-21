@@ -18,7 +18,7 @@ export async function getCurrentUser(): Promise<AppUser | null> {
   const { data } = await supabaseAdmin()
     .from("users")
     .select("email, name, role, team, channels, is_active, extra_permissions")
-    .eq("email", email)
+    .ilike("email", email)
     .maybeSingle();
   if (!data) return null;
   if (data.is_active === false) return null;

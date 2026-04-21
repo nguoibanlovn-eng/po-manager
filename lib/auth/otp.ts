@@ -30,7 +30,7 @@ export async function requestOtp(email: string): Promise<{ ok: boolean; error?: 
   const { data: user } = await db
     .from("users")
     .select("email, name, is_active")
-    .eq("email", normalized)
+    .ilike("email", normalized)
     .maybeSingle();
   if (!user) return { ok: false, error: "Email chưa được cấp quyền." };
   if (user.is_active === false) return { ok: false, error: "Tài khoản bị khoá." };
