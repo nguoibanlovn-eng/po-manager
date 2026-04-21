@@ -226,7 +226,8 @@ export async function syncSalesByChannel(opts: {
   logs.push(`[syncSales] Fetched ${allOrders.length} orders`);
 
   // Group by (date, channel, source)
-  type Bucket = { orders: number; rev: number };
+  // Track both total (all non-cancelled) and success (status 59 only)
+  type Bucket = { orders: number; rev: number; ordersSuccess: number; revSuccess: number };
   const buckets = new Map<string, Bucket>();
   let inRangeCount = 0;
 
@@ -239,6 +240,7 @@ export async function syncSalesByChannel(opts: {
     const status = o.info?.status ?? 0;
     if (SKIP_STATUSES.has(status)) continue;
     inRangeCount++;
+    const isSuccess = status === 59;
 
     const chId = String(o.channel?.saleChannel ?? "__other__");
     const chName = CHANNEL_MAP[chId] || chId;
@@ -263,9 +265,10 @@ export async function syncSalesByChannel(opts: {
     );
 
     const key = `${date}|${chName}|${source}`;
-    const b = buckets.get(key) || { orders: 0, rev: 0 };
+    const b = buckets.get(key) || { orders: 0, rev: 0, ordersSuccess: 0, revSuccess: 0 };
     b.orders++;
     b.rev += rev;
+    if (isSuccess) { b.ordersSuccess++; b.revSuccess += rev; }
     buckets.set(key, b);
   }
 
@@ -322,9 +325,9 @@ export async function syncSalesByChannel(opts: {
       order_net: b.orders,
       revenue_total: b.rev,
       revenue_cancel: 0,
-      revenue_net: b.rev,
-      order_success: b.orders,
-      revenue_success: b.rev,
+      revenue_net: b.revSuccess,
+      order_success: b.ordersSuccess,
+      revenue_success: b.revSuccess,
       synced_at: nowVN(),
     };
   });
