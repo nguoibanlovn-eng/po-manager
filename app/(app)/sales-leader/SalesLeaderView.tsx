@@ -86,7 +86,7 @@ export default function SalesLeaderView({
 
   return (
     <section className="section">
-      <AutoSyncToday onDone={() => router.refresh()} />
+      <AutoSyncToday onDone={() => router.refresh()} extraSyncs={["/api/tiktok/sync-ads"]} />
       {/* ═══ HEADER ═══ */}
       <div className="page-hdr">
         <div>

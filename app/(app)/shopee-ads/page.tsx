@@ -31,7 +31,7 @@ export default async function ShopeeAdsPage({
 }) {
   const sp = await searchParams;
   const to = sp.to || dateVN();
-  const from = sp.from || dateVN(null, -7);
+  const from = sp.from || dateVN();
 
   // Month target uses current month
   const now = new Date();

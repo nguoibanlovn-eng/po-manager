@@ -11,7 +11,7 @@ export default async function SalesLeaderPage({
 }) {
   const sp = await searchParams;
   const to = sp.to || dateVN();
-  const from = sp.from || dateVN(null, -7);
+  const from = sp.from || dateVN();
 
   // Current month target
   const now = new Date();

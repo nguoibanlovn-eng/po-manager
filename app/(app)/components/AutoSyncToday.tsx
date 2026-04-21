@@ -2,8 +2,13 @@
 
 import { useEffect, useRef } from "react";
 
-/** Auto-sync Nhanh sales for today on mount. Runs once, non-blocking. */
-export default function AutoSyncToday({ onDone }: { onDone?: () => void }) {
+/** Auto-sync on mount. Runs once, non-blocking.
+ *  Default: sync Nhanh sales.
+ *  Pass `extraSyncs` to also trigger other sync endpoints. */
+export default function AutoSyncToday({ onDone, extraSyncs }: {
+  onDone?: () => void;
+  extraSyncs?: string[];
+}) {
   const ran = useRef(false);
 
   useEffect(() => {
@@ -14,17 +19,25 @@ export default function AutoSyncToday({ onDone }: { onDone?: () => void }) {
     const pad = (n: number) => String(n).padStart(2, "0");
     const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
 
-    fetch("/api/nhanh/sync-sales", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ from: todayStr, to: todayStr }),
-    })
-      .then((r) => r.json())
-      .then((j) => {
-        if (j.ok && onDone) onDone();
-      })
-      .catch(() => {});
-  }, [onDone]);
+    const syncs = [
+      fetch("/api/nhanh/sync-sales", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ from: todayStr, to: todayStr }),
+      }),
+      ...(extraSyncs || []).map((url) =>
+        fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ from: todayStr, to: todayStr }),
+        }),
+      ),
+    ];
+
+    Promise.allSettled(syncs).then(() => {
+      if (onDone) onDone();
+    });
+  }, [onDone, extraSyncs]);
 
   return null;
 }

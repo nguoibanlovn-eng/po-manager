@@ -12,7 +12,7 @@ export default async function FbPagesPage({
 }) {
   const sp = await searchParams;
   const to = sp.to || dateVN();
-  const from = sp.from || dateVN(null, -7);
+  const from = sp.from || dateVN();
 
   const now = new Date();
   const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
