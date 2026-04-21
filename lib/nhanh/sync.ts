@@ -296,11 +296,19 @@ export async function syncSalesByChannel(opts: {
     channelsByDate.get(d)!.add(r.channel as string);
   }
 
-  // Drive imports all 5 channels at once (Facebook, Shopee, TikTok, Admin, API).
-  // Skip only dates that already have ALL 5 channels — partial API syncs (3-4 channels)
-  // should be re-synced to pick up late-arriving Shopee/TikTok orders.
-  const newDates = [...apiDates].filter((d) => (channelsByDate.get(d)?.size || 0) < 5);
-  const skippedDates = [...apiDates].filter((d) => (channelsByDate.get(d)?.size || 0) >= 5);
+  // Always re-sync last 3 days (status updates take time to settle).
+  // Only skip older dates that have Drive data (>= 5 channels with detailed sources).
+  const today = dateVN();
+  const yesterday = dateVN(null, -1);
+  const dayBefore = dateVN(null, -2);
+  const recentDates = new Set([today, yesterday, dayBefore]);
+
+  const newDates = [...apiDates].filter((d) =>
+    recentDates.has(d) || (channelsByDate.get(d)?.size || 0) < 5,
+  );
+  const skippedDates = [...apiDates].filter((d) =>
+    !recentDates.has(d) && (channelsByDate.get(d)?.size || 0) >= 5,
+  );
   if (skippedDates.length) {
     logs.push(`[syncSales] Skipped ${skippedDates.length} days (have Drive data): ${skippedDates.slice(-3).join(", ")}`);
   }
