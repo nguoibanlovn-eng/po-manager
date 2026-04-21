@@ -88,7 +88,9 @@ function OrderGroup({
   total: number;
   arrivalDate: string | null;
 }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
+  const doneCount = items.filter((it) => it.damage_handled).length;
+  const allDone = doneCount === items.length;
   return (
     <div className="card" style={{ marginBottom: 12, padding: 0, overflow: "hidden" }}>
       <div
@@ -120,7 +122,10 @@ function OrderGroup({
             <div className="muted" style={{ fontSize: 12 }}>{items.length} SP lỗi · NCC: {supplier}</div>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center", flexShrink: 0 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+          <span className={`chip ${allDone ? "chip-green" : "chip-amber"}`} style={{ fontSize: 10 }}>
+            {allDone ? "✓ Hoàn tất" : `${doneCount}/${items.length} xong`}
+          </span>
           <span style={{ fontSize: 13, color: "var(--red)", fontWeight: 700 }}>
             {formatVND(total)} thiệt hại
           </span>
@@ -140,7 +145,8 @@ function OrderGroup({
 }
 
 function ItemAccordion({ item }: { item: DamageItem }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
+  const resLabel: Record<string, string> = { replace: "↩ Đổi trả", refund: "💵 Hoàn tiền", liquidate: "📦 Thanh lý" };
   return (
     <div style={{ borderBottom: "1px solid var(--border)" }}>
       <div
@@ -160,11 +166,16 @@ function ItemAccordion({ item }: { item: DamageItem }) {
             {item.product_name} <span className="muted" style={{ fontSize: 11 }}>{item.sku || ""}</span>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
-          <span className="chip chip-red" style={{ fontSize: 11 }}>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+          <span className="chip chip-red" style={{ fontSize: 10 }}>
             {toNum(item.damage_qty)} lỗi · {formatVND(item.damage_amount)}
           </span>
-          <span className={`chip ${item.damage_handled ? "chip-green" : "chip-amber"}`}>
+          {item.resolution_type && (
+            <span className="chip chip-blue" style={{ fontSize: 10 }}>
+              {resLabel[item.resolution_type] || item.resolution_type}
+            </span>
+          )}
+          <span className={`chip ${item.damage_handled ? "chip-green" : "chip-amber"}`} style={{ fontSize: 10 }}>
             {item.damage_handled ? "✓ Xong" : "Đang xử lý"}
           </span>
         </div>
