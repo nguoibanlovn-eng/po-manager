@@ -192,6 +192,7 @@ export async function syncSalesByChannel(opts: {
   from?: string;
   to?: string;
 } = {}): Promise<{ channels: number; orders: number; logs?: string[] }> {
+  const isCron = !opts.from && !opts.to; // no explicit range = cron/background
   const to = opts.to || dateVN();
   const from = opts.from || dateVN(null, -7);
   const db = supabaseAdmin();
@@ -300,12 +301,12 @@ export async function syncSalesByChannel(opts: {
     channelsByDate.get(d)!.add(r.channel as string);
   }
 
-  // Always re-sync last 3 days (status updates take time to settle).
-  // Only skip older dates that have Drive data (>= 5 channels with detailed sources).
+  // Cron (no explicit from/to): force re-sync last 3 days for status updates.
+  // User trigger (explicit from/to): only sync requested range, skip dates with data.
   const today = dateVN();
-  const yesterday = dateVN(null, -1);
-  const dayBefore = dateVN(null, -2);
-  const recentDates = new Set([today, yesterday, dayBefore]);
+  const recentDates = isCron
+    ? new Set([today, dateVN(null, -1), dateVN(null, -2)])
+    : new Set<string>(); // user trigger: don't force re-sync old dates
 
   const newDates = [...apiDates].filter((d) =>
     recentDates.has(d) || (channelsByDate.get(d)?.size || 0) < 5,
