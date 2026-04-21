@@ -34,8 +34,8 @@ export default async function FbPagesPage({
 
   const [pages, ads, insights, nhanhRevenue, monthTarget, monthNhanh, prevAds, nhanh30d] = await Promise.all([
     listPages("Facebook"),
-    listAdsCache({ from, to }),
-    listInsightsCache({ from, to }),
+    listAdsCache({ from: from === to ? dateVN(null, -1) : from, to }),
+    listInsightsCache({ from: from === to ? dateVN(null, -1) : from, to }),
     listFbNhanhRevenue(from, to),
     getChannelTarget("facebook", monthKey),
     listFbNhanhRevenue(monthFrom, monthTo),
