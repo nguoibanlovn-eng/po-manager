@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { syncProductsAndInventory, syncSalesByChannel } from "@/lib/nhanh/sync";
+import { syncNhanhReport } from "@/lib/nhanh/report-scraper";
 import { syncFbAds, syncFbPageInsights } from "@/lib/fb/sync";
 import { refreshAllShopTokens } from "@/lib/tiktok/shop-api";
 import { syncTiktokAds } from "@/lib/tiktok/sync";
@@ -44,6 +45,16 @@ export async function POST(req: Request) {
     results[jobs[i].name] = s.status === "fulfilled"
       ? { ok: true, ...s.value }
       : { ok: false, error: s.reason instanceof Error ? s.reason.message : String(s.reason) };
+  }
+
+  // Phase 2: Nhanh report scraper — runs AFTER order/list sync.
+  // Overwrites sales_sync with accurate "ngày thành công" data from Nhanh report.
+  // Syncs today + yesterday (yesterday status may still update overnight).
+  try {
+    const r = await syncNhanhReport({});
+    results.nhanh_report = { ok: r.ok, days: r.days, rows: r.rows };
+  } catch (e) {
+    results.nhanh_report = { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
 
   return NextResponse.json({

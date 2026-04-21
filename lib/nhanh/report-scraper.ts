@@ -143,6 +143,16 @@ export async function syncNhanhReport(opts: {
     cursor.setDate(cursor.getDate() + 1);
   }
 
+  // Load page name mapping: fb_page_id → nhanh_id (e.g. "100945322277996" → "Lỗ Vũ")
+  const { data: pagesData } = await db.from("pages")
+    .select("fb_page_id, nhanh_id")
+    .eq("platform", "Facebook")
+    .eq("is_active", true);
+  const pageNameMap = new Map<string, string>();
+  for (const p of pagesData || []) {
+    if (p.fb_page_id && p.nhanh_id) pageNameMap.set(p.fb_page_id, p.nhanh_id);
+  }
+
   for (const dateStr of dateList) {
     logs.push(`[nhanhReport] Fetching ${dateStr}...`);
 
@@ -160,7 +170,10 @@ export async function syncNhanhReport(opts: {
     for (const ch of channels) {
       const channelName = CHANNEL_NAMES[ch.channel.id] || ch.channel.name;
       for (const src of ch.sourceData) {
-        const sourceName = src.source.name || channelName;
+        // source.name is often empty — use page name from DB, or pageId/shopId as fallback
+        const sourceName = src.source.name
+          || (src.pageId && pageNameMap.get(src.pageId))
+          || src.pageId || src.shopId || channelName;
         const key = `${channelName}|${sourceName}`;
         const existing = agg.get(key);
         if (existing) {
