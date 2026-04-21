@@ -161,6 +161,10 @@ type V3SalesOrder = {
 // V3 status codes to EXCLUDE (cancelled, returned, failed)
 const SKIP_STATUSES = new Set([72, 73, 74, 75]);
 
+// V3 status codes that count as "success" (Đơn thành công)
+// 42=Confirmed, 59=Success, 63=Delivered — matches Nhanh report definition
+const SUCCESS_STATUSES = new Set([42, 59, 63]);
+
 // Shopee shopId → shop name (from Shopee Open API)
 const SHOPEE_SHOP_MAP: Record<string, string> = {
   "10091288": "Levu01",
@@ -240,7 +244,7 @@ export async function syncSalesByChannel(opts: {
     const status = o.info?.status ?? 0;
     if (SKIP_STATUSES.has(status)) continue;
     inRangeCount++;
-    const isSuccess = status === 59;
+    const isSuccess = SUCCESS_STATUSES.has(status);
 
     const chId = String(o.channel?.saleChannel ?? "__other__");
     const chName = CHANNEL_MAP[chId] || chId;
@@ -259,9 +263,9 @@ export async function syncSalesByChannel(opts: {
       source = TIKTOK_SHOP_MAP[o.channel.shopId] || o.channel.shopId;
     }
 
-    // Revenue = sum of priceAfterVAT × qty (giá khách trả, sau discount)
+    // Revenue = sum of price × qty (giá khách trả, khớp báo cáo Nhanh)
     const rev = (o.products || []).reduce(
-      (s, p) => s + toNum(p.priceAfterVAT ?? p.price) * toNum(p.quantity || 1), 0,
+      (s, p) => s + toNum(p.price) * toNum(p.quantity || 1), 0,
     );
 
     const key = `${date}|${chName}|${source}`;
