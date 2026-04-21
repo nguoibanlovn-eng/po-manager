@@ -11,24 +11,29 @@ export default async function DamageMgmtPage({
 }) {
   const { tab = "pending" } = await searchParams;
   const pending = tab === "pending";
-  const items = await listDamageItems({ pending });
+  const db = supabaseAdmin();
+
+  const [items, usersRes] = await Promise.all([
+    listDamageItems({ pending }),
+    db.from("users").select("email, name, role, team").eq("is_active", true).order("name"),
+  ]);
 
   // Lấy thêm info đơn (arrival_date) để hiển thị header group
   const orderIds = Array.from(new Set(items.map((it) => it.order_id)));
   const ordersData = orderIds.length
-    ? (await supabaseAdmin()
-        .from("orders")
-        .select("order_id, arrival_date, order_date")
-        .in("order_id", orderIds)).data || []
+    ? (await db.from("orders").select("order_id, arrival_date, order_date").in("order_id", orderIds)).data || []
     : [];
   const metaMap: Record<string, { arrival_date: string | null; order_date: string | null }> = {};
   for (const o of ordersData) metaMap[o.order_id] = { arrival_date: o.arrival_date, order_date: o.order_date };
+
+  const users = (usersRes.data || []).map((u) => ({ email: u.email as string, name: (u.name || u.email) as string, team: (u.team || "") as string }));
 
   return (
     <DamageMgmtView
       items={items}
       tab={pending ? "pending" : "done"}
       orderMeta={metaMap}
+      users={users}
     />
   );
 }

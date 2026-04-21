@@ -4,18 +4,21 @@ import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import { formatDate, formatVND, formatYmd, toNum } from "@/lib/format";
 import type { DamageItem } from "@/lib/db/finance";
-import { sendTicketAction, updateDamageAction } from "./actions";
+import { assignDamageAction, sendTicketAction, updateDamageAction } from "./actions";
 
 type ResolutionTab = "replace" | "refund" | "liquidate";
+type UserRef = { email: string; name: string; team: string };
 
 export default function DamageMgmtView({
   items,
   tab,
   orderMeta,
+  users = [],
 }: {
   items: DamageItem[];
   tab: "pending" | "done";
   orderMeta: Record<string, { arrival_date: string | null; order_date: string | null }>;
+  users?: UserRef[];
 }) {
   // Group theo order_id (không phải supplier nữa)
   const groups = useMemo(() => {
@@ -71,6 +74,7 @@ export default function DamageMgmtView({
               items={g.items}
               total={g.total}
               arrivalDate={meta?.arrival_date || meta?.order_date || null}
+              users={users}
             />
           );
         })
@@ -80,13 +84,14 @@ export default function DamageMgmtView({
 }
 
 function OrderGroup({
-  orderId, supplier, items, total, arrivalDate,
+  orderId, supplier, items, total, arrivalDate, users,
 }: {
   orderId: string;
   supplier: string;
   items: DamageItem[];
   total: number;
   arrivalDate: string | null;
+  users: UserRef[];
 }) {
   const [open, setOpen] = useState(false);
   const doneCount = items.filter((it) => it.damage_handled).length;
@@ -136,7 +141,7 @@ function OrderGroup({
       {open && (
         <div>
           {items.map((it) => (
-            <ItemAccordion key={`${it.order_id}-${it.line_id}`} item={it} />
+            <ItemAccordion key={`${it.order_id}-${it.line_id}`} item={it} users={users} />
           ))}
         </div>
       )}
@@ -144,7 +149,7 @@ function OrderGroup({
   );
 }
 
-function ItemAccordion({ item }: { item: DamageItem }) {
+function ItemAccordion({ item, users }: { item: DamageItem; users: UserRef[] }) {
   const [open, setOpen] = useState(false);
   const resLabel: Record<string, string> = { replace: "↩ Đổi trả", refund: "💵 Hoàn tiền", liquidate: "📦 Thanh lý" };
   return (
@@ -180,7 +185,45 @@ function ItemAccordion({ item }: { item: DamageItem }) {
           </span>
         </div>
       </div>
-      {open && <ResolutionForm item={item} />}
+      {open && (
+        <div>
+          <AssignBar item={item} users={users} />
+          <ResolutionForm item={item} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AssignBar({ item, users }: { item: DamageItem; users: UserRef[] }) {
+  const [assignee, setAssignee] = useState("");
+  const [pending, startTransition] = useTransition();
+  const [msg, setMsg] = useState<string | null>(null);
+
+  function assign() {
+    if (!assignee) return;
+    const user = users.find((u) => u.email === assignee);
+    if (!user) return;
+    startTransition(async () => {
+      const r = await assignDamageAction(item.order_id, item.line_id, item.product_name || "", user.email, user.name);
+      if (r.ok) setMsg(`Đã giao cho ${user.name}`);
+      else setMsg(r.error || "Lỗi");
+    });
+  }
+
+  return (
+    <div style={{ padding: "8px 18px", background: "#EFF6FF", borderBottom: "1px solid #BFDBFE", display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+      <span style={{ fontWeight: 600, color: "#2563EB", whiteSpace: "nowrap" }}>Giao việc:</span>
+      <select value={assignee} onChange={(e) => setAssignee(e.target.value)} style={{ flex: 1, fontSize: 12, padding: "4px 8px", borderRadius: 4, border: "1px solid #93C5FD" }}>
+        <option value="">— Chọn nhân viên —</option>
+        {users.map((u) => (
+          <option key={u.email} value={u.email}>{u.name}{u.team ? ` (${u.team})` : ""}</option>
+        ))}
+      </select>
+      <button type="button" className="btn btn-primary btn-xs" onClick={assign} disabled={pending || !assignee} style={{ whiteSpace: "nowrap" }}>
+        Giao
+      </button>
+      {msg && <span style={{ fontSize: 11, color: msg.startsWith("Đã") ? "#16A34A" : "#DC2626" }}>{msg}</span>}
     </div>
   );
 }
