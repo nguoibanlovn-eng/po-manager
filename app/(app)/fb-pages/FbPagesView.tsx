@@ -170,7 +170,7 @@ export default function FbPagesView({
 
   return (
     <section className="section">
-      <AutoSyncToday onDone={() => router.refresh()} />
+      <AutoSyncToday onDone={() => router.refresh()} extraSyncs={["/api/fb/sync-ads", "/api/fb/sync-insights"]} />
       {/* ═══ TARGET PROGRESS ═══ */}
       <TargetProgressBar channel="Facebook" monthTarget={monthTarget} monthActual={monthActual} monthKey={monthKey} color="#1877F2" />
 
