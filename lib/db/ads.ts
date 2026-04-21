@@ -120,12 +120,16 @@ export async function listWebNhanhRevenue(from: string, to: string): Promise<FbN
     .from("sales_sync")
     .select("period_from, source, revenue_net, order_net")
     .eq("channel", "Admin")
-    .or("source.ilike.%WEB%,source.ilike.%lovu%,source.ilike.%velasboost%,source.ilike.%App Lỗ Vũ%,source.ilike.%muagimuadi%,source.ilike.%LynkID%,source.ilike.%Bán sỉ%")
+    .or("source.ilike.%DOANH THU%WEB%,source.ilike.%DOANH THU%lovu%,source.ilike.%DOANH THU%velasboost%,source.ilike.%DOANH THU%App Lỗ Vũ%,source.ilike.%DOANH THU%muagimuadi%,source.ilike.%DOANH THU%LynkID%,source.ilike.%WEB - Bán sỉ%")
     .gte("period_from", from)
     .lte("period_from", to)
     .order("period_from", { ascending: true })
     .limit(1000);
-  return [...webApiData, ...(adminData || [])].map((r) => ({
+  // Exclude cost rows (CHI PHÍ) that slip through keyword filters
+  const allRows = [...webApiData, ...(adminData || [])].filter(
+    (r) => Number(r.revenue_net || 0) >= 0 || Number(r.order_net || 0) > 0,
+  );
+  return allRows.map((r) => ({
     date: r.period_from,
     source: r.source || "",
     revenue: Number(r.revenue_net || 0),
