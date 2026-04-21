@@ -221,14 +221,16 @@ export async function syncSalesByChannel(opts: {
   const allOrders = await nhanhV3FetchAll<V3SalesOrder>("order/list", {}, {
     maxPages: 200,
     onPage: (chunk, page) => {
-      // V3 returns newest first — stop when oldest order in chunk is before date range
-      const oldest = chunk.reduce((min, o) => {
-        const ts = o.info?.createdAt || Infinity;
-        return ts < min ? ts : min;
-      }, Infinity);
-      const oldestDate = oldest < Infinity ? new Date(oldest * 1000).toISOString().substring(0, 10) : from;
-      if (oldestDate < from) {
-        logs.push(`[syncSales] Stopped at page ${page} (reached ${oldestDate})`);
+      // V3 returns newest first — stop only when ALL orders in chunk are before date range
+      // (V3 ordering is not strict, so some older orders may be mixed in)
+      const inRange = chunk.filter((o) => {
+        const ts = o.info?.createdAt;
+        if (!ts) return false;
+        const d = new Date(ts * 1000).toISOString().substring(0, 10);
+        return d >= from;
+      });
+      if (inRange.length === 0) {
+        logs.push(`[syncSales] Stopped at page ${page} (all orders before ${from})`);
         return false; // stop pagination
       }
     },
