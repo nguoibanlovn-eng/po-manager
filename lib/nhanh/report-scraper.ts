@@ -1,0 +1,221 @@
+import "server-only";
+import { supabaseAdmin } from "@/lib/supabase/admin";
+import { nowVN, dateVN } from "@/lib/helpers";
+
+// Scrape Nhanh.vn report API — returns exact "Doanh thu thành công" per channel/source.
+// Uses session login (username/password) → POST report endpoint → parse JSON.
+
+const NHANH_URL = "https://nhanh.vn";
+const BUSINESS_ID = "119888";
+
+type SourceData = {
+  source: { id: number; name: string };
+  pageId: string;
+  shopId: string;
+  saleChannel: number;
+  totalOrder: number;
+  totalValue: number;
+  totalOrderSuccess: number;
+  totalValueSuccess: number;
+  totalOrderRefundedAndCanceled: number;
+  totalValueRefundedAndCanceled: number;
+};
+
+type ChannelData = {
+  channel: { id: number; name: string };
+  sourceData: SourceData[];
+};
+
+type ReportResponse = {
+  code: number;
+  data: { saleChannel: ChannelData[] };
+};
+
+/** Login to Nhanh.vn and get session cookies + CSRF token */
+async function nhanhLogin(): Promise<{ cookies: string; csrf: string } | null> {
+  const username = process.env.NHANH_WEB_USERNAME;
+  const password = process.env.NHANH_WEB_PASSWORD;
+  if (!username || !password) return null;
+
+  // Step 1: GET /login → extract CSRF token + session cookie
+  const loginPage = await fetch(`${NHANH_URL}/login`, { redirect: "manual" });
+  const setCookies = loginPage.headers.getSetCookie?.() || [];
+  let csrf = "";
+  const cookieJar: string[] = [];
+  for (const c of setCookies) {
+    const nameVal = c.split(";")[0];
+    cookieJar.push(nameVal);
+    if (nameVal.startsWith("Npos-Csrf-Token-V1=")) {
+      csrf = nameVal.split("=").slice(1).join("=");
+    }
+  }
+  if (!csrf) return null;
+
+  // Step 2: POST /login with credentials
+  const body = new URLSearchParams({ username, password });
+  const loginRes = await fetch(`${NHANH_URL}/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Npos-Csrf-Token-V1": csrf,
+      Cookie: cookieJar.join("; "),
+    },
+    body: body.toString(),
+    redirect: "manual",
+  });
+
+  const loginJson = (await loginRes.json()) as { code: number; data?: { userToken?: string } };
+  if (loginJson.code !== 1) return null;
+
+  // Collect all cookies from login response
+  const postCookies = loginRes.headers.getSetCookie?.() || [];
+  for (const c of postCookies) {
+    cookieJar.push(c.split(";")[0]);
+  }
+
+  return { cookies: cookieJar.join("; "), csrf };
+}
+
+/** Fetch report data from Nhanh.vn for a date range */
+async function fetchReport(
+  session: { cookies: string; csrf: string },
+  fromDate: string,
+  toDate: string,
+): Promise<ChannelData[]> {
+  const body = new URLSearchParams({
+    orderDate: "success",
+    fromDate,
+    toDate,
+    businessId: BUSINESS_ID,
+  });
+
+  const res = await fetch(`${NHANH_URL}/report/order/salechannel`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "X-Requested-With": "XMLHttpRequest",
+      "Npos-Csrf-Token-V1": session.csrf,
+      Cookie: session.cookies,
+    },
+    body: body.toString(),
+  });
+
+  const json = (await res.json()) as ReportResponse;
+  if (json.code !== 1) return [];
+  return json.data?.saleChannel || [];
+}
+
+// Channel ID → name mapping (Nhanh uses different IDs than V3 API)
+const CHANNEL_NAMES: Record<number, string> = {
+  1: "Admin",
+  5: "API",
+  20: "Facebook",
+  42: "Shopee",
+  48: "TikTok",
+};
+
+/** Sync revenue from Nhanh report for a single date */
+export async function syncNhanhReport(opts: {
+  from?: string;
+  to?: string;
+} = {}): Promise<{ ok: boolean; days: number; rows: number; error?: string; logs?: string[] }> {
+  const logs: string[] = [];
+  const session = await nhanhLogin();
+  if (!session) {
+    return { ok: false, days: 0, rows: 0, error: "Nhanh login failed — check NHANH_WEB_USERNAME/PASSWORD" };
+  }
+  logs.push("[nhanhReport] Logged in OK");
+
+  const to = opts.to || dateVN();
+  const from = opts.from || dateVN(null, -1); // default: yesterday
+
+  // Fetch day by day for accurate per-date data
+  const db = supabaseAdmin();
+  let totalRows = 0;
+  let days = 0;
+
+  // Build date list from from→to (string comparison, no timezone issues)
+  const dateList: string[] = [];
+  const cursor = new Date(from + "T12:00:00Z"); // noon UTC to avoid timezone shift
+  const end = new Date(to + "T12:00:00Z");
+  while (cursor <= end) {
+    dateList.push(cursor.toISOString().substring(0, 10));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  for (const dateStr of dateList) {
+    logs.push(`[nhanhReport] Fetching ${dateStr}...`);
+
+    const channels = await fetchReport(session, dateStr, dateStr);
+    if (!channels.length) {
+      logs.push(`[nhanhReport] ${dateStr}: no data`);
+      continue;
+    }
+
+    // Delete existing data for this date
+    await db.from("sales_sync").delete().eq("period_from", dateStr).eq("period_to", dateStr);
+
+    // Build rows from report — aggregate by channel+source to avoid upsert conflicts
+    const agg = new Map<string, Record<string, unknown>>();
+    for (const ch of channels) {
+      const channelName = CHANNEL_NAMES[ch.channel.id] || ch.channel.name;
+      for (const src of ch.sourceData) {
+        const sourceName = src.source.name || channelName;
+        const key = `${channelName}|${sourceName}`;
+        const existing = agg.get(key);
+        if (existing) {
+          existing.order_total = Number(existing.order_total) + src.totalOrder;
+          existing.order_cancel = Number(existing.order_cancel) + (src.totalOrderRefundedAndCanceled || 0);
+          existing.revenue_total = Number(existing.revenue_total) + src.totalValue;
+          existing.revenue_cancel = Number(existing.revenue_cancel) + (src.totalValueRefundedAndCanceled || 0);
+          existing.order_success = Number(existing.order_success) + src.totalOrderSuccess;
+          existing.revenue_success = Number(existing.revenue_success) + src.totalValueSuccess;
+          existing.revenue_net = Number(existing.revenue_net) + src.totalValueSuccess;
+          existing.order_net = Number(existing.order_total) - Number(existing.order_cancel);
+          continue;
+        }
+        agg.set(key, {
+          channel: channelName,
+          source: sourceName,
+          period_from: dateStr,
+          period_to: dateStr,
+          order_total: src.totalOrder,
+          order_cancel: src.totalOrderRefundedAndCanceled || 0,
+          order_net: src.totalOrder - (src.totalOrderRefundedAndCanceled || 0),
+          revenue_total: src.totalValue,
+          revenue_cancel: src.totalValueRefundedAndCanceled || 0,
+          revenue_net: src.totalValueSuccess,
+          order_success: src.totalOrderSuccess,
+          revenue_success: src.totalValueSuccess,
+          synced_at: nowVN(),
+        });
+      }
+    }
+
+    const rows = Array.from(agg.values());
+
+    // Write to DB
+    if (rows.length) {
+      for (let i = 0; i < rows.length; i += 200) {
+        const chunk = rows.slice(i, i + 200);
+        const { error } = await db
+          .from("sales_sync")
+          .upsert(chunk, { onConflict: "channel,source,period_from,period_to" });
+        if (error) {
+          logs.push(`[nhanhReport] ${dateStr}: upsert error: ${error.message}`);
+        }
+      }
+      totalRows += rows.length;
+    }
+
+    const totalSuccess = rows.reduce((s, r) => s + Number(r.revenue_success || 0), 0);
+    logs.push(`[nhanhReport] ${dateStr}: ${rows.length} sources, DT TC: ${(totalSuccess / 1e6).toFixed(1)}M`);
+    days++;
+
+    // Rate limit
+    await new Promise((r) => setTimeout(r, 500));
+  }
+
+  logs.push(`[nhanhReport] Done: ${days} days, ${totalRows} rows`);
+  return { ok: true, days, rows: totalRows, logs };
+}

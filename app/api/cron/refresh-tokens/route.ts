@@ -39,7 +39,16 @@ export async function POST(req: Request) {
     results.facebook = { ok: false, error: (e as Error).message };
   }
 
-  // Sync sales + ads (all channels: Facebook, Shopee, TikTok, API, Admin)
+  // Sync sales from Nhanh report (exact "doanh thu thành công") — preferred source
+  try {
+    const { syncNhanhReport } = await import("@/lib/nhanh/report-scraper");
+    const report = await syncNhanhReport(); // default: yesterday
+    results.nhanh_report = { ok: report.ok, days: report.days, rows: report.rows, error: report.error };
+  } catch (e) {
+    results.nhanh_report = { ok: false, error: (e as Error).message };
+  }
+
+  // Fallback: V3 API sync for today (report doesn't have today's data yet)
   try {
     const sales = await syncSalesByChannel({});
     results.sales = { ok: true, channels: sales.channels, orders: sales.orders };
