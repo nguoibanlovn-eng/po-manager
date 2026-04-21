@@ -161,9 +161,12 @@ type V3SalesOrder = {
 // V3 status codes to EXCLUDE (cancelled, returned, failed)
 const SKIP_STATUSES = new Set([72, 73, 74, 75]);
 
-// All non-cancelled orders count as "success" — matches Nhanh report.
-// Only SKIP_STATUSES (72-75) are excluded. This ensures numbers don't
-// fluctuate as orders change status (New→Shipping→Delivered→Success).
+// V3 status codes that count as "Đơn thành công"
+// 42=Confirmed, 56=Shipping, 59=Success, 60=Returning, 61=PartReturn, 63=Delivered
+// Includes shipped/delivered/returning — matches Nhanh report snapshot.
+// Excludes only: 54(New/chưa xử lý), 64(Giao thất bại)
+// Cron at 1AM produces accurate numbers for yesterday.
+const SUCCESS_STATUSES = new Set([42, 56, 59, 60, 61, 63]);
 
 // Shopee shopId → shop name (from Shopee Open API)
 const SHOPEE_SHOP_MAP: Record<string, string> = {
@@ -247,8 +250,10 @@ export async function syncSalesByChannel(opts: {
     inRangeCount++;
 
     const chId = String(o.channel?.saleChannel ?? "__other__");
-    // All non-cancelled orders = success (already filtered by SKIP_STATUSES above)
-    const isSuccess = true;
+    // API (10) and Admin (1) rarely update status — treat all as success
+    const isSuccess = (chId === "10" || chId === "1")
+      ? true
+      : SUCCESS_STATUSES.has(status);
     const chName = CHANNEL_MAP[chId] || chId;
 
     // For Facebook orders, use pageId → page name
