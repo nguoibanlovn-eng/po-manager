@@ -162,8 +162,10 @@ type V3SalesOrder = {
 const SKIP_STATUSES = new Set([72, 73, 74, 75]);
 
 // V3 status codes that count as "success" (Đơn thành công)
-// 42=Confirmed, 59=Success, 63=Delivered — matches Nhanh report definition
-const SUCCESS_STATUSES = new Set([42, 59, 63]);
+// 42=Confirmed, 56=Shipping, 59=Success, 60=Returning, 61=PartReturn, 63=Delivered
+// Include 56/60/61 because these orders were already shipped/delivered,
+// matching Nhanh report which counts them as "thành công" at time of export.
+const SUCCESS_STATUSES = new Set([42, 56, 59, 60, 61, 63]);
 
 // Shopee shopId → shop name (from Shopee Open API)
 const SHOPEE_SHOP_MAP: Record<string, string> = {
