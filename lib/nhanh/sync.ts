@@ -166,7 +166,9 @@ const SKIP_STATUSES = new Set([72, 73, 74, 75]);
 // Includes shipped/delivered/returning — matches Nhanh report snapshot.
 // Excludes only: 54(New/chưa xử lý), 64(Giao thất bại)
 // Cron at 1AM produces accurate numbers for yesterday.
-const SUCCESS_STATUSES = new Set([42, 56, 59, 60, 61, 63]);
+// "Đơn thành công" = 59 (Success) + 63 (Delivered)
+// Best match for Nhanh report. Revenue uses priceAfterVAT (sau discount/voucher).
+const SUCCESS_STATUSES = new Set([59, 63]);
 
 // Shopee shopId → shop name (from Shopee Open API)
 const SHOPEE_SHOP_MAP: Record<string, string> = {
@@ -270,9 +272,9 @@ export async function syncSalesByChannel(opts: {
       source = TIKTOK_SHOP_MAP[o.channel.shopId] || o.channel.shopId;
     }
 
-    // Revenue = sum of price × qty (giá khách trả, khớp báo cáo Nhanh)
+    // Revenue = sum of priceAfterVAT × qty (giá thực tế sau discount/voucher = doanh thu Nhanh report)
     const rev = (o.products || []).reduce(
-      (s, p) => s + toNum(p.price) * toNum(p.quantity || 1), 0,
+      (s, p) => s + toNum(p.priceAfterVAT ?? p.price) * toNum(p.quantity || 1), 0,
     );
 
     const key = `${date}|${chName}|${source}`;
