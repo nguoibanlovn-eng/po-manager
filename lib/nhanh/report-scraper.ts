@@ -163,28 +163,13 @@ export async function syncNhanhReport(opts: {
       continue;
     }
 
-    // Safety check: only overwrite if new data has >= existing row count.
-    // Prevents partial/empty fetches from wiping good data.
-    const { count: existingCount } = await db
-      .from("sales_sync")
-      .select("*", { count: "exact", head: true })
-      .eq("period_from", dateStr)
-      .eq("period_to", dateStr);
-    const newSourceCount = channels.reduce((s, ch) => s + ch.sourceData.length, 0);
-    if ((existingCount || 0) > 0 && newSourceCount < (existingCount || 0) * 0.5) {
-      logs.push(`[nhanhReport] ${dateStr}: partial data (${newSourceCount} vs ${existingCount} existing), skipped`);
-      continue;
-    }
+    // ── Step 1: Build all data BEFORE touching DB ──
 
-    // Delete existing data for this date — safe to overwrite
-    await db.from("sales_sync").delete().eq("period_from", dateStr).eq("period_to", dateStr);
-
-    // Build rows from report — aggregate by channel+source to avoid upsert conflicts
+    // 1a. Build from success report
     const agg = new Map<string, Record<string, unknown>>();
     for (const ch of channels) {
       const channelName = CHANNEL_NAMES[ch.channel.id] || ch.channel.name;
       for (const src of ch.sourceData) {
-        // source.name is often empty — use page name from DB, or pageId/shopId as fallback
         const sourceName = src.source.name
           || (src.pageId && pageNameMap.get(src.pageId))
           || src.pageId || src.shopId || channelName;
@@ -220,7 +205,7 @@ export async function syncNhanhReport(opts: {
       }
     }
 
-    // Fetch orderDate=create report for revenue_expected (Đơn tạo - Hoàn hủy)
+    // 1b. Fetch create report for revenue_expected (Đơn tạo - Hoàn hủy)
     await new Promise((r) => setTimeout(r, 300));
     const createChannels = await fetchReport(session, dateStr, dateStr, "create");
     if (createChannels.length) {
@@ -236,7 +221,6 @@ export async function syncNhanhReport(opts: {
           if (existing) {
             existing.revenue_expected = (Number(existing.revenue_expected) || 0) + revenueExpected;
           } else {
-            // Source only in create report (no success yet) — still track expected revenue
             agg.set(key, {
               channel: channelName,
               source: sourceName,
@@ -260,22 +244,37 @@ export async function syncNhanhReport(opts: {
 
     const rows = Array.from(agg.values());
 
-    // Safety: don't overwrite good revenue_expected with zeros
+    // ── Step 2: Safety checks BEFORE writing ──
+    const { count: existingCount } = await db
+      .from("sales_sync")
+      .select("*", { count: "exact", head: true })
+      .eq("period_from", dateStr)
+      .eq("period_to", dateStr);
+
+    // 2a. Partial data check (row count)
+    const newSourceCount = channels.reduce((s, ch) => s + ch.sourceData.length, 0);
+    if ((existingCount || 0) > 0 && newSourceCount < (existingCount || 0) * 0.5) {
+      logs.push(`[nhanhReport] ${dateStr}: partial data (${newSourceCount} vs ${existingCount} existing), skipped`);
+      continue;
+    }
+
+    // 2b. Don't overwrite good revenue_expected with zeros
     const newExpectedTotal = rows.reduce((s, r) => s + Number(r.revenue_expected || 0), 0);
     if (newExpectedTotal === 0 && (existingCount || 0) > 0) {
-      // Check if existing data has revenue_expected > 0
       const { data: existingSample } = await db.from("sales_sync")
         .select("revenue_expected")
         .eq("period_from", dateStr).eq("period_to", dateStr)
         .gt("revenue_expected", 0)
         .limit(1);
       if (existingSample && existingSample.length > 0) {
-        logs.push(`[nhanhReport] ${dateStr}: create fetch returned 0 expected but existing has data, skipped overwrite`);
+        logs.push(`[nhanhReport] ${dateStr}: create fetch returned 0 expected but existing has data, skipped`);
         continue;
       }
     }
 
-    // Write to DB
+    // ── Step 3: All checks passed — delete old + write new ──
+    await db.from("sales_sync").delete().eq("period_from", dateStr).eq("period_to", dateStr);
+
     if (rows.length) {
       for (let i = 0; i < rows.length; i += 200) {
         const chunk = rows.slice(i, i + 200);
