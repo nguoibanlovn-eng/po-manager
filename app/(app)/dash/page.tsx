@@ -69,10 +69,12 @@ export default async function DashPage({
   const currentYear = Number(month.split("-")[0]);
 
   // ═══════════════════════════════════════════════════════
-  // MOBILE: Fetch ALL views' data upfront for instant tab switching
-  // Wrapped in try-catch — if timeout, fallback to null (use per-view switches)
+  // NOTE: Mobile instant tab switching removed — caused Vercel timeout
+  // (30+ parallel queries). Using per-view DashXxxSwitch instead.
   // ═══════════════════════════════════════════════════════
-  const mobileAllProps = await (async () => { try {
+  /* eslint-disable @typescript-eslint/no-unused-vars */
+  const _mobileAllPropsRemoved = null;
+  if (false as boolean) { // dead code — keep types for future use
     const today = sp.date || dateVN();
     const shiftDate = (base: string, offset: number) => {
       const [yy, mm, dd] = base.split("-").map(Number);
@@ -204,8 +206,7 @@ export default async function DashPage({
       sourcesByChannel: revMonth.sourcesByChannel,
     };
 
-    return { day, month: monthProps, year: yearProps } as const;
-  } catch (e) { console.error("[mobileAllProps] error:", e); return null; } })();
+  }
 
   // ═══════════════════════════════════════════════════════
   // DAILY VIEW
@@ -367,7 +368,17 @@ export default async function DashPage({
 
     return (
       <section className="section" id="dash-day">
-        {mobileAllProps ? <DashMobileWrapper day={mobileAllProps.day} month={mobileAllProps.month} year={mobileAllProps.year} initialView="day" /> : <DashDaySwitch mobileProps={{} as any} />}
+        <DashDaySwitch mobileProps={{
+          today: today, prevDay: prevDay, nextDay: nextDay, dayOfWeek: dayOfWeek, displayDate: displayDate,
+          revTotal: revToday.total, revOrders: revToday.totalOrders, revExpected: revToday.totalExpected,
+          revYesterday: revYesterday.total, revChange: revChange, revPct: revPct, dailyTarget: dailyTarget, monthlyAvg: monthlyAvg,
+          channels: mainChannels.map(ch => ({ name: ch.name, color: ch.color, rev: getChRev(chRevToday, ch.name), exp: getChVal(chExpToday, ch.name), revYesterday: getChRev(chRevYesterday, ch.name) })),
+          adsTotal: todayAdsTotal, adsFb: todayAdsFb, adsTt: todayAdsTt + todayAdsGmv, adsTtBm: todayAdsTt, adsTtGmv: todayAdsGmv, adsSp: todayAdsSp,
+          adsPct: adsPctToday, roas: roasToday, adsYesterday: yesterdayAdsTotal, adsChange: adsChange,
+          arrivedCount: arrivedToday.length, arrivedValue: arrivedTodayValue, arrivedYesterdayCount: arrivedYesterday.length,
+          damageCount: damageItems.length, damageValue: damageItems.reduce((s, d) => s + Number(d.damage_amount || 0), 0),
+          tasksTotal: tasksTotal, tasksDone: tasksDone, monthRevenue: revMonth.total, monthTarget: totalTarget,
+        }} />
         <AutoSyncToday extraSyncs={["/api/tiktok/sync-ads", "/api/tiktok/sync-gmv-max"]} />
         {/* ─── HEADER ─── */}
         <div className="page-hdr">
@@ -875,7 +886,17 @@ export default async function DashPage({
 
     return (
       <section className="section" id="dash-year">
-        {mobileAllProps && <DashMobileWrapper day={mobileAllProps.day} month={mobileAllProps.month} year={mobileAllProps.year} initialView="year" />}
+        <DashYearSwitch mobileProps={{
+          year: currentYear, nowMonth, yearTarget: yearly.yearTarget, cumRevenue: yearly.cumRevenue,
+          prevYearRev, growthVsPrev, cumAdsTotal, adsRevPct: adsRevPctYear,
+          months: yearly.months.map(m => ({ month: m.month, revenue: m.revenue, target: m.target, ads: m.ads, byChannel: m.byChannel })),
+          channels: YEAR_CHANNELS.map(ch => ({
+            name: ch.label, abbr: ch.abbr, color: ch.color,
+            rev: chRevCum[ch.key] || 0, target: chTargets[ch.key] || 0,
+            ads: ch.key === "facebook" ? cumAdsFb : ch.key === "tiktok" ? cumAdsTiktok : ch.key === "shopee" ? cumAdsShopee : 0,
+          })),
+          sourcesByChannel: yearRevData.sourcesByChannel,
+        }} />
         <AutoSyncToday />
         {/* ─── HEADER ─── */}
         <div className="page-hdr">
@@ -1247,7 +1268,22 @@ export default async function DashPage({
 
   return (
     <section className="section" id="dash-month-view">
-      {mobileAllProps && <DashMobileWrapper day={mobileAllProps.day} month={mobileAllProps.month} year={mobileAllProps.year} initialView="month" />}
+      <DashMonthSwitch mobileProps={{
+        month, lastDay, dayOfMonth: Math.min(new Date().getDate(), lastDay),
+        revTotal: rm.total, revOrders: rm.totalOrders, revExpected: rm.totalExpected,
+        totalTarget: (fbTarget || 0) + (tkTarget || 0) + (spTarget || 0) + (wbTarget || 0),
+        totalAdSpend, adsPct, roas: overallRoas,
+        channels: [
+          { name: "Facebook", color: "#1877F2", rev: rm.channels.find(c => c.name === "Facebook")?.revenue || 0, target: fbTarget || 0, ads: st.revenue.adSpend },
+          { name: "TikTok", color: "#FE2C55", rev: rm.channels.find(c => c.name === "TikTok")?.revenue || 0, target: tkTarget || 0, ads: st.revenue.tiktokAdSpend },
+          { name: "Shopee", color: "#EE4D2D", rev: rm.channels.find(c => c.name === "Shopee")?.revenue || 0, target: spTarget || 0, ads: st.revenue.shopeeAdSpend },
+          { name: "Web/App", color: "#6366F1", rev: ["Website","App","API","Admin"].reduce((s,n) => s + (rm.channels.find(c=>c.name===n)?.revenue || 0), 0), target: wbTarget || 0, ads: 0 },
+        ],
+        daily: rm.daily, dailyByChannel: rm.dailyByChannel, dailyAds: monthDailyAds,
+        sourcesByChannel: rm.sourcesByChannel,
+        outstanding: st.finance.outstanding,
+        damageItems: st.damage.pendingItems, damageValue: st.damage.pendingValue,
+      }} />
       <AutoSyncToday />
       <div className="page-hdr">
         <div>
