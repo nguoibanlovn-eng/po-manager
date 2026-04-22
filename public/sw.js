@@ -1,8 +1,8 @@
 // Service Worker for PO Manager PWA
-const CACHE_NAME = "po-manager-v2";
+const CACHE_NAME = "po-manager-v3";
 
 // Assets to pre-cache on install
-const PRECACHE_URLS = ["/", "/login"];
+const PRECACHE_URLS = ["/dash", "/login"];
 
 // Install: cache app shell
 self.addEventListener("install", (event) => {
@@ -33,6 +33,12 @@ self.addEventListener("fetch", (event) => {
 
   // Skip non-GET requests
   if (request.method !== "GET") return;
+
+  // Force redirect / → /dash for PWA
+  if (url.pathname === "/" && request.mode === "navigate") {
+    event.respondWith(Response.redirect(url.origin + "/dash", 302));
+    return;
+  }
 
   // Skip API routes and auth — always go to network
   if (url.pathname.startsWith("/api/")) return;
