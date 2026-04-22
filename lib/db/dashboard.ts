@@ -140,13 +140,13 @@ export async function getDashboardStats(monthKey?: string): Promise<DashStats> {
 export async function getRevenueByChannel(from: string, to: string) {
   const db = supabaseAdmin();
   // Paginate — Supabase caps at 1000 rows per request
-  const allData: Array<{ period_from: string; channel: string; revenue_net: number; order_net: number; revenue_expected: number }> = [];
+  const allData: Array<{ period_from: string; channel: string; source: string; revenue_net: number; order_net: number; revenue_expected: number }> = [];
   let off = 0;
   const PG = 1000;
   while (true) {
     const { data: page } = await db
       .from("sales_sync")
-      .select("period_from, channel, revenue_net, order_net, revenue_expected")
+      .select("period_from, channel, source, revenue_net, order_net, revenue_expected")
       .gte("period_from", from)
       .lte("period_from", to)
       .order("period_from", { ascending: true })
@@ -161,14 +161,27 @@ export async function getRevenueByChannel(from: string, to: string) {
   const byDate = new Map<string, number>();
   const byDateChannel = new Map<string, Map<string, number>>();
 
+  // By source within channel: {channel → {source → {revenue, orders, expected}}}
+  const byChannelSource = new Map<string, Map<string, { revenue: number; orders: number; expected: number }>>();
+
   for (const r of allData) {
     const ch = String(r.channel || "Khác");
+    const src = String(r.source || ch);
     const rev = Number(r.revenue_net || 0);
     const cur = byChannel.get(ch) || { revenue: 0, orders: 0, expected: 0 };
     cur.revenue += rev;
     cur.orders += Number(r.order_net || 0);
     cur.expected += Number(r.revenue_expected || 0);
     byChannel.set(ch, cur);
+
+    // Source detail
+    if (!byChannelSource.has(ch)) byChannelSource.set(ch, new Map());
+    const srcMap = byChannelSource.get(ch)!;
+    const srcCur = srcMap.get(src) || { revenue: 0, orders: 0, expected: 0 };
+    srcCur.revenue += rev;
+    srcCur.orders += Number(r.order_net || 0);
+    srcCur.expected += Number(r.revenue_expected || 0);
+    srcMap.set(src, srcCur);
 
     const d = String(r.period_from || "");
     byDate.set(d, (byDate.get(d) || 0) + rev);
@@ -199,6 +212,14 @@ export async function getRevenueByChannel(from: string, to: string) {
       .map(([date, revenue]) => ({ date, revenue }))
       .sort((a, b) => a.date.localeCompare(b.date)),
     dailyByChannel,
+    sourcesByChannel: Object.fromEntries(
+      Array.from(byChannelSource.entries()).map(([ch, srcMap]) => [
+        ch,
+        Array.from(srcMap.entries())
+          .map(([name, v]) => ({ name, ...v }))
+          .sort((a, b) => b.revenue - a.revenue),
+      ]),
+    ) as Record<string, { name: string; revenue: number; orders: number; expected: number }[]>,
     total: Array.from(byChannel.values()).reduce((s, v) => s + v.revenue, 0),
     totalOrders: Array.from(byChannel.values()).reduce((s, v) => s + v.orders, 0),
     totalExpected,

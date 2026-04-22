@@ -1108,6 +1108,7 @@ export default async function DashPage({
           { name: "Web/App", color: "#6366F1", rev: ["Website","App","API","Admin"].reduce((s,n) => s + (revMonth.channels.find(c=>c.name===n)?.revenue || 0), 0), target: wbTarget || 0, ads: 0 },
         ],
         daily: revMonth.daily, dailyByChannel: revMonth.dailyByChannel, dailyAds: monthDailyAds,
+        sourcesByChannel: revMonth.sourcesByChannel,
         outstanding: stats.finance.outstanding,
         damageItems: stats.damage.pendingItems, damageValue: stats.damage.pendingValue,
       }} />

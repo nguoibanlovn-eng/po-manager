@@ -22,6 +22,7 @@ export type DashMonthMobileProps = {
   daily: { date: string; revenue: number }[];
   dailyByChannel: Record<string, number | string>[];
   dailyAds: { date: string; spend: number }[];
+  sourcesByChannel: Record<string, { name: string; revenue: number; orders: number; expected: number }[]>;
   outstanding: number;
   damageItems: number;
   damageValue: number;
@@ -29,6 +30,7 @@ export type DashMonthMobileProps = {
 
 export default function DashMonthMobile(p: DashMonthMobileProps) {
   const [touchIdx, setTouchIdx] = useState<number | null>(null);
+  const [expandedCh, setExpandedCh] = useState<string | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
   const barCount = p.dailyByChannel.length;
 
@@ -103,13 +105,18 @@ export default function DashMonthMobile(p: DashMonthMobileProps) {
         {p.channels.map(ch => {
           const pct = ch.target > 0 ? Math.round((ch.rev / ch.target) * 100) : 0;
           const chAdsPct = ch.rev > 0 ? (ch.ads / ch.rev * 100) : 0;
-          const chRoas = ch.ads > 0 ? ch.rev / ch.ads : 0;
+          const isExpanded = expandedCh === ch.name;
+          const sources = p.sourcesByChannel[ch.name] || p.sourcesByChannel[ch.name === "Web/App" ? "API" : ""] || [];
+          const webSources = ch.name === "Web/App" ? [...sources, ...(p.sourcesByChannel["Admin"] || []).filter(s => s.revenue > 0)] : sources;
+          const displaySources = ch.name === "Web/App" ? webSources.sort((a, b) => b.revenue - a.revenue) : sources;
+
           return (
-            <div key={ch.name} style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12, padding: "10px 12px", marginBottom: 6 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <div key={ch.name} style={{ background: "#fff", border: `1px solid ${isExpanded ? ch.color : "#E2E8F0"}`, borderRadius: 12, padding: "10px 12px", marginBottom: 6, transition: "border-color .2s" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, cursor: "pointer" }} onClick={() => setExpandedCh(isExpanded ? null : ch.name)}>
                 <div style={{ width: 24, height: 24, borderRadius: 6, background: ch.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "#fff" }}>{ch.name[0]}</div>
                 <div style={{ fontSize: 13, fontWeight: 700, flex: 1 }}>{ch.name}</div>
                 <div style={{ fontSize: 16, fontWeight: 800, color: ch.color }}>{formatVNDCompact(ch.rev)}</div>
+                <span style={{ fontSize: 10, color: "#94A3B8", transform: isExpanded ? "rotate(90deg)" : "none", transition: "transform .2s" }}>›</span>
               </div>
               <div style={{ height: 6, background: "#F3F4F6", borderRadius: 3, overflow: "hidden", marginBottom: 3, position: "relative" }}>
                 <div style={{ height: "100%", width: `${Math.min(pct, 100)}%`, background: pct >= 100 ? "#22C55E" : pct >= 70 ? ch.color : "#F59E0B", borderRadius: 3 }} />
@@ -121,6 +128,32 @@ export default function DashMonthMobile(p: DashMonthMobileProps) {
                 <div><div style={{ fontSize: 8, color: "#94A3B8", textTransform: "uppercase" }}>Ads</div><div style={{ fontSize: 10, fontWeight: 700, color: "#DC2626" }}>{ch.ads > 0 ? formatVNDCompact(ch.ads) : "—"}</div></div>
                 <div><div style={{ fontSize: 8, color: "#94A3B8", textTransform: "uppercase" }}>%Ads</div><div style={{ fontSize: 10, fontWeight: 700, color: chAdsPct <= 5 ? "#16A34A" : chAdsPct <= 7 ? "#D97706" : ch.ads > 0 ? "#DC2626" : "#94A3B8" }}>{ch.ads > 0 ? `${chAdsPct.toFixed(1)}%` : "—"}</div></div>
               </div>
+
+              {/* Expanded: source detail */}
+              {isExpanded && displaySources.length > 0 && (
+                <div style={{ marginTop: 8, borderTop: "1px solid #F1F5F9", paddingTop: 6 }}>
+                  <div style={{ fontSize: 9, color: "#94A3B8", marginBottom: 4 }}>Chi tiết kênh nhỏ ({displaySources.length})</div>
+                  {displaySources.map((src, si) => {
+                    const srcPct = ch.rev > 0 ? Math.round(src.revenue / ch.rev * 100) : 0;
+                    const barW = displaySources[0]?.revenue > 0 ? Math.round(src.revenue / displaySources[0].revenue * 100) : 0;
+                    return (
+                      <div key={src.name} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 0", borderBottom: si < displaySources.length - 1 ? "1px solid #F8FAFC" : "none" }}>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: "#94A3B8", width: 14, textAlign: "right" }}>{si + 1}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 10, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{src.name}</div>
+                          <div style={{ height: 3, background: "#F3F4F6", borderRadius: 2, marginTop: 2, overflow: "hidden" }}>
+                            <div style={{ height: "100%", width: `${barW}%`, background: ch.color, opacity: .6, borderRadius: 2 }} />
+                          </div>
+                        </div>
+                        <div style={{ textAlign: "right", flexShrink: 0 }}>
+                          <div style={{ fontSize: 11, fontWeight: 700 }}>{formatVNDCompact(src.revenue)}</div>
+                          <div style={{ fontSize: 8, color: "#94A3B8" }}>{srcPct}% · {src.orders} đơn</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           );
         })}
