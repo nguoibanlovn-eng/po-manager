@@ -159,20 +159,37 @@ export async function getRevenueByChannel(from: string, to: string) {
 
   const byChannel = new Map<string, { revenue: number; orders: number; expected: number }>();
   const byDate = new Map<string, number>();
+  const byDateChannel = new Map<string, Map<string, number>>();
 
   for (const r of allData) {
     const ch = String(r.channel || "Khác");
+    const rev = Number(r.revenue_net || 0);
     const cur = byChannel.get(ch) || { revenue: 0, orders: 0, expected: 0 };
-    cur.revenue += Number(r.revenue_net || 0);
+    cur.revenue += rev;
     cur.orders += Number(r.order_net || 0);
     cur.expected += Number(r.revenue_expected || 0);
     byChannel.set(ch, cur);
 
     const d = String(r.period_from || "");
-    byDate.set(d, (byDate.get(d) || 0) + Number(r.revenue_net || 0));
+    byDate.set(d, (byDate.get(d) || 0) + rev);
+
+    // Daily by channel
+    if (!byDateChannel.has(d)) byDateChannel.set(d, new Map());
+    const dc = byDateChannel.get(d)!;
+    dc.set(ch, (dc.get(ch) || 0) + rev);
   }
 
   const totalExpected = Array.from(byChannel.values()).reduce((s, v) => s + v.expected, 0);
+
+  // Build dailyByChannel: [{date, Facebook, TikTok, Shopee, ...}]
+  const dailyByChannel = Array.from(byDate.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, total]) => {
+      const chMap = byDateChannel.get(date) || new Map();
+      const row: Record<string, number | string> = { date, total };
+      for (const [ch, rev] of chMap) row[ch] = rev;
+      return row;
+    });
 
   return {
     channels: Array.from(byChannel.entries())
@@ -181,10 +198,31 @@ export async function getRevenueByChannel(from: string, to: string) {
     daily: Array.from(byDate.entries())
       .map(([date, revenue]) => ({ date, revenue }))
       .sort((a, b) => a.date.localeCompare(b.date)),
+    dailyByChannel,
     total: Array.from(byChannel.values()).reduce((s, v) => s + v.revenue, 0),
     totalOrders: Array.from(byChannel.values()).reduce((s, v) => s + v.orders, 0),
     totalExpected,
   };
+}
+
+/** Daily ads totals (FB + TikTok + Shopee + GMV Max) for a date range */
+export async function getDailyAdsTotals(from: string, to: string): Promise<{ date: string; spend: number }[]> {
+  const db = supabaseAdmin();
+  const byDate = new Map<string, number>();
+  const tables = [
+    { table: "ads_cache", dateCol: "date", spendCol: "spend" },
+    { table: "tiktok_ads", dateCol: "date", spendCol: "spend" },
+    { table: "shopee_ads", dateCol: "date", spendCol: "spend" },
+    { table: "tiktok_gmv_max", dateCol: "date", spendCol: "spend" },
+  ];
+  await Promise.all(tables.map(async ({ table }) => {
+    const { data } = await db.from(table).select("date, spend").gte("date", from).lte("date", to);
+    for (const r of data || []) {
+      const d = String(r.date || "").substring(0, 10);
+      if (d) byDate.set(d, (byDate.get(d) || 0) + Number(r.spend || 0));
+    }
+  }));
+  return Array.from(byDate.entries()).map(([date, spend]) => ({ date, spend })).sort((a, b) => a.date.localeCompare(b.date));
 }
 
 /** Yearly summary: revenue per month + targets per month + ads per month */

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getDashboardStats, getRecentOrders, getRevenueByChannel, getYearlySummary, getYearlyChannelTargets, getDailyAdsBreakdown, getTasksForDate, getArrivedOrders, getDamageItems } from "@/lib/db/dashboard";
+import { getDashboardStats, getRecentOrders, getRevenueByChannel, getYearlySummary, getYearlyChannelTargets, getDailyAdsBreakdown, getTasksForDate, getArrivedOrders, getDamageItems, getDailyAdsTotals } from "@/lib/db/dashboard";
 import { getChannelTarget } from "@/lib/db/tiktok";
 import { getCurrentUser } from "@/lib/auth/user";
 import { dateVN } from "@/lib/helpers";
@@ -658,7 +658,7 @@ export default async function DashPage({
     );
   }
 
-  const [user, stats, recent, revMonth, rev7d, fbTarget, tkTarget, spTarget, wbTarget, yearly, prevYearly, yearChTargets] = await Promise.all([
+  const [user, stats, recent, revMonth, rev7d, fbTarget, tkTarget, spTarget, wbTarget, yearly, prevYearly, yearChTargets, monthDailyAds] = await Promise.all([
     getCurrentUser(),
     getDashboardStats(month),
     getRecentOrders(10),
@@ -671,6 +671,7 @@ export default async function DashPage({
     getYearlySummary(currentYear),
     getYearlySummary(currentYear - 1),
     getYearlyChannelTargets(currentYear),
+    getDailyAdsTotals(from, to),
   ]);
 
   const totalAdSpend = stats.revenue.adSpend + stats.revenue.shopeeAdSpend + stats.revenue.tiktokAdSpend;
@@ -1106,7 +1107,8 @@ export default async function DashPage({
           { name: "Shopee", color: "#EE4D2D", rev: revMonth.channels.find(c => c.name === "Shopee")?.revenue || 0, target: spTarget || 0, ads: stats.revenue.shopeeAdSpend },
           { name: "Web/App", color: "#6366F1", rev: ["Website","App","API","Admin"].reduce((s,n) => s + (revMonth.channels.find(c=>c.name===n)?.revenue || 0), 0), target: wbTarget || 0, ads: 0 },
         ],
-        daily: revMonth.daily, outstanding: stats.finance.outstanding,
+        daily: revMonth.daily, dailyByChannel: revMonth.dailyByChannel, dailyAds: monthDailyAds,
+        outstanding: stats.finance.outstanding,
         damageItems: stats.damage.pendingItems, damageValue: stats.damage.pendingValue,
       }} />
       <AutoSyncToday />

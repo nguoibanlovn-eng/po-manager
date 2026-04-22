@@ -1,8 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { formatVNDCompact } from "@/lib/format";
 import AutoSyncToday from "../components/AutoSyncToday";
+
+const CH_COLORS: Record<string, string> = { Facebook: "#1877F2", TikTok: "#18181B", Shopee: "#EE4D2D", API: "#6366F1", Admin: "#9CA3AF" };
 
 export type DashMonthMobileProps = {
   month: string;
@@ -17,12 +20,15 @@ export type DashMonthMobileProps = {
   roas: number;
   channels: { name: string; color: string; rev: number; target: number; ads: number }[];
   daily: { date: string; revenue: number }[];
+  dailyByChannel: Record<string, number | string>[];
+  dailyAds: { date: string; spend: number }[];
   outstanding: number;
   damageItems: number;
   damageValue: number;
 };
 
 export default function DashMonthMobile(p: DashMonthMobileProps) {
+  const [touchIdx, setTouchIdx] = useState<number | null>(null);
   const timePct = p.lastDay > 0 ? Math.round((p.dayOfMonth / p.lastDay) * 100) : 0;
   const revPct = p.totalTarget > 0 ? Math.round((p.revTotal / p.totalTarget) * 100) : 0;
   const avgDaily = p.dayOfMonth > 0 ? p.revTotal / p.dayOfMonth : 0;
@@ -110,24 +116,101 @@ export default function DashMonthMobile(p: DashMonthMobileProps) {
 
       <div style={{ height: 6, background: "#F1F5F9" }} />
 
-      {/* Daily chart */}
+      {/* Daily stacked chart + ads */}
       <div style={{ padding: "12px 10px" }}>
         <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12, padding: "10px 12px" }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#374151", marginBottom: 8 }}>Doanh thu theo ngày</div>
-          <div style={{ display: "flex", alignItems: "flex-end", height: 60, gap: 2 }}>
-            {p.daily.map(d => {
-              const h = (d.revenue / max7d) * 50;
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#374151" }}>Doanh thu + Ads theo ngày</div>
+            <div style={{ display: "flex", gap: 8, fontSize: 8, color: "#94A3B8" }}>
+              {Object.entries(CH_COLORS).filter(([k]) => p.dailyByChannel.some(d => Number(d[k] || 0) > 0)).map(([k, c]) => (
+                <span key={k} style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: c }} />{k.substring(0, 2)}
+                </span>
+              ))}
+              <span style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                <span style={{ width: 8, height: 2, background: "#DC2626" }} />Ads
+              </span>
+            </div>
+          </div>
+
+          {/* Touch tooltip */}
+          {touchIdx !== null && p.dailyByChannel[touchIdx] && (() => {
+            const d = p.dailyByChannel[touchIdx];
+            const date = String(d.date);
+            const total = Number(d.total || 0);
+            const adsDay = p.dailyAds.find(a => a.date === date);
+            const adsSpend = adsDay?.spend || 0;
+            const adsPctDay = total > 0 ? (adsSpend / total * 100) : 0;
+            return (
+              <div style={{ background: "#1F2937", color: "#fff", borderRadius: 8, padding: "6px 10px", fontSize: 10, marginBottom: 6 }}>
+                <div style={{ fontWeight: 700, color: "#D1D5DB", marginBottom: 3 }}>{date}</div>
+                <div>DT: <strong>{formatVNDCompact(total)}</strong></div>
+                {Object.entries(CH_COLORS).map(([ch, c]) => {
+                  const v = Number(d[ch] || 0);
+                  if (v <= 0) return null;
+                  const pct = total > 0 ? Math.round(v / total * 100) : 0;
+                  return <div key={ch} style={{ color: c === "#18181B" ? "#fff" : c }}>  {ch}: {formatVNDCompact(v)} ({pct}%)</div>;
+                })}
+                <div style={{ color: "#F87171", marginTop: 2 }}>Ads: {formatVNDCompact(adsSpend)} ({adsPctDay.toFixed(1)}%)</div>
+              </div>
+            );
+          })()}
+
+          {/* Stacked bars */}
+          <div
+            style={{ display: "flex", alignItems: "flex-end", height: 80, gap: 1, position: "relative" }}
+            onTouchEnd={() => setTouchIdx(null)}
+          >
+            {p.dailyByChannel.map((d, i) => {
+              const total = Number(d.total || 0);
+              const h = max7d > 0 ? (total / max7d) * 70 : 0;
+              const adsDay = p.dailyAds.find(a => a.date === String(d.date));
+              const adsH = adsDay && max7d > 0 ? (adsDay.spend / max7d) * 70 : 0;
+              const channels = Object.entries(CH_COLORS).map(([ch, c]) => ({ ch, c, v: Number(d[ch] || 0) })).filter(x => x.v > 0);
+              const isActive = touchIdx === i;
+
               return (
-                <div key={d.date} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end" }}>
-                  <div style={{ width: "85%", height: Math.max(h, 2), background: "#93C5FD", borderRadius: "2px 2px 0 0" }} />
+                <div key={String(d.date)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", height: "100%", cursor: "default" }}
+                  onTouchStart={() => setTouchIdx(i)}
+                  onMouseEnter={() => setTouchIdx(i)}
+                  onMouseLeave={() => setTouchIdx(null)}
+                >
+                  {/* Stacked bar */}
+                  <div style={{ width: "85%", height: Math.max(h, 2), display: "flex", flexDirection: "column-reverse", borderRadius: "2px 2px 0 0", overflow: "hidden", opacity: isActive ? 1 : .8 }}>
+                    {channels.map(({ ch, c, v }) => {
+                      const segH = total > 0 ? (v / total) * Math.max(h, 2) : 0;
+                      return <div key={ch} style={{ width: "100%", height: segH, background: c }} />;
+                    })}
+                  </div>
+                  {/* Ads dot */}
+                  {adsH > 2 && (
+                    <div style={{ position: "absolute", bottom: adsH, left: `${(i + 0.5) / p.dailyByChannel.length * 100}%`, width: 4, height: 4, borderRadius: "50%", background: "#DC2626", transform: "translateX(-50%)", zIndex: 2 }} />
+                  )}
                 </div>
               );
             })}
+            {/* Ads line */}
+            {p.dailyByChannel.length > 1 && (() => {
+              const pts = p.dailyByChannel.map((d, i) => {
+                const adsDay = p.dailyAds.find(a => a.date === String(d.date));
+                const adsV = adsDay?.spend || 0;
+                const x = (i + 0.5) / p.dailyByChannel.length * 100;
+                const y = max7d > 0 ? 80 - (adsV / max7d * 70) : 78;
+                return `${x},${y}`;
+              });
+              return (
+                <svg viewBox={`0 0 100 80`} preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 1, overflow: "visible" }}>
+                  <polyline fill="none" stroke="#DC2626" strokeWidth=".5" strokeDasharray="2 1" points={pts.join(" ")} vectorEffect="non-scaling-stroke" />
+                </svg>
+              );
+            })()}
           </div>
-          <div style={{ display: "flex", gap: 2, marginTop: 2 }}>
-            {p.daily.map((d, i) => (
-              <div key={`l-${d.date}`} style={{ flex: 1, textAlign: "center", fontSize: 6, color: "#94A3B8" }}>
-                {i % Math.max(1, Math.floor(p.daily.length / 8)) === 0 ? d.date.substring(8) : ""}
+
+          {/* Date labels */}
+          <div style={{ display: "flex", gap: 1, marginTop: 2 }}>
+            {p.dailyByChannel.map((d, i) => (
+              <div key={`l-${String(d.date)}`} style={{ flex: 1, textAlign: "center", fontSize: 6, color: touchIdx === i ? "#374151" : "#94A3B8", fontWeight: touchIdx === i ? 700 : 400 }}>
+                {i % Math.max(1, Math.floor(p.dailyByChannel.length / 10)) === 0 ? String(d.date).substring(8) : ""}
               </div>
             ))}
           </div>
