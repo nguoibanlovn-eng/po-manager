@@ -316,9 +316,11 @@ export default async function DashPage({
           </div>
         </div>
 
-        {/* ─── ROW 1: Revenue by channel + Ads cost table ─── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
-          {/* LEFT: Revenue by channel */}
+        {/* ─── MAIN LAYOUT: Left (Revenue + Quick panels) | Right (Ads breakdown) ─── */}
+        <div style={{ display: "grid", gridTemplateColumns: "5fr 7fr", gap: 10, marginBottom: 12 }}>
+          {/* LEFT COLUMN */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {/* Revenue by channel */}
           <div className="card" style={{ padding: "12px 14px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
               <span style={{ fontWeight: 700, fontSize: 12 }}>Doanh thu theo kênh</span>
@@ -373,6 +375,51 @@ export default async function DashPage({
               </div>
             )}
           </div>
+
+          {/* Quick panels in left column */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {/* Hàng nhập mini */}
+            <div className="card" style={{ padding: "10px 12px" }}>
+              <div style={{ fontWeight: 700, fontSize: 11, marginBottom: 6 }}>Hàng nhập hôm nay</div>
+              {arrivedToday.length > 0 ? arrivedToday.slice(0, 3).map((o) => (
+                <div key={o.order_id} style={{ display: "flex", justifyContent: "space-between", fontSize: 10, padding: "3px 0", borderBottom: "1px solid var(--border)" }}>
+                  <Link href={`/create?order_id=${o.order_id}`} style={{ color: "var(--blue)", fontWeight: 600 }}>{o.order_id}</Link>
+                  <span style={{ fontWeight: 700 }}>{formatVNDCompact(Number(o.order_total || 0))}</span>
+                </div>
+              )) : <div style={{ fontSize: 10, color: "#9CA3AF", padding: "8px 0" }}>Không có đơn về</div>}
+              {arrivedToday.length > 0 && <div style={{ fontSize: 9, color: "#9CA3AF", marginTop: 4 }}>Tổng: {formatVNDCompact(arrivedTodayValue)} · {arrivedToday.length} đơn</div>}
+            </div>
+            {/* Thiệt hại mini */}
+            <div className="card" style={{ padding: "10px 12px" }}>
+              <div style={{ fontWeight: 700, fontSize: 11, marginBottom: 6, color: damageItems.length > 0 ? "#DC2626" : undefined }}>Thiệt hại chờ xử lý</div>
+              {damageItems.length > 0 ? damageItems.slice(0, 3).map((d) => (
+                <div key={d.item_id} style={{ display: "flex", justifyContent: "space-between", fontSize: 10, padding: "3px 0", borderBottom: "1px solid var(--border)" }}>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "70%" }}>{d.item_name || "—"}</span>
+                  <span style={{ fontWeight: 700, color: "#DC2626" }}>{formatVNDCompact(Number(d.damage_amount || 0))}</span>
+                </div>
+              )) : <div style={{ fontSize: 10, color: "#9CA3AF", padding: "8px 0" }}>Không có thiệt hại</div>}
+              {damageItems.length > 3 && <Link href="/damage-mgmt" style={{ fontSize: 9, color: "var(--blue)" }}>+{damageItems.length - 3} nữa →</Link>}
+            </div>
+          </div>
+
+          {/* Việc hôm nay mini */}
+          <div className="card" style={{ padding: "10px 12px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+              <span style={{ fontWeight: 700, fontSize: 11 }}>Việc hôm nay</span>
+              <span style={{ fontSize: 9, color: "#9CA3AF" }}>{tasksDone}/{tasksTotal} xong</span>
+            </div>
+            {tasksToday.length > 0 ? tasksToday.slice(0, 4).map((t) => {
+              const isDone = t.status === "DONE";
+              return (
+                <div key={t.task_id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 0", borderBottom: "1px solid var(--border)", fontSize: 11 }}>
+                  <div style={{ width: 14, height: 14, borderRadius: "50%", border: isDone ? "none" : "2px solid #E5E7EB", background: isDone ? "#16A34A" : "transparent", flexShrink: 0 }} />
+                  <span style={{ flex: 1, textDecoration: isDone ? "line-through" : "none", color: isDone ? "#9CA3AF" : undefined }}>{t.title}</span>
+                  {t.priority === "HIGH" || t.priority === "URGENT" ? <span style={{ fontSize: 8, padding: "1px 4px", borderRadius: 3, background: "#FEF2F2", color: "#DC2626", fontWeight: 600 }}>!</span> : null}
+                </div>
+              );
+            }) : <div style={{ fontSize: 10, color: "#9CA3AF", padding: "8px 0" }}>Không có việc deadline hôm nay</div>}
+          </div>
+          </div>{/* End left column */}
 
           {/* RIGHT: Ads cost table */}
           <div className="card" style={{ padding: "12px 14px" }}>
@@ -568,101 +615,6 @@ export default async function DashPage({
                 </div>
               )}
             </div>
-          </div>
-        </div>
-
-        {/* ─── ROW 2: Hàng nhập + Thiệt hại + Việc hôm nay ─── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 12 }}>
-          {/* Hàng nhập hôm nay */}
-          <div className="card" style={{ padding: "12px 14px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <span style={{ fontWeight: 700, fontSize: 12 }}>Hàng nhập hôm nay</span>
-              <span style={{ fontSize: 10, color: "#9CA3AF" }}>{arrivedToday.length} đơn</span>
-            </div>
-            {arrivedToday.length > 0 ? arrivedToday.map((o) => (
-              <div key={o.order_id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: "1px solid var(--border)", fontSize: 12 }}>
-                <Link href={`/create?order_id=${o.order_id}`} style={{ fontSize: 10, fontWeight: 700, color: "var(--blue)", width: 60 }}>{o.order_id}</Link>
-                <span style={{ flex: 1, fontSize: 11 }}>{o.order_name || o.supplier_name || "—"}</span>
-                <span style={{ fontSize: 10, fontWeight: 700 }}>{formatVNDCompact(Number(o.order_total || 0))}</span>
-                <span className={`stage-badge stage-${o.stage}`} style={{ fontSize: 9 }}>{STAGE_LABEL[String(o.stage)] || o.stage}</span>
-              </div>
-            )) : (
-              <div style={{ textAlign: "center", padding: 24, color: "#9CA3AF", fontSize: 11 }}>Không có đơn nào về hôm nay</div>
-            )}
-            {arrivedToday.length > 0 && (
-              <div style={{ borderTop: "1px solid var(--border)", marginTop: 6, paddingTop: 6, display: "flex", justifyContent: "space-between", fontSize: 11 }}>
-                <span style={{ color: "#9CA3AF" }}>Tổng giá trị nhập</span>
-                <span style={{ fontWeight: 700 }}>{formatVNDCompact(arrivedTodayValue)}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Thiệt hại */}
-          <div className="card" style={{ padding: "12px 14px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <span style={{ fontWeight: 700, fontSize: 12 }}>Thiệt hại chờ xử lý</span>
-              <span style={{ fontSize: 10, color: damageItems.length > 0 ? "#DC2626" : "#9CA3AF" }}>
-                {damageItems.length} SP · {formatVNDCompact(damageItems.reduce((s, d) => s + Number(d.damage_amount || 0), 0))}
-              </span>
-            </div>
-            {damageItems.length > 0 ? damageItems.slice(0, 5).map((d) => (
-              <div key={d.item_id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: "1px solid var(--border)", fontSize: 12 }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", flexShrink: 0 }} />
-                <span style={{ flex: 1, fontSize: 11 }}>{d.item_name || "—"}</span>
-                <span style={{ fontSize: 10, fontWeight: 700, color: "#DC2626" }}>{formatVNDCompact(Number(d.damage_amount || 0))}</span>
-                <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 4, background: "#FEF2F2", color: "#DC2626", fontWeight: 600 }}>
-                  {d.damage_qty} SP
-                </span>
-              </div>
-            )) : (
-              <div style={{ textAlign: "center", padding: 24, color: "#9CA3AF", fontSize: 11 }}>Không có thiệt hại chờ xử lý</div>
-            )}
-            {damageItems.length > 5 && (
-              <Link href="/damage-mgmt" style={{ fontSize: 10, color: "var(--blue)", display: "block", marginTop: 6 }}>Xem tất cả {damageItems.length} SP →</Link>
-            )}
-          </div>
-
-          {/* Việc hôm nay */}
-          <div className="card" style={{ padding: "12px 14px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <span style={{ fontWeight: 700, fontSize: 12 }}>Việc hôm nay</span>
-              <span style={{ fontSize: 10, color: "#9CA3AF" }}>{tasksDone}/{tasksTotal} xong</span>
-            </div>
-            {tasksToday.length > 0 ? tasksToday.slice(0, 5).map((t) => {
-              const isDone = t.status === "DONE";
-              const statusColors: Record<string, { bg: string; text: string; label: string }> = {
-                DONE: { bg: "#F0FDF4", text: "#16A34A", label: "Xong" },
-                IN_PROGRESS: { bg: "#FFFBEB", text: "#D97706", label: "Đang làm" },
-                OPEN: { bg: "#F4F4F5", text: "#52525B", label: "Chờ" },
-              };
-              const st = statusColors[t.status || "OPEN"] || statusColors.OPEN;
-              const prioColors: Record<string, { bg: string; text: string }> = {
-                HIGH: { bg: "#FEF2F2", text: "#DC2626" },
-                URGENT: { bg: "#FEF2F2", text: "#DC2626" },
-              };
-              const prio = prioColors[t.priority || ""];
-              return (
-                <div key={t.task_id} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
-                  <div style={{ width: 18, height: 18, borderRadius: "50%", border: isDone ? "none" : "2px solid #E5E7EB", background: isDone ? "#16A34A" : "transparent", flexShrink: 0, marginTop: 1 }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, textDecoration: isDone ? "line-through" : "none", color: isDone ? "#9CA3AF" : undefined }}>{t.title}</div>
-                    <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 2 }}>
-                      {t.assignee_name || "—"} · {t.deadline ? t.deadline.substring(11, 16) : "—"}
-                    </div>
-                  </div>
-                  <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 4, background: prio?.bg || st.bg, color: prio?.text || st.text, fontWeight: 600 }}>
-                    {(t.priority === "HIGH" || t.priority === "URGENT") ? "Ưu tiên" : st.label}
-                  </span>
-                </div>
-              );
-            }) : (
-              <div style={{ textAlign: "center", padding: 24, color: "#9CA3AF", fontSize: 11 }}>Không có việc deadline hôm nay</div>
-            )}
-            {tasksToday.length > 0 && (
-              <div style={{ borderTop: "1px solid var(--border)", marginTop: 4, paddingTop: 6, display: "flex", justifyContent: "space-between", fontSize: 10, color: "#9CA3AF" }}>
-                <Link href="/tasks" style={{ color: "var(--blue)" }}>Xem tất cả →</Link>
-              </div>
-            )}
           </div>
         </div>
 
