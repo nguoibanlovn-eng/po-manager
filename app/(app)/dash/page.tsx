@@ -220,7 +220,7 @@ export default async function DashPage({
     const adsStatus = adsPctToday <= 5 ? S.green : adsPctToday <= 7 ? S.amber : adsPctToday > 0 ? S.red : S.neutral;
 
     return (
-      <section className="section">
+      <section className="section" id="dash-day">
         <AutoSyncToday />
         {/* ─── HEADER ─── */}
         <div className="page-hdr">
@@ -228,22 +228,22 @@ export default async function DashPage({
             <div className="page-title">Dashboard</div>
             <div className="page-sub">{dayOfWeek}, {displayDate}</div>
           </div>
-          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            <Link href="/dash?view=day" className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>Ngày</Link>
-            <Link href="/dash?view=month" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Tháng</Link>
-            <Link href="/dash?view=year" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Năm</Link>
-            <span style={{ width: 1, height: 20, background: "#E5E7EB" }} />
+          <div className="dash-day-nav" style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <Link href="/dash?view=day" className="btn btn-primary btn-sm dash-hide-mobile" style={{ textDecoration: "none" }}>Ngày</Link>
+            <Link href="/dash?view=month" className="btn btn-ghost btn-sm dash-hide-mobile" style={{ textDecoration: "none" }}>Tháng</Link>
+            <Link href="/dash?view=year" className="btn btn-ghost btn-sm dash-hide-mobile" style={{ textDecoration: "none" }}>Năm</Link>
+            <span className="dash-hide-mobile" style={{ width: 1, height: 20, background: "#E5E7EB" }} />
             <Link href={`/dash?view=day&date=${prevDay}`} className="btn btn-ghost btn-sm" style={{ textDecoration: "none", fontSize: 14 }}>&larr;</Link>
             <span style={{ fontSize: 14, fontWeight: 700, minWidth: 100, textAlign: "center" }}>{displayDate}</span>
             <Link href={`/dash?view=day&date=${nextDay}`} className="btn btn-ghost btn-sm" style={{ textDecoration: "none", fontSize: 14 }}>&rarr;</Link>
-            <span style={{ width: 1, height: 20, background: "#E5E7EB" }} />
+            <span className="dash-hide-mobile" style={{ width: 1, height: 20, background: "#E5E7EB" }} />
             <Link href="/dash?view=day" className="btn btn-sm" style={{ textDecoration: "none", fontSize: 11, background: "#1F2937", color: "#fff" }}>Hôm nay</Link>
             <Link href={`/dash?view=day&date=${yesterday}`} className="btn btn-ghost btn-sm" style={{ textDecoration: "none", fontSize: 11 }}>Hôm qua</Link>
           </div>
         </div>
 
         {/* ─── KPI STRIP (6 cards) ─── */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8, marginBottom: 12 }}>
+        <div id="dash-day-kpi" style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8, marginBottom: 12 }}>
           {/* DT thực tế */}
           <div style={{ padding: "10px 14px", borderRadius: 8, background: revStatus.bg, border: `1px solid ${revStatus.border}` }}>
             <div style={{ fontSize: 9, fontWeight: 600, color: revStatus.text, letterSpacing: ".3px" }}>DT THỰC TẾ</div>
@@ -315,7 +315,7 @@ export default async function DashPage({
         </div>
 
         {/* ─── MAIN LAYOUT: Left (Revenue + Quick panels) | Right (Ads breakdown) ─── */}
-        <div style={{ display: "grid", gridTemplateColumns: "5fr 7fr", gap: 10, marginBottom: 12 }}>
+        <div id="dash-day-main" style={{ display: "grid", gridTemplateColumns: "5fr 7fr", gap: 10, marginBottom: 12 }}>
           {/* LEFT COLUMN */}
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {/* Revenue by channel */}

@@ -380,6 +380,27 @@ td{padding:7px 10px;vertical-align:middle}
   #od-stats { grid-template-columns: 1fr 1fr !important; }
   #od-info  { grid-template-columns: 1fr !important; }
   #od-header-row { flex-direction: column !important; align-items: flex-start !important; gap: 8px !important; }
+
+  /* ── Dashboard Day mobile ── */
+  /* Hide view tabs (Ngày/Tháng/Năm) — bottom nav handles this */
+  .dash-hide-mobile { display: none !important; }
+  /* Nav row: compact */
+  .dash-day-nav { flex-wrap: wrap !important; gap: 4px !important; justify-content: center !important; }
+  .dash-day-nav .btn, .dash-day-nav .btn-sm, .dash-day-nav .btn-ghost {
+    font-size: 12px !important; padding: 6px 10px !important; min-height: 32px !important;
+  }
+  /* KPI strip: 6 col → 2 col */
+  #dash-day-kpi { grid-template-columns: 1fr 1fr !important; gap: 6px !important; }
+  #dash-day-kpi > div { padding: 8px 10px !important; }
+  #dash-day-kpi > div > div:first-child { font-size: 9px !important; }
+  #dash-day-kpi > div > div:nth-child(2) { font-size: 17px !important; }
+  /* Main layout: 2 col → single col stack */
+  #dash-day-main { grid-template-columns: 1fr !important; gap: 8px !important; }
+  /* Channel table: compact */
+  #dash-day .tbl-wrap table { font-size: 11px !important; }
+  #dash-day .tbl-wrap th, #dash-day .tbl-wrap td { padding: 5px 6px !important; font-size: 10px !important; white-space: nowrap !important; }
+  /* Progress bar text: wrap */
+  #dash-day .card > div:last-child { flex-wrap: wrap !important; gap: 4px 12px !important; }
 }
 
 @media (max-width: 480px) {
