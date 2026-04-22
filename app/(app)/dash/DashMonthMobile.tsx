@@ -15,7 +15,7 @@ export type DashMonthMobileProps = {
   totalAdSpend: number;
   adsPct: number;
   roas: number;
-  channels: { name: string; color: string; rev: number; target: number }[];
+  channels: { name: string; color: string; rev: number; target: number; ads: number }[];
   daily: { date: string; revenue: number }[];
   outstanding: number;
   damageItems: number;
@@ -84,6 +84,8 @@ export default function DashMonthMobile(p: DashMonthMobileProps) {
         <div style={{ fontSize: 12, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: .5, marginBottom: 8 }}>DT theo kênh vs KH</div>
         {p.channels.map(ch => {
           const pct = ch.target > 0 ? Math.round((ch.rev / ch.target) * 100) : 0;
+          const chAdsPct = ch.rev > 0 ? (ch.ads / ch.rev * 100) : 0;
+          const chRoas = ch.ads > 0 ? ch.rev / ch.ads : 0;
           return (
             <div key={ch.name} style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12, padding: "10px 12px", marginBottom: 6 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
@@ -95,9 +97,11 @@ export default function DashMonthMobile(p: DashMonthMobileProps) {
                 <div style={{ height: "100%", width: `${Math.min(pct, 100)}%`, background: pct >= 100 ? "#22C55E" : pct >= 70 ? ch.color : "#F59E0B", borderRadius: 3 }} />
                 <div style={{ position: "absolute", top: -1, left: `${timePct}%`, width: 1, height: 8, background: "#DC2626", opacity: .4 }} />
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#94A3B8" }}>
-                <span>KH {formatVNDCompact(ch.target)}</span>
-                <span style={{ fontWeight: 700, color: pct >= 100 ? "#16A34A" : pct >= 70 ? "#374151" : "#D97706" }}>{pct}%</span>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 4, background: "#F8FAFC", borderRadius: 8, padding: "6px 8px", marginTop: 4 }}>
+                <div><div style={{ fontSize: 8, color: "#94A3B8", textTransform: "uppercase" }}>KH</div><div style={{ fontSize: 10, fontWeight: 700 }}>{formatVNDCompact(ch.target)}</div></div>
+                <div><div style={{ fontSize: 8, color: "#94A3B8", textTransform: "uppercase" }}>Đạt</div><div style={{ fontSize: 10, fontWeight: 700, color: pct >= 100 ? "#16A34A" : pct >= 70 ? "#374151" : "#D97706" }}>{pct}%</div></div>
+                <div><div style={{ fontSize: 8, color: "#94A3B8", textTransform: "uppercase" }}>Ads</div><div style={{ fontSize: 10, fontWeight: 700, color: "#DC2626" }}>{ch.ads > 0 ? formatVNDCompact(ch.ads) : "—"}</div></div>
+                <div><div style={{ fontSize: 8, color: "#94A3B8", textTransform: "uppercase" }}>%Ads</div><div style={{ fontSize: 10, fontWeight: 700, color: chAdsPct <= 5 ? "#16A34A" : chAdsPct <= 7 ? "#D97706" : ch.ads > 0 ? "#DC2626" : "#94A3B8" }}>{ch.ads > 0 ? `${chAdsPct.toFixed(1)}%` : "—"}</div></div>
               </div>
             </div>
           );
