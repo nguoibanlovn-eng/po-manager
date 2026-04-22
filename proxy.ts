@@ -16,7 +16,9 @@ export function proxy(request: NextRequest) {
     path.startsWith("/api/tiktok-shop/callback") ||
     path.startsWith("/api/tiktok/callback") ||
     path.startsWith("/api/shopee/callback") ||
-    path === "/favicon.ico";
+    path === "/favicon.ico" ||
+    path === "/manifest.json" ||
+    path === "/sw.js";
 
   if (isPublic) return NextResponse.next();
 
