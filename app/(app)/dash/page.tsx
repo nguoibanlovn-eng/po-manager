@@ -233,7 +233,7 @@ export default async function DashPage({
           damageCount: damageItems.length, damageValue: damageItems.reduce((s, d) => s + Number(d.damage_amount || 0), 0),
           tasksTotal: tasksTotal, tasksDone: tasksDone, monthRevenue: revMonth.total, monthTarget: totalTarget,
         }} />
-        <AutoSyncToday />
+        <AutoSyncToday extraSyncs={["/api/tiktok/sync-ads", "/api/tiktok/sync-gmv-max"]} />
         {/* ─── HEADER ─── */}
         <div className="page-hdr">
           <div>
