@@ -63,30 +63,48 @@ export async function getInventoryMobileSummary(): Promise<{
 }> {
   const db = supabaseAdmin();
 
-  const { data: all } = await db
-    .from("inventory")
-    .select("sku, product_name, category, available_qty, sold_30d")
-    .order("sold_30d", { ascending: false })
-    .limit(5000);
-
+  // 1. Get all products with stock info
   const { data: products } = await db
     .from("products")
-    .select("sku, cost_price, stock")
-    .limit(5000);
+    .select("id, sku, product_name, category, stock, cost_price, is_active")
+    .eq("is_active", true)
+    .limit(10000);
 
-  const costMap = new Map<string, number>();
-  for (const p of products || []) {
-    if (p.sku) costMap.set(String(p.sku), Number(p.cost_price || 0));
+  // 2. Get 30-day sales from product_sales (aggregate qty by sku)
+  const d30 = new Date();
+  d30.setDate(d30.getDate() - 30);
+  const from30 = d30.toISOString().substring(0, 10);
+
+  // Paginate product_sales (can be large)
+  const salesBysku = new Map<string, number>();
+  let salesOff = 0;
+  while (true) {
+    const { data: salesPage } = await db
+      .from("product_sales")
+      .select("sku, qty")
+      .gte("date", from30)
+      .range(salesOff, salesOff + 999);
+    if (!salesPage || salesPage.length === 0) break;
+    for (const r of salesPage) {
+      const sku = String(r.sku || "");
+      if (sku) salesBysku.set(sku, (salesBysku.get(sku) || 0) + Number(r.qty || 0));
+    }
+    if (salesPage.length < 1000) break;
+    salesOff += 1000;
   }
 
-  const rows = (all || []).map(r => ({
-    sku: String(r.sku || ""),
-    name: String(r.product_name || ""),
-    category: String(r.category || ""),
-    stock: Number(r.available_qty || 0),
-    sold: Number(r.sold_30d || 0),
-    cost: costMap.get(String(r.sku || "")) || 0,
-  }));
+  // 3. Merge
+  const rows = (products || []).map(r => {
+    const sku = String(r.sku || "");
+    return {
+      sku,
+      name: String(r.product_name || ""),
+      category: String(r.category || ""),
+      stock: Number(r.stock || 0),
+      sold: salesBysku.get(sku) || 0,
+      cost: Number(r.cost_price || 0),
+    };
+  });
 
   const total = rows.length;
   const inStock = rows.filter(r => r.stock > 0).length;
@@ -97,23 +115,23 @@ export async function getInventoryMobileSummary(): Promise<{
   const topSellers = rows
     .filter(r => r.sold > 0)
     .sort((a, b) => b.sold - a.sold)
-    .slice(0, 15)
+    .slice(0, 20)
     .map(r => ({ sku: r.sku, name: r.name, category: r.category, stock: r.stock, sold: r.sold }));
 
-  // No sales: stock > 0 but sold = 0
+  // No sales: stock > 0 but sold = 0 in 30 days
   const noSales = rows
     .filter(r => r.stock > 0 && r.sold <= 0)
     .sort((a, b) => (b.stock * b.cost) - (a.stock * a.cost))
-    .slice(0, 15)
+    .slice(0, 20)
     .map(r => ({ sku: r.sku, name: r.name, category: r.category, stock: r.stock, costValue: r.stock * r.cost }));
 
-  // Slow movers: sold > 0 but low ratio (sold/stock < 50%), stock > 5
+  // Slow movers: sold > 0 but low ratio, stock > 5
   const slowMovers = rows
     .filter(r => r.sold > 0 && r.stock > 5)
     .map(r => ({ ...r, pctSold: r.stock > 0 ? Math.round(r.sold / (r.stock + r.sold) * 100) : 0 }))
     .filter(r => r.pctSold < 30)
     .sort((a, b) => a.pctSold - b.pctSold)
-    .slice(0, 15)
+    .slice(0, 20)
     .map(r => ({ sku: r.sku, name: r.name, category: r.category, stock: r.stock, sold: r.sold, pctSold: r.pctSold }));
 
   return {
