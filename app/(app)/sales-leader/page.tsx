@@ -1,4 +1,4 @@
-import { getChannelTarget, getTiktokProductStats, listTiktokAds, listTiktokChannels, listTiktokNhanhRevenue } from "@/lib/db/tiktok";
+import { getChannelTarget, getTiktokProductStats, listTiktokAds, listTiktokChannels, listTiktokNhanhRevenue, listGmvMax, listGmvMaxProducts } from "@/lib/db/tiktok";
 import { dateVN } from "@/lib/helpers";
 import SalesLeaderView from "./SalesLeaderView";
 
@@ -17,12 +17,14 @@ export default async function SalesLeaderPage({
   const now = new Date();
   const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
 
-  const [ads, channels, productStats, nhanhRevenue, monthTarget] = await Promise.all([
+  const [ads, channels, productStats, nhanhRevenue, monthTarget, gmvMax, gmvMaxProducts] = await Promise.all([
     listTiktokAds(from, to),
     listTiktokChannels(from, to),
     getTiktokProductStats({ from, to }),
     listTiktokNhanhRevenue(from, to),
     getChannelTarget("tiktok", monthKey),
+    listGmvMax(from, to),
+    listGmvMaxProducts(from, to),
   ]);
 
   // Get full month revenue for progress bar (always current month, regardless of filter)
@@ -38,6 +40,8 @@ export default async function SalesLeaderPage({
       productStats={productStats.products}
       shops={productStats.shops}
       nhanhRevenue={nhanhRevenue}
+      gmvMax={gmvMax}
+      gmvMaxProducts={gmvMaxProducts}
       from={from}
       to={to}
       monthTarget={monthTarget}

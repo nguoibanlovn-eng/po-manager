@@ -151,3 +151,53 @@ export async function listTiktokChannels(from?: string, to?: string): Promise<Ti
   const { data } = await q.limit(1000);
   return (data as TiktokChannelRow[]) || [];
 }
+
+// ── GMV Max ──
+
+export type GmvMaxRow = {
+  date: string;
+  store_id: string;
+  store_name: string | null;
+  store_code: string | null;
+  spend: number;
+  gross_revenue: number;
+  roi: number;
+  orders: number;
+  cost_per_order: number;
+};
+
+export type GmvMaxProductRow = {
+  date: string;
+  store_id: string;
+  item_group_id: string;
+  campaign_id: string | null;
+  spend: number;
+  gross_revenue: number;
+  roi: number;
+  orders: number;
+  cost_per_order: number;
+};
+
+export async function listGmvMax(from: string, to: string): Promise<GmvMaxRow[]> {
+  const db = supabaseAdmin();
+  const { data } = await db
+    .from("tiktok_gmv_max")
+    .select("date,store_id,store_name,store_code,spend,gross_revenue,roi,orders,cost_per_order")
+    .gte("date", from)
+    .lte("date", to)
+    .order("date", { ascending: false })
+    .limit(2000);
+  return (data as GmvMaxRow[]) || [];
+}
+
+export async function listGmvMaxProducts(from: string, to: string): Promise<GmvMaxProductRow[]> {
+  const db = supabaseAdmin();
+  const { data } = await db
+    .from("tiktok_gmv_max_products")
+    .select("date,store_id,item_group_id,campaign_id,spend,gross_revenue,roi,orders,cost_per_order")
+    .gte("date", from)
+    .lte("date", to)
+    .order("gross_revenue", { ascending: false })
+    .limit(500);
+  return (data as GmvMaxProductRow[]) || [];
+}

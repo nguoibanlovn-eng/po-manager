@@ -2,18 +2,9 @@ import "server-only";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { nowVN, dateVN } from "@/lib/helpers";
 import { toNum } from "@/lib/format";
-
-// TikTok Ads (Business API) — sync skeleton.
-// Credentials live in .env.local:
-//   TIKTOK_APP_ID, TIKTOK_APP_SECRET, TIKTOK_ACCESS_TOKEN, TIKTOK_ADVERTISER_IDS (CSV)
-// If any are missing, sync functions return an error telling what's needed.
+import { getAccessToken, validateTiktokToken } from "@/lib/tiktok/auth";
 
 const TT_BASE = "https://business-api.tiktok.com/open_api/v1.3";
-
-function requireEnv(keys: string[]): string | null {
-  for (const k of keys) if (!process.env[k]) return `Thiếu ${k} trong .env.local`;
-  return null;
-}
 
 type TtReportRow = {
   dimensions?: { advertiser_id?: string; stat_time_day?: string; campaign_id?: string };
@@ -25,37 +16,8 @@ type TtReportRow = {
     conversion?: string | number;
     total_purchase_value?: string | number;
     campaign_name?: string;
-    promotion_type?: string; // "REGULAR" | "GMV_MAX" | etc
   };
 };
-
-/** Lấy token từ DB (OAuth callback lưu) hoặc fallback .env.local */
-async function getAccessToken(): Promise<string> {
-  const db = supabaseAdmin();
-  const { data } = await db
-    .from("tiktok_ads_token")
-    .select("access_token")
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .single();
-  if (data?.access_token) return data.access_token;
-  if (process.env.TIKTOK_ACCESS_TOKEN) return process.env.TIKTOK_ACCESS_TOKEN;
-  throw new Error("Chưa có TikTok access token. Cần authorize tại TikTok Business Center.");
-}
-
-/** Validate TikTok token before syncing */
-async function validateTiktokToken(token: string): Promise<void> {
-  const url = `${TT_BASE}/user/info/?access_token=${token}`;
-  const res = await fetch(url, { headers: { "Access-Token": token } });
-  const json = (await res.json()) as { code?: number; message?: string };
-  if (json.code !== 0) {
-    const msg = json.message || "Token không hợp lệ";
-    if (msg.includes("expired") || msg.includes("invalid") || json.code === 40105) {
-      throw new Error(`TIKTOK_ACCESS_TOKEN đã hết hạn. Cần re-auth tại TikTok Business Center.`);
-    }
-    throw new Error(`TikTok token error: ${msg}`);
-  }
-}
 
 /**
  * Sync TikTok Ads — 2 levels:
@@ -137,7 +99,7 @@ export async function syncTiktokAds(opts: { from?: string; to?: string } = {}): 
               advertiser_id: advId,
               campaign_id: row.dimensions?.campaign_id || "",
               campaign_name: String(m.campaign_name || ""),
-              promotion_type: String(m.promotion_type || "REGULAR"),
+              promotion_type: String((m as Record<string, unknown>).promotion_type || "REGULAR"),
               spend: toNum(m.spend),
               impressions: toNum(m.impressions),
               clicks: toNum(m.clicks),

@@ -3,13 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { formatDate, formatVND, formatVNDCompact, toNum } from "@/lib/format";
-import type { TiktokAdsRow, TiktokChannelRow, TiktokNhanhRow, TiktokProductStat } from "@/lib/db/tiktok";
+import type { TiktokAdsRow, TiktokChannelRow, TiktokNhanhRow, TiktokProductStat, GmvMaxRow, GmvMaxProductRow } from "@/lib/db/tiktok";
 import SyncButton from "../components/SyncButton";
 import AutoSyncToday from "../components/AutoSyncToday";
 import TargetProgressBar from "../components/TargetProgressBar";
 import Collapsible from "../components/Collapsible";
 
-type Tab = "overview" | "ads" | "channel" | "shop" | "products";
+type Tab = "overview" | "ads" | "gmv_max" | "channel" | "shop" | "products";
 
 const _pad = (n: number) => String(n).padStart(2, "0");
 const _fmt = (d: Date) => `${d.getFullYear()}-${_pad(d.getMonth() + 1)}-${_pad(d.getDate())}`;
@@ -32,6 +32,7 @@ function monthRange(offset: number): { from: string; to: string } {
 const QUICK_RANGES: { key: string; label: string; from: string; to: string }[] = [
   { key: "today", label: "Hôm nay", from: daysAgo(0), to: daysAgo(0) },
   { key: "yesterday", label: "Hôm qua", from: daysAgo(-1), to: daysAgo(-1) },
+  { key: "3d", label: "3N", from: daysAgo(-3), to: daysAgo(0) },
   { key: "7d", label: "7N", from: daysAgo(-7), to: daysAgo(0) },
   { key: "14d", label: "14N", from: daysAgo(-14), to: daysAgo(0) },
   { key: "30d", label: "30N", from: daysAgo(-30), to: daysAgo(0) },
@@ -43,7 +44,7 @@ const QUICK_RANGES: { key: string; label: string; from: string; to: string }[] =
    MAIN VIEW
    ═══════════════════════════════════════════════════════════ */
 export default function SalesLeaderView({
-  ads, channels, productStats, shops = [], nhanhRevenue = [], from, to,
+  ads, channels, productStats, shops = [], nhanhRevenue = [], gmvMax = [], gmvMaxProducts = [], from, to,
   monthTarget = 0, monthActual = 0, monthKey = "",
 }: {
   ads: TiktokAdsRow[];
@@ -51,6 +52,8 @@ export default function SalesLeaderView({
   productStats: TiktokProductStat[];
   shops?: string[];
   nhanhRevenue?: TiktokNhanhRow[];
+  gmvMax?: GmvMaxRow[];
+  gmvMaxProducts?: GmvMaxProductRow[];
   from: string;
   to: string;
   monthTarget?: number;
@@ -82,7 +85,13 @@ export default function SalesLeaderView({
     { revenue: 0, orders: 0 },
   ), [nhanhRevenue]);
 
-  const roas = adsTotals.spend > 0 ? nhanhTotals.revenue / adsTotals.spend : 0;
+  const gmvTotals = useMemo(() => gmvMax.reduce(
+    (a, r) => ({ spend: a.spend + Number(r.spend || 0), revenue: a.revenue + Number(r.gross_revenue || 0), orders: a.orders + Number(r.orders || 0) }),
+    { spend: 0, revenue: 0, orders: 0 },
+  ), [gmvMax]);
+
+  const totalSpend = adsTotals.spend + gmvTotals.spend;
+  const roas = totalSpend > 0 ? (nhanhTotals.revenue + gmvTotals.revenue) / totalSpend : 0;
 
   return (
     <section className="section">
@@ -110,6 +119,7 @@ export default function SalesLeaderView({
           <span style={{ width: 1, height: 20, background: "var(--border)" }} />
           <SyncButton url="/api/nhanh/sync-sales" label="NHANH.VN" body={{ from, to }} onDone={() => router.refresh()} />
           <SyncButton url="/api/tiktok/sync-ads" label="Sync Ads" onDone={() => router.refresh()} />
+          <SyncButton url="/api/tiktok/sync-gmv-max" label="Sync GMV Max" onDone={() => router.refresh()} />
           <SyncButton url="/api/tiktok/sync-shop-orders" label="Sync Orders" onDone={() => router.refresh()} />
           <CsvUploadButton onDone={() => router.refresh()} />
         </div>
@@ -121,41 +131,42 @@ export default function SalesLeaderView({
       {/* ═══ KPI CARDS ═══ */}
       <div className="stat-grid" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))" }}>
         <div className="stat-card" style={{ borderLeft: "4px solid #25F4EE" }}>
-          <div className="sl">ROAS</div>
+          <div className="sl">ROAS TỔNG</div>
           <div className="sv" style={{ color: roas >= 10 ? "var(--green)" : roas >= 5 ? "var(--amber)" : "var(--red)" }}>{roas.toFixed(2)}x</div>
-          <div className="muted" style={{ fontSize: 10 }}>GMV / Spend</div>
+          <div className="muted" style={{ fontSize: 10 }}>GMV / (BM + GMV Max)</div>
         </div>
         <div className="stat-card" style={{ borderLeft: "4px solid #FE2C55" }}>
           <div className="sl">GMV TỔNG</div>
-          <div className="sv">{formatVNDCompact(nhanhTotals.revenue)}</div>
-          <div className="muted" style={{ fontSize: 10 }}>nhanh.vn</div>
+          <div className="sv">{formatVNDCompact(nhanhTotals.revenue + gmvTotals.revenue)}</div>
+          <div className="muted" style={{ fontSize: 10 }}>Nhanh {formatVNDCompact(nhanhTotals.revenue)} + GMV Max {formatVNDCompact(gmvTotals.revenue)}</div>
         </div>
         <div className="stat-card" style={{ borderLeft: "4px solid #000000" }}>
           <div className="sl">ADS SPEND</div>
-          <div className="sv">{formatVNDCompact(adsTotals.spend)}</div>
-          <div className="muted" style={{ fontSize: 10 }}>API</div>
+          <div className="sv">{formatVNDCompact(totalSpend)}</div>
+          <div className="muted" style={{ fontSize: 10 }}>BM {formatVNDCompact(adsTotals.spend)} + GMV Max {formatVNDCompact(gmvTotals.spend)}</div>
         </div>
         <div className="stat-card" style={{ borderLeft: "4px solid #25F4EE" }}>
-          <div className="sl">SHOP GMV</div>
-          <div className="sv">{formatVNDCompact(adsTotals.conversion_value)}</div>
-          <div className="muted" style={{ fontSize: 10 }}>{shops.length} shop · API</div>
+          <div className="sl">GMV MAX REV</div>
+          <div className="sv" style={{ color: "var(--green)" }}>{formatVNDCompact(gmvTotals.revenue)}</div>
+          <div className="muted" style={{ fontSize: 10 }}>{gmvTotals.orders.toLocaleString("vi-VN")} đơn · ROI {gmvTotals.spend > 0 ? (gmvTotals.revenue / gmvTotals.spend).toFixed(1) : "—"}</div>
         </div>
         <div className="stat-card" style={{ borderLeft: "4px solid #FE2C55" }}>
           <div className="sl">ĐƠN THÀNH CÔNG</div>
-          <div className="sv">{nhanhTotals.orders.toLocaleString("vi-VN")}</div>
-          <div className="muted" style={{ fontSize: 10 }}>Thành công</div>
+          <div className="sv">{(nhanhTotals.orders + gmvTotals.orders).toLocaleString("vi-VN")}</div>
+          <div className="muted" style={{ fontSize: 10 }}>Nhanh {nhanhTotals.orders} + GMV Max {gmvTotals.orders}</div>
         </div>
       </div>
 
       {/* ═══ TABS ═══ */}
       <div className="mini-tabs" style={{ marginBottom: 14 }}>
-        {([["overview", "Tổng quan"], ["ads", "Ads"], ["channel", "Kênh"], ["shop", "Shop"], ["products", "Hàng hoá"]] as const).map(([k, v]) => (
+        {([["overview", "Tổng quan"], ["ads", "Ads"], ["gmv_max", "GMV Max"], ["channel", "Kênh"], ["shop", "Shop"], ["products", "Hàng hoá"]] as const).map(([k, v]) => (
           <button key={k} className={"mini-tab" + (tab === k ? " active" : "")} onClick={() => setTab(k)}>{v}</button>
         ))}
       </div>
 
-      {tab === "overview" && <OverviewTab ads={ads} nhanhRevenue={nhanhRevenue} adsTotals={adsTotals} nhanhTotals={nhanhTotals} roas={roas} from={from} to={to} />}
+      {tab === "overview" && <OverviewTab ads={ads} nhanhRevenue={nhanhRevenue} gmvMax={gmvMax} adsTotals={adsTotals} nhanhTotals={nhanhTotals} gmvTotals={gmvTotals} roas={roas} from={from} to={to} />}
       {tab === "ads" && <AdsTab ads={ads} />}
+      {tab === "gmv_max" && <GmvMaxTab gmvMax={gmvMax} gmvMaxProducts={gmvMaxProducts} from={from} to={to} />}
       {tab === "channel" && <ChannelTab channels={channels} />}
       {tab === "shop" && <ShopTab nhanhRevenue={nhanhRevenue} from={from} to={to} />}
       {tab === "products" && <ProductsTab products={productStats} />}
@@ -168,10 +179,12 @@ export default function SalesLeaderView({
 /* ═══════════════════════════════════════════════════════════
    TAB 1: TỔNG QUAN
    ═══════════════════════════════════════════════════════════ */
-function OverviewTab({ ads, nhanhRevenue, adsTotals, nhanhTotals, roas, from, to }: {
-  ads: TiktokAdsRow[]; nhanhRevenue: TiktokNhanhRow[];
+function OverviewTab({ ads, nhanhRevenue, gmvMax, adsTotals, nhanhTotals, gmvTotals, roas, from, to }: {
+  ads: TiktokAdsRow[]; nhanhRevenue: TiktokNhanhRow[]; gmvMax: GmvMaxRow[];
   adsTotals: { spend: number; reach: number; clicks: number; impressions: number };
-  nhanhTotals: { revenue: number; orders: number }; roas: number; from: string; to: string;
+  nhanhTotals: { revenue: number; orders: number };
+  gmvTotals: { spend: number; revenue: number; orders: number };
+  roas: number; from: string; to: string;
 }) {
   // Ads by date
   const adsByDate = useMemo(() => {
@@ -213,7 +226,7 @@ function OverviewTab({ ads, nhanhRevenue, adsTotals, nhanhTotals, roas, from, to
     return Array.from(m.entries()).map(([name, v]) => ({ name, ...v })).sort((a, b) => b.revenue - a.revenue);
   }, [nhanhRevenue]);
 
-  // Daily comparison table (DT NHANH.VN + GMV SHOP)
+  // Daily comparison table (DT NHANH.VN + GMV SHOP + GMV Max)
   const dailyComparison = useMemo(() => {
     const nhanhByDate = new Map<string, { revenue: number; orders: number }>();
     for (const r of nhanhRevenue) {
@@ -227,14 +240,26 @@ function OverviewTab({ ads, nhanhRevenue, adsTotals, nhanhTotals, roas, from, to
       const d = String(a.date).substring(0, 10);
       adsByDateMap.set(d, (adsByDateMap.get(d) || 0) + toNum(a.spend));
     }
-    const dates = new Set([...nhanhByDate.keys(), ...adsByDateMap.keys()]);
+    const gmvByDate = new Map<string, { spend: number; revenue: number; orders: number }>();
+    for (const g of gmvMax) {
+      const d = String(g.date).substring(0, 10);
+      const cur = gmvByDate.get(d) || { spend: 0, revenue: 0, orders: 0 };
+      cur.spend += Number(g.spend || 0);
+      cur.revenue += Number(g.gross_revenue || 0);
+      cur.orders += Number(g.orders || 0);
+      gmvByDate.set(d, cur);
+    }
+    const dates = new Set([...nhanhByDate.keys(), ...adsByDateMap.keys(), ...gmvByDate.keys()]);
     return Array.from(dates).sort().reverse().map((d) => {
       const n = nhanhByDate.get(d) || { revenue: 0, orders: 0 };
-      const spend = adsByDateMap.get(d) || 0;
-      const r = spend > 0 ? n.revenue / spend : 0;
-      return { date: d, revenue: n.revenue, spend, roas: r, orders: n.orders, gmvShop: n.revenue };
+      const bmSpend = adsByDateMap.get(d) || 0;
+      const gm = gmvByDate.get(d) || { spend: 0, revenue: 0, orders: 0 };
+      const totalSpend = bmSpend + gm.spend;
+      const totalRevenue = n.revenue + gm.revenue;
+      const r = totalSpend > 0 ? totalRevenue / totalSpend : 0;
+      return { date: d, revenue: n.revenue, spend: bmSpend, roas: r, orders: n.orders, gmvRevenue: gm.revenue, gmvSpend: gm.spend, gmvOrders: gm.orders, gmvRoi: gm.spend > 0 ? gm.revenue / gm.spend : 0, totalSpend, totalRevenue };
     });
-  }, [nhanhRevenue, ads]);
+  }, [nhanhRevenue, ads, gmvMax]);
 
   return (
     <>
@@ -286,44 +311,44 @@ function OverviewTab({ ads, nhanhRevenue, adsTotals, nhanhTotals, roas, from, to
       </Collapsible>
 
       {/* DOANH THU & ADS THEO NGÀY */}
-      <Collapsible title="DOANH THU & ADS THEO NGÀY" defaultOpen badge={<span className="chip chip-amber" style={{ fontSize: 9 }}>NHANH.VN</span>}>
+      <Collapsible title="DOANH THU & ADS THEO NGÀY" defaultOpen badge={<span className="chip chip-amber" style={{ fontSize: 9 }}>NHANH.VN + GMV MAX</span>}>
         <div className="tbl-wrap">
           <table>
             <thead><tr>
-              <th>NGÀY</th><th className="text-right">DOANH THU</th><th className="text-right">ĐƠN</th><th className="text-right">TB/ĐƠN</th><th className="text-right">SPEND ADS</th><th className="text-right">ROAS</th><th className="text-right">ADS/DT</th>
+              <th>NGÀY</th><th className="text-right">DT NHANH</th><th className="text-right">ĐƠN</th>
+              <th className="text-right" style={{ borderLeft: "2px solid #FE2C55", color: "#FE2C55" }}>GMV MAX REV</th>
+              <th className="text-right" style={{ color: "#FE2C55" }}>GMV SPEND</th>
+              <th className="text-right" style={{ color: "#FE2C55" }}>ROI</th>
+              <th className="text-right" style={{ borderLeft: "2px solid var(--border)" }}>BM SPEND</th>
+              <th className="text-right">ROAS TỔNG</th>
             </tr></thead>
             <tbody>
-              {dailyComparison.map((d) => {
-                const avgOrder = d.orders > 0 ? d.revenue / d.orders : 0;
-                const adsRatio = d.revenue > 0 ? (d.spend / d.revenue) * 100 : 0;
-                return (
+              {dailyComparison.map((d) => (
                 <tr key={d.date}>
                   <td style={{ fontWeight: 600 }}>{d.date.substring(5)}</td>
                   <td className="text-right" style={{ color: "var(--green)" }}>{formatVNDCompact(d.revenue)}</td>
                   <td className="text-right">{d.orders}</td>
-                  <td className="text-right muted">{avgOrder > 0 ? formatVNDCompact(avgOrder) : "—"}</td>
-                  <td className="text-right" style={{ color: "var(--red)" }}>{d.spend > 0 ? formatVNDCompact(d.spend) : "0"}</td>
+                  <td className="text-right font-bold" style={{ color: "var(--green)", borderLeft: "2px solid #FE2C55" }}>{d.gmvRevenue > 0 ? formatVNDCompact(d.gmvRevenue) : "—"}</td>
+                  <td className="text-right" style={{ color: "#FE2C55" }}>{d.gmvSpend > 0 ? formatVNDCompact(d.gmvSpend) : "—"}</td>
+                  <td className="text-right" style={{ color: d.gmvRoi >= 12 ? "var(--green)" : d.gmvRoi >= 8 ? "var(--amber)" : d.gmvRoi > 0 ? "var(--red)" : "var(--muted)" }}>{d.gmvRoi > 0 ? d.gmvRoi.toFixed(1) : "—"}</td>
+                  <td className="text-right" style={{ color: "var(--red)", borderLeft: "2px solid var(--border)" }}>{d.spend > 0 ? formatVNDCompact(d.spend) : "0"}</td>
                   <td className="text-right font-bold" style={{ color: d.roas >= 12 ? "var(--green)" : d.roas >= 10 ? "var(--amber)" : d.roas > 0 ? "var(--red)" : "var(--muted)" }}>
-                    {d.spend > 0 ? d.roas.toFixed(1) : "—"}
-                  </td>
-                  <td className="text-right" style={{ color: adsRatio > 10 ? "var(--red)" : adsRatio > 0 ? "var(--amber)" : "var(--muted)" }}>
-                    {d.spend > 0 ? `${adsRatio.toFixed(1)}%` : "—"}
+                    {d.totalSpend > 0 ? d.roas.toFixed(1) : "—"}
                   </td>
                 </tr>
-                );
-              })}
+              ))}
               {dailyComparison.length > 0 && (() => {
-                const totalAvg = nhanhTotals.orders > 0 ? nhanhTotals.revenue / nhanhTotals.orders : 0;
-                const totalAdsRatio = nhanhTotals.revenue > 0 ? (adsTotals.spend / nhanhTotals.revenue) * 100 : 0;
+                const gmvRoiTotal = gmvTotals.spend > 0 ? gmvTotals.revenue / gmvTotals.spend : 0;
                 return (
-                <tr style={{ fontWeight: 700, background: "#1a1a1a", color: "#fff" }}>
+                <tr style={{ fontWeight: 700, background: "var(--blue)", color: "#fff" }}>
                   <td>Tổng kỳ</td>
                   <td className="text-right">{formatVNDCompact(nhanhTotals.revenue)}</td>
                   <td className="text-right">{nhanhTotals.orders}</td>
-                  <td className="text-right">{totalAvg > 0 ? formatVNDCompact(totalAvg) : "—"}</td>
-                  <td className="text-right">{formatVNDCompact(adsTotals.spend)}</td>
+                  <td className="text-right" style={{ borderLeft: "2px solid #FE2C55" }}>{formatVNDCompact(gmvTotals.revenue)}</td>
+                  <td className="text-right">{formatVNDCompact(gmvTotals.spend)}</td>
+                  <td className="text-right">{gmvRoiTotal > 0 ? gmvRoiTotal.toFixed(1) : "—"}</td>
+                  <td className="text-right" style={{ borderLeft: "2px solid rgba(255,255,255,.2)" }}>{formatVNDCompact(adsTotals.spend)}</td>
                   <td className="text-right">{roas.toFixed(1)}</td>
-                  <td className="text-right">{totalAdsRatio > 0 ? `${totalAdsRatio.toFixed(1)}%` : "—"}</td>
                 </tr>
                 );
               })()}
@@ -395,6 +420,289 @@ function AdsTab({ ads }: { ads: TiktokAdsRow[] }) {
         </div>
       </div>
     </>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TAB: GMV MAX
+   ═══════════════════════════════════════════════════════════ */
+function GmvMaxTab({ gmvMax, gmvMaxProducts, from, to }: {
+  gmvMax: GmvMaxRow[]; gmvMaxProducts: GmvMaxProductRow[]; from: string; to: string;
+}) {
+  const totals = useMemo(() => gmvMax.reduce(
+    (a, r) => ({ spend: a.spend + Number(r.spend || 0), revenue: a.revenue + Number(r.gross_revenue || 0), orders: a.orders + Number(r.orders || 0) }),
+    { spend: 0, revenue: 0, orders: 0 },
+  ), [gmvMax]);
+
+  // By store
+  const storeCards = useMemo(() => {
+    const m = new Map<string, { name: string; code: string; spend: number; revenue: number; orders: number }>();
+    for (const r of gmvMax) {
+      const cur = m.get(r.store_id) || { name: r.store_name || r.store_id, code: r.store_code || "", spend: 0, revenue: 0, orders: 0 };
+      cur.spend += Number(r.spend || 0);
+      cur.revenue += Number(r.gross_revenue || 0);
+      cur.orders += Number(r.orders || 0);
+      m.set(r.store_id, cur);
+    }
+    return Array.from(m.entries()).map(([id, v]) => ({ id, ...v })).sort((a, b) => b.revenue - a.revenue);
+  }, [gmvMax]);
+
+  // By date
+  const byDate = useMemo(() => {
+    const m = new Map<string, { spend: number; revenue: number; orders: number }>();
+    for (const r of gmvMax) {
+      const d = String(r.date).substring(0, 10);
+      const cur = m.get(d) || { spend: 0, revenue: 0, orders: 0 };
+      cur.spend += Number(r.spend || 0);
+      cur.revenue += Number(r.gross_revenue || 0);
+      cur.orders += Number(r.orders || 0);
+      m.set(d, cur);
+    }
+    return Array.from(m.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [gmvMax]);
+
+  // Top & worst products
+  const { topProducts, worstProducts } = useMemo(() => {
+    const prodMap = new Map<string, { id: string; spend: number; revenue: number; orders: number }>();
+    for (const p of gmvMaxProducts) {
+      const cur = prodMap.get(p.item_group_id) || { id: p.item_group_id, spend: 0, revenue: 0, orders: 0 };
+      cur.spend += Number(p.spend || 0);
+      cur.revenue += Number(p.gross_revenue || 0);
+      cur.orders += Number(p.orders || 0);
+      prodMap.set(p.item_group_id, cur);
+    }
+    const all = Array.from(prodMap.values());
+    const topProducts = [...all].sort((a, b) => b.revenue - a.revenue).slice(0, 10);
+    const worstProducts = all.filter((p) => p.spend > 1000 && p.orders > 0)
+      .map((p) => ({ ...p, roi: p.spend > 0 ? p.revenue / p.spend : 0 }))
+      .sort((a, b) => a.roi - b.roi).slice(0, 5);
+    return { topProducts, worstProducts };
+  }, [gmvMaxProducts]);
+
+  // Monthly summary
+  const monthly = useMemo(() => {
+    const m = new Map<string, { spend: number; revenue: number; orders: number }>();
+    for (const r of gmvMax) {
+      const month = String(r.date).substring(0, 7);
+      const cur = m.get(month) || { spend: 0, revenue: 0, orders: 0 };
+      cur.spend += Number(r.spend || 0);
+      cur.revenue += Number(r.gross_revenue || 0);
+      cur.orders += Number(r.orders || 0);
+      m.set(month, cur);
+    }
+    return Array.from(m.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [gmvMax]);
+
+  const roi = totals.spend > 0 ? totals.revenue / totals.spend : 0;
+  const cpa = totals.orders > 0 ? totals.spend / totals.orders : 0;
+  const avgOrder = totals.orders > 0 ? totals.revenue / totals.orders : 0;
+
+  return (
+    <>
+      {/* KPI */}
+      <div className="stat-grid" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))" }}>
+        <div className="stat-card" style={{ borderLeft: "4px solid #FE2C55" }}>
+          <div className="sl">GMV MAX SPEND</div>
+          <div className="sv" style={{ color: "#FE2C55" }}>{formatVNDCompact(totals.spend)}</div>
+        </div>
+        <div className="stat-card" style={{ borderLeft: "4px solid var(--green)" }}>
+          <div className="sl">DOANH THU</div>
+          <div className="sv" style={{ color: "var(--green)" }}>{formatVNDCompact(totals.revenue)}</div>
+        </div>
+        <div className="stat-card" style={{ borderLeft: "4px solid #25F4EE" }}>
+          <div className="sl">ĐƠN HÀNG</div>
+          <div className="sv">{totals.orders.toLocaleString("vi-VN")}</div>
+        </div>
+        <div className="stat-card" style={{ borderLeft: "4px solid var(--amber)" }}>
+          <div className="sl">ROI</div>
+          <div className="sv" style={{ color: roi >= 10 ? "var(--green)" : roi >= 5 ? "var(--amber)" : "var(--red)" }}>{roi.toFixed(2)}x</div>
+        </div>
+        <div className="stat-card" style={{ borderLeft: "4px solid var(--border)" }}>
+          <div className="sl">CPA / TB ĐƠN</div>
+          <div className="sv">{formatVNDCompact(cpa)}</div>
+          <div className="muted" style={{ fontSize: 10 }}>TB/đơn {formatVNDCompact(avgOrder)}</div>
+        </div>
+      </div>
+
+      {/* Store cards */}
+      {storeCards.length > 0 && (
+        <Collapsible title="CỬA HÀNG GMV MAX" defaultOpen badge={<span className="muted" style={{ fontSize: 11 }}>{storeCards.length} store</span>}>
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(storeCards.length, 4)}, 1fr)`, gap: 10 }}>
+            {storeCards.map((s) => {
+              const sRoi = s.spend > 0 ? s.revenue / s.spend : 0;
+              return (
+                <div key={s.id} className="card" style={{ padding: 12, border: "1px solid var(--border)", position: "relative" }}>
+                  <div style={{ position: "absolute", top: 8, right: 10, fontSize: 9, padding: "2px 6px", borderRadius: 4, fontWeight: 600, background: s.revenue > 0 ? "var(--green-lt)" : "var(--bg)", color: s.revenue > 0 ? "var(--green)" : "var(--muted)" }}>
+                    {s.revenue > 0 ? "Active" : "Inactive"}
+                  </div>
+                  <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2 }}>{s.name}</div>
+                  <div className="muted" style={{ fontSize: 10, marginBottom: 8 }}>{s.code}</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: s.revenue > 0 ? "var(--green)" : "var(--muted)" }}>{formatVNDCompact(s.revenue)}</div>
+                  <div className="muted" style={{ fontSize: 10, marginTop: 4 }}>{s.orders} đơn · ROI {sRoi > 0 ? sRoi.toFixed(1) : "—"}</div>
+                  <div className="muted" style={{ fontSize: 10 }}>Spend: {formatVNDCompact(s.spend)}</div>
+                </div>
+              );
+            })}
+          </div>
+        </Collapsible>
+      )}
+
+      {/* Dual bar chart */}
+      <Collapsible title="SPEND & REVENUE THEO NGÀY" defaultOpen badge={
+        <span className="muted" style={{ fontSize: 11 }}>
+          <span style={{ color: "#FE2C55" }}>●</span> Spend &nbsp;
+          <span style={{ color: "var(--green)" }}>●</span> Revenue
+        </span>
+      }>
+        <DualBar data={byDate} />
+      </Collapsible>
+
+      {/* Top & Worst products */}
+      {(topProducts.length > 0 || worstProducts.length > 0) && (
+        <Collapsible title="SẢN PHẨM GMV MAX" defaultOpen badge={<span className="muted" style={{ fontSize: 11 }}>{gmvMaxProducts.length} SP</span>}>
+          <div style={{ display: "grid", gridTemplateColumns: worstProducts.length > 0 ? "1fr 1fr" : "1fr", gap: 0 }}>
+            {/* Top */}
+            <div style={{ borderRight: worstProducts.length > 0 ? "1px solid var(--border)" : "none" }}>
+              <div style={{ padding: "8px 12px", fontWeight: 700, fontSize: 12, borderBottom: "1px solid var(--border)", color: "var(--green)" }}>▲ Top bán chạy</div>
+              {topProducts.map((p, i) => {
+                const pRoi = p.spend > 0 ? p.revenue / p.spend : 0;
+                const pCpa = p.orders > 0 ? p.spend / p.orders : 0;
+                return (
+                  <div key={p.id} style={{ display: "flex", alignItems: "center", padding: "6px 12px", borderBottom: "1px solid var(--border)", gap: 8 }}>
+                    <div style={{ width: 22, height: 22, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, background: i < 3 ? "var(--green)" : "var(--green-lt)", color: i < 3 ? "#fff" : "var(--green)", flexShrink: 0 }}>{i + 1}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>SP {p.id.substring(0, 12)}...</div>
+                      <div className="muted" style={{ fontSize: 10 }}>{p.orders} đơn · ROI {pRoi.toFixed(1)}</div>
+                    </div>
+                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: "var(--green)" }}>{formatVNDCompact(p.revenue)}</div>
+                      <div className="muted" style={{ fontSize: 10 }}>CPA {formatVNDCompact(pCpa)}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Worst */}
+            {worstProducts.length > 0 && (
+              <div>
+                <div style={{ padding: "8px 12px", fontWeight: 700, fontSize: 12, borderBottom: "1px solid var(--border)", color: "var(--red)" }}>▼ ROI thấp nhất</div>
+                {worstProducts.map((p) => {
+                  const pCpa = p.orders > 0 ? p.spend / p.orders : 0;
+                  return (
+                    <div key={p.id} style={{ display: "flex", alignItems: "center", padding: "6px 12px", borderBottom: "1px solid var(--border)", gap: 8 }}>
+                      <div style={{ width: 22, height: 22, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, background: p.roi < 5 ? "var(--red)" : "var(--amber)", color: "#fff", flexShrink: 0 }}>!</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>SP {p.id.substring(0, 12)}...</div>
+                        <div className="muted" style={{ fontSize: 10 }}>{p.orders} đơn · <span style={{ color: p.roi < 5 ? "var(--red)" : "var(--amber)" }}>ROI {p.roi.toFixed(1)}</span></div>
+                      </div>
+                      <div style={{ textAlign: "right", flexShrink: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 800 }}>{formatVNDCompact(p.revenue)}</div>
+                        <div style={{ fontSize: 10, color: "var(--red)" }}>CPA {formatVNDCompact(pCpa)}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </Collapsible>
+      )}
+
+      {/* Daily table */}
+      <Collapsible title="CHI TIẾT THEO NGÀY" defaultOpen>
+        <div className="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>NGÀY</th><th className="text-right">SPEND</th><th className="text-right">REVENUE</th><th className="text-right">ĐƠN</th><th className="text-right">TB/ĐƠN</th><th className="text-right">ROI</th><th className="text-right">CPA</th>
+            </tr></thead>
+            <tbody>
+              {byDate.slice().reverse().map(([d, v]) => {
+                const dRoi = v.spend > 0 ? v.revenue / v.spend : 0;
+                const dCpa = v.orders > 0 ? v.spend / v.orders : 0;
+                const dAvg = v.orders > 0 ? v.revenue / v.orders : 0;
+                return (
+                  <tr key={d}>
+                    <td style={{ fontWeight: 600 }}>{d.substring(5)}</td>
+                    <td className="text-right" style={{ color: "#FE2C55" }}>{formatVNDCompact(v.spend)}</td>
+                    <td className="text-right" style={{ color: "var(--green)" }}>{formatVNDCompact(v.revenue)}</td>
+                    <td className="text-right">{v.orders}</td>
+                    <td className="text-right muted">{dAvg > 0 ? formatVNDCompact(dAvg) : "—"}</td>
+                    <td className="text-right font-bold" style={{ color: dRoi >= 12 ? "var(--green)" : dRoi >= 8 ? "var(--amber)" : dRoi > 0 ? "var(--red)" : "var(--muted)" }}>{dRoi > 0 ? dRoi.toFixed(1) : "—"}</td>
+                    <td className="text-right muted">{dCpa > 0 ? formatVNDCompact(dCpa) : "—"}</td>
+                  </tr>
+                );
+              })}
+              {byDate.length > 0 && (
+                <tr style={{ fontWeight: 700, background: "var(--blue)", color: "#fff" }}>
+                  <td>Tổng kỳ</td>
+                  <td className="text-right">{formatVNDCompact(totals.spend)}</td>
+                  <td className="text-right">{formatVNDCompact(totals.revenue)}</td>
+                  <td className="text-right">{totals.orders}</td>
+                  <td className="text-right">{formatVNDCompact(avgOrder)}</td>
+                  <td className="text-right">{roi.toFixed(1)}</td>
+                  <td className="text-right">{formatVNDCompact(cpa)}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Collapsible>
+
+      {/* Monthly summary */}
+      {monthly.length > 1 && (
+        <Collapsible title="TỔNG HỢP THEO THÁNG" defaultOpen={false}>
+          <div className="tbl-wrap">
+            <table>
+              <thead><tr>
+                <th>THÁNG</th><th className="text-right">SPEND</th><th className="text-right">REVENUE</th><th className="text-right">ĐƠN</th><th className="text-right">ROI</th><th className="text-right">CPA</th>
+              </tr></thead>
+              <tbody>
+                {monthly.map(([month, v]) => {
+                  const mRoi = v.spend > 0 ? v.revenue / v.spend : 0;
+                  const mCpa = v.orders > 0 ? v.spend / v.orders : 0;
+                  return (
+                    <tr key={month}>
+                      <td style={{ fontWeight: 600 }}>{month}</td>
+                      <td className="text-right" style={{ color: "#FE2C55" }}>{formatVNDCompact(v.spend)}</td>
+                      <td className="text-right" style={{ color: "var(--green)" }}>{formatVNDCompact(v.revenue)}</td>
+                      <td className="text-right">{v.orders.toLocaleString("vi-VN")}</td>
+                      <td className="text-right font-bold" style={{ color: mRoi >= 10 ? "var(--green)" : "var(--amber)" }}>{mRoi.toFixed(2)}</td>
+                      <td className="text-right muted">{formatVNDCompact(mCpa)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Collapsible>
+      )}
+    </>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DUAL BAR CHART — Spend + Revenue
+   ═══════════════════════════════════════════════════════════ */
+function DualBar({ data }: { data: [string, { spend: number; revenue: number }][] }) {
+  if (data.length === 0) return <div className="muted" style={{ padding: 24, textAlign: "center" }}>Không có data.</div>;
+  const maxRev = Math.max(...data.map(([, v]) => v.revenue));
+  return (
+    <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 180, overflowX: "auto", paddingTop: 16 }}>
+      {data.map(([d, v]) => {
+        const hR = maxRev > 0 ? (v.revenue / maxRev) * 130 : 0;
+        const hS = maxRev > 0 ? (v.spend / maxRev) * 130 : 0;
+        return (
+          <div key={d} style={{ flex: 1, minWidth: 36, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }} title={`${d}\nSpend: ${formatVND(v.spend)}\nRevenue: ${formatVND(v.revenue)}`}>
+            <div style={{ fontSize: 9, color: "var(--muted)", whiteSpace: "nowrap" }}>{formatVNDCompact(v.revenue)}</div>
+            <div style={{ display: "flex", gap: 2, alignItems: "flex-end" }}>
+              <div style={{ width: 10, height: Math.max(hS, 2), background: "#FE2C55", borderRadius: "2px 2px 0 0", opacity: 0.7 }} />
+              <div style={{ width: 10, height: Math.max(hR, 2), background: "var(--green)", borderRadius: "2px 2px 0 0", opacity: 0.7 }} />
+            </div>
+            <div style={{ fontSize: 9, color: "var(--subtle)" }}>{d.substring(5)}</div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
