@@ -260,6 +260,21 @@ export async function syncNhanhReport(opts: {
 
     const rows = Array.from(agg.values());
 
+    // Safety: don't overwrite good revenue_expected with zeros
+    const newExpectedTotal = rows.reduce((s, r) => s + Number(r.revenue_expected || 0), 0);
+    if (newExpectedTotal === 0 && (existingCount || 0) > 0) {
+      // Check if existing data has revenue_expected > 0
+      const { data: existingSample } = await db.from("sales_sync")
+        .select("revenue_expected")
+        .eq("period_from", dateStr).eq("period_to", dateStr)
+        .gt("revenue_expected", 0)
+        .limit(1);
+      if (existingSample && existingSample.length > 0) {
+        logs.push(`[nhanhReport] ${dateStr}: create fetch returned 0 expected but existing has data, skipped overwrite`);
+        continue;
+      }
+    }
+
     // Write to DB
     if (rows.length) {
       for (let i = 0; i < rows.length; i += 200) {
