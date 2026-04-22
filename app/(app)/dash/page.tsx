@@ -70,8 +70,9 @@ export default async function DashPage({
 
   // ═══════════════════════════════════════════════════════
   // MOBILE: Fetch ALL views' data upfront for instant tab switching
+  // Wrapped in try-catch — if timeout, fallback to null (use per-view switches)
   // ═══════════════════════════════════════════════════════
-  const mobileAllProps = await (async () => {
+  const mobileAllProps = await (async () => { try {
     const today = sp.date || dateVN();
     const shiftDate = (base: string, offset: number) => {
       const [yy, mm, dd] = base.split("-").map(Number);
@@ -203,8 +204,8 @@ export default async function DashPage({
       sourcesByChannel: revMonth.sourcesByChannel,
     };
 
-    return { day, month: monthProps, year: yearProps };
-  })();
+    return { day, month: monthProps, year: yearProps } as const;
+  } catch (e) { console.error("[mobileAllProps] error:", e); return null; } })();
 
   // ═══════════════════════════════════════════════════════
   // DAILY VIEW
@@ -366,7 +367,7 @@ export default async function DashPage({
 
     return (
       <section className="section" id="dash-day">
-        <DashMobileWrapper day={mobileAllProps.day} month={mobileAllProps.month} year={mobileAllProps.year} initialView="day" />
+        {mobileAllProps ? <DashMobileWrapper day={mobileAllProps.day} month={mobileAllProps.month} year={mobileAllProps.year} initialView="day" /> : <DashDaySwitch mobileProps={{} as any} />}
         <AutoSyncToday extraSyncs={["/api/tiktok/sync-ads", "/api/tiktok/sync-gmv-max"]} />
         {/* ─── HEADER ─── */}
         <div className="page-hdr">
@@ -874,7 +875,7 @@ export default async function DashPage({
 
     return (
       <section className="section" id="dash-year">
-        <DashMobileWrapper day={mobileAllProps.day} month={mobileAllProps.month} year={mobileAllProps.year} initialView="year" />
+        {mobileAllProps && <DashMobileWrapper day={mobileAllProps.day} month={mobileAllProps.month} year={mobileAllProps.year} initialView="year" />}
         <AutoSyncToday />
         {/* ─── HEADER ─── */}
         <div className="page-hdr">
@@ -1246,7 +1247,7 @@ export default async function DashPage({
 
   return (
     <section className="section" id="dash-month-view">
-      <DashMobileWrapper day={mobileAllProps.day} month={mobileAllProps.month} year={mobileAllProps.year} initialView="month" />
+      {mobileAllProps && <DashMobileWrapper day={mobileAllProps.day} month={mobileAllProps.month} year={mobileAllProps.year} initialView="month" />}
       <AutoSyncToday />
       <div className="page-hdr">
         <div>
