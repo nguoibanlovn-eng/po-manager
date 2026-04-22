@@ -158,11 +158,24 @@ export async function syncNhanhReport(opts: {
 
     const channels = await fetchReport(session, dateStr, dateStr);
     if (!channels.length) {
-      logs.push(`[nhanhReport] ${dateStr}: no data`);
+      logs.push(`[nhanhReport] ${dateStr}: no data (skipped, kept existing)`);
       continue;
     }
 
-    // Delete existing data for this date
+    // Safety check: only overwrite if new data has >= existing row count.
+    // Prevents partial/empty fetches from wiping good data.
+    const { count: existingCount } = await db
+      .from("sales_sync")
+      .select("*", { count: "exact", head: true })
+      .eq("period_from", dateStr)
+      .eq("period_to", dateStr);
+    const newSourceCount = channels.reduce((s, ch) => s + ch.sourceData.length, 0);
+    if ((existingCount || 0) > 0 && newSourceCount < (existingCount || 0) * 0.5) {
+      logs.push(`[nhanhReport] ${dateStr}: partial data (${newSourceCount} vs ${existingCount} existing), skipped`);
+      continue;
+    }
+
+    // Delete existing data for this date — safe to overwrite
     await db.from("sales_sync").delete().eq("period_from", dateStr).eq("period_to", dateStr);
 
     // Build rows from report — aggregate by channel+source to avoid upsert conflicts
