@@ -658,30 +658,42 @@ export default async function DashPage({
     );
   }
 
-  const [user, stats, recent, revMonth, rev7d, fbTarget, tkTarget, spTarget, wbTarget, yearly, prevYearly, yearChTargets, monthDailyAds] = await Promise.all([
+  // Only fetch what's needed for the current view — reduces query count from 13 to 5-8
+  const [user, fbTarget, tkTarget, spTarget, wbTarget] = await Promise.all([
     getCurrentUser(),
-    getDashboardStats(month),
-    getRecentOrders(10),
-    getRevenueByChannel(from, to),
-    getRevenueByChannel(d7from, d7to),
     getChannelTarget("facebook", monthKey),
     getChannelTarget("tiktok", monthKey),
     getChannelTarget("shopee", monthKey),
     getChannelTarget("web_b2b", monthKey),
+  ]);
+
+  // Year view only needs yearly + channel targets
+  const [yearly, prevYearly, yearChTargets] = await Promise.all([
     getYearlySummary(currentYear),
     getYearlySummary(currentYear - 1),
     getYearlyChannelTargets(currentYear),
-    getDailyAdsTotals(from, to),
   ]);
 
-  const totalAdSpend = stats.revenue.adSpend + stats.revenue.shopeeAdSpend + stats.revenue.tiktokAdSpend;
-  const overallRoas = totalAdSpend > 0 ? revMonth.total / totalAdSpend : 0;
-  const adsPct = revMonth.total > 0 ? (totalAdSpend / revMonth.total) * 100 : 0;
+  // Month/default view needs more data — skip for year view
+  const needMonthData = view !== "year";
+  const [stats, recent, revMonth, rev7d, monthDailyAds] = needMonthData
+    ? await Promise.all([
+        getDashboardStats(month),
+        getRecentOrders(10),
+        getRevenueByChannel(from, to),
+        getRevenueByChannel(d7from, d7to),
+        getDailyAdsTotals(from, to),
+      ])
+    : [null as Awaited<ReturnType<typeof getDashboardStats>> | null, [] as Awaited<ReturnType<typeof getRecentOrders>>, null as Awaited<ReturnType<typeof getRevenueByChannel>> | null, null as Awaited<ReturnType<typeof getRevenueByChannel>> | null, [] as { date: string; spend: number }[]];
+
+  const totalAdSpend = stats ? (stats.revenue.adSpend + stats.revenue.shopeeAdSpend + stats.revenue.tiktokAdSpend) : 0;
+  const overallRoas = totalAdSpend > 0 && revMonth ? revMonth.total / totalAdSpend : 0;
+  const adsPct = revMonth && revMonth.total > 0 ? (totalAdSpend / revMonth.total) * 100 : 0;
 
   // 7-day chart data
-  const max7d = Math.max(...rev7d.daily.map((d) => d.revenue), 1);
-  const avg7d = rev7d.daily.length > 0 ? rev7d.total / rev7d.daily.length : 0;
-  const best7d = rev7d.daily.reduce((best, d) => d.revenue > best.revenue ? d : best, { date: "", revenue: 0 });
+  const max7d = rev7d ? Math.max(...rev7d.daily.map((d) => d.revenue), 1) : 1;
+  const avg7d = rev7d && rev7d.daily.length > 0 ? rev7d.total / rev7d.daily.length : 0;
+  const best7d = rev7d ? rev7d.daily.reduce((best, d) => d.revenue > best.revenue ? d : best, { date: "", revenue: 0 }) : { date: "", revenue: 0 };
 
   // Year summary
   const yearPct = yearly.yearTarget > 0 ? Math.round((yearly.cumRevenue / yearly.yearTarget) * 100) : 0;
@@ -1106,23 +1118,27 @@ export default async function DashPage({
   // MONTHLY VIEW (default)
   // ═══════════════════════════════════════════════════════
 
+  // Month view — revMonth/stats guaranteed non-null here (needMonthData=true)
+  const rm = revMonth!;
+  const st = stats!;
+
   return (
     <section className="section" id="dash-month-view">
       <DashMonthSwitch mobileProps={{
         month, lastDay, dayOfMonth: Math.min(new Date().getDate(), lastDay),
-        revTotal: revMonth.total, revOrders: revMonth.totalOrders, revExpected: revMonth.totalExpected,
+        revTotal: rm.total, revOrders: rm.totalOrders, revExpected: rm.totalExpected,
         totalTarget: (fbTarget || 0) + (tkTarget || 0) + (spTarget || 0) + (wbTarget || 0),
         totalAdSpend, adsPct, roas: overallRoas,
         channels: [
-          { name: "Facebook", color: "#1877F2", rev: revMonth.channels.find(c => c.name === "Facebook")?.revenue || 0, target: fbTarget || 0, ads: stats.revenue.adSpend },
-          { name: "TikTok", color: "#FE2C55", rev: revMonth.channels.find(c => c.name === "TikTok")?.revenue || 0, target: tkTarget || 0, ads: stats.revenue.tiktokAdSpend },
-          { name: "Shopee", color: "#EE4D2D", rev: revMonth.channels.find(c => c.name === "Shopee")?.revenue || 0, target: spTarget || 0, ads: stats.revenue.shopeeAdSpend },
-          { name: "Web/App", color: "#6366F1", rev: ["Website","App","API","Admin"].reduce((s,n) => s + (revMonth.channels.find(c=>c.name===n)?.revenue || 0), 0), target: wbTarget || 0, ads: 0 },
+          { name: "Facebook", color: "#1877F2", rev: rm.channels.find(c => c.name === "Facebook")?.revenue || 0, target: fbTarget || 0, ads: st.revenue.adSpend },
+          { name: "TikTok", color: "#FE2C55", rev: rm.channels.find(c => c.name === "TikTok")?.revenue || 0, target: tkTarget || 0, ads: st.revenue.tiktokAdSpend },
+          { name: "Shopee", color: "#EE4D2D", rev: rm.channels.find(c => c.name === "Shopee")?.revenue || 0, target: spTarget || 0, ads: st.revenue.shopeeAdSpend },
+          { name: "Web/App", color: "#6366F1", rev: ["Website","App","API","Admin"].reduce((s,n) => s + (rm.channels.find(c=>c.name===n)?.revenue || 0), 0), target: wbTarget || 0, ads: 0 },
         ],
-        daily: revMonth.daily, dailyByChannel: revMonth.dailyByChannel, dailyAds: monthDailyAds,
-        sourcesByChannel: revMonth.sourcesByChannel,
-        outstanding: stats.finance.outstanding,
-        damageItems: stats.damage.pendingItems, damageValue: stats.damage.pendingValue,
+        daily: rm.daily, dailyByChannel: rm.dailyByChannel, dailyAds: monthDailyAds,
+        sourcesByChannel: rm.sourcesByChannel,
+        outstanding: st.finance.outstanding,
+        damageItems: st.damage.pendingItems, damageValue: st.damage.pendingValue,
       }} />
       <AutoSyncToday />
       <div className="page-hdr">
@@ -1149,24 +1165,24 @@ export default async function DashPage({
         const totalTarget = (fbTarget || 0) + (tkTarget || 0) + (spTarget || 0) + (wbTarget || 0);
         const dayOfMonth = Math.min(new Date().getDate(), lastDay);
         const timePct = dayOfMonth / lastDay;
-        const revPct = totalTarget > 0 ? revMonth.total / totalTarget : 1;
+        const revPct = totalTarget > 0 ? rm.total / totalTarget : 1;
         // xanh = đạt/vượt timeline, vàng = chậm nhẹ (<80% timeline), đỏ = chậm nặng (<60%)
         const revStatus = revPct >= timePct ? "green" : revPct >= timePct * 0.8 ? "yellow" : "red";
         // ads: <=5% xanh, 5-7% vàng, >7% đỏ
         const adsStatus = adsPct <= 5 ? "green" : adsPct <= 7 ? "yellow" : "red";
         // công nợ: 0 = xanh, >0 = đỏ
-        const debtStatus = stats.finance.outstanding <= 0 ? "green" : "red";
+        const debtStatus = st.finance.outstanding <= 0 ? "green" : "red";
         // thiệt hại: 0 = xanh, >0 = đỏ
-        const dmgStatus = stats.damage.pendingItems <= 0 ? "green" : "red";
+        const dmgStatus = st.damage.pendingItems <= 0 ? "green" : "red";
 
         const S = { green: { bg: "#F0FDF4", border: "#BBF7D0", text: "#166534" }, yellow: { bg: "#FFFBEB", border: "#FDE68A", text: "#92400E" }, red: { bg: "#FEF2F2", border: "#FECACA", text: "#991B1B" } };
 
         const cards = [
-          { label: "DOANH THU THÁNG", value: formatVNDCompact(revMonth.total), sub: `${revMonth.totalOrders.toLocaleString("vi-VN")} đơn`, s: S[revStatus] },
+          { label: "DOANH THU THÁNG", value: formatVNDCompact(rm.total), sub: `${rm.totalOrders.toLocaleString("vi-VN")} đơn`, s: S[revStatus] },
           { label: "CHI PHÍ ADS", value: formatVNDCompact(totalAdSpend), sub: "FB + Shopee + TikTok", s: S[adsStatus] },
           { label: "ADS / DOANH THU", value: `${adsPct.toFixed(1)}%`, sub: `ROAS ${overallRoas.toFixed(1)}x`, s: S[adsStatus] },
-          { label: "CÔNG NỢ", value: formatVNDCompact(stats.finance.outstanding), sub: `TT ${formatVNDCompact(stats.finance.totalDeposited)}`, s: S[debtStatus] },
-          { label: "THIỆT HẠI", value: stats.damage.pendingItems > 0 ? formatVNDCompact(stats.damage.pendingValue) : "0", sub: `${stats.damage.pendingItems} SP chờ xử lý`, s: S[dmgStatus] },
+          { label: "CÔNG NỢ", value: formatVNDCompact(st.finance.outstanding), sub: `TT ${formatVNDCompact(st.finance.totalDeposited)}`, s: S[debtStatus] },
+          { label: "THIỆT HẠI", value: st.damage.pendingItems > 0 ? formatVNDCompact(st.damage.pendingValue) : "0", sub: `${st.damage.pendingItems} SP chờ xử lý`, s: S[dmgStatus] },
         ];
 
         return (
@@ -1187,8 +1203,8 @@ export default async function DashPage({
         const totalTarget = (fbTarget || 0) + (tkTarget || 0) + (spTarget || 0) + (wbTarget || 0);
         const dayOfMonth = Math.min(new Date().getDate(), lastDay);
         const timePct = Math.round((dayOfMonth / lastDay) * 100);
-        const revPct = totalTarget > 0 ? Math.round((revMonth.total / totalTarget) * 100) : 0;
-        const avgDaily = dayOfMonth > 0 ? revMonth.total / dayOfMonth : 0;
+        const revPct = totalTarget > 0 ? Math.round((rm.total / totalTarget) * 100) : 0;
+        const avgDaily = dayOfMonth > 0 ? rm.total / dayOfMonth : 0;
         const projected = avgDaily * lastDay;
         const projPct = totalTarget > 0 ? Math.round((projected / totalTarget) * 100) : 0;
         return totalTarget > 0 ? (
@@ -1207,9 +1223,9 @@ export default async function DashPage({
               <span style={{ fontSize: 11, fontWeight: 700, color: revPct >= timePct ? "#16A34A" : "#D97706", minWidth: 35 }}>{revPct}%</span>
             </div>
             <div style={{ display: "flex", gap: 16, marginTop: 4, fontSize: 10, color: "#6B7280" }}>
-              <span>Đạt <b style={{ color: "#16A34A" }}>{formatVNDCompact(revMonth.total)}</b></span>
+              <span>Đạt <b style={{ color: "#16A34A" }}>{formatVNDCompact(rm.total)}</b></span>
               <span>KH <b>{formatVNDCompact(totalTarget)}</b></span>
-              <span>Còn <b style={{ color: "#D97706" }}>{formatVNDCompact(Math.max(0, totalTarget - revMonth.total))}</b></span>
+              <span>Còn <b style={{ color: "#D97706" }}>{formatVNDCompact(Math.max(0, totalTarget - rm.total))}</b></span>
               <span>Dự kiến <b style={{ color: projPct >= 100 ? "#16A34A" : "#DC2626" }}>{formatVNDCompact(projected)}</b> ({projPct}%)</span>
             </div>
           </div>
@@ -1229,7 +1245,7 @@ export default async function DashPage({
             { name: "Web/App B2B", target: wbTarget || 0 },
           ];
           const chRevMap: Record<string, number> = {};
-          revMonth.channels.forEach((c) => { chRevMap[c.name] = c.revenue; });
+          rm.channels.forEach((c) => { chRevMap[c.name] = c.revenue; });
           const wbNames = ["Website", "App", "API", "Admin", "Nội bộ"];
           const wbRevenue = wbNames.reduce((s, n) => s + (chRevMap[n] || 0), 0);
           return (
@@ -1259,9 +1275,9 @@ export default async function DashPage({
               })}
               <div style={{ borderTop: "1px solid var(--border)", marginTop: 4, paddingTop: 6, display: "grid", gridTemplateColumns: "60px 1fr 55px 55px 32px", gap: "0 6px", fontSize: 11, fontWeight: 700 }}>
                 <span>Tổng</span><span></span>
-                <span style={{ textAlign: "right", color: "#16A34A" }}>{formatVNDCompact(revMonth.total)}</span>
+                <span style={{ textAlign: "right", color: "#16A34A" }}>{formatVNDCompact(rm.total)}</span>
                 <span style={{ textAlign: "right", color: "#6B7280" }}>{formatVNDCompact(mainChannels.reduce((s, c) => s + c.target, 0))}</span>
-                <span style={{ textAlign: "right", color: "#16A34A" }}>{mainChannels.reduce((s, c) => s + c.target, 0) > 0 ? Math.round((revMonth.total / mainChannels.reduce((s, c) => s + c.target, 0)) * 100) : 0}%</span>
+                <span style={{ textAlign: "right", color: "#16A34A" }}>{mainChannels.reduce((s, c) => s + c.target, 0) > 0 ? Math.round((rm.total / mainChannels.reduce((s, c) => s + c.target, 0)) * 100) : 0}%</span>
               </div>
             </div>
           );
@@ -1270,11 +1286,11 @@ export default async function DashPage({
         {/* Ads breakdown */}
         {(() => {
           const chRevenues: Record<string, number> = {};
-          revMonth.channels.forEach((c) => { chRevenues[c.name] = c.revenue; });
+          rm.channels.forEach((c) => { chRevenues[c.name] = c.revenue; });
           const adsChannels = [
-            { name: "Facebook", spend: stats.revenue.adSpend, color: "#1877F2" },
-            { name: "Shopee", spend: stats.revenue.shopeeAdSpend, color: "#EE4D2D" },
-            { name: "TikTok", spend: stats.revenue.tiktokAdSpend, color: "#FE2C55" },
+            { name: "Facebook", spend: st.revenue.adSpend, color: "#1877F2" },
+            { name: "Shopee", spend: st.revenue.shopeeAdSpend, color: "#EE4D2D" },
+            { name: "TikTok", spend: st.revenue.tiktokAdSpend, color: "#FE2C55" },
           ];
           return (
             <div className="card" style={{ padding: "12px 14px" }}>
@@ -1314,7 +1330,7 @@ export default async function DashPage({
             Cao nhất <strong style={{ color: "#16A34A" }}>{formatVNDCompact(best7d.revenue)}</strong> {best7d.date.substring(5)} · TB <strong>{formatVNDCompact(avg7d)}</strong>/ngày
           </div>
           <div style={{ display: "flex", alignItems: "flex-end", height: 80 }}>
-            {rev7d.daily.map((d) => {
+            {rev7d!.daily.map((d) => {
               const h = (d.revenue / max7d) * 60;
               return (
                 <div key={d.date}
@@ -1326,7 +1342,7 @@ export default async function DashPage({
             })}
           </div>
           <div style={{ display: "flex" }}>
-            {rev7d.daily.map((d) => (
+            {rev7d!.daily.map((d) => (
               <div key={`l-${d.date}`} style={{ flex: 1, textAlign: "center", fontSize: 8, color: "#999", paddingTop: 2 }}>
                 {d.date.substring(8)}
               </div>
@@ -1342,8 +1358,8 @@ export default async function DashPage({
         <div className="card" style={{ padding: "12px 14px" }}>
           <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 8 }}>Pipeline đơn hàng</div>
           {(["DRAFT", "ARRIVED", "ON_SHELF"] as const).map((stage) => {
-            const count = stats.orders[stage.toLowerCase() as keyof typeof stats.orders] as number || 0;
-            const pct = stats.orders.total > 0 ? (count / stats.orders.total) * 100 : 0;
+            const count = st.orders[stage.toLowerCase() as keyof typeof st.orders] as number || 0;
+            const pct = st.orders.total > 0 ? (count / st.orders.total) * 100 : 0;
             const colors: Record<string, string> = { DRAFT: "#6B7280", ARRIVED: "#D97706", ON_SHELF: "#16A34A" };
             return (
               <div key={stage} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
@@ -1360,22 +1376,22 @@ export default async function DashPage({
 
         {/* Inventory */}
         {(() => {
-          const oosRatio = stats.inventory.totalSkus > 0 ? stats.inventory.outOfStock / stats.inventory.totalSkus : 0;
+          const oosRatio = st.inventory.totalSkus > 0 ? st.inventory.outOfStock / st.inventory.totalSkus : 0;
           const oosColor = oosRatio <= 0.3 ? "#16A34A" : oosRatio <= 0.5 ? "#D97706" : "#DC2626";
-          const lowRatio = stats.inventory.totalSkus > 0 ? stats.inventory.lowStock / stats.inventory.totalSkus : 0;
+          const lowRatio = st.inventory.totalSkus > 0 ? st.inventory.lowStock / st.inventory.totalSkus : 0;
           const lowColor = lowRatio <= 0.1 ? "#16A34A" : lowRatio <= 0.2 ? "#D97706" : "#DC2626";
           return (
             <div className="card" style={{ padding: "12px 14px" }}>
               <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 8 }}>Tồn kho</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
-                  <span>Tổng SKU</span><span style={{ fontWeight: 700 }}>{stats.inventory.totalSkus.toLocaleString("vi-VN")}</span>
+                  <span>Tổng SKU</span><span style={{ fontWeight: 700 }}>{st.inventory.totalSkus.toLocaleString("vi-VN")}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
-                  <span style={{ color: oosColor }}>Hết hàng</span><span style={{ fontWeight: 700, color: oosColor }}>{stats.inventory.outOfStock.toLocaleString("vi-VN")}</span>
+                  <span style={{ color: oosColor }}>Hết hàng</span><span style={{ fontWeight: 700, color: oosColor }}>{st.inventory.outOfStock.toLocaleString("vi-VN")}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
-                  <span style={{ color: lowColor }}>Sắp hết (≤5)</span><span style={{ fontWeight: 700, color: lowColor }}>{stats.inventory.lowStock.toLocaleString("vi-VN")}</span>
+                  <span style={{ color: lowColor }}>Sắp hết (≤5)</span><span style={{ fontWeight: 700, color: lowColor }}>{st.inventory.lowStock.toLocaleString("vi-VN")}</span>
                 </div>
               </div>
               <Link href="/inventory" style={{ fontSize: 10, color: "var(--blue)", marginTop: 6, display: "block" }}>Chi tiết →</Link>
@@ -1389,20 +1405,20 @@ export default async function DashPage({
           <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 11 }}>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span>Thanh toán NCC</span>
-              <span style={{ fontWeight: 700, color: stats.finance.outstanding > 0 ? "#DC2626" : "#16A34A" }}>
-                {stats.finance.totalDeposited > 0 ? Math.round((stats.finance.totalDeposited / stats.finance.totalOrderValue) * 100) : 0}% đã TT
+              <span style={{ fontWeight: 700, color: st.finance.outstanding > 0 ? "#DC2626" : "#16A34A" }}>
+                {st.finance.totalDeposited > 0 ? Math.round((st.finance.totalDeposited / st.finance.totalOrderValue) * 100) : 0}% đã TT
               </span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span>Hàng hỏng</span>
-              <span style={{ fontWeight: 700, color: stats.damage.pendingItems > 0 ? "#DC2626" : "#16A34A" }}>
-                {stats.damage.pendingItems > 0 ? `${stats.damage.pendingItems} chờ` : "OK"}
+              <span style={{ fontWeight: 700, color: st.damage.pendingItems > 0 ? "#DC2626" : "#16A34A" }}>
+                {st.damage.pendingItems > 0 ? `${st.damage.pendingItems} chờ` : "OK"}
               </span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span>Hết hàng</span>
-              <span style={{ fontWeight: 700, color: stats.inventory.outOfStock > 0 ? "#DC2626" : "#16A34A" }}>
-                {stats.inventory.outOfStock > 0 ? stats.inventory.outOfStock : "OK"}
+              <span style={{ fontWeight: 700, color: st.inventory.outOfStock > 0 ? "#DC2626" : "#16A34A" }}>
+                {st.inventory.outOfStock > 0 ? st.inventory.outOfStock : "OK"}
               </span>
             </div>
           </div>
