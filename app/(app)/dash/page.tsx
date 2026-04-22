@@ -66,13 +66,14 @@ export default async function DashPage({
   // ═══════════════════════════════════════════════════════
   if (view === "day") {
     const today = sp.date || dateVN();
-    const todayDate = new Date(today + "T00:00:00+07:00");
+    // Use dateVN-style calculation to avoid UTC timezone issues
+    const shiftDate = (base: string, offset: number) => {
+      const [yy, mm, dd] = base.split("-").map(Number);
+      const d = new Date(yy, mm - 1, dd + offset);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    };
     const yesterday = dateVN(null, -1);
-    const yesterdayFromToday = (() => {
-      const d = new Date(today + "T12:00:00+07:00");
-      d.setDate(d.getDate() - 1);
-      return d.toISOString().substring(0, 10);
-    })();
+    const yesterdayFromToday = shiftDate(today, -1);
 
     // Month info for daily target
     const [tY, tM] = today.substring(0, 7).split("-").map(Number);
@@ -146,19 +147,13 @@ export default async function DashPage({
     // Progress
     const revPct = dailyTarget > 0 ? Math.round((revToday.total / dailyTarget) * 100) : 0;
 
-    // Day navigation
-    const prevDay = (() => {
-      const d = new Date(today + "T12:00:00+07:00");
-      d.setDate(d.getDate() - 1);
-      return d.toISOString().substring(0, 10);
-    })();
-    const nextDay = (() => {
-      const d = new Date(today + "T12:00:00+07:00");
-      d.setDate(d.getDate() + 1);
-      return d.toISOString().substring(0, 10);
-    })();
-    const dayOfWeek = ["Chủ nhật", "Thứ hai", "Thứ ba", "Thứ tư", "Thứ năm", "Thứ sáu", "Thứ bảy"][todayDate.getDay()];
-    const displayDate = `${String(todayDate.getDate()).padStart(2, "0")}/${String(todayDate.getMonth() + 1).padStart(2, "0")}/${todayDate.getFullYear()}`;
+    // Day navigation — use string math to avoid timezone issues
+    const prevDay = shiftDate(today, -1);
+    const nextDay = shiftDate(today, 1);
+    const [tYear, tMonth, tDay] = today.split("-").map(Number);
+    const todayDateLocal = new Date(tYear, tMonth - 1, tDay);
+    const dayOfWeek = ["Chủ nhật", "Thứ hai", "Thứ ba", "Thứ tư", "Thứ năm", "Thứ sáu", "Thứ bảy"][todayDateLocal.getDay()];
+    const displayDate = `${String(tDay).padStart(2, "0")}/${String(tMonth).padStart(2, "0")}/${tYear}`;
 
     // Channel revenue for today vs yesterday
     const chRevToday: Record<string, number> = {};
