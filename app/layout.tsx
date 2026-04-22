@@ -12,12 +12,30 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "PO Manager v7 · Lỗ Vũ",
   description: "Hệ thống quản lý nhập hàng",
+  manifest: "/manifest.json",
+  themeColor: "#0f172a",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "PO Manager",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="vi" className={inter.variable}>
-      <body>{children}</body>
+      <head>
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+      </head>
+      <body>
+        {children}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `if("serviceWorker"in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("/sw.js")})}`,
+          }}
+        />
+      </body>
     </html>
   );
 }
