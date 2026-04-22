@@ -59,7 +59,7 @@ export default function DashDayMobile(p: DashDayMobileProps) {
 
   return (
     <div style={{ background: "#F8FAFC", minHeight: "100vh", paddingBottom: 80 }}>
-      <AutoSyncToday />
+      <AutoSyncToday extraSyncs={["/api/tiktok/sync-ads", "/api/tiktok/sync-gmv-max", "/api/fb/sync-ads"]} />
 
       {/* ── HEADER ── */}
       <div style={{ background: "linear-gradient(135deg,#1E3A5F,#0F172A)", padding: "12px 14px 0", color: "#fff" }}>

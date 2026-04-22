@@ -95,7 +95,7 @@ export default function SalesLeaderView({
 
   return (
     <section className="section">
-      <AutoSyncToday onDone={() => router.refresh()} extraSyncs={["/api/tiktok/sync-ads"]} />
+      <AutoSyncToday onDone={() => router.refresh()} extraSyncs={["/api/tiktok/sync-ads", "/api/tiktok/sync-gmv-max"]} />
       {/* ═══ HEADER ═══ */}
       <div className="page-hdr">
         <div>

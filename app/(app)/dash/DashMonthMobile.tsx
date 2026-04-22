@@ -67,7 +67,7 @@ export default function DashMonthMobile(p: DashMonthMobileProps) {
 
   return (
     <div style={{ background: "#F8FAFC", minHeight: "100vh", paddingBottom: 80 }}>
-      <AutoSyncToday />
+      <AutoSyncToday extraSyncs={["/api/tiktok/sync-ads", "/api/tiktok/sync-gmv-max", "/api/fb/sync-ads"]} />
 
       {/* Header */}
       <div style={{ background: "linear-gradient(135deg,#3B82F6,#1D4ED8)", padding: "12px 14px 0", color: "#fff" }}>
