@@ -120,53 +120,102 @@ function MobileBottomNav({ user }: { user: AppUser }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const mainRole = user.role;
-  // 4 chính + 1 hamburger (More)
-  const quick = [
-    { href: "/list", label: "Đơn", svg: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="9" y1="9" x2="15" y2="9" /><line x1="9" y1="13" x2="15" y2="13" /><line x1="9" y1="17" x2="12" y2="17" /></svg> },
-    { href: "/rd", label: "R&D", svg: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21a7 7 0 1 1 0-14 7 7 0 0 1 0 14z"/><path d="M12 8v4l2 2"/></svg> },
-    { href: "/tech", label: "QC", svg: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg> },
+
+  // 5 main tabs matching mockup: Ngày, Tháng, Năm, Tồn kho, Menu
+  const tabs = [
+    { href: "/dash?view=day", label: "Ngày", icon: "📊", match: (p: string) => p === "/dash" && !p.includes("year") },
+    { href: "/dash?view=month", label: "Tháng", icon: "📅", match: (p: string) => false },
+    { href: "/dash?view=year", label: "Năm", icon: "📈", match: (p: string) => false },
+    { href: "/inventory", label: "Tồn kho", icon: "📦", match: (p: string) => p === "/inventory" },
   ];
 
-  const drawerItems = [
-    { href: "/dash", label: "Dashboard" },
-    { href: "/inventory", label: "Tồn kho" },
-    { href: "/customers", label: "Khách hàng" },
-    { href: "/deploy", label: "Triển khai" },
-    { href: "/fb-pages", label: "Facebook" },
-    { href: "/sales-leader", label: "TikTok" },
-    { href: "/shopee-ads", label: "Shopee" },
-    { href: "/finance", label: "Kế toán" },
-    { href: "/tasks", label: "Giao việc" },
-    { href: "/my-tasks", label: "Việc của tôi" },
-    { href: "/returns", label: "Hoàn/Thanh lý" },
-    { href: "/damage-mgmt", label: "Hàng hỏng" },
-    ...(mainRole === "ADMIN" ? [{ href: "/admin-settings", label: "Cấu hình" }, { href: "/admin-users", label: "Users" }] : []),
+  const drawerSections = [
+    {
+      title: "KINH DOANH",
+      items: [
+        { href: "/fb-pages", label: "Facebook", icon: "🔵" },
+        { href: "/sales-leader", label: "TikTok", icon: "⚫" },
+        { href: "/shopee-ads", label: "Shopee", icon: "🟠" },
+        { href: "/web-app", label: "Web/App B2B", icon: "🟣" },
+        { href: "/product-info", label: "Thông tin SP", icon: "📱" },
+        { href: "/deploy", label: "Launch SP", icon: "🚀" },
+      ],
+    },
+    {
+      title: "MUA HÀNG",
+      items: [
+        { href: "/create", label: "Tạo đơn", icon: "✏️" },
+        { href: "/list", label: "Danh sách đơn", icon: "📋" },
+        { href: "/rd", label: "R&D", icon: "🔬" },
+        { href: "/damage-mgmt", label: "Hàng hỏng", icon: "⚠️" },
+      ],
+    },
+    {
+      title: "KỸ THUẬT",
+      items: [
+        { href: "/tech", label: "QC & Lên kệ", icon: "✅" },
+        { href: "/returns", label: "Hoàn & Thanh lý", icon: "↩️" },
+      ],
+    },
+    {
+      title: "KHÁCH HÀNG",
+      items: [
+        { href: "/customers", label: "Khách hàng", icon: "👥" },
+        { href: "/cskh", label: "CSKH", icon: "💬" },
+      ],
+    },
+    {
+      title: "QUẢN TRỊ",
+      items: [
+        { href: "/finance", label: "Kế toán", icon: "💰" },
+        { href: "/tasks", label: "Giao việc", icon: "📋" },
+        { href: "/my-tasks", label: "Việc của tôi", icon: "📝" },
+        ...(mainRole === "ADMIN" ? [
+          { href: "/admin-users", label: "Người dùng", icon: "👤" },
+          { href: "/admin-settings", label: "Cấu hình", icon: "⚙️" },
+        ] : []),
+      ],
+    },
   ];
+
+  const isTabActive = (tab: typeof tabs[0]) => {
+    if (tab.href.includes("?")) {
+      const [path, qs] = tab.href.split("?");
+      const params = new URLSearchParams(qs);
+      // For dash tabs, check pathname + search params from window
+      if (pathname === path || pathname === "/dash") {
+        if (typeof window !== "undefined") {
+          const currentParams = new URLSearchParams(window.location.search);
+          return currentParams.get("view") === params.get("view")
+            || (!currentParams.get("view") && params.get("view") === "day");
+        }
+      }
+      return false;
+    }
+    return pathname === tab.href || tab.match(pathname);
+  };
 
   return (
     <>
       <div id="bottom-nav">
-        {quick.map((q) => (
+        {tabs.map((t) => (
           <Link
-            key={q.href}
-            href={q.href}
-            className={"bn-item" + (pathname === q.href ? " active" : "")}
+            key={t.href}
+            href={t.href}
+            className={"bn-item" + (isTabActive(t) ? " active" : "")}
             style={{ textDecoration: "none" }}
           >
-            {q.svg}
-            <span style={{ fontSize: 11 }}>{q.label}</span>
+            <span style={{ fontSize: 18, lineHeight: 1 }}>{t.icon}</span>
+            <span style={{ fontSize: 9, fontWeight: 600 }}>{t.label}</span>
           </Link>
         ))}
-        <Link href="/create" className="bn-item bn-create" style={{ textDecoration: "none" }}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        </Link>
         <button
-          className="bn-item"
+          className={"bn-item" + (drawerOpen ? " active" : "")}
           onClick={() => setDrawerOpen(true)}
           style={{ cursor: "pointer" }}
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></svg>
-          <span style={{ fontSize: 11 }}>Khác</span>
+          <span style={{ fontSize: 18, lineHeight: 1 }}>☰</span>
+          <span style={{ fontSize: 9, fontWeight: 600 }}>Menu</span>
         </button>
       </div>
 
@@ -185,30 +234,41 @@ function MobileBottomNav({ user }: { user: AppUser }) {
               background: "#fff",
               borderRadius: "20px 20px 0 0",
               zIndex: 301,
-              maxHeight: "75vh",
+              maxHeight: "80vh",
               overflowY: "auto",
-              padding: "20px 16px calc(20px + env(safe-area-inset-bottom, 0px))",
+              padding: "16px 16px calc(20px + env(safe-area-inset-bottom, 0px))",
             }}
           >
-            <div style={{ width: 40, height: 4, background: "#E4E4E7", borderRadius: 2, margin: "0 auto 16px" }} />
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-              {drawerItems
-                .filter((it) => {
-                  const navItem = NAV_SECTIONS.flatMap((s) => s.items).find((n) => n.href === it.href);
-                  return !navItem?.perm || hasPermission(user, navItem.perm);
-                })
-                .map((it) => (
-                  <Link
-                    key={it.href}
-                    href={it.href}
-                    onClick={() => setDrawerOpen(false)}
-                    className="bn-drawer-item"
-                    style={{ textDecoration: "none" }}
-                  >
-                    <span style={{ fontSize: 14 }}>{it.label}</span>
-                  </Link>
-                ))}
-            </div>
+            <div style={{ width: 40, height: 4, background: "#E4E4E7", borderRadius: 2, margin: "0 auto 12px" }} />
+            {drawerSections.map((sec) => (
+              <div key={sec.title} style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", textTransform: "uppercase", letterSpacing: ".5px", marginBottom: 6, paddingLeft: 4 }}>{sec.title}</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  {sec.items
+                    .filter((it) => {
+                      const navItem = NAV_SECTIONS.flatMap((s) => s.items).find((n) => n.href === it.href);
+                      return !navItem?.perm || hasPermission(user, navItem.perm);
+                    })
+                    .map((it) => (
+                      <Link
+                        key={it.href}
+                        href={it.href}
+                        onClick={() => setDrawerOpen(false)}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 10,
+                          padding: "10px 12px", borderRadius: 10,
+                          textDecoration: "none", color: "#18181B",
+                          background: pathname === it.href ? "#F1F5F9" : "transparent",
+                        }}
+                      >
+                        <span style={{ fontSize: 16 }}>{it.icon}</span>
+                        <span style={{ fontSize: 13, fontWeight: pathname === it.href ? 700 : 500 }}>{it.label}</span>
+                        {pathname === it.href && <span style={{ marginLeft: "auto", width: 6, height: 6, borderRadius: "50%", background: "#3B82F6" }} />}
+                      </Link>
+                    ))}
+                </div>
+              </div>
+            ))}
           </div>
         </>
       )}
