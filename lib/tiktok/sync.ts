@@ -29,6 +29,20 @@ type TtReportRow = {
   };
 };
 
+/** Lấy token từ DB (OAuth callback lưu) hoặc fallback .env.local */
+async function getAccessToken(): Promise<string> {
+  const db = supabaseAdmin();
+  const { data } = await db
+    .from("tiktok_ads_token")
+    .select("access_token")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .single();
+  if (data?.access_token) return data.access_token;
+  if (process.env.TIKTOK_ACCESS_TOKEN) return process.env.TIKTOK_ACCESS_TOKEN;
+  throw new Error("Chưa có TikTok access token. Cần authorize tại TikTok Business Center.");
+}
+
 /** Validate TikTok token before syncing */
 async function validateTiktokToken(token: string): Promise<void> {
   const url = `${TT_BASE}/user/info/?access_token=${token}`;
@@ -51,12 +65,9 @@ async function validateTiktokToken(token: string): Promise<void> {
 export async function syncTiktokAds(opts: { from?: string; to?: string } = {}): Promise<{
   fetched: number; advertisers: number; errors: string[];
 }> {
-  const missing = requireEnv(["TIKTOK_ACCESS_TOKEN", "TIKTOK_ADVERTISER_IDS"]);
-  if (missing) throw new Error(missing);
-
   const from = opts.from || dateVN(null, -7);
   const to = opts.to || dateVN();
-  const token = process.env.TIKTOK_ACCESS_TOKEN!;
+  const token = await getAccessToken();
   const advertiserIds = process.env.TIKTOK_ADVERTISER_IDS!.split(",").map((s) => s.trim()).filter(Boolean);
 
   await validateTiktokToken(token);
