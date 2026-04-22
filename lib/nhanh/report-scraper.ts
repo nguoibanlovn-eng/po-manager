@@ -235,6 +235,24 @@ export async function syncNhanhReport(opts: {
           const existing = agg.get(key);
           if (existing) {
             existing.revenue_expected = (Number(existing.revenue_expected) || 0) + revenueExpected;
+          } else {
+            // Source only in create report (no success yet) — still track expected revenue
+            agg.set(key, {
+              channel: channelName,
+              source: sourceName,
+              period_from: dateStr,
+              period_to: dateStr,
+              order_total: src.totalOrder,
+              order_cancel: src.totalOrderRefundedAndCanceled || 0,
+              order_net: src.totalOrder - (src.totalOrderRefundedAndCanceled || 0),
+              revenue_total: src.totalValue,
+              revenue_cancel: src.totalValueRefundedAndCanceled || 0,
+              revenue_net: 0,
+              order_success: 0,
+              revenue_success: 0,
+              revenue_expected: revenueExpected,
+              synced_at: nowVN(),
+            });
           }
         }
       }

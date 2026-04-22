@@ -157,9 +157,11 @@ export default async function DashPage({
 
     // Channel revenue for today vs yesterday
     const chRevToday: Record<string, number> = {};
-    revToday.channels.forEach((c) => { chRevToday[c.name] = c.revenue; });
+    const chExpToday: Record<string, number> = {};
+    revToday.channels.forEach((c) => { chRevToday[c.name] = c.revenue; chExpToday[c.name] = c.expected; });
     const chRevYesterday: Record<string, number> = {};
-    revYesterday.channels.forEach((c) => { chRevYesterday[c.name] = c.revenue; });
+    const chExpYesterday: Record<string, number> = {};
+    revYesterday.channels.forEach((c) => { chRevYesterday[c.name] = c.revenue; chExpYesterday[c.name] = c.expected; });
     const wbNamesToday = ["Website", "App", "API", "Admin", "Nội bộ"];
 
     const mainChannels = [
@@ -169,10 +171,11 @@ export default async function DashPage({
       { name: "Web/App", color: "#6366F1" },
     ];
 
-    const getChRev = (chMap: Record<string, number>, name: string) => {
+    const getChVal = (chMap: Record<string, number>, name: string) => {
       if (name === "Web/App") return wbNamesToday.reduce((s, n) => s + (chMap[n] || 0), 0);
       return chMap[name] || 0;
     };
+    const getChRev = (chMap: Record<string, number>, name: string) => getChVal(chMap, name);
 
     // Monthly avg
     const dayOfMonth = Math.min(new Date().getDate(), daysInMonth);
@@ -250,10 +253,10 @@ export default async function DashPage({
             </div>
           </div>
           {/* DT dự kiến */}
-          <div style={{ padding: "10px 14px", borderRadius: 8, background: S.blue.bg, border: `1px solid ${S.blue.border}` }}>
-            <div style={{ fontSize: 9, fontWeight: 600, color: S.blue.text, letterSpacing: ".3px" }}>DỰ KIẾN NGÀY</div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: S.blue.text, margin: "2px 0" }}>{formatVNDCompact(dailyTarget)}</div>
-            <div style={{ fontSize: 9, color: S.blue.text, opacity: 0.7 }}>TB tháng {formatVNDCompact(monthlyAvg)} / hôm qua {formatVNDCompact(revYesterday.total)}</div>
+          <div style={{ padding: "10px 14px", borderRadius: 8, background: S.amber.bg, border: `1px solid ${S.amber.border}` }}>
+            <div style={{ fontSize: 9, fontWeight: 600, color: S.amber.text, letterSpacing: ".3px" }}>DT DỰ KIẾN</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: S.amber.text, margin: "2px 0" }}>{formatVNDCompact(revToday.totalExpected)}</div>
+            <div style={{ fontSize: 9, color: S.amber.text, opacity: 0.7 }}>tạo - hoàn hủy · KH {formatVNDCompact(dailyTarget)}/ngày</div>
           </div>
           {/* Chi phí Ads */}
           <div style={{ padding: "10px 14px", borderRadius: 8, background: adsStatus.bg, border: `1px solid ${adsStatus.border}` }}>
@@ -322,11 +325,12 @@ export default async function DashPage({
               <span style={{ fontSize: 10, color: "#9CA3AF" }}>Hôm nay vs hôm qua</span>
             </div>
             {/* Header */}
-            <div style={{ display: "grid", gridTemplateColumns: "70px 1fr 55px 55px 40px", gap: "0 6px", fontSize: 9, color: "#9CA3AF", marginBottom: 4, paddingLeft: 16 }}>
-              <span></span><span></span><span style={{ textAlign: "right" }}>Hôm nay</span><span style={{ textAlign: "right" }}>Hôm qua</span><span style={{ textAlign: "right" }}>+/-%</span>
+            <div style={{ display: "grid", gridTemplateColumns: "70px 1fr 55px 55px 55px 40px", gap: "0 6px", fontSize: 9, color: "#9CA3AF", marginBottom: 4, paddingLeft: 16 }}>
+              <span></span><span></span><span style={{ textAlign: "right" }}>TC</span><span style={{ textAlign: "right" }}>DK</span><span style={{ textAlign: "right" }}>Hôm qua</span><span style={{ textAlign: "right" }}>+/-%</span>
             </div>
             {mainChannels.map((ch) => {
               const todayRev = getChRev(chRevToday, ch.name);
+              const todayExp = getChVal(chExpToday, ch.name);
               const yesterdayRev = getChRev(chRevYesterday, ch.name);
               const change = pctChange(todayRev, yesterdayRev);
               const barW = revToday.total > 0 ? Math.round((todayRev / revToday.total) * 100) : 0;
@@ -338,6 +342,7 @@ export default async function DashPage({
                     <div style={{ width: `${barW}%`, height: "100%", background: ch.color, borderRadius: 2 }} />
                   </div>
                   <span style={{ fontSize: 10, fontWeight: 700, width: 55, textAlign: "right", color: ch.color }}>{formatVNDCompact(todayRev)}</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, width: 55, textAlign: "right", color: "#D97706" }}>{formatVNDCompact(todayExp)}</span>
                   <span style={{ fontSize: 10, width: 55, textAlign: "right", color: "#9CA3AF" }}>{formatVNDCompact(yesterdayRev)}</span>
                   <span style={{ fontSize: 9, width: 40, textAlign: "right", fontWeight: 700, color: change >= 0 ? "#16A34A" : "#DC2626" }}>
                     {change >= 0 ? "+" : ""}{change}%
@@ -346,9 +351,10 @@ export default async function DashPage({
               );
             })}
             {/* Total */}
-            <div style={{ borderTop: "1px solid var(--border)", marginTop: 6, paddingTop: 6, display: "grid", gridTemplateColumns: "1fr 55px 55px 40px", fontSize: 11, fontWeight: 700 }}>
+            <div style={{ borderTop: "1px solid var(--border)", marginTop: 6, paddingTop: 6, display: "grid", gridTemplateColumns: "1fr 55px 55px 55px 40px", fontSize: 11, fontWeight: 700 }}>
               <span>Tổng</span>
               <span style={{ textAlign: "right", color: "#16A34A" }}>{formatVNDCompact(revToday.total)}</span>
+              <span style={{ textAlign: "right", color: "#D97706" }}>{formatVNDCompact(revToday.totalExpected)}</span>
               <span style={{ textAlign: "right", color: "#9CA3AF" }}>{formatVNDCompact(revYesterday.total)}</span>
               <span style={{ textAlign: "right", color: revChange >= 0 ? "#16A34A" : "#DC2626" }}>{revChange >= 0 ? "+" : ""}{revChange}%</span>
             </div>
