@@ -102,8 +102,13 @@ export async function getDashboardStats(monthKey?: string): Promise<DashStats> {
   const { data: tiktokAds = [] } = await db
     .from("tiktok_ads").select("spend, conversion_value")
     .gte("date", from).lte("date", to);
-  const tiktokAdSpend = (tiktokAds || []).reduce((s, a) => s + Number(a.spend || 0), 0);
-  const tiktokRevenue = (tiktokAds || []).reduce((s, a) => s + Number(a.conversion_value || 0), 0);
+  const { data: gmvMaxAds = [] } = await db
+    .from("tiktok_gmv_max").select("spend, gross_revenue")
+    .gte("date", from).lte("date", to);
+  const tiktokAdSpend = (tiktokAds || []).reduce((s, a) => s + Number(a.spend || 0), 0)
+    + (gmvMaxAds || []).reduce((s, a) => s + Number(a.spend || 0), 0);
+  const tiktokRevenue = (tiktokAds || []).reduce((s, a) => s + Number(a.conversion_value || 0), 0)
+    + (gmvMaxAds || []).reduce((s, a) => s + Number(a.gross_revenue || 0), 0);
 
   const { data: salesSync = [] } = await db
     .from("sales_sync").select("revenue_net")
@@ -297,10 +302,13 @@ export async function getYearlySummary(year: number) {
     targetByMonthChannel.set(m, chMap);
   }
 
-  // Ads spend by month
-  const { data: fbAds } = await db.from("ads_cache").select("date, spend").gte("date", from).lte("date", to);
-  const { data: spAds } = await db.from("shopee_ads").select("date, spend").gte("date", from).lte("date", to);
-  const { data: tkAds } = await db.from("tiktok_ads").select("date, spend").gte("date", from).lte("date", to);
+  // Ads spend by month (FB + Shopee + TikTok BM + TikTok GMV Max)
+  const [{ data: fbAds }, { data: spAds }, { data: tkAds }, { data: gmvAds }] = await Promise.all([
+    db.from("ads_cache").select("date, spend").gte("date", from).lte("date", to),
+    db.from("shopee_ads").select("date, spend").gte("date", from).lte("date", to),
+    db.from("tiktok_ads").select("date, spend").gte("date", from).lte("date", to),
+    db.from("tiktok_gmv_max").select("date, spend").gte("date", from).lte("date", to),
+  ]);
 
   const adsByMonth = new Map<string, { fb: number; shopee: number; tiktok: number; total: number }>();
   for (const a of fbAds || []) {
@@ -315,7 +323,7 @@ export async function getYearlySummary(year: number) {
     e.shopee += Number(a.spend || 0); e.total += Number(a.spend || 0);
     adsByMonth.set(m, e);
   }
-  for (const a of tkAds || []) {
+  for (const a of [...(tkAds || []), ...(gmvAds || [])]) {
     const m = String(a.date || "").substring(0, 7);
     const e = adsByMonth.get(m) || { fb: 0, shopee: 0, tiktok: 0, total: 0 };
     e.tiktok += Number(a.spend || 0); e.total += Number(a.spend || 0);
