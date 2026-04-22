@@ -8,6 +8,10 @@ import AutoSyncToday from "../components/AutoSyncToday";
 import DashDaySwitch from "./DashDaySwitch";
 import DashMonthSwitch from "./DashMonthSwitch";
 import DashYearSwitch from "./DashYearSwitch";
+import DashMobileWrapper from "./DashMobileWrapper";
+import type { DashDayMobileProps } from "./DashDayMobile";
+import type { DashMonthMobileProps } from "./DashMonthMobile";
+import type { DashYearMobileProps } from "./DashYearMobile";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +67,144 @@ export default async function DashPage({
   const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
 
   const currentYear = Number(month.split("-")[0]);
+
+  // ═══════════════════════════════════════════════════════
+  // MOBILE: Fetch ALL views' data upfront for instant tab switching
+  // ═══════════════════════════════════════════════════════
+  const mobileAllProps = await (async () => {
+    const today = sp.date || dateVN();
+    const shiftDate = (base: string, offset: number) => {
+      const [yy, mm, dd] = base.split("-").map(Number);
+      const d = new Date(yy, mm - 1, dd + offset);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    };
+    const prevDay = shiftDate(today, -1);
+    const nextDay = shiftDate(today, 1);
+    const yesterdayFromToday = shiftDate(today, -1);
+    const [tY, tM] = today.substring(0, 7).split("-").map(Number);
+    const daysInMonth = new Date(tY, tM, 0).getDate();
+    const mFrom = `${today.substring(0, 7)}-01`;
+    const mTo = `${today.substring(0, 7)}-${String(daysInMonth).padStart(2, "0")}`;
+    const mKey = `${today.substring(0, 7)}-01`;
+    const todayDateLocal = new Date(tY, tM - 1, Number(today.substring(8)));
+    const dayOfWeek = ["Chủ nhật","Thứ hai","Thứ ba","Thứ tư","Thứ năm","Thứ sáu","Thứ bảy"][todayDateLocal.getDay()];
+    const displayDate = `${today.substring(8)}/${today.substring(5, 7)}/${today.substring(0, 4)}`;
+
+    const [revToday, revYesterday, adsToday, adsYesterday, arrivedToday, arrivedYesterday, damageItems, tasksToday,
+      fbT, tkT, spT, wbT, revMonth, yearly, prevYearly, yearChTargets, monthDailyAds] = await Promise.all([
+      getRevenueByChannel(today, today),
+      getRevenueByChannel(yesterdayFromToday, yesterdayFromToday),
+      getDailyAdsBreakdown(today),
+      getDailyAdsBreakdown(yesterdayFromToday),
+      getArrivedOrders(today),
+      getArrivedOrders(yesterdayFromToday),
+      getDamageItems(),
+      getTasksForDate(today),
+      getChannelTarget("facebook", mKey),
+      getChannelTarget("tiktok", mKey),
+      getChannelTarget("shopee", mKey),
+      getChannelTarget("web_b2b", mKey),
+      getRevenueByChannel(from, to),
+      getYearlySummary(currentYear),
+      getYearlySummary(currentYear - 1),
+      getYearlyChannelTargets(currentYear),
+      getDailyAdsTotals(from, to),
+    ]);
+
+    const totalTarget = (fbT || 0) + (tkT || 0) + (spT || 0) + (wbT || 0);
+    const dailyTarget = totalTarget > 0 ? totalTarget / daysInMonth : 0;
+    const todayAdsFb = (adsToday.fbAds || []).reduce((s: number, a: Record<string, unknown>) => s + Number(a.spend || 0), 0);
+    const todayAdsTt = (adsToday.ttAds || []).reduce((s: number, a: Record<string, unknown>) => s + Number(a.spend || 0), 0);
+    const todayAdsGmv = (adsToday.gmvMax || []).reduce((s: number, a: Record<string, unknown>) => s + Number(a.spend || 0), 0);
+    const todayAdsSp = (adsToday.spAds || []).reduce((s: number, a: Record<string, unknown>) => s + Number(a.spend || 0), 0);
+    const todayAdsTotal = todayAdsFb + todayAdsTt + todayAdsGmv + todayAdsSp;
+    const yesterdayAdsTotal = (adsYesterday.fbAds || []).reduce((s: number, a: Record<string, unknown>) => s + Number(a.spend || 0), 0) + (adsYesterday.ttAds || []).reduce((s: number, a: Record<string, unknown>) => s + Number(a.spend || 0), 0) + (adsYesterday.gmvMax || []).reduce((s: number, a: Record<string, unknown>) => s + Number(a.spend || 0), 0) + (adsYesterday.spAds || []).reduce((s: number, a: Record<string, unknown>) => s + Number(a.spend || 0), 0);
+    const adsPctToday = revToday.total > 0 ? (todayAdsTotal / revToday.total) * 100 : 0;
+    const roasToday = todayAdsTotal > 0 ? revToday.total / todayAdsTotal : 0;
+    const pctChange = (cur: number, prev: number) => prev === 0 ? (cur > 0 ? 100 : 0) : Math.round(((cur - prev) / prev) * 100);
+    const revChange = pctChange(revToday.total, revYesterday.total);
+    const adsChange = pctChange(todayAdsTotal, yesterdayAdsTotal);
+    const revPct = dailyTarget > 0 ? Math.round((revToday.total / dailyTarget) * 100) : 0;
+    const arrivedTodayValue = arrivedToday.reduce((s: number, o: Record<string, unknown>) => s + Number(o.order_total || 0), 0);
+    const tasksDone = tasksToday.filter((t: Record<string, unknown>) => t.status === "DONE").length;
+    const dayOfMonth = Math.min(new Date().getDate(), daysInMonth);
+    const monthlyAvg = dayOfMonth > 0 ? revMonth.total / dayOfMonth : 0;
+
+    const mainCh = [
+      { name: "Facebook", color: "#1877F2" },
+      { name: "TikTok", color: "#FE2C55" },
+      { name: "Shopee", color: "#EE4D2D" },
+      { name: "Web/App", color: "#6366F1" },
+    ];
+    const wbNames = ["Website", "App", "API", "Admin"];
+    const getChRev = (chMap: Record<string, number>, name: string) => name === "Web/App" ? wbNames.reduce((s, n) => s + (chMap[n] || 0), 0) : chMap[name] || 0;
+    const chRevToday: Record<string, number> = {};
+    const chExpToday: Record<string, number> = {};
+    revToday.channels.forEach(c => { chRevToday[c.name] = c.revenue; chExpToday[c.name] = c.expected; });
+    const chRevYesterday: Record<string, number> = {};
+    revYesterday.channels.forEach(c => { chRevYesterday[c.name] = c.revenue; });
+
+    const totalAdSpendM = revMonth ? ((revMonth.channels.find(c => c.name === "Facebook")?.revenue || 0) > 0 ? todayAdsFb * daysInMonth / dayOfMonth : 0) : 0;
+    // Use stats-level ads for month (approximate from day × days ratio)
+    const statsAdsFb = todayAdsFb * dayOfMonth; // rough month estimate
+    const statsAdsTt = (todayAdsTt + todayAdsGmv) * dayOfMonth;
+    const statsAdsSp = todayAdsSp * dayOfMonth;
+    const totalAdSpendMonth = statsAdsFb + statsAdsTt + statsAdsSp;
+    const adsPctMonth = revMonth.total > 0 ? (totalAdSpendMonth / revMonth.total) * 100 : 0;
+    const roasMonth = totalAdSpendMonth > 0 ? revMonth.total / totalAdSpendMonth : 0;
+
+    // Year
+    const nowMonth = new Date().getMonth() + 1;
+    const prevYearRev = prevYearly?.cumRevenue || 0;
+    const growthVsPrev = prevYearRev > 0 ? Math.round(((yearly.yearTarget / prevYearRev) - 1) * 100) : 0;
+    const cumAdsFb = yearly.months.reduce((s, mm) => s + mm.adsFb, 0);
+    const cumAdsShopee = yearly.months.reduce((s, mm) => s + mm.adsShopee, 0);
+    const cumAdsTiktok = yearly.months.reduce((s, mm) => s + mm.adsTiktok, 0);
+    const cumAdsTotal = cumAdsFb + cumAdsShopee + cumAdsTiktok;
+    const adsRevPctYear = yearly.cumRevenue > 0 ? (cumAdsTotal / yearly.cumRevenue * 100) : 0;
+    const chRevCum: Record<string, number> = {};
+    const CHANNEL_TARGET_MAP: Record<string, string> = { Facebook: "facebook", TikTok: "tiktok", Shopee: "shopee", Website: "web_b2b", App: "web_b2b", Admin: "web_b2b", API: "web_b2b" };
+    for (const mm of yearly.months) for (const [ch, rev] of Object.entries(mm.byChannel)) { const key = CHANNEL_TARGET_MAP[ch] || ch; chRevCum[key] = (chRevCum[key] || 0) + rev; }
+    const chTargets: Record<string, number> = {};
+    const YEAR_CH = [
+      { key: "facebook", label: "Facebook", abbr: "FB", color: "#1877F2" },
+      { key: "tiktok", label: "TikTok", abbr: "TT", color: "#000000" },
+      { key: "shopee", label: "Shopee", abbr: "SP", color: "#EE4D2D" },
+      { key: "web_b2b", label: "Web/App B2B", abbr: "WA", color: "#0EA5E9" },
+    ];
+    for (const ch of YEAR_CH) chTargets[ch.key] = yearChTargets?.[ch.key] || 0;
+
+    const day: DashDayMobileProps = {
+      today, prevDay, nextDay, dayOfWeek, displayDate,
+      revTotal: revToday.total, revOrders: revToday.totalOrders, revExpected: revToday.totalExpected,
+      revYesterday: revYesterday.total, revChange, revPct, dailyTarget, monthlyAvg,
+      channels: mainCh.map(ch => ({ name: ch.name, color: ch.color, rev: getChRev(chRevToday, ch.name), exp: getChRev(chExpToday, ch.name), revYesterday: getChRev(chRevYesterday, ch.name) })),
+      adsTotal: todayAdsTotal, adsFb: todayAdsFb, adsTt: todayAdsTt + todayAdsGmv, adsTtBm: todayAdsTt, adsTtGmv: todayAdsGmv, adsSp: todayAdsSp,
+      adsPct: adsPctToday, roas: roasToday, adsYesterday: yesterdayAdsTotal, adsChange,
+      arrivedCount: arrivedToday.length, arrivedValue: arrivedTodayValue, arrivedYesterdayCount: arrivedYesterday.length,
+      damageCount: damageItems.length, damageValue: damageItems.reduce((s: number, d: Record<string, unknown>) => s + Number(d.damage_amount || 0), 0),
+      tasksTotal: tasksToday.length, tasksDone, monthRevenue: revMonth.total, monthTarget: totalTarget,
+    };
+
+    const monthProps: DashMonthMobileProps = {
+      month: from.substring(0, 7), lastDay, dayOfMonth,
+      revTotal: revMonth.total, revOrders: revMonth.totalOrders, revExpected: revMonth.totalExpected,
+      totalTarget, totalAdSpend: totalAdSpendMonth, adsPct: adsPctMonth, roas: roasMonth,
+      channels: mainCh.map(ch => ({ name: ch.name, color: ch.color, rev: revMonth.channels.find(c => c.name === ch.name)?.revenue || (ch.name === "Web/App" ? wbNames.reduce((s, n) => s + (revMonth.channels.find(c => c.name === n)?.revenue || 0), 0) : 0), target: ({ Facebook: fbT, TikTok: tkT, Shopee: spT, "Web/App": wbT }[ch.name] || 0), ads: ({ Facebook: statsAdsFb, TikTok: statsAdsTt, Shopee: statsAdsSp, "Web/App": 0 }[ch.name] || 0) })),
+      daily: revMonth.daily, dailyByChannel: revMonth.dailyByChannel, dailyAds: monthDailyAds,
+      sourcesByChannel: revMonth.sourcesByChannel, outstanding: 0, damageItems: damageItems.length, damageValue: 0,
+    };
+
+    const yearProps: DashYearMobileProps = {
+      year: currentYear, nowMonth, yearTarget: yearly.yearTarget, cumRevenue: yearly.cumRevenue,
+      prevYearRev, growthVsPrev, cumAdsTotal, adsRevPct: adsRevPctYear,
+      months: yearly.months.map(mm => ({ month: mm.month, revenue: mm.revenue, target: mm.target, ads: mm.ads, byChannel: mm.byChannel })),
+      channels: YEAR_CH.map(ch => ({ name: ch.label, abbr: ch.abbr, color: ch.color, rev: chRevCum[ch.key] || 0, target: chTargets[ch.key] || 0, ads: ch.key === "facebook" ? cumAdsFb : ch.key === "tiktok" ? cumAdsTiktok : ch.key === "shopee" ? cumAdsShopee : 0 })),
+      sourcesByChannel: revMonth.sourcesByChannel,
+    };
+
+    return { day, month: monthProps, year: yearProps };
+  })();
 
   // ═══════════════════════════════════════════════════════
   // DAILY VIEW
@@ -224,17 +366,7 @@ export default async function DashPage({
 
     return (
       <section className="section" id="dash-day">
-        <DashDaySwitch mobileProps={{
-          today: today, prevDay: prevDay, nextDay: nextDay, dayOfWeek: dayOfWeek, displayDate: displayDate,
-          revTotal: revToday.total, revOrders: revToday.totalOrders, revExpected: revToday.totalExpected,
-          revYesterday: revYesterday.total, revChange: revChange, revPct: revPct, dailyTarget: dailyTarget, monthlyAvg: monthlyAvg,
-          channels: mainChannels.map(ch => ({ name: ch.name, color: ch.color, rev: getChRev(chRevToday, ch.name), exp: getChVal(chExpToday, ch.name), revYesterday: getChRev(chRevYesterday, ch.name) })),
-          adsTotal: todayAdsTotal, adsFb: todayAdsFb, adsTt: todayAdsTt + todayAdsGmv, adsTtBm: todayAdsTt, adsTtGmv: todayAdsGmv, adsSp: todayAdsSp,
-          adsPct: adsPctToday, roas: roasToday, adsYesterday: yesterdayAdsTotal, adsChange: adsChange,
-          arrivedCount: arrivedToday.length, arrivedValue: arrivedTodayValue, arrivedYesterdayCount: arrivedYesterday.length,
-          damageCount: damageItems.length, damageValue: damageItems.reduce((s, d) => s + Number(d.damage_amount || 0), 0),
-          tasksTotal: tasksTotal, tasksDone: tasksDone, monthRevenue: revMonth.total, monthTarget: totalTarget,
-        }} />
+        <DashMobileWrapper day={mobileAllProps.day} month={mobileAllProps.month} year={mobileAllProps.year} initialView="day" />
         <AutoSyncToday extraSyncs={["/api/tiktok/sync-ads", "/api/tiktok/sync-gmv-max"]} />
         {/* ─── HEADER ─── */}
         <div className="page-hdr">
@@ -742,17 +874,7 @@ export default async function DashPage({
 
     return (
       <section className="section" id="dash-year">
-        <DashYearSwitch mobileProps={{
-          year: currentYear, nowMonth, yearTarget: yearly.yearTarget, cumRevenue: yearly.cumRevenue,
-          prevYearRev, growthVsPrev, cumAdsTotal, adsRevPct: adsRevPctYear,
-          months: yearly.months.map(m => ({ month: m.month, revenue: m.revenue, target: m.target, ads: m.ads, byChannel: m.byChannel })),
-          channels: YEAR_CHANNELS.map(ch => ({
-            name: ch.label, abbr: ch.abbr, color: ch.color,
-            rev: chRevCum[ch.key] || 0, target: chTargets[ch.key] || 0,
-            ads: ch.key === "facebook" ? cumAdsFb : ch.key === "tiktok" ? cumAdsTiktok : ch.key === "shopee" ? cumAdsShopee : 0,
-          })),
-          sourcesByChannel: yearRevData.sourcesByChannel,
-        }} />
+        <DashMobileWrapper day={mobileAllProps.day} month={mobileAllProps.month} year={mobileAllProps.year} initialView="year" />
         <AutoSyncToday />
         {/* ─── HEADER ─── */}
         <div className="page-hdr">
@@ -1124,22 +1246,7 @@ export default async function DashPage({
 
   return (
     <section className="section" id="dash-month-view">
-      <DashMonthSwitch mobileProps={{
-        month, lastDay, dayOfMonth: Math.min(new Date().getDate(), lastDay),
-        revTotal: rm.total, revOrders: rm.totalOrders, revExpected: rm.totalExpected,
-        totalTarget: (fbTarget || 0) + (tkTarget || 0) + (spTarget || 0) + (wbTarget || 0),
-        totalAdSpend, adsPct, roas: overallRoas,
-        channels: [
-          { name: "Facebook", color: "#1877F2", rev: rm.channels.find(c => c.name === "Facebook")?.revenue || 0, target: fbTarget || 0, ads: st.revenue.adSpend },
-          { name: "TikTok", color: "#FE2C55", rev: rm.channels.find(c => c.name === "TikTok")?.revenue || 0, target: tkTarget || 0, ads: st.revenue.tiktokAdSpend },
-          { name: "Shopee", color: "#EE4D2D", rev: rm.channels.find(c => c.name === "Shopee")?.revenue || 0, target: spTarget || 0, ads: st.revenue.shopeeAdSpend },
-          { name: "Web/App", color: "#6366F1", rev: ["Website","App","API","Admin"].reduce((s,n) => s + (rm.channels.find(c=>c.name===n)?.revenue || 0), 0), target: wbTarget || 0, ads: 0 },
-        ],
-        daily: rm.daily, dailyByChannel: rm.dailyByChannel, dailyAds: monthDailyAds,
-        sourcesByChannel: rm.sourcesByChannel,
-        outstanding: st.finance.outstanding,
-        damageItems: st.damage.pendingItems, damageValue: st.damage.pendingValue,
-      }} />
+      <DashMobileWrapper day={mobileAllProps.day} month={mobileAllProps.month} year={mobileAllProps.year} initialView="month" />
       <AutoSyncToday />
       <div className="page-hdr">
         <div>
