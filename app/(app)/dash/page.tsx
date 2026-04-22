@@ -1094,7 +1094,7 @@ export default async function DashPage({
   // ═══════════════════════════════════════════════════════
 
   return (
-    <section className="section" id="dash-month">
+    <section className="section" id="dash-month-view">
       <DashMonthSwitch mobileProps={{
         month, lastDay, dayOfMonth: Math.min(new Date().getDate(), lastDay),
         revTotal: revMonth.total, revOrders: revMonth.totalOrders, revExpected: revMonth.totalExpected,
