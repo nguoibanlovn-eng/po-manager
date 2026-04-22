@@ -5,7 +5,7 @@ import { useMemo, useState, useTransition } from "react";
 import { formatDate } from "@/lib/format";
 import { type RdItem, getSteps } from "@/lib/db/rd-types";
 import type { UserRef } from "@/lib/db/users";
-import { deleteRdItemAction, saveRdItemAction } from "./actions";
+import { deleteRdItemAction, saveRdItemAction, createBlankRdItemAction } from "./actions";
 import RdDetailModal from "./RdDetailModal";
 
 // Stage badges theo GAS gốc
@@ -165,7 +165,14 @@ export default function RdView({ items, users = [] }: { items: RdItem[]; users?:
             {allStages.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
           <button type="button" className="btn btn-ghost btn-sm">? Hướng dẫn</button>
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => setEditing("new")}>
+          <button type="button" className="btn btn-primary btn-sm" disabled={pending} onClick={() => {
+            startTransition(async () => {
+              const rdType = tab === "production" ? "upgrade" : "research";
+              const r = await createBlankRdItemAction(rdType);
+              if (r.ok && r.item) { setDetailItem(r.item); router.refresh(); }
+              else alert("Lỗi tạo SP");
+            });
+          }}>
             + Đề xuất SP
           </button>
         </div>

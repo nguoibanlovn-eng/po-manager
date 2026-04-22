@@ -6,7 +6,7 @@ import {
   type RdItem, type RdStep, type RdCheckItem, type RdLink,
 } from "@/lib/db/rd-types";
 import type { UserRef } from "@/lib/db/users";
-import { saveRdItemAction } from "./actions";
+import { saveRdItemAction, createPoFromRdAction } from "./actions";
 
 /* ─── Field definitions per step label ──────────────────── */
 type FieldDef = {
@@ -192,6 +192,10 @@ function ModalInner({
   const [activeIdx, setActiveIdx] = useState(firstActive >= 0 ? firstActive : 0);
   const step = initSteps[activeIdx];
 
+  // Item name (editable)
+  const [itemName, setItemName] = useState(item.name || "");
+  const [creatingPo, setCreatingPo] = useState(false);
+
   // Step-level state
   const [assignee, setAssignee] = useState(step.assignee || "");
   const [assigneeName, setAssigneeName] = useState(step.assignee_name || "");
@@ -254,7 +258,7 @@ function ModalInner({
   function save() {
     startTransition(async () => {
       const newData = { ...data, ...formData, [stepsKey]: JSON.stringify(buildUpdatedSteps()) };
-      await saveRdItemAction(item.id, { data: newData });
+      await saveRdItemAction(item.id, { name: itemName, data: newData });
       setDirty(false);
       onRefresh();
     });
@@ -268,7 +272,7 @@ function ModalInner({
         return s;
       });
       const newData = { ...data, ...formData, [stepsKey]: JSON.stringify(updated) };
-      await saveRdItemAction(item.id, { data: newData });
+      await saveRdItemAction(item.id, { name: itemName, data: newData });
       setDirty(false);
       onRefresh();
       if (activeIdx + 1 < initSteps.length) {
@@ -377,8 +381,14 @@ function ModalInner({
           <span className="chip" style={{ background: step.phaseBg || step.phaseColorBg || "#EDE9FE", color: step.phaseColor || "#6D28D9", fontWeight: 700, fontSize: 10 }}>
             {isProduction(item) ? "Sản xuất / TK" : "Nghiên cứu SP"}
           </span>
-          <div style={{ fontWeight: 800, fontSize: 15, flex: 1 }}>
-            {step.icon || ""} Bước {activeIdx + 1}/{initSteps.length} — {step.label} · {item.name}
+          <div style={{ fontWeight: 800, fontSize: 15, flex: 1, display: "flex", alignItems: "center", gap: 6 }}>
+            {step.icon || ""} Bước {activeIdx + 1}/{initSteps.length} — {step.label} ·
+            <input
+              type="text" value={itemName}
+              onChange={(e) => { setItemName(e.target.value); setDirty(true); }}
+              placeholder="Nhập tên SP..."
+              style={{ border: "none", borderBottom: "2px dashed var(--border)", fontWeight: 800, fontSize: 15, color: "var(--text)", outline: "none", padding: "2px 4px", width: 280, background: "transparent" }}
+            />
           </div>
           <span className="chip" style={{ background: stepStatus.bg, color: stepStatus.color, fontSize: 10, fontWeight: 700 }}>
             {stepStatus.label}
@@ -503,6 +513,43 @@ function ModalInner({
                 <button type="button" className="btn btn-primary btn-xs" onClick={addPhoto}>+ Ảnh</button>
               </div>
             </div>
+
+            {/* ── Create PO banner (for Nhập? / Đặt hàng steps) ── */}
+            {(step.label === "Nhập?" || step.label === "Đặt hàng") && (
+              <div style={{ marginTop: 16, padding: "14px 16px", background: "linear-gradient(135deg, #EFF6FF 0%, #F0FDF4 100%)", border: "1px solid #86EFAC", borderRadius: 10 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 6, color: "var(--green)" }}>📦 Tạo đơn nhập hàng</div>
+                <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 10 }}>
+                  Tự động tạo PO trong mục &quot;Tạo/Sửa đơn&quot; với thông tin đã nghiên cứu. Có thể chỉnh sửa sau.
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 10 }}>
+                  <div style={{ fontSize: 10 }}><div style={{ color: "var(--muted)" }}>Tên SP</div><div style={{ fontWeight: 700, fontSize: 12 }}>{itemName || "—"}</div></div>
+                  <div style={{ fontSize: 10 }}><div style={{ color: "var(--muted)" }}>NCC</div><div style={{ fontWeight: 700, fontSize: 12 }}>{String(formData.sample_supplier || data.sample_supplier || "—")}</div></div>
+                  <div style={{ fontSize: 10 }}><div style={{ color: "var(--muted)" }}>SL x Giá</div><div style={{ fontWeight: 700, fontSize: 12 }}>{String(formData.bulk_qty || data.bulk_qty || "—")} x {Number(formData.bulk_price || data.bulk_price || data.price_buy || 0).toLocaleString("vi-VN")}đ</div></div>
+                  <div style={{ fontSize: 10 }}><div style={{ color: "var(--muted)" }}>Tổng giá trị</div><div style={{ fontWeight: 700, fontSize: 12, color: "var(--green)" }}>{(Number(formData.bulk_qty || data.bulk_qty || 0) * Number(formData.bulk_price || data.bulk_price || data.price_buy || 0)).toLocaleString("vi-VN")}đ</div></div>
+                </div>
+                <button type="button" className="btn btn-success" disabled={pending || creatingPo}
+                  onClick={() => {
+                    setCreatingPo(true);
+                    // Save current step data first, then create PO
+                    startTransition(async () => {
+                      const newData = { ...data, ...formData, [stepsKey]: JSON.stringify(buildUpdatedSteps()) };
+                      await saveRdItemAction(item.id, { name: itemName, data: newData });
+                      const r = await createPoFromRdAction(item.id);
+                      setCreatingPo(false);
+                      if (r.ok) {
+                        onRefresh();
+                        window.location.href = `/create?order_id=${r.orderId}`;
+                      } else {
+                        alert(r.error || "Lỗi tạo đơn");
+                      }
+                    });
+                  }}
+                  style={{ fontSize: 13, padding: "8px 20px" }}
+                >
+                  {creatingPo ? "Đang tạo..." : "📋 Tạo đơn nhập → Chuyển sang Mua hàng"}
+                </button>
+              </div>
+            )}
 
             {/* ── Action buttons ── */}
             <div style={{ marginTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>

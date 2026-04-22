@@ -129,6 +129,7 @@ export function getLinkTag(link: RdLink): string {
 }
 
 export const RESEARCH_PIPELINE = [
+  { key: "giao_viec",     label: "Giao việc" },
   { key: "nghien_cuu",    label: "Nghiên cứu" },
   { key: "duyet_de_xuat", label: "Duyệt đề xuất" },
   { key: "dat_mau",       label: "Đặt mẫu" },
@@ -155,4 +156,22 @@ export function getPipeline(rdType: string | null | undefined) {
   return t === "production" || t === "upgrade" || t === "mfg"
     ? PRODUCTION_PIPELINE
     : RESEARCH_PIPELINE;
+}
+
+/** Create blank pipeline steps JSON — step 1 active, rest locked */
+export function createBlankSteps(rdType: string): RdStep[] {
+  const pipeline = getPipeline(rdType);
+  return pipeline.map((p, i) => ({
+    id: i,
+    label: p.label,
+    status: i === 0 ? "active" as const : "locked" as const,
+    assignee: "",
+    assignee_name: "",
+    deadline: "",
+    result: "",
+    checklist: [],
+    links: [],
+    photos: [],
+    logs: [],
+  }));
 }
