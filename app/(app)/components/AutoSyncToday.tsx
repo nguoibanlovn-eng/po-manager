@@ -20,7 +20,8 @@ export default function AutoSyncToday({ onDone, extraSyncs }: {
     const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
 
     const syncs = [
-      fetch("/api/nhanh/sync-sales", {
+      // Use report scraper for accurate "ngày thành công" revenue
+      fetch("/api/nhanh/sync-report", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ from: todayStr, to: todayStr }),

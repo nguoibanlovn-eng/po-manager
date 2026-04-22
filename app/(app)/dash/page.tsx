@@ -4,6 +4,7 @@ import { getChannelTarget } from "@/lib/db/tiktok";
 import { getCurrentUser } from "@/lib/auth/user";
 import { dateVN } from "@/lib/helpers";
 import { formatDate, formatVND, formatVNDCompact } from "@/lib/format";
+import AutoSyncToday from "../components/AutoSyncToday";
 
 export const dynamic = "force-dynamic";
 
@@ -130,6 +131,7 @@ export default async function DashPage({
 
     return (
       <section className="section">
+        <AutoSyncToday />
         {/* ─── HEADER ─── */}
         <div className="page-hdr">
           <div>
@@ -495,6 +497,7 @@ export default async function DashPage({
 
   return (
     <section className="section" id="tab-dash">
+      <AutoSyncToday />
       <div className="page-hdr">
         <div>
           <div className="page-title">Dashboard</div>
