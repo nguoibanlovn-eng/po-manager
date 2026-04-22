@@ -32,7 +32,7 @@ export default async function FbPagesPage({
   const nhanh30From = dateVN(null, -90);
   const nhanh30To = dateVN();
 
-  const [pages, ads, insights, nhanhRevenue, monthTarget, monthNhanh, prevAds, nhanh30d] = await Promise.all([
+  const [pages, ads, insights, nhanhRevenue, monthTarget, monthNhanh, prevAds, nhanh30d, monthAds] = await Promise.all([
     listPages("Facebook"),
     listAdsCache({ from, to }),
     listInsightsCache({ from, to }),
@@ -41,10 +41,12 @@ export default async function FbPagesPage({
     listFbNhanhRevenue(monthFrom, monthTo),
     listAdsCache({ from: prevFromStr, to: prevToStr }),
     listFbNhanhRevenue(nhanh30From, nhanh30To),
+    listAdsCache({ from: monthFrom, to: monthTo }),
   ]);
 
   const summary = summarizeAds(ads);
   const prevSummary = summarizeAds(prevAds);
+  const monthSummary = summarizeAds(monthAds);
   const monthActual = monthNhanh.reduce((s, r) => s + r.revenue, 0);
 
   return (
@@ -54,6 +56,7 @@ export default async function FbPagesPage({
       nhanhRevenue={nhanhRevenue} nhanh30d={nhanh30d}
       from={from} to={to}
       monthTarget={monthTarget} monthActual={monthActual} monthKey={monthKey}
+      monthAds={monthAds} monthSummary={monthSummary}
     />
   );
 }

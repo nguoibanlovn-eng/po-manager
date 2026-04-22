@@ -32,12 +32,14 @@ const QUICK_RANGES = [
 export default function FbPagesView({
   pages, ads, insights, summary, prevAds = [], prevSummary, nhanhRevenue = [], nhanh30d = [], from, to,
   monthTarget = 0, monthActual = 0, monthKey = "",
+  monthAds = [], monthSummary,
 }: {
   pages: PageRow[]; ads: AdsRow[]; insights: InsightsRow[]; summary: Summary;
   prevAds?: AdsRow[]; prevSummary?: Summary;
   nhanhRevenue?: FbNhanhRow[]; nhanh30d?: FbNhanhRow[];
   from: string; to: string;
   monthTarget?: number; monthActual?: number; monthKey?: string;
+  monthAds?: AdsRow[]; monthSummary?: Summary;
 }) {
   const router = useRouter();
   const [f, setF] = useState(from);
@@ -68,12 +70,20 @@ export default function FbPagesView({
   const costPerFollow = netFans > 0 && summary.spend > 0 ? summary.spend / netFans : 0;
   const ctr = summary.impressions > 0 ? (summary.clicks / summary.impressions) * 100 : 0;
 
-  // ── Ads by date ──
+  // ── Ads by date (selected range) ──
   const adsByDate = useMemo(() => {
     const m = new Map<string, number>();
     for (const a of ads) { const d = String(a.date).substring(0, 10); m.set(d, (m.get(d) || 0) + toNum(a.spend)); }
     return Array.from(m.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [ads]);
+
+  // ── Month ads by date (full month) ──
+  const monthAdsByDate = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const a of monthAds) { const d = String(a.date).substring(0, 10); m.set(d, (m.get(d) || 0) + toNum(a.spend)); }
+    return Array.from(m.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [monthAds]);
+  const monthAdsSummary = useMemo(() => monthSummary || { spend: 0, impressions: 0, clicks: 0, reach: 0, purchase_value: 0 }, [monthSummary]);
 
   // ── Map ad_account_id → page names ──
   const accountPageNames = useMemo(() => {
@@ -218,8 +228,8 @@ export default function FbPagesView({
       </div>
 
       {/* ═══ CHI PHÍ ADS THEO NGÀY ═══ */}
-      <Collapsible title="CHI PHÍ ADS THEO NGÀY" defaultOpen={true}>
-        <AdsSection ads={ads} adsByDate={adsByDate} summary={summary} prevAds={prevAds} prevSummary={prevSummary} from={from} to={to} />
+      <Collapsible title="CHI PHÍ ADS THÁNG" defaultOpen={true}>
+        <AdsSection ads={monthAds} adsByDate={monthAdsByDate} summary={monthAdsSummary} prevAds={prevAds} prevSummary={prevSummary} from={from} to={to} />
       </Collapsible>
 
       {/* ═══ DOANH THU CHI TIẾT 30 NGÀY ═══ */}
