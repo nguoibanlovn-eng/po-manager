@@ -1,5 +1,5 @@
 // Service Worker for PO Manager PWA
-const CACHE_NAME = "po-manager-v1";
+const CACHE_NAME = "po-manager-v2";
 
 // Assets to pre-cache on install
 const PRECACHE_URLS = ["/", "/login"];
