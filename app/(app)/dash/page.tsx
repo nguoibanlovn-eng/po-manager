@@ -6,7 +6,6 @@ import { dateVN } from "@/lib/helpers";
 import { formatDate, formatVND, formatVNDCompact } from "@/lib/format";
 import AutoSyncToday from "../components/AutoSyncToday";
 import DashDaySwitch from "./DashDaySwitch";
-import type { DashDayMobileProps } from "./DashDayMobile";
 
 export const dynamic = "force-dynamic";
 
@@ -221,31 +220,19 @@ export default async function DashPage({
     const revStatus = revPct >= 100 ? S.green : revPct >= 70 ? S.amber : revToday.total > 0 ? S.red : S.neutral;
     const adsStatus = adsPctToday <= 5 ? S.green : adsPctToday <= 7 ? S.amber : adsPctToday > 0 ? S.red : S.neutral;
 
-    // Build mobile props HERE (before long JSX block — TS loses scope after ~800 lines of JSX)
-    const mobileProps: DashDayMobileProps = {
-      today: today, prevDay: prevDay, nextDay: nextDay, dayOfWeek: dayOfWeek, displayDate: displayDate,
-      revTotal: revToday.total, revOrders: revToday.totalOrders, revExpected: revToday.totalExpected,
-      revYesterday: revYesterday.total, revChange: revChange, revPct: revPct, dailyTarget: dailyTarget, monthlyAvg: monthlyAvg,
-      channels: mainChannels.map(ch => ({
-        name: ch.name, color: ch.color,
-        rev: getChRev(chRevToday, ch.name),
-        exp: getChVal(chExpToday, ch.name),
-        revYesterday: getChRev(chRevYesterday, ch.name),
-      })),
-      adsTotal: todayAdsTotal, adsFb: todayAdsFb, adsTt: todayAdsTt + todayAdsGmv,
-      adsTtBm: todayAdsTt, adsTtGmv: todayAdsGmv, adsSp: todayAdsSp,
-      adsPct: adsPctToday, roas: roasToday, adsYesterday: yesterdayAdsTotal, adsChange: adsChange,
-      arrivedCount: arrivedToday.length, arrivedValue: arrivedTodayValue,
-      arrivedYesterdayCount: arrivedYesterday.length,
-      damageCount: damageItems.length,
-      damageValue: damageItems.reduce((s, d) => s + Number(d.damage_amount || 0), 0),
-      tasksTotal: tasksTotal, tasksDone: tasksDone,
-      monthRevenue: revMonth.total, monthTarget: totalTarget,
-    };
-
     return (
       <section className="section" id="dash-day">
-        <DashDaySwitch mobileProps={mobileProps} />
+        <DashDaySwitch mobileProps={{
+          today: today, prevDay: prevDay, nextDay: nextDay, dayOfWeek: dayOfWeek, displayDate: displayDate,
+          revTotal: revToday.total, revOrders: revToday.totalOrders, revExpected: revToday.totalExpected,
+          revYesterday: revYesterday.total, revChange: revChange, revPct: revPct, dailyTarget: dailyTarget, monthlyAvg: monthlyAvg,
+          channels: mainChannels.map(ch => ({ name: ch.name, color: ch.color, rev: getChRev(chRevToday, ch.name), exp: getChVal(chExpToday, ch.name), revYesterday: getChRev(chRevYesterday, ch.name) })),
+          adsTotal: todayAdsTotal, adsFb: todayAdsFb, adsTt: todayAdsTt + todayAdsGmv, adsTtBm: todayAdsTt, adsTtGmv: todayAdsGmv, adsSp: todayAdsSp,
+          adsPct: adsPctToday, roas: roasToday, adsYesterday: yesterdayAdsTotal, adsChange: adsChange,
+          arrivedCount: arrivedToday.length, arrivedValue: arrivedTodayValue, arrivedYesterdayCount: arrivedYesterday.length,
+          damageCount: damageItems.length, damageValue: damageItems.reduce((s, d) => s + Number(d.damage_amount || 0), 0),
+          tasksTotal: tasksTotal, tasksDone: tasksDone, monthRevenue: revMonth.total, monthTarget: totalTarget,
+        }} />
         <AutoSyncToday />
         {/* ─── HEADER ─── */}
         <div className="page-hdr">

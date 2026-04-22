@@ -283,6 +283,10 @@ td{padding:7px 10px;vertical-align:middle}
 
 @media(max-width:900px){.stat-grid,.fg-4,.fg-3{grid-template-columns:repeat(2,minmax(0,1fr))}.fg-2{grid-template-columns:1fr}#main{padding:0 14px 14px}}
 
+/* ═══ MOBILE DASHBOARD ═══ */
+.dash-mobile-only { display: none; }
+.dash-desktop-only { display: block; }
+
 /* ═══ BOTTOM NAV ═══ */
 #bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:calc(160px + env(safe-area-inset-bottom, 0px));background:#fff;border-top:1px solid #f0f0f0;z-index:200;align-items:stretch;padding:0 4px;padding-bottom:env(safe-area-inset-bottom, 0px)}
 .bn-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:none;border:none;cursor:pointer;color:#94a3b8;font-size:24px;font-weight:600;padding:16px 0;min-width:44px;min-height:124px;transition:color .15s}
@@ -382,6 +386,9 @@ td{padding:7px 10px;vertical-align:middle}
   #od-header-row { flex-direction: column !important; align-items: flex-start !important; gap: 8px !important; }
 
   /* ── Dashboard Day mobile ── */
+  /* Show mobile layout, hide desktop content */
+  .dash-mobile-only { display: block !important; }
+  #dash-day .dash-desktop-only { display: none !important; }
   /* Hide view tabs (Ngày/Tháng/Năm) — bottom nav handles this */
   .dash-hide-mobile { display: none !important; }
   /* Nav row: compact */
