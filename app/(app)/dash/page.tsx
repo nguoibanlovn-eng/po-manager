@@ -692,6 +692,7 @@ export default async function DashPage({
   // YEARLY VIEW
   // ═══════════════════════════════════════════════════════
   if (view === "year") {
+    const yearRevData = await getRevenueByChannel(`${currentYear}-01-01`, `${currentYear}-12-31`);
     const nowMonth = now.getMonth() + 1;
     const prevYearRev = prevYearly?.cumRevenue || 0;
     const growthVsPrev = prevYearRev > 0 ? Math.round(((yearly.yearTarget / prevYearRev) - 1) * 100) : 0;
@@ -728,7 +729,18 @@ export default async function DashPage({
     }
 
     return (
-      <section className="section">
+      <section className="section" id="dash-year">
+        <DashYearSwitch mobileProps={{
+          year: currentYear, nowMonth, yearTarget: yearly.yearTarget, cumRevenue: yearly.cumRevenue,
+          prevYearRev, growthVsPrev, cumAdsTotal, adsRevPct: adsRevPctYear,
+          months: yearly.months.map(m => ({ month: m.month, revenue: m.revenue, target: m.target, ads: m.ads, byChannel: m.byChannel })),
+          channels: YEAR_CHANNELS.map(ch => ({
+            name: ch.label, abbr: ch.abbr, color: ch.color,
+            rev: chRevCum[ch.key] || 0, target: chTargets[ch.key] || 0,
+            ads: ch.key === "facebook" ? cumAdsFb : ch.key === "tiktok" ? cumAdsTiktok : ch.key === "shopee" ? cumAdsShopee : 0,
+          })),
+          sourcesByChannel: yearRevData.sourcesByChannel,
+        }} />
         <AutoSyncToday />
         {/* ─── HEADER ─── */}
         <div className="page-hdr">
