@@ -390,8 +390,9 @@ td{padding:7px 10px;vertical-align:middle}
   .dash-mobile-only { display: block !important; }
   #dash-day > *:not(.dash-mobile-only),
   #dash-year > *:not(.dash-mobile-only),
-  #dash-month-view > *:not(.dash-mobile-only) { display: none !important; }
-  #dash-day, #dash-year, #dash-month-view { padding: 0 !important; background: #F8FAFC !important; }
+  #dash-month-view > *:not(.dash-mobile-only),
+  #inventory-page > *:not(.dash-mobile-only) { display: none !important; }
+  #dash-day, #dash-year, #dash-month-view, #inventory-page { padding: 0 !important; background: #F8FAFC !important; }
   /* Hide view tabs (Ngày/Tháng/Năm) — bottom nav handles this */
   .dash-hide-mobile { display: none !important; }
   /* Nav row: compact */

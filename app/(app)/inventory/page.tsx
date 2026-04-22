@@ -1,5 +1,6 @@
-import { listInventory, getInventoryStats } from "@/lib/db/inventory";
+import { listInventory, getInventoryStats, getInventoryMobileSummary } from "@/lib/db/inventory";
 import InventoryView from "./InventoryView";
+import InventorySwitch from "./InventorySwitch";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export default async function InventoryPage({
   const limit = 200;
   const offset = (pageNum - 1) * limit;
 
-  const [{ rows, total }, stats] = await Promise.all([
+  const [{ rows, total }, stats, mobileSummary] = await Promise.all([
     listInventory({
       search: q || undefined,
       filter: (filter as "all" | "in_stock" | "low_stock" | "out_of_stock" | "active" | "inactive") || "all",
@@ -23,19 +24,23 @@ export default async function InventoryPage({
       offset,
     }),
     getInventoryStats(),
+    getInventoryMobileSummary(),
   ]);
 
   return (
-    <InventoryView
-      rows={rows}
-      total={total}
-      q={q}
-      filter={filter}
-      sort={sort}
-      category={category}
-      stats={stats}
-      page={pageNum}
-      totalPages={Math.ceil(total / limit)}
-    />
+    <div id="inventory-page">
+      <InventorySwitch mobileProps={mobileSummary} />
+      <InventoryView
+        rows={rows}
+        total={total}
+        q={q}
+        filter={filter}
+        sort={sort}
+        category={category}
+        stats={stats}
+        page={pageNum}
+        totalPages={Math.ceil(total / limit)}
+      />
+    </div>
   );
 }

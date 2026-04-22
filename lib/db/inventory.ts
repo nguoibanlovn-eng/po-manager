@@ -54,6 +54,76 @@ export async function getInventoryStats(): Promise<InventoryStats> {
   };
 }
 
+/** Mobile inventory summary: top sellers, slow movers, no sales */
+export async function getInventoryMobileSummary(): Promise<{
+  topSellers: { sku: string; name: string; category: string; stock: number; sold: number }[];
+  noSales: { sku: string; name: string; category: string; stock: number; costValue: number }[];
+  slowMovers: { sku: string; name: string; category: string; stock: number; sold: number; pctSold: number }[];
+  stats: { total: number; inStock: number; outOfStock: number; lowStock: number };
+}> {
+  const db = supabaseAdmin();
+
+  const { data: all } = await db
+    .from("inventory")
+    .select("sku, product_name, category, available_qty, sold_30d")
+    .order("sold_30d", { ascending: false })
+    .limit(5000);
+
+  const { data: products } = await db
+    .from("products")
+    .select("sku, cost_price, stock")
+    .limit(5000);
+
+  const costMap = new Map<string, number>();
+  for (const p of products || []) {
+    if (p.sku) costMap.set(String(p.sku), Number(p.cost_price || 0));
+  }
+
+  const rows = (all || []).map(r => ({
+    sku: String(r.sku || ""),
+    name: String(r.product_name || ""),
+    category: String(r.category || ""),
+    stock: Number(r.available_qty || 0),
+    sold: Number(r.sold_30d || 0),
+    cost: costMap.get(String(r.sku || "")) || 0,
+  }));
+
+  const total = rows.length;
+  const inStock = rows.filter(r => r.stock > 0).length;
+  const outOfStock = rows.filter(r => r.stock <= 0).length;
+  const lowStock = rows.filter(r => r.stock > 0 && r.stock <= 5).length;
+
+  // Top sellers: sold > 0, sort by sold desc
+  const topSellers = rows
+    .filter(r => r.sold > 0)
+    .sort((a, b) => b.sold - a.sold)
+    .slice(0, 15)
+    .map(r => ({ sku: r.sku, name: r.name, category: r.category, stock: r.stock, sold: r.sold }));
+
+  // No sales: stock > 0 but sold = 0
+  const noSales = rows
+    .filter(r => r.stock > 0 && r.sold <= 0)
+    .sort((a, b) => (b.stock * b.cost) - (a.stock * a.cost))
+    .slice(0, 15)
+    .map(r => ({ sku: r.sku, name: r.name, category: r.category, stock: r.stock, costValue: r.stock * r.cost }));
+
+  // Slow movers: sold > 0 but low ratio (sold/stock < 50%), stock > 5
+  const slowMovers = rows
+    .filter(r => r.sold > 0 && r.stock > 5)
+    .map(r => ({ ...r, pctSold: r.stock > 0 ? Math.round(r.sold / (r.stock + r.sold) * 100) : 0 }))
+    .filter(r => r.pctSold < 30)
+    .sort((a, b) => a.pctSold - b.pctSold)
+    .slice(0, 15)
+    .map(r => ({ sku: r.sku, name: r.name, category: r.category, stock: r.stock, sold: r.sold, pctSold: r.pctSold }));
+
+  return {
+    topSellers,
+    noSales,
+    slowMovers,
+    stats: { total, inStock, outOfStock, lowStock },
+  };
+}
+
 export async function listInventory(opts: {
   search?: string;
   filter?: "all" | "in_stock" | "low_stock" | "out_of_stock" | "active" | "inactive";
