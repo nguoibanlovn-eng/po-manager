@@ -8,6 +8,7 @@ export default async function AppHome() {
   // Mirrors gs.txt default-tab-by-role logic.
   switch (u.role) {
     case "ADMIN":
+      redirect("/dash");
     case "LEADER_MH":
     case "NV_MH":
       redirect("/create");
