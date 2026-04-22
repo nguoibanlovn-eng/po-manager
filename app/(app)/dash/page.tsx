@@ -6,6 +6,8 @@ import { dateVN } from "@/lib/helpers";
 import { formatDate, formatVND, formatVNDCompact } from "@/lib/format";
 import AutoSyncToday from "../components/AutoSyncToday";
 import DashDaySwitch from "./DashDaySwitch";
+import DashMonthSwitch from "./DashMonthSwitch";
+import DashYearSwitch from "./DashYearSwitch";
 
 export const dynamic = "force-dynamic";
 
@@ -1092,7 +1094,21 @@ export default async function DashPage({
   // ═══════════════════════════════════════════════════════
 
   return (
-    <section className="section" id="tab-dash">
+    <section className="section" id="dash-month">
+      <DashMonthSwitch mobileProps={{
+        month, lastDay, dayOfMonth: Math.min(new Date().getDate(), lastDay),
+        revTotal: revMonth.total, revOrders: revMonth.totalOrders, revExpected: revMonth.totalExpected,
+        totalTarget: (fbTarget || 0) + (tkTarget || 0) + (spTarget || 0) + (wbTarget || 0),
+        totalAdSpend, adsPct, roas: overallRoas,
+        channels: [
+          { name: "Facebook", color: "#1877F2", rev: revMonth.channels.find(c => c.name === "Facebook")?.revenue || 0, target: fbTarget || 0 },
+          { name: "TikTok", color: "#FE2C55", rev: revMonth.channels.find(c => c.name === "TikTok")?.revenue || 0, target: tkTarget || 0 },
+          { name: "Shopee", color: "#EE4D2D", rev: revMonth.channels.find(c => c.name === "Shopee")?.revenue || 0, target: spTarget || 0 },
+          { name: "Web/App", color: "#6366F1", rev: ["Website","App","API","Admin"].reduce((s,n) => s + (revMonth.channels.find(c=>c.name===n)?.revenue || 0), 0), target: wbTarget || 0 },
+        ],
+        daily: revMonth.daily, outstanding: stats.finance.outstanding,
+        damageItems: stats.damage.pendingItems, damageValue: stats.damage.pendingValue,
+      }} />
       <AutoSyncToday />
       <div className="page-hdr">
         <div>

@@ -386,13 +386,12 @@ td{padding:7px 10px;vertical-align:middle}
   #od-header-row { flex-direction: column !important; align-items: flex-start !important; gap: 8px !important; }
 
   /* ── Dashboard Day mobile ── */
-  /* Show mobile layout, hide ALL desktop content after it */
+  /* Show mobile layout, hide ALL desktop content */
   .dash-mobile-only { display: block !important; }
-  #dash-day > .dash-mobile-only ~ * { display: none !important; }
-  #dash-day > .page-hdr,
-  #dash-day > .card,
-  #dash-day > div:not(.dash-mobile-only) { display: none !important; }
-  #dash-day { padding: 0 !important; background: #F8FAFC !important; }
+  #dash-day > *:not(.dash-mobile-only),
+  #dash-year > *:not(.dash-mobile-only),
+  #dash-month > *:not(.dash-mobile-only) { display: none !important; }
+  #dash-day, #dash-year, #dash-month { padding: 0 !important; background: #F8FAFC !important; }
   /* Hide view tabs (Ngày/Tháng/Năm) — bottom nav handles this */
   .dash-hide-mobile { display: none !important; }
   /* Nav row: compact */
