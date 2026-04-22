@@ -35,7 +35,7 @@ export default function LoginPage() {
         body: JSON.stringify({ email: email.trim(), code: code.trim() }),
       }).then((r) => r.json());
       if (!r.ok) { setMsg({ text: r.error || "OTP không đúng.", err: true }); return; }
-      router.replace("/");
+      router.replace("/dash");
       router.refresh();
     } finally { setBusy(false); }
   }
