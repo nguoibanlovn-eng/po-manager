@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { syncProductsAndInventory, syncSalesByChannel } from "@/lib/nhanh/sync";
+import { syncProductsAndInventory } from "@/lib/nhanh/sync";
 import { syncNhanhReport } from "@/lib/nhanh/report-scraper";
 import { syncFbAds, syncFbPageInsights } from "@/lib/fb/sync";
 import { refreshAllShopTokens } from "@/lib/tiktok/shop-api";
@@ -26,7 +26,9 @@ export async function POST(req: Request) {
 
   const jobs = [
     { name: "products_inventory", fn: () => syncProductsAndInventory() },
-    { name: "sales",              fn: () => syncSalesByChannel({}) },
+    // sales (syncSalesByChannel) REMOVED — uses order/list API which counts by
+    // createdAt, not success date. Report scraper (Phase 2) is the authoritative
+    // revenue source. Keeping this would overwrite accurate data with wrong numbers.
     { name: "fb_ads",             fn: () => syncFbAds({}) },
     { name: "fb_insights",        fn: () => syncFbPageInsights() },
     { name: "tiktok_shop_refresh", fn: () => refreshAllShopTokens() },
