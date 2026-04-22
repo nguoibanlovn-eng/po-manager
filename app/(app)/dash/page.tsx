@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getDashboardStats, getRecentOrders, getRevenueByChannel, getYearlySummary, getYearlyChannelTargets } from "@/lib/db/dashboard";
+import { getDashboardStats, getRecentOrders, getRevenueByChannel, getYearlySummary, getYearlyChannelTargets, getDailyAdsBreakdown, getTasksForDate, getArrivedOrders, getDamageItems } from "@/lib/db/dashboard";
 import { getChannelTarget } from "@/lib/db/tiktok";
 import { getCurrentUser } from "@/lib/auth/user";
 import { dateVN } from "@/lib/helpers";
@@ -42,10 +42,10 @@ function fmtTy(v: number): string {
 export default async function DashPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; view?: string }>;
+  searchParams: Promise<{ month?: string; view?: string; date?: string }>;
 }) {
   const sp = await searchParams;
-  const view = sp.view || "month";
+  const view = sp.view || "day";
   const month = sp.month || dateVN().substring(0, 7);
   const [y, m] = month.split("-").map(Number);
   const lastDay = new Date(y, m, 0).getDate();
@@ -60,6 +60,636 @@ export default async function DashPage({
   const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
 
   const currentYear = Number(month.split("-")[0]);
+
+  // ═══════════════════════════════════════════════════════
+  // DAILY VIEW
+  // ═══════════════════════════════════════════════════════
+  if (view === "day") {
+    const today = sp.date || dateVN();
+    const todayDate = new Date(today + "T00:00:00+07:00");
+    const yesterday = dateVN(null, -1);
+    const yesterdayFromToday = (() => {
+      const d = new Date(today + "T12:00:00+07:00");
+      d.setDate(d.getDate() - 1);
+      return d.toISOString().substring(0, 10);
+    })();
+
+    // Month info for daily target
+    const [tY, tM] = today.substring(0, 7).split("-").map(Number);
+    const daysInMonth = new Date(tY, tM, 0).getDate();
+    const monthFrom = `${today.substring(0, 7)}-01`;
+    const monthTo = `${today.substring(0, 7)}-${String(daysInMonth).padStart(2, "0")}`;
+    const monthKey = `${today.substring(0, 7)}-01`;
+
+    const [
+      user,
+      revToday,
+      revYesterday,
+      adsToday,
+      adsYesterday,
+      arrivedToday,
+      arrivedYesterday,
+      damageItems,
+      tasksToday,
+      fbTarget,
+      tkTarget,
+      spTarget,
+      wbTarget,
+      revMonth,
+    ] = await Promise.all([
+      getCurrentUser(),
+      getRevenueByChannel(today, today),
+      getRevenueByChannel(yesterdayFromToday, yesterdayFromToday),
+      getDailyAdsBreakdown(today),
+      getDailyAdsBreakdown(yesterdayFromToday),
+      getArrivedOrders(today),
+      getArrivedOrders(yesterdayFromToday),
+      getDamageItems(),
+      getTasksForDate(today),
+      getChannelTarget("facebook", monthKey),
+      getChannelTarget("tiktok", monthKey),
+      getChannelTarget("shopee", monthKey),
+      getChannelTarget("web_b2b", monthKey),
+      getRevenueByChannel(monthFrom, monthTo),
+    ]);
+
+    // Compute KPIs
+    const totalTarget = (fbTarget || 0) + (tkTarget || 0) + (spTarget || 0) + (wbTarget || 0);
+    const dailyTarget = totalTarget > 0 ? totalTarget / daysInMonth : 0;
+
+    const todayAdsFb = (adsToday.fbAds || []).reduce((s, a) => s + Number(a.spend || 0), 0);
+    const todayAdsTt = (adsToday.ttAds || []).reduce((s, a) => s + Number(a.spend || 0), 0);
+    const todayAdsGmv = (adsToday.gmvMax || []).reduce((s, a) => s + Number(a.spend || 0), 0);
+    const todayAdsSp = (adsToday.spAds || []).reduce((s, a) => s + Number(a.spend || 0), 0);
+    const todayAdsTotal = todayAdsFb + todayAdsTt + todayAdsGmv + todayAdsSp;
+
+    const yesterdayAdsFb = (adsYesterday.fbAds || []).reduce((s, a) => s + Number(a.spend || 0), 0);
+    const yesterdayAdsTt = (adsYesterday.ttAds || []).reduce((s, a) => s + Number(a.spend || 0), 0);
+    const yesterdayAdsGmv = (adsYesterday.gmvMax || []).reduce((s, a) => s + Number(a.spend || 0), 0);
+    const yesterdayAdsSp = (adsYesterday.spAds || []).reduce((s, a) => s + Number(a.spend || 0), 0);
+    const yesterdayAdsTotal = yesterdayAdsFb + yesterdayAdsTt + yesterdayAdsGmv + yesterdayAdsSp;
+
+    const adsPctToday = revToday.total > 0 ? (todayAdsTotal / revToday.total) * 100 : 0;
+    const adsPctYesterday = revYesterday.total > 0 ? (yesterdayAdsTotal / revYesterday.total) * 100 : 0;
+    const roasToday = todayAdsTotal > 0 ? revToday.total / todayAdsTotal : 0;
+
+    const arrivedTodayValue = arrivedToday.reduce((s, o) => s + Number(o.order_total || 0), 0);
+
+    // Comparison helper
+    const pctChange = (cur: number, prev: number) => {
+      if (prev === 0) return cur > 0 ? 100 : 0;
+      return Math.round(((cur - prev) / prev) * 100);
+    };
+    const revChange = pctChange(revToday.total, revYesterday.total);
+    const adsChange = pctChange(todayAdsTotal, yesterdayAdsTotal);
+
+    // Progress
+    const revPct = dailyTarget > 0 ? Math.round((revToday.total / dailyTarget) * 100) : 0;
+
+    // Day navigation
+    const prevDay = (() => {
+      const d = new Date(today + "T12:00:00+07:00");
+      d.setDate(d.getDate() - 1);
+      return d.toISOString().substring(0, 10);
+    })();
+    const nextDay = (() => {
+      const d = new Date(today + "T12:00:00+07:00");
+      d.setDate(d.getDate() + 1);
+      return d.toISOString().substring(0, 10);
+    })();
+    const dayOfWeek = ["Chủ nhật", "Thứ hai", "Thứ ba", "Thứ tư", "Thứ năm", "Thứ sáu", "Thứ bảy"][todayDate.getDay()];
+    const displayDate = `${String(todayDate.getDate()).padStart(2, "0")}/${String(todayDate.getMonth() + 1).padStart(2, "0")}/${todayDate.getFullYear()}`;
+
+    // Channel revenue for today vs yesterday
+    const chRevToday: Record<string, number> = {};
+    revToday.channels.forEach((c) => { chRevToday[c.name] = c.revenue; });
+    const chRevYesterday: Record<string, number> = {};
+    revYesterday.channels.forEach((c) => { chRevYesterday[c.name] = c.revenue; });
+    const wbNamesToday = ["Website", "App", "API", "Admin", "Nội bộ"];
+
+    const mainChannels = [
+      { name: "Facebook", color: "#1877F2" },
+      { name: "TikTok", color: "#FE2C55" },
+      { name: "Shopee", color: "#EE4D2D" },
+      { name: "Web/App", color: "#6366F1" },
+    ];
+
+    const getChRev = (chMap: Record<string, number>, name: string) => {
+      if (name === "Web/App") return wbNamesToday.reduce((s, n) => s + (chMap[n] || 0), 0);
+      return chMap[name] || 0;
+    };
+
+    // Monthly avg
+    const dayOfMonth = Math.min(new Date().getDate(), daysInMonth);
+    const monthlyAvg = dayOfMonth > 0 ? revMonth.total / dayOfMonth : 0;
+
+    // Tasks stats
+    const tasksDone = tasksToday.filter((t) => t.status === "DONE").length;
+    const tasksTotal = tasksToday.length;
+
+    // Ads top accounts
+    const fbAccountsSorted = [...(adsToday.fbAds || [])]
+      .sort((a, b) => Number(b.spend || 0) - Number(a.spend || 0))
+      .slice(0, 3);
+    const ttBmSorted = [...(adsToday.ttAds || [])]
+      .sort((a, b) => Number(b.spend || 0) - Number(a.spend || 0))
+      .slice(0, 3);
+    const gmvSorted = [...(adsToday.gmvMax || [])]
+      .sort((a, b) => Number(b.spend || 0) - Number(a.spend || 0))
+      .slice(0, 3);
+
+    // TikTok total (BM + GMV)
+    const ttTotalSpend = todayAdsTt + todayAdsGmv;
+    const ttTotalRev = (adsToday.ttAds || []).reduce((s, a) => s + Number(a.conversion_value || 0), 0)
+      + (adsToday.gmvMax || []).reduce((s, a) => s + Number(a.gross_revenue || 0), 0);
+
+    // Shopee total
+    const spTotalSpend = todayAdsSp;
+    const spTotalRev = (adsToday.spAds || []).reduce((s, a) => s + Number(a.revenue || 0), 0);
+
+    // FB total
+    const fbTotalRev = (adsToday.fbAds || []).reduce((s, a) => s + Number(a.purchase_value || 0), 0);
+
+    const S = {
+      green: { bg: "#F0FDF4", border: "#BBF7D0", text: "#166534" },
+      blue: { bg: "#EFF6FF", border: "#BFDBFE", text: "#1E40AF" },
+      red: { bg: "#FEF2F2", border: "#FECACA", text: "#991B1B" },
+      amber: { bg: "#FFFBEB", border: "#FDE68A", text: "#92400E" },
+      neutral: { bg: "#FFFFFF", border: "#E5E7EB", text: "#18181B" },
+    };
+
+    const revStatus = revPct >= 100 ? S.green : revPct >= 70 ? S.amber : revToday.total > 0 ? S.red : S.neutral;
+    const adsStatus = adsPctToday <= 5 ? S.green : adsPctToday <= 7 ? S.amber : adsPctToday > 0 ? S.red : S.neutral;
+
+    return (
+      <section className="section">
+        <AutoSyncToday />
+        {/* ─── HEADER ─── */}
+        <div className="page-hdr">
+          <div>
+            <div className="page-title">Dashboard</div>
+            <div className="page-sub">{dayOfWeek}, {displayDate}</div>
+          </div>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <Link href="/dash?view=day" className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>Ngày</Link>
+            <Link href="/dash?view=month" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Tháng</Link>
+            <Link href="/dash?view=year" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Năm</Link>
+            <span style={{ width: 1, height: 20, background: "#E5E7EB" }} />
+            <Link href={`/dash?view=day&date=${prevDay}`} className="btn btn-ghost btn-sm" style={{ textDecoration: "none", fontSize: 14 }}>&larr;</Link>
+            <span style={{ fontSize: 14, fontWeight: 700, minWidth: 100, textAlign: "center" }}>{displayDate}</span>
+            <Link href={`/dash?view=day&date=${nextDay}`} className="btn btn-ghost btn-sm" style={{ textDecoration: "none", fontSize: 14 }}>&rarr;</Link>
+            <span style={{ width: 1, height: 20, background: "#E5E7EB" }} />
+            <Link href="/dash?view=day" className="btn btn-sm" style={{ textDecoration: "none", fontSize: 11, background: "#1F2937", color: "#fff" }}>Hôm nay</Link>
+            <Link href={`/dash?view=day&date=${yesterday}`} className="btn btn-ghost btn-sm" style={{ textDecoration: "none", fontSize: 11 }}>Hôm qua</Link>
+          </div>
+        </div>
+
+        {/* ─── KPI STRIP (6 cards) ─── */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8, marginBottom: 12 }}>
+          {/* DT thực tế */}
+          <div style={{ padding: "10px 14px", borderRadius: 8, background: revStatus.bg, border: `1px solid ${revStatus.border}` }}>
+            <div style={{ fontSize: 9, fontWeight: 600, color: revStatus.text, letterSpacing: ".3px" }}>DT THỰC TẾ</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: revStatus.text, margin: "2px 0" }}>{formatVNDCompact(revToday.total)}</div>
+            <div style={{ fontSize: 9, color: revStatus.text, opacity: 0.7 }}>
+              {revToday.totalOrders} đơn · <strong>{revChange >= 0 ? "+" : ""}{revChange}%</strong> vs hôm qua
+            </div>
+          </div>
+          {/* DT dự kiến */}
+          <div style={{ padding: "10px 14px", borderRadius: 8, background: S.blue.bg, border: `1px solid ${S.blue.border}` }}>
+            <div style={{ fontSize: 9, fontWeight: 600, color: S.blue.text, letterSpacing: ".3px" }}>DỰ KIẾN NGÀY</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: S.blue.text, margin: "2px 0" }}>{formatVNDCompact(dailyTarget)}</div>
+            <div style={{ fontSize: 9, color: S.blue.text, opacity: 0.7 }}>TB tháng {formatVNDCompact(monthlyAvg)} / hôm qua {formatVNDCompact(revYesterday.total)}</div>
+          </div>
+          {/* Chi phí Ads */}
+          <div style={{ padding: "10px 14px", borderRadius: 8, background: adsStatus.bg, border: `1px solid ${adsStatus.border}` }}>
+            <div style={{ fontSize: 9, fontWeight: 600, color: adsStatus.text, letterSpacing: ".3px" }}>CHI PHÍ ADS</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: adsStatus.text, margin: "2px 0" }}>{formatVNDCompact(todayAdsTotal)}</div>
+            <div style={{ fontSize: 9, color: adsStatus.text, opacity: 0.7 }}>
+              Hôm qua {formatVNDCompact(yesterdayAdsTotal)} · <strong>{adsChange >= 0 ? "+" : ""}{adsChange}%</strong>
+            </div>
+          </div>
+          {/* Ads/DT */}
+          <div style={{ padding: "10px 14px", borderRadius: 8, background: adsStatus.bg, border: `1px solid ${adsStatus.border}` }}>
+            <div style={{ fontSize: 9, fontWeight: 600, color: adsStatus.text, letterSpacing: ".3px" }}>ADS / DOANH THU</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: adsStatus.text, margin: "2px 0" }}>{adsPctToday.toFixed(1)}%</div>
+            <div style={{ fontSize: 9, color: adsStatus.text, opacity: 0.7 }}>Hôm qua {adsPctYesterday.toFixed(1)}% · ROAS {roasToday.toFixed(1)}x</div>
+          </div>
+          {/* Hàng nhập */}
+          <div style={{ padding: "10px 14px", borderRadius: 8, background: "#fff", border: "1px solid #E5E7EB" }}>
+            <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: ".3px" }}>HÀNG NHẬP HÔM NAY</div>
+            <div style={{ fontSize: 20, fontWeight: 800, margin: "2px 0" }}>{arrivedToday.length} đơn</div>
+            <div style={{ fontSize: 9, opacity: 0.7 }}>{formatVNDCompact(arrivedTodayValue)} · hôm qua {arrivedYesterday.length} đơn</div>
+          </div>
+          {/* Thiệt hại */}
+          <div style={{ padding: "10px 14px", borderRadius: 8, background: damageItems.length > 0 ? S.red.bg : "#fff", border: `1px solid ${damageItems.length > 0 ? S.red.border : "#E5E7EB"}` }}>
+            <div style={{ fontSize: 9, fontWeight: 600, color: damageItems.length > 0 ? S.red.text : undefined, letterSpacing: ".3px" }}>THIỆT HẠI</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: damageItems.length > 0 ? "#DC2626" : undefined, margin: "2px 0" }}>{damageItems.length} SP</div>
+            <div style={{ fontSize: 9, opacity: 0.7, color: damageItems.length > 0 ? S.red.text : undefined }}>
+              {formatVNDCompact(damageItems.reduce((s, d) => s + Number(d.damage_amount || 0), 0))} chờ xử lý
+            </div>
+          </div>
+        </div>
+
+        {/* ─── PROGRESS BAR ─── */}
+        <div className="card" style={{ marginBottom: 12, padding: "10px 16px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+            <div>
+              <span style={{ fontSize: 12, fontWeight: 700 }}>Tiến độ ngày</span>
+            </div>
+            <div style={{ fontSize: 10 }}>
+              <span style={{ color: revPct >= 100 ? "#16A34A" : "#D97706", fontWeight: 700 }}>{formatVNDCompact(revToday.total)}</span>
+              <span style={{ color: "#6B7280" }}> / KH </span>
+              <span style={{ fontWeight: 700 }}>{formatVNDCompact(dailyTarget)}</span>
+              <span style={{ color: revPct >= 100 ? "#16A34A" : "#D97706", fontWeight: 700, marginLeft: 4 }}>{revPct}%</span>
+            </div>
+          </div>
+          <div style={{ height: 10, background: "#F3F4F6", borderRadius: 5, overflow: "hidden", position: "relative" }}>
+            <div style={{ width: `${Math.min(revPct, 100)}%`, height: "100%", background: revPct >= 100 ? "#22C55E" : revPct >= 70 ? "#3B82F6" : "#F59E0B", borderRadius: 5, transition: "width 0.3s" }} />
+          </div>
+          <div style={{ display: "flex", gap: 16, marginTop: 4, fontSize: 10, color: "#6B7280" }}>
+            {revPct >= 100
+              ? <span>Vượt KH <b style={{ color: "#16A34A" }}>+{formatVNDCompact(revToday.total - dailyTarget)}</b></span>
+              : <span>Còn <b style={{ color: "#D97706" }}>{formatVNDCompact(Math.max(0, dailyTarget - revToday.total))}</b></span>}
+            <span>|</span>
+            <span>Hôm qua: <b>{formatVNDCompact(revYesterday.total)}</b></span>
+            <span>TB tháng: <b>{formatVNDCompact(monthlyAvg)}</b></span>
+          </div>
+        </div>
+
+        {/* ─── ROW 1: Revenue by channel + Ads cost table ─── */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+          {/* LEFT: Revenue by channel */}
+          <div className="card" style={{ padding: "12px 14px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <span style={{ fontWeight: 700, fontSize: 12 }}>Doanh thu theo kênh</span>
+              <span style={{ fontSize: 10, color: "#9CA3AF" }}>Hôm nay vs hôm qua</span>
+            </div>
+            {/* Header */}
+            <div style={{ display: "grid", gridTemplateColumns: "70px 1fr 55px 55px 40px", gap: "0 6px", fontSize: 9, color: "#9CA3AF", marginBottom: 4, paddingLeft: 16 }}>
+              <span></span><span></span><span style={{ textAlign: "right" }}>Hôm nay</span><span style={{ textAlign: "right" }}>Hôm qua</span><span style={{ textAlign: "right" }}>+/-%</span>
+            </div>
+            {mainChannels.map((ch) => {
+              const todayRev = getChRev(chRevToday, ch.name);
+              const yesterdayRev = getChRev(chRevYesterday, ch.name);
+              const change = pctChange(todayRev, yesterdayRev);
+              const barW = revToday.total > 0 ? Math.round((todayRev / revToday.total) * 100) : 0;
+              return (
+                <div key={ch.name} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: ch.color, flexShrink: 0 }} />
+                  <span style={{ fontSize: 11, fontWeight: 600, width: 70 }}>{ch.name}</span>
+                  <div style={{ flex: 1, height: 8, background: "#F3F4F6", borderRadius: 2, overflow: "hidden" }}>
+                    <div style={{ width: `${barW}%`, height: "100%", background: ch.color, borderRadius: 2 }} />
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 700, width: 55, textAlign: "right", color: ch.color }}>{formatVNDCompact(todayRev)}</span>
+                  <span style={{ fontSize: 10, width: 55, textAlign: "right", color: "#9CA3AF" }}>{formatVNDCompact(yesterdayRev)}</span>
+                  <span style={{ fontSize: 9, width: 40, textAlign: "right", fontWeight: 700, color: change >= 0 ? "#16A34A" : "#DC2626" }}>
+                    {change >= 0 ? "+" : ""}{change}%
+                  </span>
+                </div>
+              );
+            })}
+            {/* Total */}
+            <div style={{ borderTop: "1px solid var(--border)", marginTop: 6, paddingTop: 6, display: "grid", gridTemplateColumns: "1fr 55px 55px 40px", fontSize: 11, fontWeight: 700 }}>
+              <span>Tổng</span>
+              <span style={{ textAlign: "right", color: "#16A34A" }}>{formatVNDCompact(revToday.total)}</span>
+              <span style={{ textAlign: "right", color: "#9CA3AF" }}>{formatVNDCompact(revYesterday.total)}</span>
+              <span style={{ textAlign: "right", color: revChange >= 0 ? "#16A34A" : "#DC2626" }}>{revChange >= 0 ? "+" : ""}{revChange}%</span>
+            </div>
+            {/* Stacked bar */}
+            {revToday.total > 0 && (
+              <div style={{ display: "flex", height: 14, borderRadius: 7, overflow: "hidden", marginTop: 8 }}>
+                {mainChannels.map((ch) => {
+                  const rev = getChRev(chRevToday, ch.name);
+                  const pct = revToday.total > 0 ? (rev / revToday.total * 100) : 0;
+                  if (pct < 1) return null;
+                  return (
+                    <div key={ch.name} style={{ width: `${pct}%`, background: ch.color, display: "flex", alignItems: "center", justifyContent: "center", minWidth: 16 }}>
+                      <span style={{ fontSize: 8, color: "#fff", fontWeight: 700, whiteSpace: "nowrap" }}>
+                        {pct >= 12 ? `${ch.name.substring(0, 2)} ${Math.round(pct)}%` : ch.name.substring(0, 2)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* RIGHT: Ads cost table */}
+          <div className="card" style={{ padding: "12px 14px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <span style={{ fontWeight: 700, fontSize: 12 }}>Chi phí Ads theo kênh</span>
+              <span style={{ fontSize: 10, color: "#9CA3AF" }}>Tổng: {formatVNDCompact(todayAdsTotal)} · {adsPctToday.toFixed(1)}% DT</span>
+            </div>
+            <div className="tbl-wrap">
+              <table>
+                <thead><tr>
+                  <th>Kênh</th>
+                  <th className="text-right">Ads Spend</th>
+                  <th className="text-right">DT kênh</th>
+                  <th className="text-right">Ads/DT</th>
+                  <th className="text-right">ROAS</th>
+                </tr></thead>
+                <tbody>
+                  {/* Facebook */}
+                  <tr>
+                    <td><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#1877F2", marginRight: 4, verticalAlign: "middle" }} />Facebook</td>
+                    <td className="text-right" style={{ color: "#DC2626" }}>{formatVNDCompact(todayAdsFb)}</td>
+                    <td className="text-right" style={{ color: "#16A34A" }}>{formatVNDCompact(getChRev(chRevToday, "Facebook"))}</td>
+                    <td className="text-right font-bold" style={{ color: getChRev(chRevToday, "Facebook") > 0 && (todayAdsFb / getChRev(chRevToday, "Facebook") * 100) <= 7 ? "#16A34A" : "#DC2626" }}>
+                      {getChRev(chRevToday, "Facebook") > 0 ? (todayAdsFb / getChRev(chRevToday, "Facebook") * 100).toFixed(1) : "0.0"}%
+                    </td>
+                    <td className="text-right font-bold" style={{ color: todayAdsFb > 0 && fbTotalRev / todayAdsFb >= 10 ? "#16A34A" : "#D97706" }}>
+                      {todayAdsFb > 0 ? (fbTotalRev / todayAdsFb).toFixed(1) : "0.0"}x
+                    </td>
+                  </tr>
+                  {/* TikTok */}
+                  <tr>
+                    <td><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#FE2C55", marginRight: 4, verticalAlign: "middle" }} />TikTok</td>
+                    <td className="text-right" style={{ color: "#DC2626" }}>{formatVNDCompact(ttTotalSpend)}</td>
+                    <td className="text-right" style={{ color: "#16A34A" }}>{formatVNDCompact(getChRev(chRevToday, "TikTok"))}</td>
+                    <td className="text-right font-bold" style={{ color: getChRev(chRevToday, "TikTok") > 0 && (ttTotalSpend / getChRev(chRevToday, "TikTok") * 100) <= 7 ? "#16A34A" : "#DC2626" }}>
+                      {getChRev(chRevToday, "TikTok") > 0 ? (ttTotalSpend / getChRev(chRevToday, "TikTok") * 100).toFixed(1) : "0.0"}%
+                    </td>
+                    <td className="text-right font-bold" style={{ color: ttTotalSpend > 0 && ttTotalRev / ttTotalSpend >= 10 ? "#16A34A" : "#D97706" }}>
+                      {ttTotalSpend > 0 ? (ttTotalRev / ttTotalSpend).toFixed(1) : "0.0"}x
+                    </td>
+                  </tr>
+                  {/* TikTok sub-rows */}
+                  <tr>
+                    <td style={{ paddingLeft: 24, color: "#9CA3AF", fontSize: 10 }}>- BM Ads</td>
+                    <td className="text-right" style={{ color: "#9CA3AF", fontSize: 10 }}>{formatVNDCompact(todayAdsTt)}</td>
+                    <td className="text-right" style={{ color: "#9CA3AF", fontSize: 10 }}>—</td>
+                    <td className="text-right" style={{ color: "#9CA3AF", fontSize: 10 }}>—</td>
+                    <td className="text-right" style={{ color: "#9CA3AF", fontSize: 10 }}>—</td>
+                  </tr>
+                  <tr>
+                    <td style={{ paddingLeft: 24, color: "#9CA3AF", fontSize: 10 }}>- GMV Max</td>
+                    <td className="text-right" style={{ color: "#9CA3AF", fontSize: 10 }}>{formatVNDCompact(todayAdsGmv)}</td>
+                    <td className="text-right" style={{ color: "#16A34A", fontSize: 10 }}>
+                      {formatVNDCompact((adsToday.gmvMax || []).reduce((s, a) => s + Number(a.gross_revenue || 0), 0))}
+                    </td>
+                    <td className="text-right font-bold" style={{ fontSize: 10, color: (() => {
+                      const gmvRev = (adsToday.gmvMax || []).reduce((s, a) => s + Number(a.gross_revenue || 0), 0);
+                      return gmvRev > 0 && (todayAdsGmv / gmvRev * 100) <= 7 ? "#16A34A" : "#DC2626";
+                    })() }}>
+                      {(() => {
+                        const gmvRev = (adsToday.gmvMax || []).reduce((s, a) => s + Number(a.gross_revenue || 0), 0);
+                        return gmvRev > 0 ? (todayAdsGmv / gmvRev * 100).toFixed(1) : "0.0";
+                      })()}%
+                    </td>
+                    <td className="text-right font-bold" style={{ fontSize: 10, color: (() => {
+                      const gmvRev = (adsToday.gmvMax || []).reduce((s, a) => s + Number(a.gross_revenue || 0), 0);
+                      return todayAdsGmv > 0 && gmvRev / todayAdsGmv >= 10 ? "#16A34A" : "#D97706";
+                    })() }}>
+                      {(() => {
+                        const gmvRev = (adsToday.gmvMax || []).reduce((s, a) => s + Number(a.gross_revenue || 0), 0);
+                        return todayAdsGmv > 0 ? (gmvRev / todayAdsGmv).toFixed(1) : "0.0";
+                      })()}x
+                    </td>
+                  </tr>
+                  {/* Shopee */}
+                  <tr>
+                    <td><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#EE4D2D", marginRight: 4, verticalAlign: "middle" }} />Shopee</td>
+                    <td className="text-right" style={{ color: "#DC2626" }}>{formatVNDCompact(spTotalSpend)}</td>
+                    <td className="text-right" style={{ color: "#16A34A" }}>{formatVNDCompact(getChRev(chRevToday, "Shopee"))}</td>
+                    <td className="text-right font-bold" style={{ color: getChRev(chRevToday, "Shopee") > 0 && (spTotalSpend / getChRev(chRevToday, "Shopee") * 100) <= 7 ? "#16A34A" : "#DC2626" }}>
+                      {getChRev(chRevToday, "Shopee") > 0 ? (spTotalSpend / getChRev(chRevToday, "Shopee") * 100).toFixed(1) : "0.0"}%
+                    </td>
+                    <td className="text-right font-bold" style={{ color: spTotalSpend > 0 && spTotalRev / spTotalSpend >= 10 ? "#16A34A" : "#D97706" }}>
+                      {spTotalSpend > 0 ? (spTotalRev / spTotalSpend).toFixed(1) : "0.0"}x
+                    </td>
+                  </tr>
+                  {/* Total row */}
+                  <tr style={{ background: "#F9FAFB", fontWeight: 700 }}>
+                    <td>Tổng</td>
+                    <td className="text-right" style={{ color: "#DC2626" }}>{formatVNDCompact(todayAdsTotal)}</td>
+                    <td className="text-right" style={{ color: "#16A34A" }}>{formatVNDCompact(revToday.total)}</td>
+                    <td className="text-right font-bold" style={{ color: adsPctToday <= 7 ? "#16A34A" : "#DC2626" }}>{adsPctToday.toFixed(1)}%</td>
+                    <td className="text-right font-bold">{roasToday.toFixed(1)}x</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Cost summary mini */}
+            <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
+              <div style={{ background: "#F9FAFB", borderRadius: 6, padding: "6px 10px" }}>
+                <div style={{ fontSize: 9, color: "#6B7280" }}>Chi phí / Tổng DT</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: adsPctToday <= 5 ? "#16A34A" : adsPctToday <= 7 ? "#D97706" : "#DC2626" }}>{adsPctToday.toFixed(1)}%</div>
+                <div style={{ fontSize: 9, color: adsPctToday <= 7 ? "#16A34A" : "#DC2626" }}>{adsPctToday <= 5 ? "Tốt" : adsPctToday <= 7 ? "Trung bình" : "Cao — mục tiêu <7%"}</div>
+              </div>
+              <div style={{ background: "#F9FAFB", borderRadius: 6, padding: "6px 10px" }}>
+                <div style={{ fontSize: 9, color: "#6B7280" }}>Chi phí / Tổng (tháng)</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: (() => {
+                  const monthAdsPct = revMonth.total > 0
+                    ? ((adsToday.fbAds || []).reduce((s, a) => s + Number(a.spend || 0), 0)
+                      + todayAdsTotal) / revMonth.total * 100
+                    : 0;
+                  return monthAdsPct <= 5 ? "#16A34A" : monthAdsPct <= 7 ? "#D97706" : "#DC2626";
+                })() }}>—</div>
+                <div style={{ fontSize: 9, color: "#9CA3AF" }}>Xem tab Tháng</div>
+              </div>
+            </div>
+
+            {/* Top accounts */}
+            <div style={{ borderTop: "1px solid var(--border)", paddingTop: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 6 }}>Top tài khoản chi phí cao nhất</div>
+
+              {/* Facebook accounts */}
+              {fbAccountsSorted.length > 0 && (
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#1877F2" }} />
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "#1877F2" }}>Facebook</span>
+                    <span style={{ fontSize: 9, color: "#9CA3AF", marginLeft: "auto" }}>{(adsToday.fbAds || []).length} TK · Tổng {formatVNDCompact(todayAdsFb)}</span>
+                  </div>
+                  {fbAccountsSorted.map((a, i) => (
+                    <div key={a.ad_account_id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 0 3px 12px", fontSize: 10 }}>
+                      <span style={{ color: "#9CA3AF", width: 12, textAlign: "center" }}>{i + 1}</span>
+                      <span style={{ flex: 1, fontWeight: 600 }}>{a.account_name || a.ad_account_id}</span>
+                      <div style={{ width: 60, height: 5, background: "#F3F4F6", borderRadius: 2, overflow: "hidden" }}>
+                        <div style={{ width: `${todayAdsFb > 0 ? Math.round(Number(a.spend || 0) / todayAdsFb * 100) : 0}%`, height: "100%", background: "#1877F2", borderRadius: 2 }} />
+                      </div>
+                      <span style={{ fontWeight: 700, width: 45, textAlign: "right" }}>{formatVNDCompact(Number(a.spend || 0))}</span>
+                      <span style={{ color: "#9CA3AF", width: 30, textAlign: "right", fontSize: 9 }}>{todayAdsFb > 0 ? Math.round(Number(a.spend || 0) / todayAdsFb * 100) : 0}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* TikTok accounts */}
+              {(gmvSorted.length > 0 || ttBmSorted.length > 0) && (
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#FE2C55" }} />
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "#FE2C55" }}>TikTok</span>
+                    <span style={{ fontSize: 9, color: "#9CA3AF", marginLeft: "auto" }}>Tổng {formatVNDCompact(ttTotalSpend)}</span>
+                  </div>
+                  {gmvSorted.map((a, i) => (
+                    <div key={`gmv-${i}`} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 0 3px 12px", fontSize: 10 }}>
+                      <span style={{ color: "#9CA3AF", width: 12, textAlign: "center" }}>{i + 1}</span>
+                      <span style={{ flex: 1, fontWeight: 600 }}>GMV Max ({a.store_name})</span>
+                      <div style={{ width: 60, height: 5, background: "#F3F4F6", borderRadius: 2, overflow: "hidden" }}>
+                        <div style={{ width: `${ttTotalSpend > 0 ? Math.round(Number(a.spend || 0) / ttTotalSpend * 100) : 0}%`, height: "100%", background: "#FE2C55", borderRadius: 2 }} />
+                      </div>
+                      <span style={{ fontWeight: 700, width: 45, textAlign: "right" }}>{formatVNDCompact(Number(a.spend || 0))}</span>
+                      <span style={{ color: "#9CA3AF", width: 30, textAlign: "right", fontSize: 9 }}>{ttTotalSpend > 0 ? Math.round(Number(a.spend || 0) / ttTotalSpend * 100) : 0}%</span>
+                    </div>
+                  ))}
+                  {ttBmSorted.map((a, i) => (
+                    <div key={`bm-${i}`} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 0 3px 12px", fontSize: 10 }}>
+                      <span style={{ color: "#9CA3AF", width: 12, textAlign: "center" }}>{gmvSorted.length + i + 1}</span>
+                      <span style={{ flex: 1, fontWeight: 600 }}>{a.advertiser_name || a.advertiser_id} (BM)</span>
+                      <div style={{ width: 60, height: 5, background: "#F3F4F6", borderRadius: 2, overflow: "hidden" }}>
+                        <div style={{ width: `${ttTotalSpend > 0 ? Math.round(Number(a.spend || 0) / ttTotalSpend * 100) : 0}%`, height: "100%", background: "#FE2C55", borderRadius: 2 }} />
+                      </div>
+                      <span style={{ fontWeight: 700, width: 45, textAlign: "right" }}>{formatVNDCompact(Number(a.spend || 0))}</span>
+                      <span style={{ color: "#9CA3AF", width: 30, textAlign: "right", fontSize: 9 }}>{ttTotalSpend > 0 ? Math.round(Number(a.spend || 0) / ttTotalSpend * 100) : 0}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Shopee */}
+              {todayAdsSp > 0 && (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#EE4D2D" }} />
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "#EE4D2D" }}>Shopee</span>
+                    <span style={{ fontSize: 9, color: "#9CA3AF", marginLeft: "auto" }}>Tổng {formatVNDCompact(spTotalSpend)}</span>
+                  </div>
+                  {(adsToday.spAds || []).map((a, i) => (
+                    <div key={`sp-${i}`} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 0 3px 12px", fontSize: 10 }}>
+                      <span style={{ color: "#9CA3AF", width: 12, textAlign: "center" }}>{i + 1}</span>
+                      <span style={{ flex: 1, fontWeight: 600 }}>Shopee Ads</span>
+                      <span style={{ fontWeight: 700, width: 45, textAlign: "right" }}>{formatVNDCompact(Number(a.spend || 0))}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ─── ROW 2: Hàng nhập + Thiệt hại + Việc hôm nay ─── */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 12 }}>
+          {/* Hàng nhập hôm nay */}
+          <div className="card" style={{ padding: "12px 14px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <span style={{ fontWeight: 700, fontSize: 12 }}>Hàng nhập hôm nay</span>
+              <span style={{ fontSize: 10, color: "#9CA3AF" }}>{arrivedToday.length} đơn</span>
+            </div>
+            {arrivedToday.length > 0 ? arrivedToday.map((o) => (
+              <div key={o.order_id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: "1px solid var(--border)", fontSize: 12 }}>
+                <Link href={`/create?order_id=${o.order_id}`} style={{ fontSize: 10, fontWeight: 700, color: "var(--blue)", width: 60 }}>{o.order_id}</Link>
+                <span style={{ flex: 1, fontSize: 11 }}>{o.order_name || o.supplier_name || "—"}</span>
+                <span style={{ fontSize: 10, fontWeight: 700 }}>{formatVNDCompact(Number(o.order_total || 0))}</span>
+                <span className={`stage-badge stage-${o.stage}`} style={{ fontSize: 9 }}>{STAGE_LABEL[String(o.stage)] || o.stage}</span>
+              </div>
+            )) : (
+              <div style={{ textAlign: "center", padding: 24, color: "#9CA3AF", fontSize: 11 }}>Không có đơn nào về hôm nay</div>
+            )}
+            {arrivedToday.length > 0 && (
+              <div style={{ borderTop: "1px solid var(--border)", marginTop: 6, paddingTop: 6, display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+                <span style={{ color: "#9CA3AF" }}>Tổng giá trị nhập</span>
+                <span style={{ fontWeight: 700 }}>{formatVNDCompact(arrivedTodayValue)}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Thiệt hại */}
+          <div className="card" style={{ padding: "12px 14px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <span style={{ fontWeight: 700, fontSize: 12 }}>Thiệt hại chờ xử lý</span>
+              <span style={{ fontSize: 10, color: damageItems.length > 0 ? "#DC2626" : "#9CA3AF" }}>
+                {damageItems.length} SP · {formatVNDCompact(damageItems.reduce((s, d) => s + Number(d.damage_amount || 0), 0))}
+              </span>
+            </div>
+            {damageItems.length > 0 ? damageItems.slice(0, 5).map((d) => (
+              <div key={d.item_id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: "1px solid var(--border)", fontSize: 12 }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", flexShrink: 0 }} />
+                <span style={{ flex: 1, fontSize: 11 }}>{d.item_name || "—"}</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: "#DC2626" }}>{formatVNDCompact(Number(d.damage_amount || 0))}</span>
+                <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 4, background: "#FEF2F2", color: "#DC2626", fontWeight: 600 }}>
+                  {d.damage_qty} SP
+                </span>
+              </div>
+            )) : (
+              <div style={{ textAlign: "center", padding: 24, color: "#9CA3AF", fontSize: 11 }}>Không có thiệt hại chờ xử lý</div>
+            )}
+            {damageItems.length > 5 && (
+              <Link href="/damage-mgmt" style={{ fontSize: 10, color: "var(--blue)", display: "block", marginTop: 6 }}>Xem tất cả {damageItems.length} SP →</Link>
+            )}
+          </div>
+
+          {/* Việc hôm nay */}
+          <div className="card" style={{ padding: "12px 14px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <span style={{ fontWeight: 700, fontSize: 12 }}>Việc hôm nay</span>
+              <span style={{ fontSize: 10, color: "#9CA3AF" }}>{tasksDone}/{tasksTotal} xong</span>
+            </div>
+            {tasksToday.length > 0 ? tasksToday.slice(0, 5).map((t) => {
+              const isDone = t.status === "DONE";
+              const statusColors: Record<string, { bg: string; text: string; label: string }> = {
+                DONE: { bg: "#F0FDF4", text: "#16A34A", label: "Xong" },
+                IN_PROGRESS: { bg: "#FFFBEB", text: "#D97706", label: "Đang làm" },
+                OPEN: { bg: "#F4F4F5", text: "#52525B", label: "Chờ" },
+              };
+              const st = statusColors[t.status || "OPEN"] || statusColors.OPEN;
+              const prioColors: Record<string, { bg: string; text: string }> = {
+                HIGH: { bg: "#FEF2F2", text: "#DC2626" },
+                URGENT: { bg: "#FEF2F2", text: "#DC2626" },
+              };
+              const prio = prioColors[t.priority || ""];
+              return (
+                <div key={t.task_id} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
+                  <div style={{ width: 18, height: 18, borderRadius: "50%", border: isDone ? "none" : "2px solid #E5E7EB", background: isDone ? "#16A34A" : "transparent", flexShrink: 0, marginTop: 1 }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, textDecoration: isDone ? "line-through" : "none", color: isDone ? "#9CA3AF" : undefined }}>{t.title}</div>
+                    <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 2 }}>
+                      {t.assignee_name || "—"} · {t.deadline ? t.deadline.substring(11, 16) : "—"}
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 4, background: prio?.bg || st.bg, color: prio?.text || st.text, fontWeight: 600 }}>
+                    {(t.priority === "HIGH" || t.priority === "URGENT") ? "Ưu tiên" : st.label}
+                  </span>
+                </div>
+              );
+            }) : (
+              <div style={{ textAlign: "center", padding: 24, color: "#9CA3AF", fontSize: 11 }}>Không có việc deadline hôm nay</div>
+            )}
+            {tasksToday.length > 0 && (
+              <div style={{ borderTop: "1px solid var(--border)", marginTop: 4, paddingTop: 6, display: "flex", justifyContent: "space-between", fontSize: 10, color: "#9CA3AF" }}>
+                <Link href="/tasks" style={{ color: "var(--blue)" }}>Xem tất cả →</Link>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ─── ALERTS ─── */}
+        <div style={{ marginBottom: 12 }}>
+          {revPct >= 100 && (
+            <div style={{ padding: "8px 12px", borderRadius: 6, fontSize: 12, border: "1px solid #86EFAC", background: "#F0FDF4", color: "#166534", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontWeight: 700 }}>&#10003;</span>
+              DT hôm nay vượt KH ngày +{revPct - 100}%
+            </div>
+          )}
+          {adsPctToday > 7 && (
+            <div style={{ padding: "8px 12px", borderRadius: 6, fontSize: 12, border: "1px solid #FECACA", background: "#FEF2F2", color: "#991B1B", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontWeight: 700 }}>!</span>
+              Chi phí Ads/DT = {adsPctToday.toFixed(1)}% — cao hơn mục tiêu 7%
+            </div>
+          )}
+          {damageItems.length > 0 && (
+            <div style={{ padding: "8px 12px", borderRadius: 6, fontSize: 12, border: "1px solid #FCD34D", background: "#FFFBEB", color: "#92400E", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontWeight: 700 }}>&#9888;</span>
+              {damageItems.length} SP thiệt hại chờ xử lý — {formatVNDCompact(damageItems.reduce((s, d) => s + Number(d.damage_amount || 0), 0))}
+            </div>
+          )}
+        </div>
+      </section>
+    );
+  }
 
   const [user, stats, recent, revMonth, rev7d, fbTarget, tkTarget, spTarget, wbTarget, yearly, prevYearly, yearChTargets] = await Promise.all([
     getCurrentUser(),
@@ -139,6 +769,7 @@ export default async function DashPage({
             <div className="page-sub">Năm {currentYear} · KH: {fmtTy(yearly.yearTarget)} · {currentYear - 1}: {fmtTy(prevYearRev)}</div>
           </div>
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <Link href="/dash?view=day" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Ngày</Link>
             <Link href="/dash?view=month" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Tháng</Link>
             <Link href={`/dash?view=year&month=${currentYear}-01`} className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>Năm</Link>
             <Link href={`/dash?view=year&month=${currentYear - 1}-01`} className="btn btn-ghost btn-sm" style={{ textDecoration: "none", fontSize: 10 }}>{currentYear - 1} TT</Link>
@@ -506,6 +1137,7 @@ export default async function DashPage({
           </div>
         </div>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <Link href="/dash?view=day" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Ngày</Link>
           <Link href="/dash?view=month" className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>Tháng</Link>
           <Link href="/dash?view=year" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Năm</Link>
           <form style={{ display: "flex", gap: 6, alignItems: "center" }}>

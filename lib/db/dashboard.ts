@@ -304,6 +304,74 @@ export async function getYearlyChannelTargets(year: number): Promise<Record<stri
   return byChannel;
 }
 
+/** Daily ads breakdown: FB by account, TikTok BM, GMV Max, Shopee */
+export async function getDailyAdsBreakdown(date: string) {
+  const db = supabaseAdmin();
+
+  const [fbRes, ttRes, gmvRes, spRes] = await Promise.all([
+    db.from("ads_cache")
+      .select("ad_account_id, account_name, spend, purchase_value")
+      .eq("date", date),
+    db.from("tiktok_ads")
+      .select("advertiser_id, advertiser_name, spend, conversion_value")
+      .eq("date", date),
+    db.from("tiktok_gmv_max")
+      .select("store_name, spend, gross_revenue, orders, roi")
+      .eq("date", date),
+    db.from("shopee_ads")
+      .select("spend, revenue")
+      .eq("date", date),
+  ]);
+
+  return {
+    fbAds: fbRes.data || [],
+    ttAds: ttRes.data || [],
+    gmvMax: gmvRes.data || [],
+    spAds: spRes.data || [],
+  };
+}
+
+/** Tasks for a specific date (deadline matches date) */
+export async function getTasksForDate(date: string) {
+  const db = supabaseAdmin();
+  const { data } = await db
+    .from("tasks")
+    .select("task_id, title, assignee_name, status, priority, deadline")
+    .gte("deadline", `${date}T00:00:00`)
+    .lte("deadline", `${date}T23:59:59`)
+    .order("deadline", { ascending: true })
+    .limit(50);
+  return data || [];
+}
+
+/** Orders that arrived on a given date (stage=ARRIVED, updated_at matches date) */
+export async function getArrivedOrders(date: string) {
+  const db = supabaseAdmin();
+  const { data } = await db
+    .from("orders")
+    .select("order_id, order_name, supplier_name, order_total, stage, updated_at")
+    .eq("is_deleted", false)
+    .eq("stage", "ARRIVED")
+    .gte("updated_at", `${date}T00:00:00`)
+    .lte("updated_at", `${date}T23:59:59`)
+    .order("updated_at", { ascending: false })
+    .limit(50);
+  return data || [];
+}
+
+/** Damage items pending */
+export async function getDamageItems() {
+  const db = supabaseAdmin();
+  const { data } = await db
+    .from("items")
+    .select("item_id, item_name, damage_qty, damage_amount, damage_handled, damage_note")
+    .eq("is_deleted", false)
+    .eq("damage_handled", false)
+    .gt("damage_qty", 0)
+    .limit(50);
+  return data || [];
+}
+
 export async function getRecentOrders(limit = 10) {
   const { data } = await supabaseAdmin()
     .from("orders")
