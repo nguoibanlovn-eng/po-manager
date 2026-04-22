@@ -158,14 +158,10 @@ export async function syncNhanhReport(opts: {
     logs.push(`[nhanhReport] Fetching ${dateStr}...`);
 
     const channels = await fetchReport(session, dateStr, dateStr);
-    if (!channels.length) {
-      logs.push(`[nhanhReport] ${dateStr}: no data (skipped, kept existing)`);
-      continue;
-    }
 
     // ── Step 1: Build all data BEFORE touching DB ──
 
-    // 1a. Build from success report
+    // 1a. Build from success report (may be empty early in the day)
     const agg = new Map<string, Record<string, unknown>>();
     for (const ch of channels) {
       const channelName = CHANNEL_NAMES[ch.channel.id] || ch.channel.name;
@@ -243,6 +239,12 @@ export async function syncNhanhReport(opts: {
     }
 
     const rows = Array.from(agg.values());
+
+    // Skip if both success + create returned nothing
+    if (rows.length === 0) {
+      logs.push(`[nhanhReport] ${dateStr}: no data from success or create, skipped`);
+      continue;
+    }
 
     // ── Step 2: Safety checks BEFORE writing ──
     const { count: existingCount } = await db
