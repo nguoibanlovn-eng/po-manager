@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import { formatVNDCompact } from "@/lib/format";
 import AutoSyncToday from "../components/AutoSyncToday";
@@ -29,6 +29,18 @@ export type DashMonthMobileProps = {
 
 export default function DashMonthMobile(p: DashMonthMobileProps) {
   const [touchIdx, setTouchIdx] = useState<number | null>(null);
+  const chartRef = useRef<HTMLDivElement>(null);
+  const barCount = p.dailyByChannel.length;
+
+  const handleTouch = useCallback((e: React.TouchEvent | React.MouseEvent) => {
+    const rect = chartRef.current?.getBoundingClientRect();
+    if (!rect || barCount === 0) return;
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    const x = clientX - rect.left;
+    const idx = Math.floor((x / rect.width) * barCount);
+    setTouchIdx(Math.max(0, Math.min(idx, barCount - 1)));
+  }, [barCount]);
+
   const timePct = p.lastDay > 0 ? Math.round((p.dayOfMonth / p.lastDay) * 100) : 0;
   const revPct = p.totalTarget > 0 ? Math.round((p.revTotal / p.totalTarget) * 100) : 0;
   const avgDaily = p.dayOfMonth > 0 ? p.revTotal / p.dayOfMonth : 0;
@@ -158,8 +170,13 @@ export default function DashMonthMobile(p: DashMonthMobileProps) {
 
           {/* Stacked bars */}
           <div
-            style={{ display: "flex", alignItems: "flex-end", height: 80, gap: 1, position: "relative" }}
+            ref={chartRef}
+            style={{ display: "flex", alignItems: "flex-end", height: 80, gap: 1, position: "relative", touchAction: "none" }}
+            onTouchStart={handleTouch}
+            onTouchMove={handleTouch}
             onTouchEnd={() => setTouchIdx(null)}
+            onMouseMove={handleTouch}
+            onMouseLeave={() => setTouchIdx(null)}
           >
             {p.dailyByChannel.map((d, i) => {
               const total = Number(d.total || 0);
@@ -170,11 +187,7 @@ export default function DashMonthMobile(p: DashMonthMobileProps) {
               const isActive = touchIdx === i;
 
               return (
-                <div key={String(d.date)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", height: "100%", cursor: "default" }}
-                  onTouchStart={() => setTouchIdx(i)}
-                  onMouseEnter={() => setTouchIdx(i)}
-                  onMouseLeave={() => setTouchIdx(null)}
-                >
+                <div key={String(d.date)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", height: "100%", cursor: "default" }}>
                   {/* Stacked bar */}
                   <div style={{ width: "85%", height: Math.max(h, 2), display: "flex", flexDirection: "column-reverse", borderRadius: "2px 2px 0 0", overflow: "hidden", opacity: isActive ? 1 : .8 }}>
                     {channels.map(({ ch, c, v }) => {
