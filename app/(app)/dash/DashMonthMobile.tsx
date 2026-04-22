@@ -30,18 +30,32 @@ export type DashMonthMobileProps = {
 
 export default function DashMonthMobile(p: DashMonthMobileProps) {
   const [touchIdx, setTouchIdx] = useState<number | null>(null);
+  const [pinned, setPinned] = useState(false);
   const [expandedCh, setExpandedCh] = useState<string | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
   const barCount = p.dailyByChannel.length;
 
-  const handleTouch = useCallback((e: React.TouchEvent | React.MouseEvent) => {
+  const getIdx = useCallback((e: React.TouchEvent | React.MouseEvent) => {
     const rect = chartRef.current?.getBoundingClientRect();
-    if (!rect || barCount === 0) return;
+    if (!rect || barCount === 0) return -1;
     const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-    const x = clientX - rect.left;
-    const idx = Math.floor((x / rect.width) * barCount);
-    setTouchIdx(Math.max(0, Math.min(idx, barCount - 1)));
+    return Math.max(0, Math.min(Math.floor(((clientX - rect.left) / rect.width) * barCount), barCount - 1));
   }, [barCount]);
+
+  // Tap = pin/unpin tooltip
+  const handleTap = useCallback((e: React.TouchEvent | React.MouseEvent) => {
+    const idx = getIdx(e);
+    if (idx < 0) return;
+    if (pinned && touchIdx === idx) { setPinned(false); setTouchIdx(null); }
+    else { setPinned(true); setTouchIdx(idx); }
+  }, [getIdx, pinned, touchIdx]);
+
+  // Drag = move only if not pinned (desktop hover)
+  const handleMove = useCallback((e: React.MouseEvent) => {
+    if (pinned) return;
+    const idx = getIdx(e);
+    if (idx >= 0) setTouchIdx(idx);
+  }, [getIdx, pinned]);
 
   const timePct = p.lastDay > 0 ? Math.round((p.dayOfMonth / p.lastDay) * 100) : 0;
   const revPct = p.totalTarget > 0 ? Math.round((p.revTotal / p.totalTarget) * 100) : 0;
@@ -178,7 +192,7 @@ export default function DashMonthMobile(p: DashMonthMobileProps) {
             </div>
           </div>
 
-          {/* Touch tooltip */}
+          {/* Touch tooltip — pinned or hover */}
           {touchIdx !== null && p.dailyByChannel[touchIdx] && (() => {
             const d = p.dailyByChannel[touchIdx];
             const date = String(d.date);
@@ -187,8 +201,9 @@ export default function DashMonthMobile(p: DashMonthMobileProps) {
             const adsSpend = adsDay?.spend || 0;
             const adsPctDay = total > 0 ? (adsSpend / total * 100) : 0;
             return (
-              <div style={{ background: "#1F2937", color: "#fff", borderRadius: 8, padding: "6px 10px", fontSize: 10, marginBottom: 6 }}>
-                <div style={{ fontWeight: 700, color: "#D1D5DB", marginBottom: 3 }}>{date}</div>
+              <div style={{ background: "#1F2937", color: "#fff", borderRadius: 8, padding: "6px 10px", fontSize: 10, marginBottom: 6, position: "relative" }}>
+                {pinned && <button onClick={() => { setPinned(false); setTouchIdx(null); }} style={{ position: "absolute", top: 4, right: 6, background: "none", border: "none", color: "#94A3B8", fontSize: 14, cursor: "pointer", lineHeight: 1 }}>✕</button>}
+                <div style={{ fontWeight: 700, color: "#D1D5DB", marginBottom: 3 }}>{date} {pinned && <span style={{ fontSize: 8, color: "#6B7280" }}>· bấm ✕ để đóng</span>}</div>
                 <div>DT: <strong>{formatVNDCompact(total)}</strong></div>
                 {Object.entries(CH_COLORS).map(([ch, c]) => {
                   const v = Number(d[ch] || 0);
@@ -205,11 +220,10 @@ export default function DashMonthMobile(p: DashMonthMobileProps) {
           <div
             ref={chartRef}
             style={{ display: "flex", alignItems: "flex-end", height: 80, gap: 1, position: "relative", touchAction: "none" }}
-            onTouchStart={handleTouch}
-            onTouchMove={handleTouch}
-            onTouchEnd={() => setTouchIdx(null)}
-            onMouseMove={handleTouch}
-            onMouseLeave={() => setTouchIdx(null)}
+            onTouchStart={handleTap}
+            onMouseMove={handleMove}
+            onMouseLeave={() => { if (!pinned) setTouchIdx(null); }}
+            onClick={handleTap}
           >
             {p.dailyByChannel.map((d, i) => {
               const total = Number(d.total || 0);
