@@ -140,13 +140,13 @@ export async function getDashboardStats(monthKey?: string): Promise<DashStats> {
 export async function getRevenueByChannel(from: string, to: string) {
   const db = supabaseAdmin();
   // Paginate — Supabase caps at 1000 rows per request
-  const allData: Array<{ period_from: string; channel: string; revenue_net: number; order_net: number }> = [];
+  const allData: Array<{ period_from: string; channel: string; revenue_net: number; order_net: number; revenue_expected: number }> = [];
   let off = 0;
   const PG = 1000;
   while (true) {
     const { data: page } = await db
       .from("sales_sync")
-      .select("period_from, channel, revenue_net, order_net")
+      .select("period_from, channel, revenue_net, order_net, revenue_expected")
       .gte("period_from", from)
       .lte("period_from", to)
       .order("period_from", { ascending: true })
@@ -157,19 +157,22 @@ export async function getRevenueByChannel(from: string, to: string) {
     off += PG;
   }
 
-  const byChannel = new Map<string, { revenue: number; orders: number }>();
+  const byChannel = new Map<string, { revenue: number; orders: number; expected: number }>();
   const byDate = new Map<string, number>();
 
   for (const r of allData) {
     const ch = String(r.channel || "Khác");
-    const cur = byChannel.get(ch) || { revenue: 0, orders: 0 };
+    const cur = byChannel.get(ch) || { revenue: 0, orders: 0, expected: 0 };
     cur.revenue += Number(r.revenue_net || 0);
     cur.orders += Number(r.order_net || 0);
+    cur.expected += Number(r.revenue_expected || 0);
     byChannel.set(ch, cur);
 
     const d = String(r.period_from || "");
     byDate.set(d, (byDate.get(d) || 0) + Number(r.revenue_net || 0));
   }
+
+  const totalExpected = Array.from(byChannel.values()).reduce((s, v) => s + v.expected, 0);
 
   return {
     channels: Array.from(byChannel.entries())
@@ -180,6 +183,7 @@ export async function getRevenueByChannel(from: string, to: string) {
       .sort((a, b) => a.date.localeCompare(b.date)),
     total: Array.from(byChannel.values()).reduce((s, v) => s + v.revenue, 0),
     totalOrders: Array.from(byChannel.values()).reduce((s, v) => s + v.orders, 0),
+    totalExpected,
   };
 }
 

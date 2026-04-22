@@ -59,8 +59,8 @@ export default function FbPagesView({
 
   // ── Nhanh totals ──
   const nhanhTotals = useMemo(() => nhanhRevenue.reduce(
-    (a, r) => ({ revenue: a.revenue + r.revenue, orders: a.orders + r.orders }),
-    { revenue: 0, orders: 0 },
+    (a, r) => ({ revenue: a.revenue + r.revenue, orders: a.orders + r.orders, expected: a.expected + (r.revenue_expected || 0) }),
+    { revenue: 0, orders: 0, expected: 0 },
   ), [nhanhRevenue]);
 
   const roas = summary.spend > 0 ? nhanhTotals.revenue / summary.spend : 0;
@@ -210,10 +210,10 @@ export default function FbPagesView({
         <div className="stat-card"><div className="sl">TĂNG RÒNG</div><div className="sv" style={{ color: netFans >= 0 ? "var(--green)" : "var(--red)" }}>{netFans >= 0 ? "+" : ""}{netFans.toLocaleString("vi-VN")}</div><div className="muted" style={{ fontSize: 10 }}>net growth</div></div>
         <div className="stat-card"><div className="sl">REACH</div><div className="sv">{insightsTotals.reach.toLocaleString("vi-VN")}</div></div>
 
-        <div className="stat-card" style={{ borderLeft: "3px solid #1877F2" }}><div className="sl">DOANH THU</div><div className="sv">{formatVNDCompact(nhanhTotals.revenue)}</div><div className="muted" style={{ fontSize: 10 }}>nhanh.vn</div></div>
+        <div className="stat-card" style={{ borderLeft: "3px solid #1877F2" }}><div className="sl">DT THÀNH CÔNG</div><div className="sv">{formatVNDCompact(nhanhTotals.revenue)}</div><div className="muted" style={{ fontSize: 10 }}>đơn giao xong</div></div>
+        <div className="stat-card" style={{ borderLeft: "3px solid #F59E0B" }}><div className="sl">DT DỰ KIẾN</div><div className="sv" style={{ color: "#D97706" }}>{formatVNDCompact(nhanhTotals.expected)}</div><div className="muted" style={{ fontSize: 10 }}>tạo - hoàn hủy</div></div>
         <div className="stat-card" style={{ borderLeft: "3px solid #42A5F5" }}><div className="sl">CHI PHÍ ADS</div><div className="sv">{formatVNDCompact(summary.spend)}</div></div>
         <div className="stat-card" style={{ borderLeft: roas >= 10 ? "3px solid var(--green)" : "3px solid var(--red)" }}><div className="sl">ROAS</div><div className="sv" style={{ color: roas >= 10 ? "var(--green)" : "var(--red)" }}>{roas.toFixed(1)}x</div><div className="muted" style={{ fontSize: 10 }}>doanh thu/ads</div></div>
-        <div className="stat-card"><div className="sl">CHI PHÍ/FOLLOW</div><div className="sv">{costPerFollow > 0 ? formatVNDCompact(costPerFollow) : "—"}</div><div className="muted" style={{ fontSize: 10 }}>spend÷tăng ròng</div></div>
         <div className="stat-card"><div className="sl">CTR TB</div><div className="sv">{ctr.toFixed(2)}%</div><div className="muted" style={{ fontSize: 10 }}>weighted avg</div></div>
       </div>
 

@@ -75,13 +75,13 @@ export async function listInsightsCache(opts: {
   return (data as InsightsRow[]) || [];
 }
 
-export type FbNhanhRow = { date: string; source: string; revenue: number; orders: number };
+export type FbNhanhRow = { date: string; source: string; revenue: number; orders: number; revenue_expected: number };
 
 export async function listFbNhanhRevenue(from: string, to: string): Promise<FbNhanhRow[]> {
   const db = supabaseAdmin();
   const { data } = await db
     .from("sales_sync")
-    .select("period_from, source, revenue_net, order_net")
+    .select("period_from, source, revenue_net, order_net, revenue_expected")
     .eq("channel", "Facebook")
     .gte("period_from", from)
     .lte("period_from", to)
@@ -92,6 +92,7 @@ export async function listFbNhanhRevenue(from: string, to: string): Promise<FbNh
     source: r.source || "",
     revenue: Number(r.revenue_net || 0),
     orders: Number(r.order_net || 0),
+    revenue_expected: Number(r.revenue_expected || 0),
   }));
 }
 
@@ -105,7 +106,7 @@ export async function listWebNhanhRevenue(from: string, to: string): Promise<FbN
   // because API channel on Nhanh is primarily web orders (lovu.vn, velasboost.vn, etc.)
   const { data: apiData } = await db
     .from("sales_sync")
-    .select("period_from, source, revenue_net, order_net")
+    .select("period_from, source, revenue_net, order_net, revenue_expected")
     .eq("channel", "API")
     .gte("period_from", from)
     .lte("period_from", to)
@@ -118,7 +119,7 @@ export async function listWebNhanhRevenue(from: string, to: string): Promise<FbN
   });
   const { data: adminData } = await db
     .from("sales_sync")
-    .select("period_from, source, revenue_net, order_net")
+    .select("period_from, source, revenue_net, order_net, revenue_expected")
     .eq("channel", "Admin")
     .or("source.ilike.%DOANH THU%WEB%,source.ilike.%DOANH THU%lovu%,source.ilike.%DOANH THU%velasboost%,source.ilike.%DOANH THU%App Lỗ Vũ%,source.ilike.%DOANH THU%muagimuadi%,source.ilike.%DOANH THU%LynkID%,source.ilike.%WEB - Bán sỉ%")
     .gte("period_from", from)
@@ -134,6 +135,7 @@ export async function listWebNhanhRevenue(from: string, to: string): Promise<FbN
     source: r.source || "",
     revenue: Number(r.revenue_net || 0),
     orders: Number(r.order_net || 0),
+    revenue_expected: Number(r.revenue_expected || 0),
   }));
 }
 

@@ -81,9 +81,10 @@ async function fetchReport(
   session: { cookies: string; csrf: string },
   fromDate: string,
   toDate: string,
+  orderDate: "success" | "create" = "success",
 ): Promise<ChannelData[]> {
   const body = new URLSearchParams({
-    orderDate: "success",
+    orderDate,
     fromDate,
     toDate,
     businessId: BUSINESS_ID,
@@ -213,8 +214,29 @@ export async function syncNhanhReport(opts: {
           revenue_net: src.totalValueSuccess,
           order_success: src.totalOrderSuccess,
           revenue_success: src.totalValueSuccess,
+          revenue_expected: 0,
           synced_at: nowVN(),
         });
+      }
+    }
+
+    // Fetch orderDate=create report for revenue_expected (Đơn tạo - Hoàn hủy)
+    await new Promise((r) => setTimeout(r, 300));
+    const createChannels = await fetchReport(session, dateStr, dateStr, "create");
+    if (createChannels.length) {
+      for (const ch of createChannels) {
+        const channelName = CHANNEL_NAMES[ch.channel.id] || ch.channel.name;
+        for (const src of ch.sourceData) {
+          const sourceName = src.source.name
+            || (src.pageId && pageNameMap.get(src.pageId))
+            || src.pageId || src.shopId || channelName;
+          const key = `${channelName}|${sourceName}`;
+          const revenueExpected = src.totalValue - (src.totalValueRefundedAndCanceled || 0);
+          const existing = agg.get(key);
+          if (existing) {
+            existing.revenue_expected = (Number(existing.revenue_expected) || 0) + revenueExpected;
+          }
+        }
       }
     }
 
@@ -235,7 +257,8 @@ export async function syncNhanhReport(opts: {
     }
 
     const totalSuccess = rows.reduce((s, r) => s + Number(r.revenue_success || 0), 0);
-    logs.push(`[nhanhReport] ${dateStr}: ${rows.length} sources, DT TC: ${(totalSuccess / 1e6).toFixed(1)}M`);
+    const totalExpected = rows.reduce((s, r) => s + Number(r.revenue_expected || 0), 0);
+    logs.push(`[nhanhReport] ${dateStr}: ${rows.length} sources, DT TC: ${(totalSuccess / 1e6).toFixed(1)}M, DK: ${(totalExpected / 1e6).toFixed(1)}M`);
     days++;
 
     // Rate limit
