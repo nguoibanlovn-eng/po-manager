@@ -368,7 +368,7 @@ export default async function DashPage({
 
     return (
       <section className="section" id="dash-day">
-        <DashDaySwitch mobileProps={{
+        <DashMobileWrapper initialView="day" dayProps={{
           today: today, prevDay: prevDay, nextDay: nextDay, dayOfWeek: dayOfWeek, displayDate: displayDate,
           revTotal: revToday.total, revOrders: revToday.totalOrders, revExpected: revToday.totalExpected,
           revYesterday: revYesterday.total, revChange: revChange, revPct: revPct, dailyTarget: dailyTarget, monthlyAvg: monthlyAvg,
@@ -886,7 +886,7 @@ export default async function DashPage({
 
     return (
       <section className="section" id="dash-year">
-        <DashYearSwitch mobileProps={{
+        <DashMobileWrapper initialView="year" yearProps={{
           year: currentYear, nowMonth, yearTarget: yearly.yearTarget, cumRevenue: yearly.cumRevenue,
           prevYearRev, growthVsPrev, cumAdsTotal, adsRevPct: adsRevPctYear,
           months: yearly.months.map(m => ({ month: m.month, revenue: m.revenue, target: m.target, ads: m.ads, byChannel: m.byChannel })),
@@ -1264,7 +1264,7 @@ export default async function DashPage({
 
   return (
     <section className="section" id="dash-month-view">
-      <DashMonthSwitch mobileProps={{
+      <DashMobileWrapper initialView="month" monthProps={{
         month, lastDay, dayOfMonth: Math.min(new Date().getDate(), lastDay),
         revTotal: rm.total, revOrders: rm.totalOrders, revExpected: rm.totalExpected,
         totalTarget: (fbTarget || 0) + (tkTarget || 0) + (spTarget || 0) + (wbTarget || 0),
