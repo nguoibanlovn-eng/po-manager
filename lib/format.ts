@@ -10,7 +10,7 @@ export function formatVND(v: unknown): string {
 
 export function formatVNDCompact(v: unknown): string {
   const n = Math.abs(toNum(v));
-  if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(1) + "T";
+  if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(2) + "T";
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
   if (n >= 1_000) return Math.round(n / 1_000) + "K";
   return String(n);
