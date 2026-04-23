@@ -24,11 +24,9 @@ export default async function SalesDashPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  // ADMIN → full dashboard
-  if (user.role === "ADMIN") redirect("/dash");
-
-  // Parse channels
-  const userChannels = (user.channels || []).filter(Boolean);
+  // Parse channels — ADMIN sees all 4 channels
+  const allChannels = ["Facebook", "TikTok", "Shopee", "Web/App"];
+  const userChannels = user.role === "ADMIN" ? allChannels : (user.channels || []).filter(Boolean);
   if (userChannels.length === 0) {
     return (
       <section className="section" style={{ textAlign: "center", padding: 40 }}>
