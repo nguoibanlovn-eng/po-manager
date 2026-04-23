@@ -75,11 +75,11 @@ export default function PushSubscribe() {
     }
   }, []);
 
-  if (status === "subscribed" || status === "unsupported" || status === "loading") return null;
+  if (status === "subscribed" || status === "loading") return null;
+  if (status === "denied") return null;
 
-  if (status === "denied") return null; // Can't do anything
+  if (status === "unsupported") return null; // TODO: remove after debug
 
-  // Show banner prompting user to enable notifications
   return (
     <div style={{
       position: "fixed", bottom: 70, left: 10, right: 10, zIndex: 180,
