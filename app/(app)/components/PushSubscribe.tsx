@@ -49,7 +49,12 @@ export default function PushSubscribe() {
     if (ran.current) return;
     ran.current = true;
 
-    if (!VAPID_KEY || !("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+    if (!VAPID_KEY || !("serviceWorker" in navigator)) {
+      setStatus("unsupported");
+      return;
+    }
+    // iOS PWA may not have PushManager but has Notification
+    if (!("PushManager" in window) && !("Notification" in window)) {
       setStatus("unsupported");
       return;
     }
