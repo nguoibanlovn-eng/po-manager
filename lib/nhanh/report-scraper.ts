@@ -110,6 +110,7 @@ async function fetchReport(
 const CHANNEL_NAMES: Record<number, string> = {
   1: "Admin",
   5: "API",
+  10: "API",    // Nhanh dùng cả ID 5 và 10 cho API/Web orders
   20: "Facebook",
   42: "Shopee",
   48: "TikTok",
