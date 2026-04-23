@@ -310,11 +310,24 @@ async function _getYearlySummary(year: number) {
   }
 
   // Ads spend by month (FB + Shopee + TikTok BM + TikTok GMV Max)
-  const [{ data: fbAds }, { data: spAds }, { data: tkAds }, { data: gmvAds }] = await Promise.all([
-    db.from("ads_cache").select("date, spend").gte("date", from).lte("date", to),
-    db.from("shopee_ads").select("date, spend").gte("date", from).lte("date", to),
-    db.from("tiktok_ads").select("date, spend").gte("date", from).lte("date", to),
-    db.from("tiktok_gmv_max").select("date, spend").gte("date", from).lte("date", to),
+  // Paginate shopee_ads (can have 7000+ rows/year)
+  async function paginateAds(table: string) {
+    const all: Array<{ date: string; spend: number }> = [];
+    let off = 0;
+    while (true) {
+      const { data: page } = await db.from(table).select("date, spend").gte("date", from).lte("date", to).range(off, off + 999);
+      if (!page || page.length === 0) break;
+      all.push(...(page as Array<{ date: string; spend: number }>));
+      if (page.length < 1000) break;
+      off += 1000;
+    }
+    return all;
+  }
+  const [fbAds, spAds, tkAds, gmvAds] = await Promise.all([
+    paginateAds("ads_cache"),
+    paginateAds("shopee_ads"),
+    paginateAds("tiktok_ads"),
+    paginateAds("tiktok_gmv_max"),
   ]);
 
   const adsByMonth = new Map<string, { fb: number; shopee: number; tiktok: number; total: number }>();
