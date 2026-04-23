@@ -288,7 +288,8 @@ td{padding:7px 10px;vertical-align:middle}
 .dash-desktop-only { display: block; }
 
 /* ═══ BOTTOM NAV ═══ */
-#bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:calc(56px + env(safe-area-inset-bottom, 20px));background:#fff;border-top:1px solid #E2E8F0;z-index:200;align-items:flex-start;padding:6px 4px 0;padding-bottom:calc(env(safe-area-inset-bottom, 20px));box-shadow:0 -2px 10px rgba(0,0,0,.05)}
+#bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #E2E8F0;z-index:200;align-items:flex-start;padding:6px 4px 24px;box-shadow:0 -2px 10px rgba(0,0,0,.05)}
+@supports(padding-bottom: env(safe-area-inset-bottom)) { #bottom-nav { padding-bottom: calc(24px + env(safe-area-inset-bottom)); } }
 .bn-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:none;border:none;cursor:pointer;color:#94a3b8;font-size:9px;font-weight:600;padding:6px 0;min-width:44px;min-height:44px;transition:color .15s}
 .bn-item.active{color:#4F46E5}
 .bn-item.active,.bn-item:active{color:#3B82F6}
