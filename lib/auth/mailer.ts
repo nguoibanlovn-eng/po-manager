@@ -25,7 +25,7 @@ export async function sendMail(opts: {
   html?: string;
   fromName?: string;
 }): Promise<void> {
-  const from = `"${opts.fromName || "Lỗ Vũ PO Manager"}" <${process.env.GMAIL_USER}>`;
+  const from = `"${opts.fromName || "Lỗ Vũ Manager"}" <${process.env.GMAIL_USER}>`;
   await transporter().sendMail({
     from,
     to: opts.to,

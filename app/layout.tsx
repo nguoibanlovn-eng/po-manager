@@ -10,14 +10,14 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "PO Manager v7 · Lỗ Vũ",
-  description: "Hệ thống quản lý nhập hàng",
+  title: "Lỗ Vũ Manager",
+  description: "Hệ thống quản lý Lỗ Vũ",
   manifest: "/manifest.json",
   themeColor: "#0f172a",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "PO Manager",
+    title: "Lỗ Vũ Manager",
   },
 };
 

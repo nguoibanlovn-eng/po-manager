@@ -46,7 +46,7 @@ export default function LoginPage() {
         <div className="login-logo" style={{ marginBottom: 8 }}>
           <img src="/logo-lovu.jpg" alt="Lỗ Vũ" style={{ width: 180, height: "auto", borderRadius: 8 }} />
         </div>
-        <div className="login-sub">Hệ thống quản lý nhập hàng v7.0</div>
+        <div className="login-sub">Lỗ Vũ Manager</div>
         <div className="login-divider" />
 
         {step === "email" ? (

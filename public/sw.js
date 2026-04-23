@@ -1,10 +1,10 @@
-// Service Worker for PO Manager PWA
+// Service Worker for Lỗ Vũ Manager PWA
 const CACHE_NAME = "po-manager-v4";
 
 // ═══ PUSH NOTIFICATIONS ═══
 self.addEventListener("push", (event) => {
   const data = event.data ? event.data.json() : {};
-  const title = data.title || "PO Manager";
+  const title = data.title || "Lỗ Vũ Manager";
   const options = {
     body: data.body || "",
     icon: "/icon-192.png",

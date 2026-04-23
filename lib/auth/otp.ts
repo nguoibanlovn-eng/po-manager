@@ -15,7 +15,7 @@ function genCode(): string {
 
 function renderEmail(name: string, code: string): string {
   return `<div style="font-family:sans-serif;max-width:400px">
-  <h2 style="color:#2563EB">Mã đăng nhập PO Manager</h2>
+  <h2 style="color:#2563EB">Mã đăng nhập Lỗ Vũ Manager</h2>
   <p>Xin chào <b>${name}</b>,</p>
   <div style="font-size:36px;font-weight:900;letter-spacing:8px;background:#EFF6FF;padding:16px;border-radius:10px;text-align:center;margin:16px 0;border:2px solid #BFDBFE">${code}</div>
   <p style="color:#666">Mã có hiệu lực <b>10 phút</b>.</p>
