@@ -153,6 +153,7 @@ function MobileBottomNav({ user }: { user: AppUser }) {
     {
       title: "KINH DOANH",
       items: [
+        { href: "/sales-dash", label: "Dashboard kênh", dot: "#3B82F6" },
         { href: "/fb-pages", label: "Facebook", dot: "#1877F2" },
         { href: "/sales-leader", label: "TikTok", dot: "#18181B" },
         { href: "/shopee-ads", label: "Shopee", dot: "#EE4D2D" },
