@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import PushSubscribe from "./components/PushSubscribe";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { type AppUser } from "@/lib/auth/user";
@@ -110,6 +111,7 @@ export default function Shell({
       </div>
 
       {/* Mobile bottom nav */}
+      <PushSubscribe />
       <MobileBottomNav user={user} />
     </>
   );

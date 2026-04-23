@@ -1,5 +1,35 @@
 // Service Worker for PO Manager PWA
-const CACHE_NAME = "po-manager-v3";
+const CACHE_NAME = "po-manager-v4";
+
+// ═══ PUSH NOTIFICATIONS ═══
+self.addEventListener("push", (event) => {
+  const data = event.data ? event.data.json() : {};
+  const title = data.title || "PO Manager";
+  const options = {
+    body: data.body || "",
+    icon: "/icon-192.png",
+    badge: "/icon-192.png",
+    data: { url: data.url || "/dash" },
+    vibrate: [200, 100, 200],
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || "/dash";
+  event.waitUntil(
+    clients.matchAll({ type: "window" }).then((windowClients) => {
+      for (const client of windowClients) {
+        if (client.url.includes(self.location.origin) && "focus" in client) {
+          client.navigate(url);
+          return client.focus();
+        }
+      }
+      return clients.openWindow(url);
+    })
+  );
+});
 
 // Assets to pre-cache on install
 const PRECACHE_URLS = ["/dash", "/login"];
