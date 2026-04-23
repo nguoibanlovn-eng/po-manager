@@ -5,6 +5,9 @@ export default async function AppHome() {
   const u = await getCurrentUser();
   if (!u) redirect("/login");
 
-  // All roles → dashboard first. Other pages accessible via menu.
+  // KD staff → channel dashboard. Others → admin dashboard.
+  if (["NV_KD", "LEADER_KD"].includes(u.role) && u.channels?.length > 0) {
+    redirect("/sales-dash");
+  }
   redirect("/dash");
 }

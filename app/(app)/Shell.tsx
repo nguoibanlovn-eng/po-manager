@@ -138,8 +138,10 @@ function MobileBottomNav({ user }: { user: AppUser }) {
     inventory: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>,
     menu: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>,
   };
+  const isStaffKD = ["NV_KD", "LEADER_KD"].includes(mainRole);
+  const dashBase = isStaffKD ? "/sales-dash" : "/dash?view=day";
   const tabs = [
-    { href: "/dash?view=day", label: "Ngày", iconKey: "day", match: (p: string) => p === "/dash" },
+    { href: dashBase, label: "Ngày", iconKey: "day", match: (p: string) => isStaffKD ? p === "/sales-dash" : p === "/dash" },
     { href: "/dash?view=month", label: "Tháng", iconKey: "month", match: (p: string) => false },
     { href: "/dash?view=year", label: "Năm", iconKey: "year", match: (p: string) => false },
     { href: "/inventory", label: "Tồn kho", iconKey: "inventory", match: (p: string) => p === "/inventory" },
