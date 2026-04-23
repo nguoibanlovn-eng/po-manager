@@ -260,24 +260,34 @@ export async function syncNhanhReport(opts: {
       continue;
     }
 
-    // 2b. Don't overwrite good revenue_expected with zeros
-    const newExpectedTotal = rows.reduce((s, r) => s + Number(r.revenue_expected || 0), 0);
-    if (newExpectedTotal === 0 && (existingCount || 0) > 0) {
-      const { data: existingSample } = await db.from("sales_sync")
-        .select("revenue_expected")
-        .eq("period_from", dateStr).eq("period_to", dateStr)
-        .gt("revenue_expected", 0)
-        .limit(1);
-      if (existingSample && existingSample.length > 0) {
-        logs.push(`[nhanhReport] ${dateStr}: create fetch returned 0 expected but existing has data, skipped`);
-        continue;
-      }
-    }
+    // 2b. revenue_expected preservation handled in Step 3 (merge before write)
 
-    // ── Step 3: All checks passed — delete old + write new ──
-    await db.from("sales_sync").delete().eq("period_from", dateStr).eq("period_to", dateStr);
-
+    // ── Step 3: Upsert (no delete) — preserve existing revenue_expected ──
+    // If new row has revenue_expected=0 but DB has >0, keep DB value
     if (rows.length) {
+      // Load existing expected values to merge
+      const { data: existingRows } = await db.from("sales_sync")
+        .select("channel, source, revenue_expected")
+        .eq("period_from", dateStr).eq("period_to", dateStr);
+      const existingExpMap = new Map<string, number>();
+      for (const r of existingRows || []) {
+        const key = `${r.channel}|${r.source}`;
+        if (Number(r.revenue_expected || 0) > 0) existingExpMap.set(key, Number(r.revenue_expected));
+      }
+
+      // Merge: keep existing expected if new is 0
+      for (const row of rows) {
+        if (Number(row.revenue_expected || 0) === 0) {
+          const key = `${row.channel}|${row.source}`;
+          const existingExp = existingExpMap.get(key);
+          if (existingExp && existingExp > 0) {
+            row.revenue_expected = existingExp;
+          }
+        }
+      }
+
+      // Delete old + write new (now with preserved expected)
+      await db.from("sales_sync").delete().eq("period_from", dateStr).eq("period_to", dateStr);
       for (let i = 0; i < rows.length; i += 200) {
         const chunk = rows.slice(i, i + 200);
         const { error } = await db
