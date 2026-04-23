@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/user";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import webpush from "web-push";
 
-webpush.setVapidDetails(
-  "mailto:admin@vuabanlo.vn",
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!,
-);
+// Dynamic import to avoid build issues on edge
+async function getWebPush() {
+  const webpush = (await import("web-push")).default;
+  webpush.setVapidDetails(
+    "mailto:admin@vuabanlo.vn",
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+    process.env.VAPID_PRIVATE_KEY!,
+  );
+  return webpush;
+}
 
 export async function POST(req: Request) {
   // Allow cron or admin
@@ -26,6 +30,7 @@ export async function POST(req: Request) {
   const db = supabaseAdmin();
   const { data: subs } = await db.from("push_subscriptions").select("endpoint, keys");
 
+  const webpush = await getWebPush();
   let sent = 0, failed = 0;
   for (const sub of subs || []) {
     try {
