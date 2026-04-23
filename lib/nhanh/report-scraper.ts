@@ -287,8 +287,8 @@ export async function syncNhanhReport(opts: {
         }
       }
 
-      // UPSERT only — no DELETE. Trigger protects revenue_expected on UPDATE.
-      // Old rows not in new data stay (harmless, will be overwritten next full sync).
+      // DELETE old + INSERT new. DB triggers protect revenue_expected on both UPDATE and INSERT.
+      await db.from("sales_sync").delete().eq("period_from", dateStr).eq("period_to", dateStr);
       for (let i = 0; i < rows.length; i += 200) {
         const chunk = rows.slice(i, i + 200);
         const { error } = await db
