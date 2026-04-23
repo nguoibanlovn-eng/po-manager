@@ -36,7 +36,7 @@ export default function DashMobileWrapper({
     if (cache.current[key]) return;
     try {
       const viewParam = key === "day" ? "day" : key === "month" ? "month" : "year";
-      const res = await fetch(`/api/dash/mobile-data?view=${viewParam}`);
+      const res = await fetch(`/api/dash/mobile-data?view=${viewParam}`, { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
         cache.current[key] = data[key];
@@ -85,7 +85,7 @@ export default function DashMobileWrapper({
   );
 
   return (
-    <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+    <div className="dash-mobile-only" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       {/* Pull-to-refresh indicator */}
       {refreshing && (
         <div style={{ position: "fixed", top: 50, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "#1F2937", color: "#fff", padding: "6px 16px", borderRadius: 20, fontSize: 12, fontWeight: 600 }}>
