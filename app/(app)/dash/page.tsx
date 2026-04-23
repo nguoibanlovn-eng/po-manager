@@ -5,10 +5,7 @@ import { getCurrentUser } from "@/lib/auth/user";
 import { dateVN } from "@/lib/helpers";
 import { formatDate, formatVND, formatVNDCompact } from "@/lib/format";
 import AutoSyncToday from "../components/AutoSyncToday";
-import DashDaySwitch from "./DashDaySwitch";
-import DashMonthSwitch from "./DashMonthSwitch";
-import DashYearSwitch from "./DashYearSwitch";
-import DashMobileWrapper from "./DashMobileWrapper";
+import DashMobileTabs from "./DashMobileTabs";
 import type { DashDayMobileProps } from "./DashDayMobile";
 import type { DashMonthMobileProps } from "./DashMonthMobile";
 import type { DashYearMobileProps } from "./DashYearMobile";
@@ -368,7 +365,7 @@ export default async function DashPage({
 
     return (
       <section className="section" id="dash-day">
-        <DashDaySwitch mobileProps={{
+        <DashMobileTabs currentView="day" dataJson={JSON.stringify({
           today: today, prevDay: prevDay, nextDay: nextDay, dayOfWeek: dayOfWeek, displayDate: displayDate,
           revTotal: revToday.total, revOrders: revToday.totalOrders, revExpected: revToday.totalExpected,
           revYesterday: revYesterday.total, revChange: revChange, revPct: revPct, dailyTarget: dailyTarget, monthlyAvg: monthlyAvg,
@@ -378,7 +375,7 @@ export default async function DashPage({
           arrivedCount: arrivedToday.length, arrivedValue: arrivedTodayValue, arrivedYesterdayCount: arrivedYesterday.length,
           damageCount: damageItems.length, damageValue: damageItems.reduce((s, d) => s + Number(d.damage_amount || 0), 0),
           tasksTotal: tasksTotal, tasksDone: tasksDone, monthRevenue: revMonth.total, monthTarget: totalTarget,
-        }} />
+        } satisfies DashDayMobileProps)} />
         <AutoSyncToday extraSyncs={["/api/tiktok/sync-ads", "/api/tiktok/sync-gmv-max"]} />
         {/* ─── HEADER ─── */}
         <div className="page-hdr">
@@ -886,13 +883,13 @@ export default async function DashPage({
 
     return (
       <section className="section" id="dash-year">
-        <DashYearSwitch mobileProps={{
+        <DashMobileTabs currentView="year" dataJson={JSON.stringify({
           year: currentYear, nowMonth, yearTarget: yearly.yearTarget, cumRevenue: yearly.cumRevenue,
           prevYearRev, growthVsPrev, cumAdsTotal, adsRevPct: adsRevPctYear,
           months: yearly.months.map(m => ({ month: m.month, revenue: m.revenue, target: m.target, ads: m.ads, byChannel: m.byChannel })),
           channels: YEAR_CHANNELS.map(ch => ({ name: ch.label, abbr: ch.abbr, color: ch.color, rev: chRevCum[ch.key] || 0, target: chTargets[ch.key] || 0, ads: ch.key === "facebook" ? cumAdsFb : ch.key === "tiktok" ? cumAdsTiktok : ch.key === "shopee" ? cumAdsShopee : 0 })),
           sourcesByChannel: yearRevData.sourcesByChannel,
-        }} />
+        } satisfies DashYearMobileProps)} />
         <AutoSyncToday />
         {/* ─── HEADER ─── */}
         <div className="page-hdr">
@@ -1264,7 +1261,7 @@ export default async function DashPage({
 
   return (
     <section className="section" id="dash-month-view">
-      <DashMonthSwitch mobileProps={{
+      <DashMobileTabs currentView="month" dataJson={JSON.stringify({
         month, lastDay, dayOfMonth: Math.min(new Date().getDate(), lastDay),
         revTotal: rm.total, revOrders: rm.totalOrders, revExpected: rm.totalExpected,
         totalTarget: (fbTarget || 0) + (tkTarget || 0) + (spTarget || 0) + (wbTarget || 0),
@@ -1279,7 +1276,7 @@ export default async function DashPage({
         sourcesByChannel: rm.sourcesByChannel,
         outstanding: st.finance.outstanding,
         damageItems: st.damage.pendingItems, damageValue: st.damage.pendingValue,
-      }} />
+      } satisfies DashMonthMobileProps)} />
       <AutoSyncToday />
       <div className="page-hdr">
         <div>
