@@ -70,6 +70,15 @@ export async function POST(req: Request) {
     results.fb_insights = { ok: false, error: (e as Error).message };
   }
 
+  // Sync Shopee Ads from API
+  try {
+    const { syncShopeeAdsDaily } = await import("@/lib/shopee/sync-ads");
+    const shopeeAds = await syncShopeeAdsDaily(); // default: yesterday
+    results.shopee_ads = { ok: shopeeAds.ok, rows: shopeeAds.rows };
+  } catch (e) {
+    results.shopee_ads = { ok: false, error: (e as Error).message };
+  }
+
   return NextResponse.json({ ok: true, duration_ms: Date.now() - t0, results });
 }
 

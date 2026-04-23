@@ -13,6 +13,7 @@ export function proxy(request: NextRequest) {
     path.startsWith("/api/auth") ||
     path.startsWith("/api/cron/") ||
     (path.startsWith("/api/nhanh/sync-") && request.headers.get("authorization")?.startsWith("Bearer ")) ||
+    (path.startsWith("/api/shopee/sync-") && request.headers.get("authorization")?.startsWith("Bearer ")) ||
     path.startsWith("/api/tiktok-shop/callback") ||
     path.startsWith("/api/tiktok/callback") ||
     path.startsWith("/api/shopee/callback") ||
