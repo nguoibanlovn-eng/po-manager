@@ -94,17 +94,11 @@ export async function getDashboardStats(monthKey?: string): Promise<DashStats> {
   const adSpend = (ads || []).reduce((s, a) => s + Number(a.spend || 0), 0);
   const fromAds = (ads || []).reduce((s, a) => s + Number(a.purchase_value || 0), 0);
 
-  // Paginate shopee_ads (can have 1000+ rows/month)
-  const shopeeAdsAll: Array<{ spend: number }> = [];
-  let spOff = 0;
-  while (true) {
-    const { data: spPage } = await db.from("shopee_ads").select("spend").gte("date", from).lte("date", to).range(spOff, spOff + 999);
-    if (!spPage || spPage.length === 0) break;
-    shopeeAdsAll.push(...(spPage as Array<{ spend: number }>));
-    if (spPage.length < 1000) break;
-    spOff += 1000;
-  }
-  const shopeeAdSpend = shopeeAdsAll.reduce((s, a) => s + Number(a.spend || 0), 0);
+  // Shopee ads: use "TỔNG (API)" rows only to avoid double-counting with CSV campaign rows
+  const { data: shopeeAdsApi } = await db.from("shopee_ads").select("spend")
+    .eq("campaign_name", "TỔNG (API)")
+    .gte("date", from).lte("date", to);
+  const shopeeAdSpend = (shopeeAdsApi || []).reduce((s, a) => s + Number(a.spend || 0), 0);
   const { data: shopeeDaily = [] } = await db
     .from("shopee_daily").select("revenue")
     .gte("date", from).lte("date", to);
@@ -249,14 +243,15 @@ export const getRevenueByChannel = (from: string, to: string) =>
 export async function getDailyAdsTotals(from: string, to: string): Promise<{ date: string; spend: number }[]> {
   const db = supabaseAdmin();
   const byDate = new Map<string, number>();
-  const tables = [
-    { table: "ads_cache", dateCol: "date", spendCol: "spend" },
-    { table: "tiktok_ads", dateCol: "date", spendCol: "spend" },
-    { table: "shopee_ads", dateCol: "date", spendCol: "spend" },
-    { table: "tiktok_gmv_max", dateCol: "date", spendCol: "spend" },
+  // Fetch ads from each platform (shopee filtered to TỔNG API only)
+  const queries = [
+    db.from("ads_cache").select("date, spend").gte("date", from).lte("date", to),
+    db.from("tiktok_ads").select("date, spend").gte("date", from).lte("date", to),
+    db.from("shopee_ads").select("date, spend").eq("campaign_name", "TỔNG (API)").gte("date", from).lte("date", to),
+    db.from("tiktok_gmv_max").select("date, spend").gte("date", from).lte("date", to),
   ];
-  await Promise.all(tables.map(async ({ table }) => {
-    const { data } = await db.from(table).select("date, spend").gte("date", from).lte("date", to);
+  await Promise.all(queries.map(async (q) => {
+    const { data } = await q;
     for (const r of data || []) {
       const d = String(r.date || "").substring(0, 10);
       if (d) byDate.set(d, (byDate.get(d) || 0) + Number(r.spend || 0));
@@ -330,9 +325,16 @@ async function _getYearlySummary(year: number) {
     }
     return all;
   }
+  // Shopee ads: filter "TỔNG (API)" only to avoid double-counting with CSV
+  async function shopeeApiAds() {
+    const { data } = await db.from("shopee_ads").select("date, spend")
+      .eq("campaign_name", "TỔNG (API)")
+      .gte("date", from).lte("date", to);
+    return (data || []) as Array<{ date: string; spend: number }>;
+  }
   const [fbAds, spAds, tkAds, gmvAds] = await Promise.all([
     paginateAds("ads_cache"),
-    paginateAds("shopee_ads"),
+    shopeeApiAds(),
     paginateAds("tiktok_ads"),
     paginateAds("tiktok_gmv_max"),
   ]);
