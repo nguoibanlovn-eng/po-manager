@@ -13,7 +13,7 @@ import type { DashDayMobileProps } from "./DashDayMobile";
 import type { DashMonthMobileProps } from "./DashMonthMobile";
 import type { DashYearMobileProps } from "./DashYearMobile";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60; // Cache page 60s — bấm qua lại instant
 
 const STAGE_LABEL: Record<string, string> = {
   DRAFT: "Nháp", ORDERED: "Đã đặt", ARRIVED: "Hàng về",

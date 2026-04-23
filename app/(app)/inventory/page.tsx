@@ -2,7 +2,7 @@ import { listInventory, getInventoryStats, getInventoryMobileSummary } from "@/l
 import InventoryView from "./InventoryView";
 import InventorySwitch from "./InventorySwitch";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function InventoryPage({
   searchParams,
