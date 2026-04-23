@@ -120,8 +120,10 @@ function MobileBottomNav({ user }: { user: AppUser }) {
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
-  // Clear pending when page actually loads
   useEffect(() => { setPending(null); }, [pathname]);
+
+  // Show full-screen loading overlay when navigating between dash tabs
+  const showLoading = pending !== null;
 
   const mainRole = user.role;
 
@@ -201,26 +203,37 @@ function MobileBottomNav({ user }: { user: AppUser }) {
 
   return (
     <>
+      {/* Loading overlay — shows immediately when switching dash tabs */}
+      {showLoading && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 250, background: "#F8FAFC", display: "flex", flexDirection: "column" }}>
+          <div style={{ background: "linear-gradient(135deg,#1E3A5F,#0F172A)", padding: "14px 14px 16px", color: "#fff" }}>
+            <div style={{ fontSize: 17, fontWeight: 800 }}>Dashboard</div>
+            <div style={{ fontSize: 11, opacity: .6 }}>Đang tải...</div>
+          </div>
+          <div style={{ padding: 12, flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
+            {[140, 80, 100, 100, 100].map((h, i) => (
+              <div key={i} style={{ height: h, borderRadius: i === 0 ? 14 : 12, background: "linear-gradient(90deg,#E2E8F0 25%,#F1F5F9 50%,#E2E8F0 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.5s infinite" }} />
+            ))}
+          </div>
+          <style>{`@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}`}</style>
+        </div>
+      )}
+
       <div id="bottom-nav">
         {tabs.map((t) => {
           const active = isTabActive(t);
           const isPending = pending === t.href;
           return (
-            <button
+            <Link
               key={t.href}
-              className={"bn-item" + (active ? " active" : "")}
-              onClick={() => {
-                if (active) return;
-                setPending(t.href);
-                router.push(t.href);
-              }}
-              style={{ cursor: "pointer", opacity: isPending ? .5 : 1 }}
+              href={t.href}
+              onClick={() => { if (!active) setPending(t.href); }}
+              className={"bn-item" + (active ? " active" : "") + (isPending ? " pending" : "")}
+              style={{ textDecoration: "none" }}
             >
-              {isPending
-                ? <span style={{ fontSize: 14, lineHeight: 1 }}>⏳</span>
-                : <span style={{ fontSize: 18, lineHeight: 1 }}>{t.icon}</span>}
+              <span style={{ fontSize: 18, lineHeight: 1 }}>{t.icon}</span>
               <span style={{ fontSize: 9, fontWeight: 600 }}>{t.label}</span>
-            </button>
+            </Link>
           );
         })}
         <button
