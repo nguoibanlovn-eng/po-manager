@@ -1,6 +1,10 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { dateVN } from "@/lib/helpers";
+
+// Cache duration: 30 seconds — data acceptable to be 30s stale
+const CACHE_TTL = 30;
 
 export type DashStats = {
   orders: {
@@ -142,7 +146,7 @@ export async function getDashboardStats(monthKey?: string): Promise<DashStats> {
 }
 
 /** Revenue by channel from sales_sync (nhanh.vn) for a date range */
-export async function getRevenueByChannel(from: string, to: string) {
+async function _getRevenueByChannel(from: string, to: string) {
   const db = supabaseAdmin();
   // Paginate — Supabase caps at 1000 rows per request
   const allData: Array<{ period_from: string; channel: string; source: string; revenue_net: number; order_net: number; revenue_expected: number }> = [];
@@ -231,6 +235,9 @@ export async function getRevenueByChannel(from: string, to: string) {
   };
 }
 
+export const getRevenueByChannel = (from: string, to: string) =>
+  unstable_cache(() => _getRevenueByChannel(from, to), [`rev-ch-${from}-${to}`], { revalidate: CACHE_TTL })();
+
 /** Daily ads totals (FB + TikTok + Shopee + GMV Max) for a date range */
 export async function getDailyAdsTotals(from: string, to: string): Promise<{ date: string; spend: number }[]> {
   const db = supabaseAdmin();
@@ -252,7 +259,7 @@ export async function getDailyAdsTotals(from: string, to: string): Promise<{ dat
 }
 
 /** Yearly summary: revenue per month + targets per month + ads per month */
-export async function getYearlySummary(year: number) {
+async function _getYearlySummary(year: number) {
   const db = supabaseAdmin();
   const from = `${year}-01-01`;
   const to = `${year}-12-31`;
@@ -350,6 +357,9 @@ export async function getYearlySummary(year: number) {
 
   return { year, months, cumRevenue, cumTarget, cumAds, yearTarget: cumTarget };
 }
+
+export const getYearlySummary = (year: number) =>
+  unstable_cache(() => _getYearlySummary(year), [`yearly-${year}`], { revalidate: CACHE_TTL })();
 
 /** Channel targets aggregated for a full year */
 export async function getYearlyChannelTargets(year: number): Promise<Record<string, number>> {

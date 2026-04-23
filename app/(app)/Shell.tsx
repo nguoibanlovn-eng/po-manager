@@ -117,13 +117,17 @@ export default function Shell({
 
 function MobileBottomNav({ user }: { user: AppUser }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [pending, setPending] = useState<string | null>(null);
+  // Clear pending when page actually loads
+  useEffect(() => { setPending(null); }, [pathname]);
 
   const mainRole = user.role;
 
   // 5 main tabs matching mockup: Ngày, Tháng, Năm, Tồn kho, Menu
   const tabs = [
-    { href: "/dash?view=day", label: "Ngày", icon: "📊", match: (p: string) => p === "/dash" && !p.includes("year") },
+    { href: "/dash?view=day", label: "Ngày", icon: "📊", match: (p: string) => p === "/dash" },
     { href: "/dash?view=month", label: "Tháng", icon: "📅", match: (p: string) => false },
     { href: "/dash?view=year", label: "Năm", icon: "📈", match: (p: string) => false },
     { href: "/inventory", label: "Tồn kho", icon: "📦", match: (p: string) => p === "/inventory" },
@@ -198,17 +202,27 @@ function MobileBottomNav({ user }: { user: AppUser }) {
   return (
     <>
       <div id="bottom-nav">
-        {tabs.map((t) => (
-          <Link
-            key={t.href}
-            href={t.href}
-            className={"bn-item" + (isTabActive(t) ? " active" : "")}
-            style={{ textDecoration: "none" }}
-          >
-            <span style={{ fontSize: 18, lineHeight: 1 }}>{t.icon}</span>
-            <span style={{ fontSize: 9, fontWeight: 600 }}>{t.label}</span>
-          </Link>
-        ))}
+        {tabs.map((t) => {
+          const active = isTabActive(t);
+          const isPending = pending === t.href;
+          return (
+            <button
+              key={t.href}
+              className={"bn-item" + (active ? " active" : "")}
+              onClick={() => {
+                if (active) return;
+                setPending(t.href);
+                router.push(t.href);
+              }}
+              style={{ cursor: "pointer", opacity: isPending ? .5 : 1 }}
+            >
+              {isPending
+                ? <span style={{ fontSize: 14, lineHeight: 1 }}>⏳</span>
+                : <span style={{ fontSize: 18, lineHeight: 1 }}>{t.icon}</span>}
+              <span style={{ fontSize: 9, fontWeight: 600 }}>{t.label}</span>
+            </button>
+          );
+        })}
         <button
           className={"bn-item" + (drawerOpen ? " active" : "")}
           onClick={() => setDrawerOpen(true)}
