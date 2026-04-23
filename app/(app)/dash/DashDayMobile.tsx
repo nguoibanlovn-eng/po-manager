@@ -19,8 +19,8 @@ export type DashDayMobileProps = {
   revPct: number;
   dailyTarget: number;
   monthlyAvg: number;
-  // Channels: {name, revenue, expected, color}[]
-  channels: { name: string; rev: number; exp: number; revYesterday: number; color: string }[];
+  // Channels: {name, revenue, expected, color, dailyTarget}[]
+  channels: { name: string; rev: number; exp: number; revYesterday: number; color: string; dailyTarget: number }[];
   // Ads
   adsTotal: number;
   adsFb: number;
@@ -79,8 +79,37 @@ export default function DashDayMobile(p: DashDayMobileProps) {
         </div>
       </div>
 
+      {/* ── KH NGÀY ── */}
+      {p.dailyTarget > 0 && (
+        <div style={{ margin: "0 10px", padding: "8px 12px", background: "linear-gradient(135deg,#1E3A5F,#0F172A)", borderRadius: "0 0 12px 12px", marginTop: -1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+            <span style={{ fontSize: 9, color: "rgba(255,255,255,.5)", textTransform: "uppercase", letterSpacing: .5 }}>KH ngày</span>
+            <span style={{ fontSize: 13, fontWeight: 800, color: "#fff" }}>{formatVNDCompact(p.dailyTarget)}</span>
+            <span style={{ fontSize: 9, color: p.revTotal >= p.dailyTarget ? "#4ADE80" : "rgba(255,255,255,.5)" }}>
+              {p.revTotal >= p.dailyTarget ? "✓ Đạt" : `Còn ${formatVNDCompact(Math.max(0, p.dailyTarget - p.revTotal))}`}
+            </span>
+          </div>
+          <div style={{ display: "flex", gap: 4 }}>
+            {p.channels.map(ch => {
+              const pct = ch.dailyTarget > 0 ? Math.min(Math.round(ch.rev / ch.dailyTarget * 100), 999) : 0;
+              const achieved = ch.rev >= ch.dailyTarget && ch.dailyTarget > 0;
+              return (
+                <div key={ch.name} style={{ flex: 1, background: "rgba(255,255,255,.08)", borderRadius: 6, padding: "4px 6px", textAlign: "center" }}>
+                  <div style={{ fontSize: 7, color: "rgba(255,255,255,.4)", textTransform: "uppercase" }}>{ch.name.substring(0, 2)}</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: achieved ? "#4ADE80" : "#fff" }}>{formatVNDCompact(ch.dailyTarget)}</div>
+                  <div style={{ height: 2, background: "rgba(255,255,255,.15)", borderRadius: 1, marginTop: 2, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${Math.min(pct, 100)}%`, background: achieved ? "#4ADE80" : pct >= 70 ? "#FBBF24" : "#F87171", borderRadius: 1 }} />
+                  </div>
+                  <div style={{ fontSize: 7, color: achieved ? "#4ADE80" : "rgba(255,255,255,.4)", marginTop: 1 }}>{pct}%</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* ── HERO: DT Thành công ── */}
-      <div style={{ background: "linear-gradient(135deg,#059669,#10B981)", margin: "0 10px", borderRadius: 14, padding: 14, color: "#fff", marginTop: -1 }}>
+      <div style={{ background: "linear-gradient(135deg,#059669,#10B981)", margin: "8px 10px 0", borderRadius: 14, padding: 14, color: "#fff" }}>
         <div style={{ fontSize: 11, opacity: .8 }}>DOANH THU THÀNH CÔNG</div>
         <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: -1 }}>{formatVNDCompact(p.revTotal)}</div>
         <div style={{ fontSize: 11, opacity: .7 }}>{p.revOrders.toLocaleString("vi-VN")} đơn thành công</div>

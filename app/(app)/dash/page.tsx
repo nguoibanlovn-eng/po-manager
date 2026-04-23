@@ -181,7 +181,7 @@ export default async function DashPage({
       today, prevDay, nextDay, dayOfWeek, displayDate,
       revTotal: revToday.total, revOrders: revToday.totalOrders, revExpected: revToday.totalExpected,
       revYesterday: revYesterday.total, revChange, revPct, dailyTarget, monthlyAvg,
-      channels: mainCh.map(ch => ({ name: ch.name, color: ch.color, rev: getChRev(chRevToday, ch.name), exp: getChRev(chExpToday, ch.name), revYesterday: getChRev(chRevYesterday, ch.name) })),
+      channels: mainCh.map(ch => ({ name: ch.name, color: ch.color, rev: getChRev(chRevToday, ch.name), exp: getChRev(chExpToday, ch.name), revYesterday: getChRev(chRevYesterday, ch.name), dailyTarget: 0 })),
       adsTotal: todayAdsTotal, adsFb: todayAdsFb, adsTt: todayAdsTt + todayAdsGmv, adsTtBm: todayAdsTt, adsTtGmv: todayAdsGmv, adsSp: todayAdsSp,
       adsPct: adsPctToday, roas: roasToday, adsYesterday: yesterdayAdsTotal, adsChange,
       arrivedCount: arrivedToday.length, arrivedValue: arrivedTodayValue, arrivedYesterdayCount: arrivedYesterday.length,
@@ -201,7 +201,7 @@ export default async function DashPage({
     const yearProps: DashYearMobileProps = {
       year: currentYear, nowMonth, yearTarget: yearly.yearTarget, cumRevenue: yearly.cumRevenue,
       prevYearRev, growthVsPrev, cumAdsTotal, adsRevPct: adsRevPctYear,
-      months: yearly.months.map(mm => ({ month: mm.month, revenue: mm.revenue, target: mm.target, ads: mm.ads, byChannel: mm.byChannel })),
+      months: yearly.months.map(mm => ({ month: mm.month, revenue: mm.revenue, target: mm.target, ads: mm.ads, byChannel: mm.byChannel, channelTargets: mm.channelTargets })),
       channels: YEAR_CH.map(ch => ({ name: ch.label, abbr: ch.abbr, color: ch.color, rev: chRevCum[ch.key] || 0, target: chTargets[ch.key] || 0, ads: ch.key === "facebook" ? cumAdsFb : ch.key === "tiktok" ? cumAdsTiktok : ch.key === "shopee" ? cumAdsShopee : 0 })),
       sourcesByChannel: revMonth.sourcesByChannel,
     };
@@ -372,7 +372,7 @@ export default async function DashPage({
           today: today, prevDay: prevDay, nextDay: nextDay, dayOfWeek: dayOfWeek, displayDate: displayDate,
           revTotal: revToday.total, revOrders: revToday.totalOrders, revExpected: revToday.totalExpected,
           revYesterday: revYesterday.total, revChange: revChange, revPct: revPct, dailyTarget: dailyTarget, monthlyAvg: monthlyAvg,
-          channels: mainChannels.map(ch => ({ name: ch.name, color: ch.color, rev: getChRev(chRevToday, ch.name), exp: getChVal(chExpToday, ch.name), revYesterday: getChRev(chRevYesterday, ch.name) })),
+          channels: mainChannels.map(ch => ({ name: ch.name, color: ch.color, rev: getChRev(chRevToday, ch.name), exp: getChVal(chExpToday, ch.name), revYesterday: getChRev(chRevYesterday, ch.name), dailyTarget: ({ Facebook: fbTarget, TikTok: tkTarget, Shopee: spTarget, "Web/App": wbTarget }[ch.name] || 0) / daysInMonth })),
           adsTotal: todayAdsTotal, adsFb: todayAdsFb, adsTt: todayAdsTt + todayAdsGmv, adsTtBm: todayAdsTt, adsTtGmv: todayAdsGmv, adsSp: todayAdsSp,
           adsPct: adsPctToday, roas: roasToday, adsYesterday: yesterdayAdsTotal, adsChange: adsChange,
           arrivedCount: arrivedToday.length, arrivedValue: arrivedTodayValue, arrivedYesterdayCount: arrivedYesterday.length,
@@ -889,7 +889,7 @@ export default async function DashPage({
         <DashYearSwitch mobileProps={{
           year: currentYear, nowMonth, yearTarget: yearly.yearTarget, cumRevenue: yearly.cumRevenue,
           prevYearRev, growthVsPrev, cumAdsTotal, adsRevPct: adsRevPctYear,
-          months: yearly.months.map(m => ({ month: m.month, revenue: m.revenue, target: m.target, ads: m.ads, byChannel: m.byChannel })),
+          months: yearly.months.map(m => ({ month: m.month, revenue: m.revenue, target: m.target, ads: m.ads, byChannel: m.byChannel, channelTargets: m.channelTargets })),
           channels: YEAR_CHANNELS.map(ch => ({ name: ch.label, abbr: ch.abbr, color: ch.color, rev: chRevCum[ch.key] || 0, target: chTargets[ch.key] || 0, ads: ch.key === "facebook" ? cumAdsFb : ch.key === "tiktok" ? cumAdsTiktok : ch.key === "shopee" ? cumAdsShopee : 0 })),
           sourcesByChannel: yearRevData.sourcesByChannel,
         }} />

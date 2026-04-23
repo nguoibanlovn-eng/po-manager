@@ -342,6 +342,7 @@ async function _getYearlySummary(year: number) {
     month: string; revenue: number; target: number; ads: number;
     adsFb: number; adsShopee: number; adsTiktok: number;
     byChannel: Record<string, number>;
+    channelTargets: Record<string, number>;
   }> = [];
   let cumRevenue = 0, cumTarget = 0, cumAds = 0;
   for (let mi = 1; mi <= 12; mi++) {
@@ -352,7 +353,9 @@ async function _getYearlySummary(year: number) {
     cumRevenue += rev; cumTarget += tgt; cumAds += ad.total;
     const byChannel: Record<string, number> = {};
     for (const [ch, v] of revByMonth.get(m)?.byChannel || []) byChannel[ch] = v;
-    months.push({ month: m, revenue: rev, target: tgt, ads: ad.total, adsFb: ad.fb, adsShopee: ad.shopee, adsTiktok: ad.tiktok, byChannel });
+    const channelTargets: Record<string, number> = {};
+    for (const [ch, v] of targetByMonthChannel.get(m) || []) channelTargets[ch] = v;
+    months.push({ month: m, revenue: rev, target: tgt, ads: ad.total, adsFb: ad.fb, adsShopee: ad.shopee, adsTiktok: ad.tiktok, byChannel, channelTargets });
   }
 
   return { year, months, cumRevenue, cumTarget, cumAds, yearTarget: cumTarget };
