@@ -49,23 +49,29 @@ export default function PushSubscribe() {
     if (ran.current) return;
     ran.current = true;
 
-    if (!VAPID_KEY || !("serviceWorker" in navigator)) {
+    const hasSW = "serviceWorker" in navigator;
+    const hasPush = "PushManager" in window;
+    const hasNoti = "Notification" in window;
+    console.log("[Push]", { VAPID_KEY: !!VAPID_KEY, hasSW, hasPush, hasNoti });
+
+    if (!VAPID_KEY || !hasSW) {
+      console.log("[Push] unsupported: no VAPID or SW");
       setStatus("unsupported");
       return;
     }
-    // iOS PWA may not have PushManager but has Notification
-    if (!("PushManager" in window) && !("Notification" in window)) {
+    if (!hasPush && !hasNoti) {
+      console.log("[Push] unsupported: no PushManager or Notification");
       setStatus("unsupported");
       return;
     }
 
-    // Check current permission
-    if (Notification.permission === "granted") {
-      subscribePush().then(() => setStatus("subscribed")).catch(() => setStatus("prompt"));
-    } else if (Notification.permission === "denied") {
+    if (hasNoti && Notification.permission === "granted") {
+      subscribePush().then(() => setStatus("subscribed")).catch((e) => { console.log("[Push] sub err:", e); setStatus("prompt"); });
+    } else if (hasNoti && Notification.permission === "denied") {
       setStatus("denied");
     } else {
       setStatus("prompt");
+      console.log("[Push] showing prompt banner");
     }
   }, []);
 

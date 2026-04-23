@@ -132,11 +132,11 @@ function MobileBottomNav({ user }: { user: AppUser }) {
 
   // 5 main tabs: Ngày, Tháng, Năm, Tồn kho, Menu — flat SVG icons
   const tabIcons: Record<string, React.ReactNode> = {
-    day: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>,
-    month: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><rect x="7" y="13" width="10" height="6" rx="1"/></svg>,
-    year: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
-    inventory: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>,
-    menu: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>,
+    day: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>,
+    month: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><rect x="7" y="13" width="10" height="6" rx="1"/></svg>,
+    year: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
+    inventory: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>,
+    menu: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>,
   };
   const tabs = [
     { href: "/dash?view=day", label: "Ngày", iconKey: "day", match: (p: string) => p === "/dash" },
@@ -145,50 +145,52 @@ function MobileBottomNav({ user }: { user: AppUser }) {
     { href: "/inventory", label: "Tồn kho", iconKey: "inventory", match: (p: string) => p === "/inventory" },
   ];
 
+  // Flat dot icon helper
+  const dot = (color: string) => `color:${color}`;
   const drawerSections = [
     {
       title: "KINH DOANH",
       items: [
-        { href: "/fb-pages", label: "Facebook", icon: "🔵" },
-        { href: "/sales-leader", label: "TikTok", icon: "⚫" },
-        { href: "/shopee-ads", label: "Shopee", icon: "🟠" },
-        { href: "/web-app", label: "Web/App B2B", icon: "🟣" },
-        { href: "/product-info", label: "Thông tin SP", icon: "📱" },
-        { href: "/deploy", label: "Launch SP", icon: "🚀" },
+        { href: "/fb-pages", label: "Facebook", dot: "#1877F2" },
+        { href: "/sales-leader", label: "TikTok", dot: "#18181B" },
+        { href: "/shopee-ads", label: "Shopee", dot: "#EE4D2D" },
+        { href: "/web-app", label: "Web/App B2B", dot: "#6366F1" },
+        { href: "/product-info", label: "Thông tin SP", dot: "#3B82F6" },
+        { href: "/deploy", label: "Launch SP", dot: "#16A34A" },
       ],
     },
     {
       title: "MUA HÀNG",
       items: [
-        { href: "/create", label: "Tạo đơn", icon: "✏️" },
-        { href: "/list", label: "Danh sách đơn", icon: "📋" },
-        { href: "/rd", label: "R&D", icon: "🔬" },
-        { href: "/damage-mgmt", label: "Hàng hỏng", icon: "⚠️" },
+        { href: "/create", label: "Tạo đơn", dot: "#7C3AED" },
+        { href: "/list", label: "Danh sách đơn", dot: "#64748B" },
+        { href: "/rd", label: "R&D", dot: "#D97706" },
+        { href: "/damage-mgmt", label: "Hàng hỏng", dot: "#DC2626" },
       ],
     },
     {
       title: "KỸ THUẬT",
       items: [
-        { href: "/tech", label: "QC & Lên kệ", icon: "✅" },
-        { href: "/returns", label: "Hoàn & Thanh lý", icon: "↩️" },
+        { href: "/tech", label: "QC & Lên kệ", dot: "#16A34A" },
+        { href: "/returns", label: "Hoàn & Thanh lý", dot: "#9CA3AF" },
       ],
     },
     {
       title: "KHÁCH HÀNG",
       items: [
-        { href: "/customers", label: "Khách hàng", icon: "👥" },
-        { href: "/cskh", label: "CSKH", icon: "💬" },
+        { href: "/customers", label: "Khách hàng", dot: "#0EA5E9" },
+        { href: "/cskh", label: "CSKH", dot: "#8B5CF6" },
       ],
     },
     {
       title: "QUẢN TRỊ",
       items: [
-        { href: "/finance", label: "Kế toán", icon: "💰" },
-        { href: "/tasks", label: "Giao việc", icon: "📋" },
-        { href: "/my-tasks", label: "Việc của tôi", icon: "📝" },
+        { href: "/finance", label: "Kế toán", dot: "#16A34A" },
+        { href: "/tasks", label: "Giao việc", dot: "#3B82F6" },
+        { href: "/my-tasks", label: "Việc của tôi", dot: "#D97706" },
         ...(mainRole === "ADMIN" ? [
-          { href: "/admin-users", label: "Người dùng", icon: "👤" },
-          { href: "/admin-settings", label: "Cấu hình", icon: "⚙️" },
+          { href: "/admin-users", label: "Người dùng", dot: "#64748B" },
+          { href: "/admin-settings", label: "Cấu hình", dot: "#9CA3AF" },
         ] : []),
       ],
     },
@@ -298,7 +300,7 @@ function MobileBottomNav({ user }: { user: AppUser }) {
                           background: pathname === it.href ? "#F1F5F9" : "transparent",
                         }}
                       >
-                        <span style={{ fontSize: 16 }}>{it.icon}</span>
+                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: it.dot, flexShrink: 0 }} />
                         <span style={{ fontSize: 13, fontWeight: pathname === it.href ? 700 : 500 }}>{it.label}</span>
                         {pathname === it.href && <span style={{ marginLeft: "auto", width: 6, height: 6, borderRadius: "50%", background: "#3B82F6" }} />}
                       </Link>
