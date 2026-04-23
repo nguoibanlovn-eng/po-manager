@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { type AppUser } from "@/lib/auth/user";
 import { hasPermission, ROLES, type RoleCode } from "@/lib/auth/roles";
@@ -119,8 +119,9 @@ function MobileBottomNav({ user }: { user: AppUser }) {
   const pathname = usePathname();
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const searchParams = useSearchParams();
   const [pending, setPending] = useState<string | null>(null);
-  useEffect(() => { setPending(null); }, [pathname]);
+  useEffect(() => { setPending(null); }, [pathname, searchParams]);
 
   // Show full-screen loading overlay when navigating between dash tabs
   const showLoading = pending !== null;
