@@ -194,7 +194,7 @@ export default function FbPagesView({
           <SyncButton url="/api/fb/sync-ads" label="⟳ Sync Ads" onDone={() => router.refresh()} style={{ background: "#EFF6FF", border: "1px solid #93C5FD" }} />
           <SyncButton url="/api/fb/sync-insights" label="⟳ Sync Insights" onDone={() => router.refresh()} style={{ background: "#F0FDF4", border: "1px solid #86EFAC" }} />
           <SyncButton url="/api/nhanh/sync-sales" label="⟳ Sync Nhanh" body={{ from, to }} onDone={() => router.refresh()} style={{ background: "#FFF7ED", border: "1px solid #FDBA74" }} />
-          <SyncButton url="/api/drive/scan" label="📂 Quét Drive" body={{ from, to }} onDone={() => router.refresh()} style={{ background: "#F3E8FF", border: "1px solid #C084FC" }} />
+          {/* Drive scan removed — using Nhanh report API */}
           <button className="btn btn-ghost btn-xs" onClick={() => router.refresh()}>↻ Tải lại</button>
         </div>
       </div>

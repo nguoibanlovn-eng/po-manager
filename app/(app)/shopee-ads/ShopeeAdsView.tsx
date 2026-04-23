@@ -184,16 +184,11 @@ export default function ShopeeAdsView({
         </div>
         <div className="row" style={{ gap: 6, flexWrap: "wrap", alignItems: "center" }}>
           <SyncButton url="/api/nhanh/sync-sales" label="⟳ Sync Nhanh" body={{ from, to }} onDone={() => router.refresh()} style={{ background: "#FFF7ED", border: "1px solid #FDBA74" }} />
-          <SyncButton url="/api/drive/shopee-ads" label="📂 Quét Drive Ads" body={{ from, to }} onDone={() => router.refresh()} style={{ background: "#F3E8FF", border: "1px solid #C084FC" }} />
-          <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={onUpload} style={{ display: "none" }} />
-          <button className="btn btn-ghost btn-xs" onClick={() => fileRef.current?.click()} disabled={uploading}
-            style={{ background: "#F0FDF4", border: "1px solid #86EFAC" }}>
-            {uploading ? "Uploading..." : "⬆ Upload CSV"}
-          </button>
+          <SyncButton url="/api/shopee/sync-ads" label="⟳ Sync Ads" body={{ from, to }} onDone={() => router.refresh()} style={{ background: "#F3E8FF", border: "1px solid #C084FC" }} />
         </div>
       </div>
 
-      {uploadMsg && <div className={`card ${uploadMsg.startsWith("✓") ? "bar-green" : "bar-red"}`} style={{ marginBottom: 12 }}>{uploadMsg}</div>}
+      {/* Upload CSV removed — using API sync */}
 
       {/* ═══ QUICK FILTERS ═══ */}
       <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>

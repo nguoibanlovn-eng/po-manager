@@ -6,6 +6,8 @@ import { refreshAllShopTokens } from "@/lib/tiktok/shop-api";
 import { syncTiktokAds } from "@/lib/tiktok/sync";
 import { syncAllShopsOrders, syncAllShopsReturns } from "@/lib/tiktok/shop-sync";
 import { refreshAllShopeeTokens } from "@/lib/shopee/api";
+import { syncShopeeAdsDaily } from "@/lib/shopee/sync-ads";
+import { syncGmvMax } from "@/lib/tiktok/gmv-max-sync";
 import { syncProductSales } from "@/lib/nhanh/sync-product-sales";
 import { refreshCustomerStats } from "@/lib/db/refresh-customer-stats";
 
@@ -38,6 +40,8 @@ export async function POST(req: Request) {
     { name: "tiktok_shop_orders", fn: () => syncAllShopsOrders({}) },
     { name: "tiktok_shop_returns", fn: () => syncAllShopsReturns({}) },
     { name: "customer_stats",    fn: () => refreshCustomerStats() },
+    { name: "shopee_ads",       fn: () => syncShopeeAdsDaily({}) },
+    { name: "gmv_max",          fn: () => syncGmvMax({}) },
   ] as const;
 
   const settled = await Promise.allSettled(jobs.map((j) => j.fn()));
