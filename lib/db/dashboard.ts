@@ -94,10 +94,17 @@ export async function getDashboardStats(monthKey?: string): Promise<DashStats> {
   const adSpend = (ads || []).reduce((s, a) => s + Number(a.spend || 0), 0);
   const fromAds = (ads || []).reduce((s, a) => s + Number(a.purchase_value || 0), 0);
 
-  const { data: shopeeAds = [] } = await db
-    .from("shopee_ads").select("spend, revenue")
-    .gte("date", from).lte("date", to);
-  const shopeeAdSpend = (shopeeAds || []).reduce((s, a) => s + Number(a.spend || 0), 0);
+  // Paginate shopee_ads (can have 1000+ rows/month)
+  const shopeeAdsAll: Array<{ spend: number }> = [];
+  let spOff = 0;
+  while (true) {
+    const { data: spPage } = await db.from("shopee_ads").select("spend").gte("date", from).lte("date", to).range(spOff, spOff + 999);
+    if (!spPage || spPage.length === 0) break;
+    shopeeAdsAll.push(...(spPage as Array<{ spend: number }>));
+    if (spPage.length < 1000) break;
+    spOff += 1000;
+  }
+  const shopeeAdSpend = shopeeAdsAll.reduce((s, a) => s + Number(a.spend || 0), 0);
   const { data: shopeeDaily = [] } = await db
     .from("shopee_daily").select("revenue")
     .gte("date", from).lte("date", to);
