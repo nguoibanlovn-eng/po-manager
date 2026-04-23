@@ -168,34 +168,48 @@ export default function WebAppView({
       {/* ═══ TARGET PROGRESS ═══ */}
       <TargetProgressBar channel="Web/App B2B" monthTarget={monthTarget} monthActual={monthActual} monthKey={monthKey} color={BRAND} />
 
-      {/* ═══ KPI CARDS ═══ */}
-      <div className="stat-grid" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))" }}>
-        <div className="stat-card" style={{ borderLeft: `4px solid ${BRAND}` }}>
-          <div className="sl">DOANH THU</div>
-          <div className="sv" style={{ color: "#16A34A" }}>{formatVNDCompact(bySource.total)}</div>
-          <div className="ss">{bySource.sources.reduce((s, src) => s + src.orders, 0).toLocaleString("vi-VN")} đơn</div>
-        </div>
-        <div className="stat-card" style={{ borderLeft: "4px solid #DC2626" }}>
-          <div className="sl">CHI PHÍ ADS</div>
-          <div className="sv" style={{ color: summary.spend > 0 ? "#DC2626" : "#9CA3AF" }}>{summary.spend > 0 ? formatVNDCompact(summary.spend) : "—"}</div>
-          <div className="ss">{summary.spend > 0 ? `${summary.clicks.toLocaleString("vi-VN")} clicks` : "Chờ kết nối"}</div>
-        </div>
-        <div className="stat-card" style={{ borderLeft: "4px solid #D97706" }}>
-          <div className="sl">ROAS</div>
-          <div className="sv" style={{ color: roas >= 10 ? "#16A34A" : roas > 0 ? "#D97706" : "#9CA3AF" }}>{roas > 0 ? `${roas.toFixed(1)}x` : "—"}</div>
-          <div className="ss">DT / Ads</div>
-        </div>
-        <div className="stat-card" style={{ borderLeft: "4px solid #16A34A" }}>
-          <div className="sl">FOLLOWERS RÒNG</div>
-          <div className="sv" style={{ color: netFans >= 0 ? "#16A34A" : "#DC2626" }}>{netFans > 0 ? "+" : ""}{netFans > 0 ? netFans.toLocaleString("vi-VN") : insightsTotals.new_fans > 0 ? netFans.toLocaleString("vi-VN") : "—"}</div>
-          <div className="ss">+{insightsTotals.new_fans.toLocaleString("vi-VN")} mới / -{insightsTotals.lost_fans.toLocaleString("vi-VN")} bỏ</div>
-        </div>
-        <div className="stat-card" style={{ borderLeft: "4px solid #3B82F6" }}>
-          <div className="sl">REACH</div>
-          <div className="sv" style={{ color: "#3B82F6" }}>{insightsTotals.reach > 0 ? insightsTotals.reach.toLocaleString("vi-VN") : "—"}</div>
-          <div className="ss">CTR {ctr > 0 ? `${ctr.toFixed(2)}%` : "—"}</div>
-        </div>
-      </div>
+      {/* ═══ 6 KPI CARDS ═══ */}
+      {(() => {
+        const webOrders = bySource.sources.reduce((s, src) => s + src.orders, 0);
+        const fromDate = new Date(from + "T00:00:00");
+        const toDate = new Date(to + "T00:00:00");
+        const dayCount = Math.max(1, Math.round((toDate.getTime() - fromDate.getTime()) / 86400000) + 1);
+        const avgOrdersPerDay = webOrders / dayCount;
+        return (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8, marginBottom: 12 }}>
+            <div style={{ padding: "10px 14px", borderRadius: 8, background: "#F0FDF4", border: "1px solid #BBF7D0" }}>
+              <div style={{ fontSize: 9, fontWeight: 600, color: "#166534", letterSpacing: ".3px" }}>DT THANH CONG</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: "#166534", margin: "2px 0" }}>{formatVNDCompact(bySource.total)}</div>
+              <div style={{ fontSize: 9, color: "#166534", opacity: 0.7 }}>don giao xong</div>
+            </div>
+            <div style={{ padding: "10px 14px", borderRadius: 8, background: "#FFFBEB", border: "1px solid #FDE68A" }}>
+              <div style={{ fontSize: 9, fontWeight: 600, color: "#92400E", letterSpacing: ".3px" }}>DT DU KIEN</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: "#92400E", margin: "2px 0" }}>{formatVNDCompact(nhanhTotals.revenue)}</div>
+              <div style={{ fontSize: 9, color: "#92400E", opacity: 0.7 }}>tong Nhanh.vn</div>
+            </div>
+            <div style={{ padding: "10px 14px", borderRadius: 8, background: "#fff", border: "1px solid #E5E7EB" }}>
+              <div style={{ fontSize: 9, fontWeight: 600, color: "#374151", letterSpacing: ".3px" }}>SO DON</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: "#374151", margin: "2px 0" }}>{webOrders.toLocaleString("vi-VN")}</div>
+              <div style={{ fontSize: 9, color: "#6B7280" }}>don thanh cong</div>
+            </div>
+            <div style={{ padding: "10px 14px", borderRadius: 8, background: "#fff", border: "1px solid #E5E7EB" }}>
+              <div style={{ fontSize: 9, fontWeight: 600, color: "#374151", letterSpacing: ".3px" }}>TB DON/NGAY</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: "#374151", margin: "2px 0" }}>{avgOrdersPerDay.toFixed(1)}</div>
+              <div style={{ fontSize: 9, color: "#6B7280" }}>{dayCount} ngay</div>
+            </div>
+            <div style={{ padding: "10px 14px", borderRadius: 8, background: summary.spend > 0 ? "#FEF2F2" : "#fff", border: summary.spend > 0 ? "1px solid #FECACA" : "1px solid #E5E7EB" }}>
+              <div style={{ fontSize: 9, fontWeight: 600, color: summary.spend > 0 ? "#991B1B" : "#374151", letterSpacing: ".3px" }}>CHI PHI ADS</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: summary.spend > 0 ? "#991B1B" : "#9CA3AF", margin: "2px 0" }}>{summary.spend > 0 ? formatVNDCompact(summary.spend) : "---"}</div>
+              <div style={{ fontSize: 9, color: summary.spend > 0 ? "#991B1B" : "#6B7280", opacity: 0.7 }}>{summary.spend > 0 ? `ROAS ${roas.toFixed(1)}x` : "Cho ket noi"}</div>
+            </div>
+            <div style={{ padding: "10px 14px", borderRadius: 8, background: "#fff", border: "1px solid #E5E7EB" }}>
+              <div style={{ fontSize: 9, fontWeight: 600, color: "#374151", letterSpacing: ".3px" }}>NGUON</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: "#374151", margin: "2px 0" }}>{bySource.sources.length}</div>
+              <div style={{ fontSize: 9, color: "#6B7280" }}>{bySource.sources.length > 0 ? bySource.sources[0].name : "---"}</div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ═══ CHART ═══ */}
       {allDates.length > 0 && (

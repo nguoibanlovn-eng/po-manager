@@ -223,12 +223,49 @@ export default function ShopeeAdsView({
         ))}
       </div>
 
-      {/* ═══ KPI CARDS ═══ */}
-      <div className="stat-grid">
-        <div className="stat-card" style={{ borderLeft: "3px solid #EE4D2D" }}><div className="sl">DT SHOPEE (NHANH)</div><div className="sv">{formatVND(nhanhTotals.revenue)}</div><div className="ss">nhanh.vn</div></div>
-        <div className="stat-card" style={{ borderLeft: "3px solid #F57C51" }}><div className="sl">CHI PHÍ ADS</div><div className="sv">{formatVND(totals.spend)}</div><div className="ss">upload CSV</div></div>
-        <div className="stat-card" style={{ borderLeft: "3px solid #D73A1A" }}><div className="sl">ROAS</div><div className="sv" style={{ color: roas >= 5 ? "var(--green)" : "var(--red)" }}>{roas.toFixed(1)}x</div><div className="ss">DT/ads</div></div>
-        <div className="stat-card" style={{ borderLeft: "3px solid #FF6633" }}><div className="sl">LƯỢT CLICK</div><div className="sv">{totals.clicks.toLocaleString("vi-VN")}</div></div>
+      {/* ═══ 6 KPI CARDS ═══ */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8, marginBottom: 12 }}>
+        <div style={{ padding: "10px 14px", borderRadius: 8, background: "#F0FDF4", border: "1px solid #BBF7D0" }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "#166534", letterSpacing: ".3px" }}>DT SHOPEE</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: "#166534", margin: "2px 0" }}>{formatVNDCompact(nhanhTotals.revenue)}</div>
+          <div style={{ fontSize: 9, color: "#166534", opacity: 0.7 }}>nhanh.vn</div>
+        </div>
+        <div style={{ padding: "10px 14px", borderRadius: 8, background: "#FEF2F2", border: "1px solid #FECACA" }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "#991B1B", letterSpacing: ".3px" }}>CHI PHI ADS</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: "#991B1B", margin: "2px 0" }}>{formatVNDCompact(totals.spend)}</div>
+          <div style={{ fontSize: 9, color: "#991B1B", opacity: 0.7 }}>{totals.impressions.toLocaleString("vi-VN")} impressions</div>
+        </div>
+        {(() => {
+          const roasStyle = roas >= 10 ? { background: "#F0FDF4", border: "1px solid #BBF7D0", color: "#166534" } : roas >= 5 ? { background: "#FFFBEB", border: "1px solid #FDE68A", color: "#92400E" } : { background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B" };
+          return (
+            <div style={{ padding: "10px 14px", borderRadius: 8, ...roasStyle }}>
+              <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: ".3px" }}>ROAS</div>
+              <div style={{ fontSize: 20, fontWeight: 800, margin: "2px 0" }}>{roas.toFixed(1)}x</div>
+              <div style={{ fontSize: 9, opacity: 0.7 }}>DT / ads</div>
+            </div>
+          );
+        })()}
+        <div style={{ padding: "10px 14px", borderRadius: 8, background: "#fff", border: "1px solid #E5E7EB" }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "#374151", letterSpacing: ".3px" }}>LUOT CLICK</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: "#374151", margin: "2px 0" }}>{totals.clicks.toLocaleString("vi-VN")}</div>
+          <div style={{ fontSize: 9, color: "#6B7280" }}>CTR {totals.impressions > 0 ? ((totals.clicks / totals.impressions) * 100).toFixed(2) : "0"}%</div>
+        </div>
+        <div style={{ padding: "10px 14px", borderRadius: 8, background: "#fff", border: "1px solid #E5E7EB" }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "#374151", letterSpacing: ".3px" }}>SO DON HANG</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: "#374151", margin: "2px 0" }}>{nhanhTotals.orders.toLocaleString("vi-VN")}</div>
+          <div style={{ fontSize: 9, color: "#6B7280" }}>don thanh cong</div>
+        </div>
+        {(() => {
+          const adsRatio = nhanhTotals.revenue > 0 ? (totals.spend / nhanhTotals.revenue) * 100 : 0;
+          const ratioStyle = adsRatio <= 8 ? { background: "#F0FDF4", border: "1px solid #BBF7D0", color: "#166534" } : adsRatio <= 15 ? { background: "#FFFBEB", border: "1px solid #FDE68A", color: "#92400E" } : { background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B" };
+          return (
+            <div style={{ padding: "10px 14px", borderRadius: 8, ...ratioStyle }}>
+              <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: ".3px" }}>ADS / DT %</div>
+              <div style={{ fontSize: 20, fontWeight: 800, margin: "2px 0" }}>{adsRatio.toFixed(1)}%</div>
+              <div style={{ fontSize: 9, opacity: 0.7 }}>chi phi / doanh thu</div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* ═══ COMBO CHART: Bar (DT) + Line (Ads) ═══ */}

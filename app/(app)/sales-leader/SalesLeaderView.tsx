@@ -128,32 +128,42 @@ export default function SalesLeaderView({
       {/* ═══ MONTHLY TARGET PROGRESS ═══ */}
       <TargetProgressBar channel="TikTok" monthTarget={monthTarget} monthActual={monthActual} monthKey={monthKey} color="#FE2C55" />
 
-      {/* ═══ KPI CARDS ═══ */}
-      <div className="stat-grid" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))" }}>
-        <div className="stat-card" style={{ borderLeft: "4px solid #25F4EE" }}>
-          <div className="sl">ROAS TỔNG</div>
-          <div className="sv" style={{ color: roas >= 10 ? "var(--green)" : roas >= 5 ? "var(--amber)" : "var(--red)" }}>{roas.toFixed(2)}x</div>
-          <div className="muted" style={{ fontSize: 10 }}>GMV / (BM + GMV Max)</div>
+      {/* ═══ 6 KPI CARDS ═══ */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8, marginBottom: 12 }}>
+        {(() => {
+          const roasStyle = roas >= 10 ? { background: "#F0FDF4", border: "1px solid #BBF7D0", color: "#166534" } : roas >= 5 ? { background: "#FFFBEB", border: "1px solid #FDE68A", color: "#92400E" } : { background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B" };
+          return (
+            <div style={{ padding: "10px 14px", borderRadius: 8, ...roasStyle }}>
+              <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: ".3px" }}>ROAS TỔNG</div>
+              <div style={{ fontSize: 20, fontWeight: 800, margin: "2px 0" }}>{roas.toFixed(2)}x</div>
+              <div style={{ fontSize: 9, opacity: 0.7 }}>GMV / (BM + GMV Max)</div>
+            </div>
+          );
+        })()}
+        <div style={{ padding: "10px 14px", borderRadius: 8, background: "#F0FDF4", border: "1px solid #BBF7D0" }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "#166534", letterSpacing: ".3px" }}>GMV TỔNG</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: "#166534", margin: "2px 0" }}>{formatVNDCompact(nhanhTotals.revenue + gmvTotals.revenue)}</div>
+          <div style={{ fontSize: 9, color: "#166534", opacity: 0.7 }}>Nhanh {formatVNDCompact(nhanhTotals.revenue)} + Max {formatVNDCompact(gmvTotals.revenue)}</div>
         </div>
-        <div className="stat-card" style={{ borderLeft: "4px solid #FE2C55" }}>
-          <div className="sl">GMV TỔNG</div>
-          <div className="sv">{formatVNDCompact(nhanhTotals.revenue + gmvTotals.revenue)}</div>
-          <div className="muted" style={{ fontSize: 10 }}>Nhanh {formatVNDCompact(nhanhTotals.revenue)} + GMV Max {formatVNDCompact(gmvTotals.revenue)}</div>
+        <div style={{ padding: "10px 14px", borderRadius: 8, background: "#FEF2F2", border: "1px solid #FECACA" }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "#991B1B", letterSpacing: ".3px" }}>ADS SPEND</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: "#991B1B", margin: "2px 0" }}>{formatVNDCompact(totalSpend)}</div>
+          <div style={{ fontSize: 9, color: "#991B1B", opacity: 0.7 }}>BM {formatVNDCompact(adsTotals.spend)} + Max {formatVNDCompact(gmvTotals.spend)}</div>
         </div>
-        <div className="stat-card" style={{ borderLeft: "4px solid #000000" }}>
-          <div className="sl">ADS SPEND</div>
-          <div className="sv">{formatVNDCompact(totalSpend)}</div>
-          <div className="muted" style={{ fontSize: 10 }}>BM {formatVNDCompact(adsTotals.spend)} + GMV Max {formatVNDCompact(gmvTotals.spend)}</div>
+        <div style={{ padding: "10px 14px", borderRadius: 8, background: "#FFFBEB", border: "1px solid #FDE68A" }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "#92400E", letterSpacing: ".3px" }}>GMV MAX REV</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: "#92400E", margin: "2px 0" }}>{formatVNDCompact(gmvTotals.revenue)}</div>
+          <div style={{ fontSize: 9, color: "#92400E", opacity: 0.7 }}>{gmvTotals.orders.toLocaleString("vi-VN")} don · ROI {gmvTotals.spend > 0 ? (gmvTotals.revenue / gmvTotals.spend).toFixed(1) : "---"}</div>
         </div>
-        <div className="stat-card" style={{ borderLeft: "4px solid #25F4EE" }}>
-          <div className="sl">GMV MAX REV</div>
-          <div className="sv" style={{ color: "var(--green)" }}>{formatVNDCompact(gmvTotals.revenue)}</div>
-          <div className="muted" style={{ fontSize: 10 }}>{gmvTotals.orders.toLocaleString("vi-VN")} đơn · ROI {gmvTotals.spend > 0 ? (gmvTotals.revenue / gmvTotals.spend).toFixed(1) : "—"}</div>
+        <div style={{ padding: "10px 14px", borderRadius: 8, background: "#fff", border: "1px solid #E5E7EB" }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "#374151", letterSpacing: ".3px" }}>DON THANH CONG</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: "#374151", margin: "2px 0" }}>{(nhanhTotals.orders + gmvTotals.orders).toLocaleString("vi-VN")}</div>
+          <div style={{ fontSize: 9, color: "#6B7280" }}>Nhanh {nhanhTotals.orders} + Max {gmvTotals.orders}</div>
         </div>
-        <div className="stat-card" style={{ borderLeft: "4px solid #FE2C55" }}>
-          <div className="sl">ĐƠN THÀNH CÔNG</div>
-          <div className="sv">{(nhanhTotals.orders + gmvTotals.orders).toLocaleString("vi-VN")}</div>
-          <div className="muted" style={{ fontSize: 10 }}>Nhanh {nhanhTotals.orders} + GMV Max {gmvTotals.orders}</div>
+        <div style={{ padding: "10px 14px", borderRadius: 8, background: "#fff", border: "1px solid #E5E7EB" }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "#374151", letterSpacing: ".3px" }}>CTR / CONVERSION</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: "#374151", margin: "2px 0" }}>{adsTotals.impressions > 0 ? ((adsTotals.clicks / adsTotals.impressions) * 100).toFixed(2) : "0"}%</div>
+          <div style={{ fontSize: 9, color: "#6B7280" }}>{adsTotals.conversions.toLocaleString("vi-VN")} conversions</div>
         </div>
       </div>
 

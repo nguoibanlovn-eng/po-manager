@@ -212,19 +212,44 @@ export default function FbPagesView({
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm page..." style={{ marginLeft: "auto", fontSize: 12, width: 150 }} />
       </div>
 
-      {/* ═══ 10 KPI CARDS ═══ */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 8, marginBottom: 14 }}>
-        <div className="stat-card"><div className="sl">TỔNG KÊNH</div><div className="sv">{pages.length}</div><div className="muted" style={{ fontSize: 10 }}>{pages.length} pages</div></div>
-        <div className="stat-card"><div className="sl">FOLLOWERS MỚI</div><div className="sv" style={{ color: "var(--green)" }}>+{insightsTotals.new_fans.toLocaleString("vi-VN")}</div><div className="muted" style={{ fontSize: 10 }}>tổng kỳ</div></div>
-        <div className="stat-card"><div className="sl">UNFOLLOW</div><div className="sv" style={{ color: "var(--red)" }}>-{insightsTotals.lost_fans.toLocaleString("vi-VN")}</div><div className="muted" style={{ fontSize: 10 }}>tổng kỳ</div></div>
-        <div className="stat-card"><div className="sl">TĂNG RÒNG</div><div className="sv" style={{ color: netFans >= 0 ? "var(--green)" : "var(--red)" }}>{netFans >= 0 ? "+" : ""}{netFans.toLocaleString("vi-VN")}</div><div className="muted" style={{ fontSize: 10 }}>net growth</div></div>
-        <div className="stat-card"><div className="sl">REACH</div><div className="sv">{insightsTotals.reach.toLocaleString("vi-VN")}</div></div>
-
-        <div className="stat-card" style={{ borderLeft: "3px solid #1877F2" }}><div className="sl">DT THÀNH CÔNG</div><div className="sv">{formatVNDCompact(nhanhTotals.revenue)}</div><div className="muted" style={{ fontSize: 10 }}>đơn giao xong</div></div>
-        <div className="stat-card" style={{ borderLeft: "3px solid #F59E0B" }}><div className="sl">DT DỰ KIẾN</div><div className="sv" style={{ color: "#D97706" }}>{formatVNDCompact(nhanhTotals.expected)}</div><div className="muted" style={{ fontSize: 10 }}>tạo - hoàn hủy</div></div>
-        <div className="stat-card" style={{ borderLeft: "3px solid #42A5F5" }}><div className="sl">CHI PHÍ ADS</div><div className="sv">{formatVNDCompact(summary.spend)}</div></div>
-        <div className="stat-card" style={{ borderLeft: roas >= 10 ? "3px solid var(--green)" : "3px solid var(--red)" }}><div className="sl">ROAS</div><div className="sv" style={{ color: roas >= 10 ? "var(--green)" : "var(--red)" }}>{roas.toFixed(1)}x</div><div className="muted" style={{ fontSize: 10 }}>doanh thu/ads</div></div>
-        <div className="stat-card"><div className="sl">CTR TB</div><div className="sv">{ctr.toFixed(2)}%</div><div className="muted" style={{ fontSize: 10 }}>weighted avg</div></div>
+      {/* ═══ 6 KPI CARDS ═══ */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8, marginBottom: 12 }}>
+        <div style={{ padding: "10px 14px", borderRadius: 8, background: "#F0FDF4", border: "1px solid #BBF7D0" }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "#166534", letterSpacing: ".3px" }}>DT THÀNH CÔNG</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: "#166534", margin: "2px 0" }}>{formatVNDCompact(nhanhTotals.revenue)}</div>
+          <div style={{ fontSize: 9, color: "#166534", opacity: 0.7 }}>đơn giao xong</div>
+        </div>
+        <div style={{ padding: "10px 14px", borderRadius: 8, background: "#FFFBEB", border: "1px solid #FDE68A" }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "#92400E", letterSpacing: ".3px" }}>DT DỰ KIẾN</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: "#92400E", margin: "2px 0" }}>{formatVNDCompact(nhanhTotals.expected)}</div>
+          <div style={{ fontSize: 9, color: "#92400E", opacity: 0.7 }}>tạo - hoàn hủy</div>
+        </div>
+        <div style={{ padding: "10px 14px", borderRadius: 8, background: "#FEF2F2", border: "1px solid #FECACA" }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "#991B1B", letterSpacing: ".3px" }}>CHI PHÍ ADS</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: "#991B1B", margin: "2px 0" }}>{formatVNDCompact(summary.spend)}</div>
+          <div style={{ fontSize: 9, color: "#991B1B", opacity: 0.7 }}>{summary.clicks.toLocaleString("vi-VN")} clicks</div>
+        </div>
+        {(() => {
+          const adsRatio = nhanhTotals.revenue > 0 ? (summary.spend / nhanhTotals.revenue) * 100 : 0;
+          const ratioStyle = adsRatio <= 8 ? { background: "#F0FDF4", border: "1px solid #BBF7D0", color: "#166534" } : adsRatio <= 12 ? { background: "#FFFBEB", border: "1px solid #FDE68A", color: "#92400E" } : { background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B" };
+          return (
+            <div style={{ padding: "10px 14px", borderRadius: 8, ...ratioStyle }}>
+              <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: ".3px" }}>ADS / DOANH THU</div>
+              <div style={{ fontSize: 20, fontWeight: 800, margin: "2px 0" }}>{adsRatio.toFixed(1)}%</div>
+              <div style={{ fontSize: 9, opacity: 0.7 }}>ROAS {roas.toFixed(1)}x</div>
+            </div>
+          );
+        })()}
+        <div style={{ padding: "10px 14px", borderRadius: 8, background: "#fff", border: "1px solid #E5E7EB" }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "#374151", letterSpacing: ".3px" }}>FOLLOWERS MỚI</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: "#166534", margin: "2px 0" }}>+{insightsTotals.new_fans.toLocaleString("vi-VN")}</div>
+          <div style={{ fontSize: 9, color: "#6B7280" }}>ròng {netFans >= 0 ? "+" : ""}{netFans.toLocaleString("vi-VN")}</div>
+        </div>
+        <div style={{ padding: "10px 14px", borderRadius: 8, background: "#fff", border: "1px solid #E5E7EB" }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "#374151", letterSpacing: ".3px" }}>CTR TB</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: "#374151", margin: "2px 0" }}>{ctr.toFixed(2)}%</div>
+          <div style={{ fontSize: 9, color: "#6B7280" }}>weighted avg</div>
+        </div>
       </div>
 
       {/* ═══ CHI PHÍ ADS THEO NGÀY ═══ */}
