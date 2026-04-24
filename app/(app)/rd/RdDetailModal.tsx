@@ -6,6 +6,8 @@ import {
   type RdItem, type RdStep, type RdCheckItem, type RdLink,
 } from "@/lib/db/rd-types";
 import type { UserRef } from "@/lib/db/users";
+import type { SupplierRef } from "@/lib/db/suppliers";
+import SupplierPicker from "@/components/SupplierPicker";
 import { saveRdItemAction, createPoFromRdAction, createSamplePoAction, deleteSamplePoAction } from "./actions";
 
 /* ─── Field definitions per step label ──────────────────── */
@@ -197,9 +199,9 @@ function deadlineToISO(d: string): string {
    MAIN COMPONENT
    ═══════════════════════════════════════════════════════════ */
 export default function RdDetailModal({
-  item, users = [], currentUserRole = "VIEWER", currentUserEmail = "", onClose, onRefresh,
+  item, users = [], suppliers = [], currentUserRole = "VIEWER", currentUserEmail = "", onClose, onRefresh,
 }: {
-  item: RdItem; users?: UserRef[]; currentUserRole?: string; currentUserEmail?: string; onClose: () => void; onRefresh: () => void;
+  item: RdItem; users?: UserRef[]; suppliers?: SupplierRef[]; currentUserRole?: string; currentUserEmail?: string; onClose: () => void; onRefresh: () => void;
 }) {
   const [pending, startTransition] = useTransition();
   const steps = getSteps(item);
@@ -221,14 +223,14 @@ export default function RdDetailModal({
     );
   }
 
-  return <ModalInner item={item} steps={steps} stepsKey={stepsKey} data={data} users={users} currentUserRole={currentUserRole || "VIEWER"} currentUserEmail={currentUserEmail || ""} onClose={onClose} onRefresh={onRefresh} pending={pending} startTransition={startTransition} />;
+  return <ModalInner item={item} steps={steps} stepsKey={stepsKey} data={data} users={users} suppliers={suppliers} currentUserRole={currentUserRole || "VIEWER"} currentUserEmail={currentUserEmail || ""} onClose={onClose} onRefresh={onRefresh} pending={pending} startTransition={startTransition} />;
 }
 
 function ModalInner({
-  item, steps: initSteps, stepsKey, data, users, currentUserRole, currentUserEmail, onClose, onRefresh, pending, startTransition,
+  item, steps: initSteps, stepsKey, data, users, suppliers, currentUserRole, currentUserEmail, onClose, onRefresh, pending, startTransition,
 }: {
   item: RdItem; steps: RdStep[]; stepsKey: string; data: Record<string, unknown>;
-  users: UserRef[]; currentUserRole: string; currentUserEmail: string; onClose: () => void; onRefresh: () => void;
+  users: UserRef[]; suppliers: SupplierRef[]; currentUserRole: string; currentUserEmail: string; onClose: () => void; onRefresh: () => void;
   pending: boolean; startTransition: (fn: () => Promise<void>) => void;
 }) {
   const firstActive = initSteps.findIndex((s) => s.status === "active");
@@ -1638,7 +1640,7 @@ function ModalInner({
                 </div>
                 <div style={S.section}>
                   <div style={S.label}>Nhà cung cấp<span style={{ color: "#DC2626", marginLeft: 2 }}>*</span></div>
-                  <input type="text" value={poSupplier} onChange={(e) => setPoSupplier(e.target.value)} placeholder="Chọn hoặc nhập NCC mới" style={S.input} />
+                  <SupplierPicker suppliers={suppliers} value={poSupplier} onChange={setPoSupplier} />
                 </div>
               </div>
               {/* Row 3: Ngày đặt | ETA | Ngày về thực tế | Tiền cọc */}

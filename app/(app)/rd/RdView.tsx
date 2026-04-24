@@ -5,6 +5,7 @@ import { useMemo, useState, useTransition } from "react";
 import { formatDate } from "@/lib/format";
 import { type RdItem, getSteps } from "@/lib/db/rd-types";
 import type { UserRef } from "@/lib/db/users";
+import type { SupplierRef } from "@/lib/db/suppliers";
 import { deleteRdItemAction, saveRdItemAction, createBlankRdItemAction } from "./actions";
 import RdDetailModal from "./RdDetailModal";
 
@@ -85,7 +86,7 @@ function progressFor(stage: string | null, type: "research" | "production"): num
 
 type Tab = "research" | "production";
 
-export default function RdView({ items, users = [], currentUserRole = "VIEWER", currentUserEmail = "" }: { items: RdItem[]; users?: UserRef[]; filterStage?: string; currentUserRole?: string; currentUserEmail?: string }) {
+export default function RdView({ items, users = [], suppliers = [], currentUserRole = "VIEWER", currentUserEmail = "" }: { items: RdItem[]; users?: UserRef[]; suppliers?: SupplierRef[]; filterStage?: string; currentUserRole?: string; currentUserEmail?: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState<RdItem | "new" | null>(null);
@@ -252,6 +253,7 @@ export default function RdView({ items, users = [], currentUserRole = "VIEWER", 
         <RdDetailModal
           item={detailItem}
           users={users}
+          suppliers={suppliers}
           currentUserRole={currentUserRole}
           currentUserEmail={currentUserEmail}
           onClose={() => setDetailItem(null)}

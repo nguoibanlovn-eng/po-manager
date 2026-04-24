@@ -7,6 +7,7 @@ import { toNum, formatVND, formatYmd } from "@/lib/format";
 import type { Item, Order, OrderStage } from "@/lib/types";
 import type { SupplierRef } from "@/lib/db/suppliers";
 import type { UserRef } from "@/lib/db/users";
+import SupplierPicker from "@/components/SupplierPicker";
 import {
   saveOrderAction, deleteOrderFromForm, advanceStageFromForm,
   requestUnlockAction, approveUnlockAction,
@@ -363,15 +364,7 @@ export default function OrderForm({
           </div>
           <div className="form-group">
             <label>Nhà cung cấp</label>
-            <input
-              list="supplier-list"
-              value={supplier}
-              onChange={(e) => setSupplier(e.target.value)}
-              placeholder="Chọn hoặc nhập NCC mới"
-            />
-            <datalist id="supplier-list">
-              {suppliers.map((s) => <option key={s.supplier_name} value={s.supplier_name} />)}
-            </datalist>
+            <SupplierPicker suppliers={suppliers} value={supplier} onChange={setSupplier} />
           </div>
         </div>
 
