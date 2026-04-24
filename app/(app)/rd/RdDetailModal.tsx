@@ -347,6 +347,8 @@ function ModalInner({
     });
   }
 
+  const isLastStep = activeIdx === initSteps.length - 1;
+
   function markComplete() {
     startTransition(async () => {
       const updated = initSteps.map((s, i) => {
@@ -354,12 +356,16 @@ function ModalInner({
         if (i === activeIdx + 1 && (s.status === "locked" || s.status === "skipped")) return { ...s, status: "active" as const };
         return s;
       });
-      const nextStepLabel = activeIdx + 1 < updated.length ? updated[activeIdx + 1].label : step.label;
+      const isFinished = isLastStep;
+      const nextStepLabel = isFinished ? "Hoàn thành" : (activeIdx + 1 < updated.length ? updated[activeIdx + 1].label : step.label);
       const newData = { ...clearRevision(data), ...formData, proposer_role: proposerRole, priority, market_fields: marketFields, supply_fields: supplyFields, [stepsKey]: JSON.stringify(updated) };
       await saveRdItemAction(item.id, { name: itemName, stage: nextStepLabel, data: newData });
       setDirty(false);
       onRefresh();
-      if (activeIdx + 1 < initSteps.length) {
+      if (isFinished) {
+        alert("✓ Ticket hoàn thành! Sản phẩm đã kết thúc quy trình R&D.");
+        onClose();
+      } else if (activeIdx + 1 < initSteps.length) {
         const next = updated[activeIdx + 1];
         setActiveIdx(activeIdx + 1);
         setAssignee(next.assignee || "");
@@ -1233,7 +1239,7 @@ function ModalInner({
                 <>
                   <button type="button" onClick={save} disabled={pending || !dirty} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#F1F5F9", color: "#64748B", cursor: "pointer" }}>Lưu nháp</button>
                   <button type="button" onClick={markComplete} disabled={pending} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#7C3AED", color: "#fff", cursor: "pointer" }}>
-                    {step.label === "Đặt mẫu" ? "Đã đặt mẫu — Chờ hàng về →" : "Hoàn thành & Chuyển bước →"}
+                    {isLastStep ? "✓ Hoàn thành — Kết thúc" : step.label === "Đặt mẫu" ? "Đã đặt mẫu — Chờ hàng về →" : "Hoàn thành & Chuyển bước →"}
                   </button>
                 </>
               )}
