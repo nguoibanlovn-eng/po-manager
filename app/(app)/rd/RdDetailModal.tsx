@@ -597,6 +597,33 @@ function ModalInner({
               </>
             )}
 
+            {/* ── Deadline banner for ALL steps (except Đề xuất which has its own) ── */}
+            {step.label !== "Đề xuất" && (() => {
+              const dxStep = initSteps.find((s) => s.label === "Đề xuất");
+              const dxDeadline = dxStep?.deadline || "";
+              const stepLabel = step.label;
+              let dlLabel = ""; let dlValue = "";
+
+              if (["Xác nhận", "NV nhận việc", "Nghiên cứu", "Duyệt ĐX"].includes(stepLabel)) {
+                dlLabel = "Deadline NC (từ Đề xuất)"; dlValue = dxDeadline;
+              } else if (stepLabel === "Đặt mẫu") {
+                dlLabel = "Deadline đặt mẫu"; dlValue = String(data.deadline_dat_mau || "");
+              } else if (stepLabel === "Hàng về" || stepLabel === "QC & Nhận hàng") {
+                dlLabel = "Deadline QC"; dlValue = String(data.deadline_qc || "");
+              } else if (stepLabel === "Nhập hàng" || stepLabel === "Đặt hàng") {
+                dlLabel = "Deadline nhập hàng"; dlValue = String(data.deadline_nhap_hang || "");
+              }
+              const dlOverdue = dlValue && step.status !== "approved" ? isOverdue(dlValue) : false;
+
+              return dlValue ? (
+                <div style={{ padding: "6px 10px", background: dlOverdue ? "#FEF2F2" : "#F0F9FF", border: `1px solid ${dlOverdue ? "#FECACA" : "#BAE6FD"}`, borderRadius: 7, marginBottom: 12, fontSize: 11, display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ color: dlOverdue ? "#DC2626" : "#0369A1", fontWeight: 600 }}>
+                    {dlOverdue ? "⚠ QUÁ HẠN" : "⏰"} {dlLabel}: {dlValue}
+                  </span>
+                </div>
+              ) : null;
+            })()}
+
             {/* ══ APPROVAL / CONFIRMATION STEPS — dedicated UI ══ */}
             {isApprovalStep && (() => {
               // Completed approval → show summary only
@@ -690,11 +717,7 @@ function ModalInner({
                   {/* 3 Action buttons */}
                   <div style={{ display: "flex", gap: 6 }}>
                     <button type="button" disabled={pending} onClick={() => {
-                      startTransition(async () => {
-                        markComplete();
-                        alert("✓ Đã duyệt — chuyển bước tiếp theo.");
-                        onClose();
-                      });
+                      markComplete();
                     }} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#16A34A", color: "#fff", cursor: "pointer" }}>
                       {greenLabel}
                     </button>
@@ -794,32 +817,7 @@ function ModalInner({
             })() : (
             <div>
 
-            {/* ── Deadline banner for non-Đề xuất steps ── */}
-            {(() => {
-              const dxStep = initSteps.find((s) => s.label === "Đề xuất");
-              const dxDeadline = dxStep?.deadline || "";
-              const stepLabel = step.label;
-              let dlLabel = ""; let dlValue = ""; let dlOverdue = false;
-
-              if (stepLabel === "Xác nhận" || stepLabel === "NV nhận việc" || stepLabel === "Nghiên cứu") {
-                dlLabel = "Deadline NC (từ Đề xuất)"; dlValue = dxDeadline;
-              } else if (stepLabel === "Đặt mẫu") {
-                dlLabel = "Deadline đặt mẫu"; dlValue = String(data.deadline_dat_mau || "");
-              } else if (stepLabel === "Hàng về" || stepLabel === "QC & Nhận hàng") {
-                dlLabel = "Deadline QC"; dlValue = String(data.deadline_qc || "");
-              } else if (stepLabel === "Nhập hàng" || stepLabel === "Đặt hàng") {
-                dlLabel = "Deadline nhập hàng"; dlValue = String(data.deadline_nhap_hang || "");
-              }
-              if (dlValue && step.status !== "approved") dlOverdue = isOverdue(dlValue);
-
-              return dlValue ? (
-                <div style={{ padding: "6px 10px", background: dlOverdue ? "#FEF2F2" : "#F0F9FF", border: `1px solid ${dlOverdue ? "#FECACA" : "#BAE6FD"}`, borderRadius: 7, marginBottom: 12, fontSize: 11, display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ color: dlOverdue ? "#DC2626" : "#0369A1", fontWeight: 600 }}>
-                    {dlOverdue ? "⚠ QUÁ HẠN" : "⏰"} {dlLabel}: {dlValue}
-                  </span>
-                </div>
-              ) : null;
-            })()}
+            {/* deadline banner moved above approval/normal split */}
 
             {/* Assignee + Deadline — only at Đề xuất step */}
             {step.label === "Đề xuất" && (
