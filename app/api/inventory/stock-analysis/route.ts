@@ -69,5 +69,7 @@ export async function GET(req: Request) {
     return { sku: p.sku, product_name: p.product_name, stock, sold, rate, category, stockValue, cost_price: Number(p.cost_price || 0) };
   });
 
-  return NextResponse.json({ ok: true, total: allProducts.length, counts, items });
+  const res = NextResponse.json({ ok: true, total: allProducts.length, counts, items });
+  res.headers.set("Cache-Control", "private, max-age=3600, stale-while-revalidate=7200");
+  return res;
 }

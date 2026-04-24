@@ -29,7 +29,7 @@ export async function GET() {
     .select("*", { count: "exact", head: true })
     .eq("date", yesterday);
 
-  return NextResponse.json({
+  const res = NextResponse.json({
     ok: true,
     lastSync,
     lastDate,
@@ -38,4 +38,6 @@ export async function GET() {
     yesterdayRows: yesterdayCount || 0,
     synced: (todayCount || 0) > 0 || (yesterdayCount || 0) > 0,
   });
+  res.headers.set("Cache-Control", "private, max-age=1800, stale-while-revalidate=3600");
+  return res;
 }
