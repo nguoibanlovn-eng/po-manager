@@ -81,8 +81,8 @@ export async function POST(req: Request) {
     const to = body.to;
     if (from && to) {
       const diffDays = Math.ceil((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
-      if (diffDays > 4) {
-        return NextResponse.json({ ok: false, error: `Khoảng ${diffDays} ngày quá dài — giới hạn 4 ngày/lần.` }, { status: 400 });
+      if (diffDays > 7) {
+        return NextResponse.json({ ok: false, error: `Khoảng ${diffDays} ngày quá dài — giới hạn 7 ngày/lần.` }, { status: 400 });
       }
     }
 

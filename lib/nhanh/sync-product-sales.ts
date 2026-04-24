@@ -73,9 +73,9 @@ async function syncV3Day(date: string): Promise<{ orders: number; rows: Row[]; s
   const fromTs = Math.floor(new Date(date + "T00:00:00+07:00").getTime() / 1000);
   const toTs = Math.floor(new Date(date + "T23:59:59+07:00").getTime() / 1000);
 
-  // Lọc theo deliveryAt = chỉ đơn đã giao thành công
+  // Lọc theo deliveryAt + status=60 (Thành công) = chỉ đơn đã giao xong
   const orders = await nhanhV3FetchAll<V3Order>("order/list", {
-    filters: { deliveryAtFrom: fromTs, deliveryAtTo: toTs },
+    filters: { deliveryAtFrom: fromTs, deliveryAtTo: toTs, statuses: [60] },
   }, { maxPages: 200 });
 
   const now = nowVN();
@@ -188,25 +188,17 @@ export async function syncProductSales(opts: {
   let cursor = from;
   while (cursor <= to) {
     try {
-      // V3 primary
+      // V3 only — deliveryAt + status=60 đủ chính xác, không cần V1 supplement
       const v3 = await syncV3Day(cursor);
       const v3u = await upsertRows(v3.rows);
       logs.push(v3.log);
       console.log(v3.log);
 
-      // V1 supplement
-      const v1 = await syncV1Day(cursor);
-      const v1u = await upsertRows(v1.rows);
-      logs.push(v1.log);
-      console.log(v1.log);
-
-      totalOrders += v3.orders + v1.orders;
-      totalRows += v3u + v1u;
+      totalOrders += v3.orders;
+      totalRows += v3u;
       days++;
 
-      const dayTotal = v3.rows.length + v1.rows.length;
-      const upsertTotal = v3u + v1u;
-      logs.push(`  → ${cursor}: ${dayTotal} rows, ${upsertTotal} upserted (dedup)`);
+      logs.push(`  → ${cursor}: ${v3.rows.length} rows, ${v3u} upserted`);
 
       await new Promise((r) => setTimeout(r, 100));
     } catch (e) {
