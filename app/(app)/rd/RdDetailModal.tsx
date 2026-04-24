@@ -63,9 +63,12 @@ const STEP_FORM_FIELDS: Record<string, FieldDef[]> = {
     { key: "bulk_price",        label: "Giá nhập (đ)", type: "number" },
   ],
   "Nhập hàng": [
+    { key: "bulk_supplier",     label: "NCC nhập hàng" },
+    { key: "bulk_contact",      label: "Liên hệ NCC (WeChat, phone...)" },
+    { key: "bulk_platform",     label: "Nền tảng (1688, Alibaba...)" },
     { key: "bulk_qty",          label: "Số lượng nhập", type: "number" },
     { key: "bulk_price",        label: "Giá nhập (đ)", type: "number" },
-    { key: "linked_bulk_po",    label: "Mã PO liên kết" },
+    { key: "bulk_eta",          label: "Dự kiến hàng về", type: "date" },
     { key: "lesson_note",       label: "Ghi chú", type: "textarea" },
   ],
   // Production
@@ -630,25 +633,48 @@ function ModalInner({
                 dlValue = poEtaVal || dlFromStep4;
                 dlLabel = poEtaVal ? "ETA mẫu về (từ PO)" : "Deadline đặt mẫu (từ Duyệt NC)";
               } else if (stepLabel === "Hàng về" || stepLabel === "QC & Nhận hàng") {
-                const qcDl = String(data.deadline_qc || "");
+                // Step 6: 2 banners — ETA dự kiến + deadline QC thực tế
                 const etaVal = String(data.sample_eta || "");
-                if (qcDl) {
-                  dlLabel = `Deadline QC (ETA ${etaVal || "?"} + 3 ngày)`;
-                  dlValue = qcDl;
-                } else if (etaVal) {
-                  // Auto-compute ETA + 3 days
-                  const etaD = new Date(etaVal);
-                  if (!isNaN(etaD.getTime())) { etaD.setDate(etaD.getDate() + 3); dlValue = etaD.toISOString().split("T")[0]; }
-                  dlLabel = `Deadline QC (ETA ${etaVal} + 3 ngày)`;
-                } else {
-                  dlLabel = "Deadline QC"; dlValue = "";
+                const arrivalVal = String(data.arrival_date || "");
+                const baseDate = arrivalVal || etaVal;
+                if (baseDate) {
+                  const bd = new Date(baseDate);
+                  if (!isNaN(bd.getTime())) { bd.setDate(bd.getDate() + 3); dlValue = bd.toISOString().split("T")[0]; }
                 }
+                dlLabel = arrivalVal
+                  ? `Deadline QC (về ${arrivalVal} + 3 ngày)`
+                  : etaVal ? `Deadline QC dự kiến (ETA ${etaVal} + 3 ngày)` : "Deadline QC";
               } else if (stepLabel === "Duyệt mẫu") {
-                dlLabel = "Deadline QC"; dlValue = String(data.deadline_qc || "");
+                // Step 7: không cần deadline — chỉ thông báo
+                dlLabel = ""; dlValue = "";
               } else if (stepLabel === "Nhập hàng" || stepLabel === "Đặt hàng") {
-                dlLabel = "Deadline nhập hàng (từ Duyệt mẫu)"; dlValue = String(data.deadline_nhap_hang || "");
+                const bulkEta = String(data.bulk_eta || "");
+                const dlFromApproval = String(data.deadline_nhap_hang || "");
+                dlValue = bulkEta || dlFromApproval;
+                dlLabel = bulkEta ? "ETA hàng nhập về (từ PO)" : dlFromApproval ? "Deadline nhập hàng (từ Duyệt mẫu)" : "Deadline nhập hàng";
               }
               const dlOverdue = dlValue && step.status !== "approved" ? isOverdue(dlValue) : false;
+
+              if (stepLabel === "Hàng về" || stepLabel === "QC & Nhận hàng") {
+                const etaVal = String(data.sample_eta || "");
+                const arrivalVal = String(data.arrival_date || "");
+                return (
+                  <div style={{ marginBottom: 12, display: "flex", flexDirection: "column", gap: 4 }}>
+                    {/* Banner 1: ETA dự kiến */}
+                    <div style={{ padding: "6px 10px", background: "#F0F9FF", border: "1px solid #BAE6FD", borderRadius: 7, fontSize: 11 }}>
+                      <span style={{ color: "#0369A1", fontWeight: 600 }}>
+                        📦 ETA mẫu về: {etaVal || "chưa có — cần nhập ở bước Đặt mẫu"}
+                      </span>
+                    </div>
+                    {/* Banner 2: Deadline QC thực tế */}
+                    <div style={{ padding: "6px 10px", background: dlOverdue ? "#FEF2F2" : dlValue ? "#F0FDF4" : "#FFF7ED", border: `1px solid ${dlOverdue ? "#FECACA" : dlValue ? "#BBF7D0" : "#FED7AA"}`, borderRadius: 7, fontSize: 11 }}>
+                      <span style={{ color: dlOverdue ? "#DC2626" : dlValue ? "#15803D" : "#D97706", fontWeight: 600 }}>
+                        {dlOverdue ? "⚠ QUÁ HẠN" : dlValue ? "⏰" : "⚠"} {arrivalVal ? `Deadline QC (về thực tế ${arrivalVal} + 3 ngày): ${dlValue}` : dlValue ? `Deadline QC dự kiến: ${dlValue}` : "Chờ hàng về để tính deadline QC"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              }
 
               return dlLabel ? (
                 <div style={{ padding: "6px 10px", background: dlOverdue ? "#FEF2F2" : dlValue ? "#F0F9FF" : "#FFF7ED", border: `1px solid ${dlOverdue ? "#FECACA" : dlValue ? "#BAE6FD" : "#FED7AA"}`, borderRadius: 7, marginBottom: 12, fontSize: 11, display: "flex", alignItems: "center", gap: 8 }}>
@@ -882,9 +908,12 @@ function ModalInner({
                       if (data.approve_verdict) summaryLines.push({ label: "Kết quả", value: String(data.approve_verdict), color: String(data.approve_verdict).includes("Duyệt") ? "#15803D" : "#B91C1C" });
                       if (data.approve_note) summaryLines.push({ label: "Nhận xét", value: String(data.approve_note).substring(0, 60) });
                     } else if (step.label === "Nhập hàng" || step.label === "Đặt hàng") {
+                      if (data.bulk_supplier) summaryLines.push({ label: "NCC", value: `${String(data.bulk_supplier)}${data.bulk_platform ? ` (${String(data.bulk_platform)})` : ""}` });
+                      if (data.bulk_contact) summaryLines.push({ label: "Liên hệ", value: String(data.bulk_contact) });
                       if (data.bulk_qty) summaryLines.push({ label: "SL nhập", value: `${Number(data.bulk_qty).toLocaleString("vi-VN")} cái` });
                       if (data.bulk_price) summaryLines.push({ label: "Giá nhập", value: `${Number(data.bulk_price).toLocaleString("vi-VN")}đ` });
                       if (data.linked_bulk_po) summaryLines.push({ label: "Đơn PO", value: String(data.linked_bulk_po), color: "#2563EB" });
+                      if (data.bulk_eta) summaryLines.push({ label: "ETA hàng về", value: String(data.bulk_eta) });
                     }
                     return (
                     <div style={{ marginTop: 8 }}>
@@ -1387,26 +1416,70 @@ function ModalInner({
             )}
 
             {/* ── Create PO banner ── */}
-            {(step.label === "Nhập hàng" || step.label === "Nhập?" || step.label === "Đặt hàng") && (
-              <div style={{ padding: 12, border: "2px dashed #BBF7D0", borderRadius: 10, textAlign: "center", cursor: "pointer", marginBottom: 14 }}
-                onClick={() => {
-                  setCreatingPo(true);
-                  startTransition(async () => {
-                    const newData = { ...data, ...formData, [stepsKey]: JSON.stringify(buildUpdatedSteps()) };
-                    await saveRdItemAction(item.id, { name: itemName, data: newData });
-                    const r = await createPoFromRdAction(item.id);
-                    setCreatingPo(false);
-                    if (r.ok) { onRefresh(); window.location.href = `/create?order_id=${r.orderId}&embed=1`; }
-                    else alert(r.error || "Lỗi tạo đơn");
-                  });
-                }}>
-                <div style={{ fontSize: 20, marginBottom: 4 }}>📦</div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#16A34A" }}>{creatingPo ? "Đang tạo..." : "Tạo đơn PO nhập hàng"}</div>
-                <div style={{ fontSize: 9, color: "#94A3B8" }}>
-                  {String(formData.bulk_qty || data.bulk_qty || "—")} cái × {Number(formData.bulk_price || data.bulk_price || data.price_buy || 0).toLocaleString("vi-VN")}đ
+            {(step.label === "Nhập hàng" || step.label === "Nhập?" || step.label === "Đặt hàng") && (() => {
+              const linkedBulkPo = String(data.linked_bulk_po || "");
+              return (
+              <>
+                {/* Giao việc cho NV */}
+                <div style={S.section}>
+                  <div style={S.label}>Người phụ trách nhập</div>
+                  <select value={assignee} onChange={(e) => {
+                    const email = e.target.value;
+                    const u = users.find((u) => u.email === email);
+                    setAssignee(email); setAssigneeName(u ? (u.name || email) : ""); setDirty(true);
+                  }} style={S.select}>
+                    <option value="">— Tự nhập —</option>
+                    {users.map((u) => <option key={u.email} value={u.email}>{u.name || u.email}</option>)}
+                  </select>
                 </div>
-              </div>
-            )}
+
+                {/* Thông tin NCC */}
+                <div style={S.section}>
+                  <div style={S.label}>Thông tin nhà cung cấp</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 6 }}>
+                    <input type="text" value={formData.bulk_supplier || ""} onChange={(e) => setField("bulk_supplier", e.target.value)} placeholder="Tên NCC" style={S.input} />
+                    <input type="text" value={formData.bulk_platform || ""} onChange={(e) => setField("bulk_platform", e.target.value)} placeholder="Nền tảng (1688, Alibaba...)" style={S.input} />
+                  </div>
+                  <input type="text" value={formData.bulk_contact || ""} onChange={(e) => setField("bulk_contact", e.target.value)} placeholder="Liên hệ (WeChat, phone...)" style={S.input} />
+                </div>
+
+                {/* Tạo đơn PO nhập hàng */}
+                <div style={S.section}>
+                  <div style={S.label}>Tạo đơn PO nhập hàng</div>
+                  {!linkedBulkPo ? (
+                    <div style={{ padding: 12, border: "2px dashed #BBF7D0", borderRadius: 10, textAlign: "center", cursor: "pointer" }}
+                      onClick={() => {
+                        setCreatingPo(true);
+                        startTransition(async () => {
+                          const newData = { ...data, ...formData, bulk_eta: formData.bulk_eta || data.bulk_eta, [stepsKey]: JSON.stringify(buildUpdatedSteps()) };
+                          await saveRdItemAction(item.id, { name: itemName, data: newData });
+                          const r = await createPoFromRdAction(item.id);
+                          setCreatingPo(false);
+                          if (r.ok) {
+                            (data as Record<string, unknown>).linked_bulk_po = r.orderId;
+                            onRefresh();
+                          } else alert(r.error || "Lỗi tạo đơn");
+                        });
+                      }}>
+                      <div style={{ fontSize: 20, marginBottom: 4 }}>📦</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#16A34A" }}>{creatingPo ? "Đang tạo..." : "Tạo đơn PO nhập hàng"}</div>
+                      <div style={{ fontSize: 9, color: "#94A3B8" }}>
+                        {String(formData.bulk_qty || data.bulk_qty || "—")} cái × {Number(formData.bulk_price || data.bulk_price || data.price_buy || 0).toLocaleString("vi-VN")}đ
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ background: "#F0FDF4", borderRadius: 8, padding: "8px 10px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: "#16A34A" }}>Đơn PO đã tạo</div>
+                      </div>
+                      <div style={{ fontSize: 11, marginBottom: 2 }}>{linkedBulkPo} — {item.name || "SP nhập"}</div>
+                      <a href={`/create?order_id=${linkedBulkPo}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 9, color: "#7C3AED", fontWeight: 600, textDecoration: "none" }}>Xem đơn ↗</a>
+                    </div>
+                  )}
+                </div>
+              </>
+              );
+            })()}
 
             </div>)}{/* end locked summary / editable form */}
 
