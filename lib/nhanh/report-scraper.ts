@@ -83,27 +83,31 @@ async function fetchReport(
   toDate: string,
   orderDate: "success" | "create" = "success",
 ): Promise<ChannelData[]> {
-  const body = new URLSearchParams({
-    orderDate,
-    fromDate,
-    toDate,
-    businessId: BUSINESS_ID,
-  });
+  try {
+    const body = new URLSearchParams({
+      orderDate,
+      fromDate,
+      toDate,
+      businessId: BUSINESS_ID,
+    });
 
-  const res = await fetch(`${NHANH_URL}/report/order/salechannel`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "X-Requested-With": "XMLHttpRequest",
-      "Npos-Csrf-Token-V1": session.csrf,
-      Cookie: session.cookies,
-    },
-    body: body.toString(),
-  });
+    const res = await fetch(`${NHANH_URL}/report/order/salechannel`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "X-Requested-With": "XMLHttpRequest",
+        "Npos-Csrf-Token-V1": session.csrf,
+        Cookie: session.cookies,
+      },
+      body: body.toString(),
+    });
 
-  const json = (await res.json()) as ReportResponse;
-  if (json.code !== 1) return [];
-  return json.data?.saleChannel || [];
+    const json = (await res.json()) as ReportResponse;
+    if (json.code !== 1) return [];
+    return json.data?.saleChannel || [];
+  } catch {
+    return [];
+  }
 }
 
 // Channel ID → name mapping (Nhanh uses different IDs than V3 API)
@@ -261,7 +265,27 @@ export async function syncNhanhReport(opts: {
       continue;
     }
 
-    // 2b. revenue_expected preservation handled in Step 3 (merge before write)
+    // 2b. Revenue drop check — don't overwrite if new revenue_success drops >40%
+    const newRevenueTotal = rows.reduce((s, r) => s + Number(r.revenue_success || 0), 0);
+    if ((existingCount || 0) > 0 && newRevenueTotal > 0) {
+      const { data: existingRevRows } = await db.from("sales_sync")
+        .select("revenue_success")
+        .eq("period_from", dateStr).eq("period_to", dateStr);
+      const existingRevTotal = (existingRevRows || []).reduce((s, r) => s + Number(r.revenue_success || 0), 0);
+      if (existingRevTotal > 0 && newRevenueTotal < existingRevTotal * 0.6) {
+        logs.push(`[nhanhReport] ${dateStr}: revenue drop too large (${(newRevenueTotal/1e6).toFixed(1)}M vs ${(existingRevTotal/1e6).toFixed(1)}M existing), skipped`);
+        continue;
+      }
+    }
+
+    // 2c. Success report returned nothing but create report did — don't wipe revenue_success
+    if (channels.length === 0 && rows.length > 0) {
+      const hasAnySuccess = rows.some((r) => Number(r.revenue_success || 0) > 0);
+      if (!hasAnySuccess && (existingCount || 0) > 0) {
+        logs.push(`[nhanhReport] ${dateStr}: success report empty, only create data — skipped to preserve existing`);
+        continue;
+      }
+    }
 
     // ── Step 3: Upsert (no delete) — preserve existing revenue_expected ──
     // If new row has revenue_expected=0 but DB has >0, keep DB value
