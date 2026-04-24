@@ -269,6 +269,8 @@ export async function approveBizOrder(
   approved: boolean,
   approvedBy: string,
   note?: string,
+  assignedTo?: string,
+  deadline?: string,
 ): Promise<{ ok: boolean; po_order_id?: string; error?: string }> {
   const db = supabaseAdmin();
 
@@ -295,7 +297,11 @@ export async function approveBizOrder(
     owner: bo.created_by || approvedBy,
     note: `Từ order KD: ${bo.id}\nTeam: ${bo.team}\n${bo.note || ""}`,
     goods_type: bo.order_type === "new" ? "Trung Quốc đặt hàng" : "Trung Quốc trữ sẵn",
-    stage: "DRAFT",
+    stage: "PENDING_PURCHASE",
+    source: "biz_order",
+    biz_order_id: bo.id,
+    assigned_to: assignedTo || null,
+    deadline: deadline || null,
     items: bo.items.map((it) => ({
       sku: it.sku || undefined,
       product_name: it.product_name || undefined,

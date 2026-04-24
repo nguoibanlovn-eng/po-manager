@@ -131,6 +131,10 @@ export async function saveOrder(payload: SaveOrderPayload): Promise<string> {
     note: payload.note || null,
     goods_type: payload.goods_type || null,
     is_deleted: false,
+    ...(payload.source ? { source: payload.source } : {}),
+    ...(payload.assigned_to ? { assigned_to: payload.assigned_to } : {}),
+    ...(payload.deadline ? { deadline: payload.deadline } : {}),
+    ...(payload.biz_order_id ? { biz_order_id: payload.biz_order_id } : {}),
   };
 
   const { error: orderErr } = await db

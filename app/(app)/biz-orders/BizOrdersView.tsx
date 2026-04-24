@@ -241,14 +241,22 @@ export default function BizOrdersView({
     );
   }
 
+  // MH assignment (approval)
+  const [mhAssignee, setMhAssignee] = useState("");
+  const [mhDeadline, setMhDeadline] = useState("");
+  const mhUsers = useMemo(() => users.filter((u) => u.role === "LEADER_MH" || u.role === "NV_MH"), [users]);
+
   // Approve/reject
   function onApprove() {
     if (!detail) return;
-    if (!confirm("Duyệt order này? Sẽ tự động tạo đơn nhập trong Mua hàng.")) return;
+    if (!mhAssignee) return alert("Chọn người MH tiếp nhận.");
+    if (!mhDeadline) return alert("Chọn deadline xử lý.");
+    if (!confirm("Duyệt order này? Sẽ tạo đơn nhập và phân cho MH.")) return;
     start(async () => {
-      const r = await approveBizOrderAction(detail.id, true, approvalNote);
+      const r = await approveBizOrderAction(detail.id, true, approvalNote, mhAssignee, mhDeadline);
       if (!r.ok) return alert("Lỗi: " + r.error);
-      alert(`Đã duyệt! Đơn nhập ${r.po_order_id} đã được tạo trong mục Mua hàng.`);
+      const mhName = mhUsers.find((u) => u.email === mhAssignee)?.name || mhAssignee;
+      alert(`Đã duyệt! Đơn nhập ${r.po_order_id} phân cho ${mhName}, deadline ${mhDeadline}.`);
       router.refresh();
       setView("list");
     });
@@ -775,14 +783,27 @@ export default function BizOrdersView({
         {/* Approval actions for leader */}
         {detail.status === "pending" && canApprove && (
           <div className="card" style={{ border: "2px solid var(--amber)", background: "var(--amber-lt)", marginBottom: 14 }}>
-            <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 8, color: "#92400E" }}>Duyệt Order</div>
+            <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 10, color: "#92400E" }}>Duyệt Order</div>
+            <div className="form-grid fg-2" style={{ marginBottom: 10 }}>
+              <div className="form-group">
+                <label>Phân cho người MH xử lý *</label>
+                <select value={mhAssignee} onChange={(e) => setMhAssignee(e.target.value)} style={{ background: "#fff" }}>
+                  <option value="">— Chọn nhân sự MH —</option>
+                  {mhUsers.map((u) => <option key={u.email} value={u.email}>{u.name || u.email} ({u.role})</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Deadline xử lý *</label>
+                <input type="date" value={mhDeadline} onChange={(e) => setMhDeadline(e.target.value)} style={{ background: "#fff" }} />
+              </div>
+            </div>
             <div className="form-group" style={{ marginBottom: 12 }}>
               <label>Ghi chú duyệt</label>
               <textarea rows={2} value={approvalNote} onChange={(e) => setApprovalNote(e.target.value)} placeholder="Ghi chú khi duyệt hoặc từ chối..." style={{ background: "#fff" }} />
             </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <button className="btn btn-danger" style={{ padding: "10px 20px" }} onClick={onReject} disabled={pending}>✕ Từ chối</button>
-              <button className="btn btn-success" style={{ padding: "10px 24px", fontSize: 13 }} onClick={onApprove} disabled={pending}>✓ Duyệt & Tạo đơn nhập</button>
+              <button className="btn btn-success" style={{ padding: "10px 24px", fontSize: 13 }} onClick={onApprove} disabled={pending}>✓ Duyệt →</button>
             </div>
           </div>
         )}

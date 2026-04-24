@@ -1,7 +1,7 @@
 // Domain types — ported from gs.txt HDR constants.
 
 export type OrderStage =
-  | "DRAFT" | "ORDERED" | "ARRIVED" | "QC_DONE"
+  | "PENDING_PURCHASE" | "DRAFT" | "ORDERED" | "ARRIVED" | "QC_DONE"
   | "ON_SHELF" | "SELLING" | "COMPLETED";
 
 export type PayStatus =
@@ -41,6 +41,10 @@ export type Order = {
   unlock_reason: string | null;
   unlock_approved_by: string | null;
   unlock_approved_at: string | null;
+  source: string | null;
+  assigned_to: string | null;
+  deadline: string | null;
+  biz_order_id: string | null;
 };
 
 export type Item = {

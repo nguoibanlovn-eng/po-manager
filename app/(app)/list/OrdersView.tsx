@@ -11,6 +11,7 @@ import OrderDetailModal from "./OrderDetailModal";
 import OrderForm from "../create/OrderForm";
 
 const STAGE_LABEL: Record<string, string> = {
+  PENDING_PURCHASE: "Chờ MH",
   DRAFT: "Nháp",
   ORDERED: "Đã đặt",
   ARRIVED: "Hàng về",
@@ -36,7 +37,7 @@ export default function OrdersView({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [search, setSearch] = useState("");
-  const [stage, setStage] = useState<string>("");
+  const [stage, setStage] = useState<string>("PENDING_PURCHASE");
   const [pay, setPay] = useState<string>("");
   const [eta, setEta] = useState<string>("");
   const [detailOrderId, setDetailOrderId] = useState<string | null>(null);
@@ -68,6 +69,32 @@ export default function OrdersView({
 
   const total = filtered.reduce((s, o) => s + Number(o.order_total || 0), 0);
 
+  // Dashboard stats
+  const stats = useMemo(() => {
+    const now = new Date();
+    const mKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const thisMonth = orders.filter((o) => (o.created_at || "").startsWith(mKey));
+    const spent = thisMonth.reduce((s, o) => s + Number(o.order_total || 0), 0);
+    const budget = 800_000_000; // TODO: from config
+    const pendingCount = orders.filter((o) => o.stage === "PENDING_PURCHASE").length;
+    const pendingOverdue = orders.filter((o) => o.stage === "PENDING_PURCHASE" && o.deadline && o.deadline < mKey.substring(0, 10)).length;
+    const inTransit = orders.filter((o) => o.stage === "ORDERED").length;
+    const inTransitSoon = orders.filter((o) => o.stage === "ORDERED" && daysFromNow(o.eta_date) !== null && daysFromNow(o.eta_date)! <= 3).length;
+    const debt = orders.filter((o) => o.pay_status === "Công nợ").reduce((s, o) => s + Number(o.order_total || 0), 0);
+    const debtNcc = new Set(orders.filter((o) => o.pay_status === "Công nợ" && o.supplier_name).map((o) => o.supplier_name)).size;
+    return { budget, spent, remaining: budget - spent, pendingCount, pendingOverdue, inTransit, inTransitSoon, debt, debtNcc };
+  }, [orders]);
+
+  // Tab counts
+  const tabCounts = useMemo(() => ({
+    PENDING_PURCHASE: orders.filter((o) => o.stage === "PENDING_PURCHASE").length,
+    all: orders.length,
+    ORDERED: orders.filter((o) => o.stage === "ORDERED").length,
+    ARRIVED: orders.filter((o) => o.stage === "ARRIVED").length,
+    ON_SHELF: orders.filter((o) => o.stage === "ON_SHELF").length,
+    COMPLETED: orders.filter((o) => o.stage === "COMPLETED").length,
+  }), [orders]);
+
   function onDelete(orderId: string, orderName: string) {
     if (!confirm(`Xoá đơn "${orderName || orderId}"?`)) return;
     startTransition(async () => {
@@ -79,85 +106,89 @@ export default function OrdersView({
 
   return (
     <section className="section">
-      {/* DESKTOP header */}
-      <div className="page-hdr list-desktop-header">
+      {/* Header */}
+      <div className="page-hdr">
         <div>
-          <div className="page-title">📋 Danh sách đơn hàng</div>
-          <div className="page-sub">{filtered.length} đơn · tổng {formatVND(total)}</div>
+          <div className="page-title">Đơn hàng</div>
+          <div className="page-sub">{orders.length} đơn · tổng {formatVND(orders.reduce((s, o) => s + Number(o.order_total || 0), 0))}</div>
         </div>
-        <div className="row" style={{ gap: 6, flexWrap: "nowrap", alignItems: "center" }}>
-          <input
-            type="text"
-            placeholder="🔍 Tìm đơn, NCC..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ padding: "5px 9px", fontSize: 12, border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", width: 160 }}
-          />
-          <select value={stage} onChange={(e) => setStage(e.target.value)} style={{ padding: "5px 8px", fontSize: 12 }}>
-            <option value="">Giai đoạn</option>
-            {Object.entries(STAGE_LABEL).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
-            ))}
-          </select>
-          <select value={pay} onChange={(e) => setPay(e.target.value)} style={{ padding: "5px 8px", fontSize: 12 }}>
-            <option value="">Thanh toán</option>
-            <option value="Chưa thanh toán">Chưa TT</option>
-            <option value="Đã cọc">Đã cọc</option>
-            <option value="Đã thanh toán">Đã TT</option>
-            <option value="Công nợ">Công nợ</option>
-          </select>
-          <select value={eta} onChange={(e) => setEta(e.target.value)} style={{ padding: "5px 8px", fontSize: 12 }}>
-            <option value="">Hạn ETA</option>
-            <option value="overdue">⛔ Quá hạn</option>
-            <option value="soon">⚠ Sắp đến hạn</option>
-          </select>
+        <div className="row" style={{ gap: 6 }}>
           <button className="btn btn-ghost btn-sm" onClick={() => router.refresh()}>🔄</button>
           {canEdit && (
-            <button className="btn btn-primary btn-sm" onClick={() => setShowCreateModal(true)}>
-              + Tạo đơn
-            </button>
+            <button className="btn btn-primary btn-sm" onClick={() => setShowCreateModal(true)}>+ Tạo đơn</button>
           )}
         </div>
       </div>
 
-      {/* MOBILE header */}
-      <div className="list-mobile-header">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#6366f1", padding: "12px 14px 10px", margin: "-10px -10px 12px" }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: "#fff" }}>📋 Đơn hàng</div>
-          <button
-            onClick={() => router.refresh()}
-            style={{ background: "rgba(255,255,255,.2)", border: "none", borderRadius: 8, padding: "6px 10px", color: "#fff", fontSize: 18, cursor: "pointer" }}
-          >⚙</button>
-        </div>
-        <div style={{ position: "relative", marginBottom: 10 }}>
-          <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: 16, color: "#94A3B8" }}>🔍</span>
-          <input
-            type="text"
-            placeholder="Tìm đơn, NCC, sản phẩm..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ width: "100%", padding: "13px 14px 13px 42px", fontSize: 17, border: "0.5px solid var(--border)", borderRadius: 12, background: "var(--bg)", boxSizing: "border-box" }}
-          />
-        </div>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 4 }}>
-          {[["", "Tất cả"], ["ORDERED", "Đã đặt"], ["ARRIVED", "Hàng về"], ["ON_SHELF", "Lên kệ"], ["SELLING", "Đang bán"], ["DRAFT", "Nháp"]].map(([k, v]) => (
-            <button
-              key={k}
-              onClick={() => setStage(k)}
-              style={{
-                padding: "8px 14px",
-                borderRadius: 20,
-                fontSize: 14,
-                fontWeight: 600,
-                border: stage === k ? "none" : "0.5px solid var(--border)",
-                background: stage === k ? "#6366f1" : "var(--bg)",
-                color: stage === k ? "#fff" : "var(--text)",
-                cursor: "pointer",
-              }}
-            >{v}</button>
-          ))}
-        </div>
+      {/* Dashboard strip */}
+      <div className="stat-grid" style={{ gridTemplateColumns: "repeat(6, 1fr)", marginBottom: 12 }}>
+        <div className="stat-card c-blue"><div className="sl">Ngân sách tháng</div><div className="sv" style={{ color: "var(--blue)" }}>{formatVND(stats.budget)}</div><div className="ss">Tháng {new Date().getMonth() + 1}/{new Date().getFullYear()}</div></div>
+        <div className="stat-card c-green"><div className="sl">Đã nhập</div><div className="sv" style={{ color: "var(--green)" }}>{formatVND(stats.spent)}</div><div className="ss">{stats.budget > 0 ? Math.round(stats.spent / stats.budget * 100) : 0}% ngân sách</div></div>
+        <div className="stat-card c-amber"><div className="sl">Quota còn lại</div><div className="sv" style={{ color: "var(--amber)" }}>{formatVND(Math.max(0, stats.remaining))}</div><div className="ss">{stats.budget > 0 ? Math.round(Math.max(0, stats.remaining) / stats.budget * 100) : 0}% còn</div></div>
+        <div className="stat-card c-red"><div className="sl">Chờ xử lý</div><div className="sv" style={{ color: "var(--red)" }}>{stats.pendingCount}</div><div className="ss">{stats.pendingOverdue > 0 ? `${stats.pendingOverdue} quá hạn` : "Không quá hạn"}</div></div>
+        <div className="stat-card c-teal"><div className="sl">Đang vận chuyển</div><div className="sv" style={{ color: "#0D9488" }}>{stats.inTransit}</div><div className="ss">{stats.inTransitSoon > 0 ? `${stats.inTransitSoon} sắp về` : "—"}</div></div>
+        <div className="stat-card c-purple"><div className="sl">Công nợ NCC</div><div className="sv" style={{ color: "#7C3AED" }}>{formatVND(stats.debt)}</div><div className="ss">{stats.debtNcc} NCC</div></div>
       </div>
+
+      {/* Tabs */}
+      <div className="mini-tabs" style={{ marginBottom: 12 }}>
+        {[
+          { key: "PENDING_PURCHASE", label: "Chờ xử lý", count: tabCounts.PENDING_PURCHASE, urgent: true },
+          { key: "", label: "Tất cả", count: tabCounts.all },
+          { key: "ORDERED", label: "Đã đặt", count: tabCounts.ORDERED },
+          { key: "ARRIVED", label: "Hàng về", count: tabCounts.ARRIVED },
+          { key: "ON_SHELF", label: "Lên kệ", count: tabCounts.ON_SHELF },
+          { key: "COMPLETED", label: "Hoàn tất", count: tabCounts.COMPLETED },
+        ].map((tab) => (
+          <button key={tab.key} className={`mini-tab${stage === tab.key ? " active" : ""}`} onClick={() => setStage(tab.key)}>
+            {tab.label} <span className="cnt" style={tab.urgent && tab.count > 0 ? { background: "#DC2626", color: "#fff" } : undefined}>{tab.count}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
+        <select value={pay} onChange={(e) => setPay(e.target.value)} style={{ padding: "5px 8px", fontSize: 12 }}>
+          <option value="">Thanh toán</option>
+          <option value="Chưa thanh toán">Chưa TT</option>
+          <option value="Đã cọc">Đã cọc</option>
+          <option value="Đã thanh toán">Đã TT</option>
+          <option value="Công nợ">Công nợ</option>
+        </select>
+        <select value={eta} onChange={(e) => setEta(e.target.value)} style={{ padding: "5px 8px", fontSize: 12 }}>
+          <option value="">Hạn ETA</option>
+          <option value="overdue">Quá hạn</option>
+          <option value="soon">Sắp đến hạn</option>
+        </select>
+        <input type="text" placeholder="Tìm đơn, NCC, SP..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "5px 9px", fontSize: 12, border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", flex: 1, minWidth: 140 }} />
+      </div>
+
+      {/* Pending task cards */}
+      {stage === "PENDING_PURCHASE" && filtered.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          {filtered.map((o) => {
+            const dl = daysFromNow(o.deadline);
+            const urgency = dl !== null && dl < 0 ? "overdue" : dl !== null && dl <= 3 ? "soon" : "ok";
+            const assignee = users.find((u) => u.email === o.assigned_to);
+            return (
+              <div key={o.order_id} onClick={() => setDetailOrderId(o.order_id)} style={{ background: urgency === "overdue" ? "var(--red-lt)" : urgency === "soon" ? "var(--amber-lt)" : "#fff", border: `1px solid ${urgency === "overdue" ? "#FECACA" : urgency === "soon" ? "#FCD34D" : "var(--border)"}`, borderLeft: `4px solid ${urgency === "overdue" ? "var(--red)" : urgency === "soon" ? "var(--amber)" : "var(--blue)"}`, borderRadius: 12, padding: 14, marginBottom: 8, cursor: "pointer" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <span style={{ fontWeight: 800, fontSize: 14 }}>{o.order_name || o.order_id}</span>
+                  <span style={{ padding: "1px 6px", borderRadius: 4, fontSize: 9, fontWeight: 800, background: "#DBEAFE", color: "#1E40AF", textTransform: "uppercase" }}>Order KD</span>
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", fontSize: 11, color: "var(--muted)" }}>
+                  {o.supplier_name && <span>NCC: <strong style={{ color: "var(--text)" }}>{o.supplier_name}</strong></span>}
+                  <span>Giá trị: <strong style={{ color: "var(--text)" }}>{formatVND(o.order_total)}</strong></span>
+                  {assignee && <span>Phân cho: <strong style={{ color: "#4F46E5" }}>{assignee.name || assignee.email}</strong></span>}
+                  <span style={{ fontWeight: 700, color: urgency === "overdue" ? "var(--red)" : urgency === "soon" ? "var(--amber)" : "var(--muted)" }}>
+                    DL: {formatDate(o.deadline) || "—"}{dl !== null && (dl < 0 ? ` · Quá ${-dl}d!` : ` · Còn ${dl}d`)}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <div className="card">
         {/* Desktop table */}
@@ -166,6 +197,7 @@ export default function OrdersView({
             <thead>
               <tr>
                 <th>Mã đơn</th>
+                <th>Nguồn</th>
                 <th style={{ minWidth: 160 }}>Tên đơn</th>
                 <th>NCC</th>
                 <th>Ngày đặt</th>
@@ -178,7 +210,7 @@ export default function OrdersView({
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={9} className="muted" style={{ padding: 24, textAlign: "center" }}>
+                <tr><td colSpan={10} className="muted" style={{ padding: 24, textAlign: "center" }}>
                   {orders.length === 0 ? "Chưa có đơn." : "Không có đơn khớp bộ lọc."}
                 </td></tr>
               ) : (
@@ -262,6 +294,11 @@ function OrderRow({
     <tr style={{ cursor: "pointer" }} onClick={onOpen}>
       <td style={{ fontWeight: 700, fontSize: 12 }}>
         <span style={{ color: "var(--blue)" }}>{o.order_id}</span>
+      </td>
+      <td>
+        {o.source === "biz_order" ? <span style={{ padding: "1px 5px", borderRadius: 4, fontSize: 9, fontWeight: 800, background: "#DBEAFE", color: "#1E40AF" }}>KD</span>
+         : o.source === "nhanh" ? <span style={{ padding: "1px 5px", borderRadius: 4, fontSize: 9, fontWeight: 800, background: "#FEF3C7", color: "#92400E" }}>Nhanh</span>
+         : <span style={{ padding: "1px 5px", borderRadius: 4, fontSize: 9, fontWeight: 800, background: "#E0E7FF", color: "#4338CA" }}>MH</span>}
       </td>
       <td>
         <div style={{ fontWeight: 600 }}>{o.order_name || "—"}</div>

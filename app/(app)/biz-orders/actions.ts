@@ -43,13 +43,15 @@ export async function approveBizOrderAction(
   id: string,
   approved: boolean,
   note?: string,
+  assignedTo?: string,
+  deadline?: string,
 ) {
   const user = await requireUser();
   if (!isLeader(user.role)) {
     return { ok: false, error: "Chỉ Leader/Admin mới được duyệt." };
   }
   try {
-    const result = await approveBizOrder(id, approved, user.email, note);
+    const result = await approveBizOrder(id, approved, user.email, note, assignedTo, deadline);
     revalidatePath("/biz-orders");
     revalidatePath("/list");
     revalidatePath("/create");
