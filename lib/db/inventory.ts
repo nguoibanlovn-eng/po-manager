@@ -27,12 +27,12 @@ export type InventoryStats = {
 export async function getInventoryStats(): Promise<InventoryStats> {
   const db = supabaseAdmin();
 
-  // Parallel queries — only active products
+  // Parallel queries — all products (inactive vẫn có tồn thật trong kho)
   const [totalRes, inStockRes, outStockRes, catRes] = await Promise.all([
-    db.from("products").select("*", { count: "exact", head: true }).eq("is_active", true),
-    db.from("products").select("stock, cost_price").eq("is_active", true).gt("stock", 0),
-    db.from("products").select("*", { count: "exact", head: true }).eq("is_active", true).lte("stock", 0),
-    db.from("products").select("category").eq("is_active", true).not("category", "is", null),
+    db.from("products").select("*", { count: "exact", head: true }),
+    db.from("products").select("stock, cost_price").gt("stock", 0),
+    db.from("products").select("*", { count: "exact", head: true }).lte("stock", 0),
+    db.from("products").select("category").not("category", "is", null),
   ]);
 
   let totalStock = 0, totalValue = 0;
@@ -65,14 +65,14 @@ export async function getInventoryMobileSummary(): Promise<{
 }> {
   const db = supabaseAdmin();
 
-  // 1. Get all active products (paginate past 1000 limit)
+  // 1. Get all products with stock > 0 (inactive vẫn có tồn thật trong kho)
   const products: Array<Record<string, unknown>> = [];
   let prodOff = 0;
   while (true) {
     const { data } = await db
       .from("products")
       .select("id, sku, product_name, category, stock, stock_kho_tru, stock_ssc, cost_price")
-      .eq("is_active", true)
+      .gt("stock", 0)
       .range(prodOff, prodOff + 999);
     if (!data?.length) break;
     products.push(...data);
