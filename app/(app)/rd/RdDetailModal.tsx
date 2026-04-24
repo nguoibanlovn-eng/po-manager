@@ -125,6 +125,16 @@ const STEP_FORM_FIELDS: Record<string, FieldDef[]> = {
   ],
 };
 
+/* ─── Number formatting (1234567 → "1.234.567") ────────── */
+function fmtNum(v: string): string {
+  const raw = v.replace(/\D/g, "");
+  if (!raw) return "";
+  return Number(raw).toLocaleString("vi-VN");
+}
+function rawNum(v: string): string {
+  return v.replace(/\D/g, "");
+}
+
 /* ─── Verdict color ─────────────────────────────────────── */
 function verdictStyle(v: string): { bg: string; color: string } | null {
   const lower = String(v).toLowerCase();
@@ -411,7 +421,7 @@ function ModalInner({
         return (
           <div key={f.key} style={S.section}>
             <div style={S.label}>{f.label}</div>
-            <input type="text" inputMode="numeric" value={val} onChange={(e) => setField(f.key, e.target.value)} style={S.input} />
+            <input type="text" inputMode="numeric" value={fmtNum(val)} onChange={(e) => setField(f.key, rawNum(e.target.value))} style={S.input} />
           </div>
         );
       default:
@@ -713,16 +723,16 @@ function ModalInner({
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 6 }}>
                   <div style={S.section}>
                     <div style={S.label}>Giá nhập dự kiến</div>
-                    <input type="text" inputMode="numeric" value={formData.price_buy || ""} onChange={(e) => setField("price_buy", e.target.value)} style={S.input} />
+                    <input type="text" inputMode="numeric" value={fmtNum(formData.price_buy || "")} onChange={(e) => setField("price_buy", rawNum(e.target.value))} style={S.input} />
                   </div>
                   <div style={S.section}>
                     <div style={S.label}>Giá bán dự kiến</div>
-                    <input type="text" inputMode="numeric" value={formData.price_sell || ""} onChange={(e) => setField("price_sell", e.target.value)} style={S.input} />
+                    <input type="text" inputMode="numeric" value={fmtNum(formData.price_sell || "")} onChange={(e) => setField("price_sell", rawNum(e.target.value))} style={S.input} />
                   </div>
                 </div>
                 {(() => {
-                  const buy = Number(String(formData.price_buy || "0").replace(/\D/g, ""));
-                  const sell = Number(String(formData.price_sell || "0").replace(/\D/g, ""));
+                  const buy = Number(rawNum(formData.price_buy || "0"));
+                  const sell = Number(rawNum(formData.price_sell || "0"));
                   const margin = sell > 0 ? Math.round(((sell - buy) / sell) * 100) : 0;
                   const profit = sell - buy;
                   return (buy > 0 && sell > 0) ? (
