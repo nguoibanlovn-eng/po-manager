@@ -399,49 +399,14 @@ export default function BizOrdersView({
         <div className="page-hdr">
           <div>
             <div className="page-title">{editingId ? "Sửa Order" : "Tạo Order nhập hàng"}</div>
-            <div className="page-sub">{orderType === "new" ? "Nhập thông tin sản phẩm mới" : "Chọn từ kho hàng có sẵn"}</div>
+            <div className="page-sub">Nhập yêu cầu nhập hàng cho team</div>
           </div>
           <button className="btn btn-ghost" onClick={() => setView("list")}>← Quay lại</button>
         </div>
 
-        {/* Type toggle */}
-        <div style={{ display: "flex", gap: 0, border: "2px solid var(--border)", borderRadius: 10, overflow: "hidden", marginBottom: 16 }}>
-          <button
-            type="button"
-            onClick={() => { setOrderType("new"); setItems([]); setProdSearch(""); setProdResults([]); }}
-            style={{
-              flex: 1, padding: "10px 16px", border: "none", fontSize: 13, fontWeight: 700,
-              cursor: "pointer", fontFamily: "inherit", textAlign: "center",
-              background: orderType === "new" ? "var(--purple-lt)" : "#fff",
-              color: orderType === "new" ? "var(--purple)" : "var(--muted)",
-            }}
-          >
-            Hàng mới
-            <div style={{ fontSize: 10, fontWeight: 400, marginTop: 2, opacity: 0.7 }}>Nhập thông tin SP mới</div>
-          </button>
-          <button
-            type="button"
-            onClick={() => { setOrderType("existing"); setItems([]); }}
-            style={{
-              flex: 1, padding: "10px 16px", border: "none", fontSize: 13, fontWeight: 700,
-              cursor: "pointer", fontFamily: "inherit", textAlign: "center",
-              background: orderType === "existing" ? "var(--teal-lt)" : "#fff",
-              color: orderType === "existing" ? "var(--teal)" : "var(--muted)",
-            }}
-          >
-            Hàng cũ
-            <div style={{ fontSize: 10, fontWeight: 400, marginTop: 2, opacity: 0.7 }}>Chọn từ kho hàng có sẵn</div>
-          </button>
-        </div>
-
         {/* Order info */}
         <div className="card" style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
-            Thông tin Order
-            <span className={`chip ${orderType === "new" ? "chip-purple" : "chip-teal"}`} style={{ fontSize: 9 }}>
-              {orderType === "new" ? "Hàng mới" : "Hàng cũ"}
-            </span>
-          </div>
+          <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 10 }}>Thông tin Order</div>
           <div className="form-grid fg-2" style={{ marginBottom: 12 }}>
             <div className="form-group">
               <label>Team</label>
@@ -460,147 +425,144 @@ export default function BizOrdersView({
           </div>
         </div>
 
-        {/* ═══ HÀNG MỚI ═══ */}
-        {orderType === "new" && (
-          <div className="card" style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span>Sản phẩm ({items.length})</span>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={addItem}>+ Thêm SP</button>
+        {/* ═══ SẢN PHẨM ═══ */}
+        <div className="card" style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span>Sản phẩm ({items.length})</span>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button type="button" className="btn btn-sm" style={{ background: "var(--purple-lt)", color: "var(--purple)", border: "1px solid #DDD6FE" }} onClick={addItem}>+ Hàng mới</button>
+              <button type="button" className="btn btn-sm" style={{ background: "var(--teal-lt)", color: "var(--teal)", border: "1px solid #99F6E4" }} onClick={() => { setOrderType("existing"); setProdSearch(""); setProdResults([]); }}>+ Nhập lại từ kho</button>
             </div>
-
-            {items.length === 0 && (
-              <div style={{ textAlign: "center", padding: 24, color: "var(--muted)", fontSize: 13 }}>
-                Chưa có sản phẩm. Bấm &quot;+ Thêm SP&quot; để thêm.
-              </div>
-            )}
-
-            {items.map((it, idx) => {
-              const margin = toNum(it.sell_price) > 0 && toNum(it.unit_price) > 0
-                ? (((toNum(it.sell_price) - toNum(it.unit_price)) / toNum(it.sell_price)) * 100).toFixed(1)
-                : null;
-              return (
-                <div key={it._key} style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 14, marginBottom: 10, background: "#fff", position: "relative" }}>
-                  <span style={{ position: "absolute", top: -8, left: 12, background: "var(--blue)", color: "#fff", fontSize: 10, fontWeight: 800, padding: "1px 8px", borderRadius: 99 }}>{idx + 1}</span>
-                  <button type="button" onClick={() => removeItem(it._key)} style={{ position: "absolute", top: 8, right: 8, width: 22, height: 22, borderRadius: "50%", border: "none", background: "var(--red-lt)", color: "var(--red)", cursor: "pointer", fontSize: 12 }}>x</button>
-
-                  <div className="form-group" style={{ marginBottom: 10 }}>
-                    <label>Tên sản phẩm</label>
-                    <input value={it.product_name || ""} onChange={(e) => patchItem(it._key, { product_name: e.target.value })} placeholder="VD: Cáp sạc GaN 67W PD 3.0" />
-                  </div>
-                  <div className="form-grid fg-3" style={{ marginBottom: 10 }}>
-                    <div className="form-group">
-                      <label>Số lượng</label>
-                      <input type="number" min={0} value={String(it.qty ?? 0)} onChange={(e) => patchItem(it._key, { qty: Number(e.target.value) || 0 })} />
-                    </div>
-                    <div className="form-group">
-                      <label>Giá nhập dự kiến</label>
-                      <input type="number" min={0} value={String(it.unit_price ?? 0)} onChange={(e) => patchItem(it._key, { unit_price: Number(e.target.value) || 0 })} />
-                    </div>
-                    <div className="form-group">
-                      <label>Giá bán dự kiến</label>
-                      <input type="number" min={0} value={String(it.sell_price ?? 0)} onChange={(e) => patchItem(it._key, { sell_price: Number(e.target.value) || 0 })} />
-                    </div>
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 10 }}>
-                    <label>Mô tả / Spec</label>
-                    <textarea rows={2} value={it.description || ""} onChange={(e) => patchItem(it._key, { description: e.target.value })} placeholder="Mô tả chi tiết SP..." />
-                  </div>
-                  <div className="form-grid fg-2">
-                    <div className="form-group">
-                      <label>Link tham khảo</label>
-                      <input value={it.ref_link || ""} onChange={(e) => patchItem(it._key, { ref_link: e.target.value })} placeholder="Link 1688, Alibaba..." />
-                    </div>
-                    <div className="form-group">
-                      <label>Link đối thủ</label>
-                      <input value={it.competitor_link || ""} onChange={(e) => patchItem(it._key, { competitor_link: e.target.value })} placeholder="Link Shopee, Lazada..." />
-                    </div>
-                  </div>
-                  {margin && (
-                    <div style={{ marginTop: 8, display: "flex", gap: 6, alignItems: "center" }}>
-                      <span style={{ fontSize: 11, color: "var(--muted)" }}>Biên lợi dự kiến:</span>
-                      <span style={{ fontSize: 13, fontWeight: 800, color: "var(--green)" }}>{margin}%</span>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
           </div>
-        )}
 
-        {/* ═══ HÀNG CŨ ═══ */}
-        {orderType === "existing" && (
-          <>
-            <div className="card" style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 10 }}>Tìm & chọn sản phẩm từ kho</div>
-              <div style={{ position: "relative", marginBottom: 12 }}>
+          {/* Search bar for existing products */}
+          {orderType === "existing" && (
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ position: "relative", marginBottom: 8 }}>
                 <input
                   type="text" placeholder="Tìm theo tên, SKU..."
                   value={prodSearch} onChange={(e) => searchProducts(e.target.value)}
                   style={{ width: "100%", paddingLeft: 36 }}
                 />
                 <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--subtle)", fontSize: 14 }}>&#128269;</span>
+                <button type="button" onClick={() => setOrderType("new")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: 14 }}>✕</button>
               </div>
               {searching && <div style={{ fontSize: 12, color: "var(--muted)", padding: 8 }}>Đang tìm...</div>}
               {prodResults.length > 0 && (
-                <div style={{ border: "1px solid var(--border)", borderRadius: 10, maxHeight: 260, overflowY: "auto" }}>
+                <div style={{ border: "1px solid var(--border)", borderRadius: 10, maxHeight: 220, overflowY: "auto" }}>
                   {prodResults.map((p) => {
                     const sel = isSelected(p.sku);
                     return (
                       <div
                         key={p.sku} onClick={() => !sel && selectProduct(p)}
                         style={{
-                          display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",
+                          display: "flex", alignItems: "center", gap: 10, padding: "8px 12px",
                           borderBottom: "1px solid var(--border)", cursor: sel ? "default" : "pointer",
                           background: sel ? "var(--green-lt)" : undefined,
                           borderLeft: sel ? "3px solid var(--green)" : undefined,
                         }}
                       >
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, fontWeight: 700 }}>{p.product_name}</div>
-                          <div style={{ fontSize: 11, color: "var(--muted)", display: "flex", gap: 10, marginTop: 2 }}>
+                          <div style={{ fontSize: 12, fontWeight: 700 }}>{p.product_name}</div>
+                          <div style={{ fontSize: 10, color: "var(--muted)", display: "flex", gap: 8, marginTop: 2 }}>
                             <span>SKU: {p.sku}</span>
-                            <span>Giá nhập: {toNum(p.cost_price).toLocaleString("vi-VN")}</span>
-                            <span>Giá bán: {toNum(p.sell_price).toLocaleString("vi-VN")}</span>
+                            <span>Giá: {toNum(p.cost_price).toLocaleString("vi-VN")}</span>
                           </div>
                         </div>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--teal)" }}>Tồn: {toNum(p.stock).toLocaleString("vi-VN")}</div>
-                        {sel && <span style={{ color: "var(--green)", fontSize: 16 }}>&#10003;</span>}
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--teal)" }}>Tồn: {toNum(p.stock).toLocaleString("vi-VN")}</div>
+                        {sel && <span style={{ color: "var(--green)", fontSize: 14 }}>&#10003;</span>}
                       </div>
                     );
                   })}
                 </div>
               )}
             </div>
+          )}
 
-            {items.length > 0 && (
-              <div className="card" style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span>Sản phẩm đã chọn ({items.length})</span>
-                  <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 400 }}>Nhập số lượng cần bổ sung</span>
-                </div>
-                {items.map((it) => (
-                  <div key={it._key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "#F9FAFB", border: "1px solid var(--border)", borderRadius: 8, marginBottom: 6 }}>
-                    <div style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>
-                      {it.product_name}
-                      <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 400 }}>
-                        SKU: {it.sku} · Tồn: {toNum(it.current_stock).toLocaleString("vi-VN")} · Giá: {toNum(it.unit_price).toLocaleString("vi-VN")}
-                      </div>
+          {items.length === 0 && orderType === "new" && (
+            <div style={{ textAlign: "center", padding: 24, color: "var(--muted)", fontSize: 13 }}>
+              Chưa có sản phẩm. Bấm &quot;+ Hàng mới&quot; hoặc &quot;+ Nhập lại từ kho&quot;.
+            </div>
+          )}
+
+          {items.map((it, idx) => {
+            const isFromStock = !!it.sku && !!it.current_stock;
+            const margin = toNum(it.sell_price) > 0 && toNum(it.unit_price) > 0
+              ? (((toNum(it.sell_price) - toNum(it.unit_price)) / toNum(it.sell_price)) * 100).toFixed(1)
+              : null;
+
+            if (isFromStock) {
+              // Compact row for existing product
+              return (
+                <div key={it._key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "#F9FAFB", border: "1px solid var(--border)", borderRadius: 8, marginBottom: 6 }}>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: "var(--teal)", width: 16, textAlign: "center" }}>{idx + 1}</span>
+                  <div style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>
+                    {it.product_name}
+                    <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 400 }}>
+                      SKU: {it.sku} · Tồn: {toNum(it.current_stock).toLocaleString("vi-VN")} · Giá: {toNum(it.unit_price).toLocaleString("vi-VN")}
                     </div>
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-                      <span style={{ fontSize: 9, color: "var(--muted)", fontWeight: 700 }}>SỐ LƯỢNG</span>
-                      <input
-                        type="number" min={0} value={String(it.qty ?? 0)}
-                        onChange={(e) => patchItem(it._key, { qty: Number(e.target.value) || 0 })}
-                        style={{ width: 80, textAlign: "center" }}
-                      />
-                    </div>
-                    <button type="button" onClick={() => removeItem(it._key)} style={{ width: 24, height: 24, borderRadius: "50%", border: "none", background: "var(--red-lt)", color: "var(--red)", cursor: "pointer", fontSize: 14 }}>x</button>
                   </div>
-                ))}
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                    <span style={{ fontSize: 9, color: "var(--muted)", fontWeight: 700 }}>SỐ LƯỢNG</span>
+                    <input
+                      type="number" min={0} value={String(it.qty ?? 0)}
+                      onChange={(e) => patchItem(it._key, { qty: Number(e.target.value) || 0 })}
+                      style={{ width: 80, textAlign: "center" }}
+                    />
+                  </div>
+                  <button type="button" onClick={() => removeItem(it._key)} style={{ width: 24, height: 24, borderRadius: "50%", border: "none", background: "var(--red-lt)", color: "var(--red)", cursor: "pointer", fontSize: 14 }}>x</button>
+                </div>
+              );
+            }
+
+            // Full form for new product
+            return (
+              <div key={it._key} style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 14, marginBottom: 10, background: "#fff", position: "relative" }}>
+                <span style={{ position: "absolute", top: -8, left: 12, background: "var(--purple)", color: "#fff", fontSize: 10, fontWeight: 800, padding: "1px 8px", borderRadius: 99 }}>{idx + 1}</span>
+                <button type="button" onClick={() => removeItem(it._key)} style={{ position: "absolute", top: 8, right: 8, width: 22, height: 22, borderRadius: "50%", border: "none", background: "var(--red-lt)", color: "var(--red)", cursor: "pointer", fontSize: 12 }}>x</button>
+
+                <div className="form-group" style={{ marginBottom: 10 }}>
+                  <label>Tên sản phẩm</label>
+                  <input value={it.product_name || ""} onChange={(e) => patchItem(it._key, { product_name: e.target.value })} placeholder="VD: Cáp sạc GaN 67W PD 3.0" />
+                </div>
+                <div className="form-grid fg-3" style={{ marginBottom: 10 }}>
+                  <div className="form-group">
+                    <label>Số lượng</label>
+                    <input type="number" min={0} value={String(it.qty ?? 0)} onChange={(e) => patchItem(it._key, { qty: Number(e.target.value) || 0 })} />
+                  </div>
+                  <div className="form-group">
+                    <label>Giá nhập dự kiến</label>
+                    <input type="number" min={0} value={String(it.unit_price ?? 0)} onChange={(e) => patchItem(it._key, { unit_price: Number(e.target.value) || 0 })} />
+                  </div>
+                  <div className="form-group">
+                    <label>Giá bán dự kiến</label>
+                    <input type="number" min={0} value={String(it.sell_price ?? 0)} onChange={(e) => patchItem(it._key, { sell_price: Number(e.target.value) || 0 })} />
+                  </div>
+                </div>
+                <div className="form-group" style={{ marginBottom: 10 }}>
+                  <label>Mô tả / Spec</label>
+                  <textarea rows={2} value={it.description || ""} onChange={(e) => patchItem(it._key, { description: e.target.value })} placeholder="Mô tả chi tiết SP..." />
+                </div>
+                <div className="form-grid fg-2">
+                  <div className="form-group">
+                    <label>Link tham khảo</label>
+                    <input value={it.ref_link || ""} onChange={(e) => patchItem(it._key, { ref_link: e.target.value })} placeholder="Link 1688, Alibaba..." />
+                  </div>
+                  <div className="form-group">
+                    <label>Link đối thủ</label>
+                    <input value={it.competitor_link || ""} onChange={(e) => patchItem(it._key, { competitor_link: e.target.value })} placeholder="Link Shopee, Lazada..." />
+                  </div>
+                </div>
+                {margin && (
+                  <div style={{ marginTop: 8, display: "flex", gap: 6, alignItems: "center" }}>
+                    <span style={{ fontSize: 11, color: "var(--muted)" }}>Biên lợi dự kiến:</span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: "var(--green)" }}>{margin}%</span>
+                  </div>
+                )}
               </div>
-            )}
-          </>
-        )}
+            );
+          })}
+        </div>
 
         {/* Summary */}
         {items.length > 0 && (
