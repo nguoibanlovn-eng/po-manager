@@ -672,10 +672,16 @@ function ModalInner({
                       startTransition(async () => {
                         const now = new Date().toLocaleDateString("vi-VN");
                         const byName = users.find((u) => u.email === currentUserEmail)?.name || currentUserEmail;
+                        // Reopen previous work step, lock this approval step
+                        const updatedSteps = initSteps.map((s, i) => {
+                          if (i === activeIdx) return { ...s, status: "locked" as const };
+                          if (i === activeIdx - 1) return { ...s, status: "active" as const };
+                          return s;
+                        });
                         const newData = {
                           ...data, ...formData, proposer_role: proposerRole, priority,
                           revision_note: result, revision_by: byName, revision_step: step.label, revision_date: now,
-                          [stepsKey]: JSON.stringify(initSteps),
+                          [stepsKey]: JSON.stringify(updatedSteps),
                         };
                         await saveRdItemAction(item.id, { name: itemName, data: newData });
                         onRefresh();
