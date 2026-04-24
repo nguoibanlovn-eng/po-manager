@@ -4,6 +4,9 @@ import { nowVN, dateVN } from "@/lib/helpers";
 import { toNum } from "@/lib/format";
 import { nhanhReq, nhanhV3FetchAll } from "./client";
 
+// Nhanh depot ID for KHO TRỮ HÀNG VELASBOOST — the only accurate Nhanh inventory
+const DEPOT_KHO_TRU = 205665;
+
 type V3Product = {
   id?: number;
   barcode?: string;
@@ -24,7 +27,7 @@ type V3Product = {
     sold?: number;
     soldCount?: number;
     totalSold?: number;
-    depots?: Array<{ remain?: number }>;
+    depots?: Array<{ id?: number; remain?: number }>;
   };
 };
 
@@ -35,7 +38,8 @@ type V3Product = {
 type ProductRow = {
   id: number; sku: string; product_name: string; category: string; unit: string;
   image_url: string; cost_price: number; sell_price: number;
-  stock: number; is_active: boolean; last_sync: string;
+  stock: number; stock_kho_tru: number; stock_ssc: number;
+  is_active: boolean; last_sync: string;
 };
 type InventoryRow = {
   sku: string; product_name: string; category: string;
@@ -50,11 +54,14 @@ function buildRows(all: V3Product[], now: string): { products: ProductRow[]; inv
     if (!p.id || !p.name) continue;
     const sku = String(p.barcode || p.code || "");
     const inv = p.inventory || {};
-    let stock = toNum(inv.remain);
-    if (!stock && Array.isArray(inv.depots)) {
-      stock = inv.depots.reduce((s, d) => s + toNum(d.remain), 0);
+    // Extract KHO TRỮ depot remain specifically
+    let stockKhoTru = 0;
+    if (Array.isArray(inv.depots)) {
+      const khoTru = inv.depots.find((d) => d.id === DEPOT_KHO_TRU);
+      stockKhoTru = Math.max(0, toNum(khoTru?.remain));
     }
-    if (stock < 0) stock = 0;
+    // stock = KHO TRỮ only (SSC will be added separately via ssc sync)
+    const stock = stockKhoTru;
 
     // Products: 1 row per Nhanh product.id (variants tách riêng)
     byId.set(Number(p.id), {
@@ -67,6 +74,8 @@ function buildRows(all: V3Product[], now: string): { products: ProductRow[]; inv
       cost_price: toNum(p.prices?.import || p.prices?.avgCost),
       sell_price: toNum(p.prices?.retail),
       stock,
+      stock_kho_tru: stockKhoTru,
+      stock_ssc: 0, // populated by SSC sync
       is_active: p.status === 1 || p.status === "Active",
       last_sync: now,
     });
@@ -123,9 +132,33 @@ async function writeBatched<T>(
 export async function syncProductsAndInventory(): Promise<{
   products: number; inventory: number;
 }> {
+  const db = supabaseAdmin();
   const all = await nhanhV3FetchAll<V3Product>("product/list", { filters: {} });
   if (!all.length) return { products: 0, inventory: 0 };
   const { products, inventory } = buildRows(all, nowVN());
+
+  // Preserve existing SSC stock data before truncate (paginate past 1000 limit)
+  const sscMap = new Map<number, number>();
+  let sscOff = 0;
+  while (true) {
+    const { data: sscPage } = await db
+      .from("products")
+      .select("id, stock_ssc")
+      .gt("stock_ssc", 0)
+      .range(sscOff, sscOff + 999);
+    if (!sscPage?.length) break;
+    for (const r of sscPage) sscMap.set(r.id, r.stock_ssc);
+    if (sscPage.length < 1000) break;
+    sscOff += 1000;
+  }
+
+  // Merge SSC data back into products
+  for (const p of products) {
+    const ssc = sscMap.get(p.id) || 0;
+    p.stock_ssc = ssc;
+    p.stock = p.stock_kho_tru + ssc;
+  }
+
   // Ghi tuần tự (upsert + truncate lock cùng bảng nếu parallel không an toàn)
   const p = await writeBatched("products", products, "id");
   const i = await writeBatched("inventory", inventory, "sku");
@@ -134,12 +167,41 @@ export async function syncProductsAndInventory(): Promise<{
 
 // Compatibility wrappers — cho admin-settings UI gọi riêng từng nút.
 // Cả 2 đều fetch product/list 1 lần và chỉ ghi bảng tương ứng.
-export async function syncProducts(): Promise<{ inserted: number }> {
+export async function syncProducts(): Promise<{ inserted: number; logs: string[] }> {
+  const logs: string[] = [];
+  const db = supabaseAdmin();
+  logs.push("[Nhanh] Đang tải danh sách sản phẩm...");
   const all = await nhanhV3FetchAll<V3Product>("product/list", { filters: {} });
-  if (!all.length) return { inserted: 0 };
+  if (!all.length) return { inserted: 0, logs: ["Không có sản phẩm"] };
+  logs.push(`[Nhanh] Đã tải ${all.length} sản phẩm`);
   const { products } = buildRows(all, nowVN());
+  logs.push(`[Nhanh] ${products.length} SP, tách KHO TRỮ (depot ${DEPOT_KHO_TRU})`);
+
+  // Preserve existing SSC stock data (paginate past 1000 limit)
+  const sscMap = new Map<number, number>();
+  let sscOff = 0;
+  while (true) {
+    const { data: sscPage } = await db
+      .from("products")
+      .select("id, stock_ssc")
+      .gt("stock_ssc", 0)
+      .range(sscOff, sscOff + 999);
+    if (!sscPage?.length) break;
+    for (const r of sscPage) sscMap.set(r.id, r.stock_ssc);
+    if (sscPage.length < 1000) break;
+    sscOff += 1000;
+  }
+  if (sscMap.size) logs.push(`[Nhanh] Giữ lại SSC data cho ${sscMap.size} SP`);
+  for (const p of products) {
+    const ssc = sscMap.get(p.id) || 0;
+    p.stock_ssc = ssc;
+    p.stock = p.stock_kho_tru + ssc;
+  }
+
+  logs.push("[Nhanh] Đang ghi vào DB...");
   const inserted = await writeBatched("products", products, "id");
-  return { inserted };
+  logs.push(`[Nhanh] ✓ Xong: ${inserted} sản phẩm`);
+  return { inserted, logs };
 }
 
 export async function syncInventory(): Promise<{ inserted: number }> {

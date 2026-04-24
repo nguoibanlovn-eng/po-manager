@@ -59,7 +59,7 @@ export default function DashDayMobile(p: DashDayMobileProps) {
 
   return (
     <div style={{ background: "#F8FAFC", minHeight: "100vh", paddingBottom: 80 }}>
-      <AutoSyncToday extraSyncs={["/api/tiktok/sync-ads", "/api/tiktok/sync-gmv-max", "/api/fb/sync-ads"]} />
+      <AutoSyncToday extraSyncs={["/api/tiktok/sync-ads", "/api/tiktok/sync-gmv-max", "/api/fb/sync-ads", "/api/shopee/sync-ads"]} />
 
       {/* ── HEADER ── */}
       <div style={{ background: "linear-gradient(135deg,#1E3A5F,#0F172A)", padding: "12px 14px 0", color: "#fff" }}>
@@ -207,6 +207,11 @@ export default function DashDayMobile(p: DashDayMobileProps) {
             <div style={{ fontSize: 18, fontWeight: 800, color: "#DC2626" }}>{formatVNDCompact(p.adsTt + p.adsTtGmv)}</div>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginTop: 3 }}><span style={{ color: "#94A3B8" }}>BM</span><span style={{ fontWeight: 700 }}>{formatVNDCompact(p.adsTtBm)}</span></div>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginTop: 2 }}><span style={{ color: "#94A3B8" }}>GMV Max</span><span style={{ fontWeight: 700 }}>{formatVNDCompact(p.adsTtGmv)}</span></div>
+          </div>
+          <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12, padding: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#EE4D2D" }} /><div style={{ fontSize: 11, fontWeight: 700 }}>Shopee</div></div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#DC2626" }}>{formatVNDCompact(p.adsSp)}</div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginTop: 3 }}><span style={{ color: "#94A3B8" }}>% DT</span><span style={{ fontWeight: 700, color: "#16A34A" }}>{(p.channels.find(c => c.name === "Shopee")?.rev || 0) > 0 ? (p.adsSp / (p.channels.find(c => c.name === "Shopee")?.rev || 1) * 100).toFixed(1) : "0.0"}%</span></div>
           </div>
         </div>
       </div>

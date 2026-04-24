@@ -3,9 +3,15 @@ export function toNum(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-export function formatVND(v: unknown): string {
+/** Format number with dot separator (1.000) — consistent server/client */
+export function fmtNum(v: unknown): string {
   const n = toNum(v);
-  return n.toLocaleString("vi-VN") + "₫";
+  if (n === 0) return "0";
+  return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
+export function formatVND(v: unknown): string {
+  return fmtNum(v) + "₫";
 }
 
 export function formatVNDCompact(v: unknown): string {

@@ -10,6 +10,7 @@ import { syncShopeeAdsDaily } from "@/lib/shopee/sync-ads";
 import { syncGmvMax } from "@/lib/tiktok/gmv-max-sync";
 import { syncProductSales } from "@/lib/nhanh/sync-product-sales";
 import { refreshCustomerStats } from "@/lib/db/refresh-customer-stats";
+import { syncSscInventory } from "@/lib/ssc/sync";
 
 export const maxDuration = 300;
 
@@ -53,15 +54,19 @@ export async function POST(req: Request) {
       : { ok: false, error: s.reason instanceof Error ? s.reason.message : String(s.reason) };
   }
 
-  // Phase 2: Nhanh report scraper — runs AFTER order/list sync.
-  // Overwrites sales_sync with accurate "ngày thành công" data from Nhanh report.
-  // Syncs today + yesterday (yesterday status may still update overnight).
-  try {
-    const r = await syncNhanhReport({});
-    results.nhanh_report = { ok: r.ok, days: r.days, rows: r.rows };
-  } catch (e) {
-    results.nhanh_report = { ok: false, error: e instanceof Error ? e.message : String(e) };
-  }
+  // Phase 2: Runs AFTER Phase 1 completes.
+  // - Nhanh report: overwrites sales_sync with accurate "ngày thành công" data.
+  // - SSC inventory: updates stock_ssc and recalculates stock = kho_tru + ssc.
+  const phase2 = await Promise.allSettled([
+    syncNhanhReport({}).then((r) => ({ ok: r.ok, days: r.days, rows: r.rows })),
+    syncSscInventory().then((r) => ({ ok: true, ...r })),
+  ]);
+  results.nhanh_report = phase2[0].status === "fulfilled"
+    ? phase2[0].value
+    : { ok: false, error: phase2[0].reason instanceof Error ? phase2[0].reason.message : String(phase2[0].reason) };
+  results.ssc_inventory = phase2[1].status === "fulfilled"
+    ? phase2[1].value
+    : { ok: false, error: phase2[1].reason instanceof Error ? phase2[1].reason.message : String(phase2[1].reason) };
 
   return NextResponse.json({
     ok: true,

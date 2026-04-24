@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { formatVND, formatVNDCompact, toNum } from "@/lib/format";
+import { formatVND, formatVNDCompact, toNum, fmtNum } from "@/lib/format";
 import type { InventoryRow, InventoryStats } from "@/lib/db/inventory";
 import SyncButton from "../components/SyncButton";
 import Collapsible from "../components/Collapsible";
@@ -77,9 +77,9 @@ function SyncSalesButton({ onDone, from, to }: { onDone: () => void; from: strin
         totalOrders += json.totalOrders || 0;
         // Append logs from API
         if (json.logs) setLogs((prev) => [...prev, ...json.logs]);
-        setProgress(`Chunk ${i + 1}/${chunks.length} ✓ ${totalOrders.toLocaleString()} đơn → ${totalRows.toLocaleString()} dòng`);
+        setProgress(`Chunk ${i + 1}/${chunks.length} ✓ ${fmtNum(totalOrders)} đơn → ${fmtNum(totalRows)} dòng`);
       }
-      setProgress(`✓ Xong: ${totalOrders.toLocaleString()} đơn → ${totalRows.toLocaleString()} dòng`);
+      setProgress(`✓ Xong: ${fmtNum(totalOrders)} đơn → ${fmtNum(totalRows)} dòng`);
       onDone();
     } catch (e) {
       setProgress(`Lỗi: ${(e as Error).message}`);
@@ -281,11 +281,12 @@ export default function InventoryView({
       <div className="page-hdr">
         <div>
           <div className="page-title">Quản lý tồn kho</div>
-          <div className="page-sub">Dữ liệu từ Nhanh.vn</div>
+          <div className="page-sub">Nhanh.vn (Kho Trữ) + SSC Fulfillment</div>
         </div>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <button className="btn btn-ghost btn-sm" style={{ fontSize: 11 }}>Cài cảnh báo</button>
-          <SyncButton url="/api/nhanh/sync-products" label="↻ Đồng bộ SP" onDone={() => router.refresh()} />
+          <SyncButton url="/api/nhanh/sync-products" label="↻ Nhanh" onDone={() => router.refresh()} />
+          <SyncButton url="/api/ssc/sync-inventory" label="↻ SSC" onDone={() => router.refresh()} />
           <button className="btn btn-primary btn-sm" style={{ fontSize: 11 }} onClick={() => router.refresh()}>↻ Làm mới</button>
         </div>
       </div>
@@ -297,9 +298,9 @@ export default function InventoryView({
         {/* KPI Cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 10 }}>
           {[
-            { label: "Tổng sản phẩm", value: stats.totalProducts.toLocaleString("vi-VN"), color: "#6366F1", bg: "#EEF2FF" },
-            { label: "Còn hàng", value: stats.inStock.toLocaleString("vi-VN"), color: "#16A34A", bg: "#F0FDF4" },
-            { label: "Tồn kho", value: stats.totalStock.toLocaleString("vi-VN"), color: "#D97706", bg: "#FFFBEB" },
+            { label: "Tổng sản phẩm", value: fmtNum(stats.totalProducts), color: "#6366F1", bg: "#EEF2FF" },
+            { label: "Còn hàng", value: fmtNum(stats.inStock), color: "#16A34A", bg: "#F0FDF4" },
+            { label: "Tồn kho", value: fmtNum(stats.totalStock), color: "#D97706", bg: "#FFFBEB" },
             { label: "Giá trị tồn", value: formatVNDCompact(stats.totalValue), color: "#DC2626", bg: "#FEF2F2" },
           ].map((k) => (
             <div key={k.label} className="card" style={{ padding: "10px 14px", background: k.bg, border: "none" }}>
@@ -313,7 +314,7 @@ export default function InventoryView({
           {/* Header */}
           <div style={{ padding: "8px 14px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ fontWeight: 700, fontSize: 13 }}>Danh sách sản phẩm</div>
-            <span style={{ fontSize: 10, color: "#6B7280" }}>{total.toLocaleString("vi-VN")} SP</span>
+            <span style={{ fontSize: 10, color: "#6B7280" }}>{fmtNum(total)} SP</span>
           </div>
 
           {/* Filter bar */}
@@ -335,7 +336,7 @@ export default function InventoryView({
               <option value="name_asc">Tên A→Z</option>
             </select>
             <button type="submit" className="btn btn-primary btn-xs">Lọc</button>
-            <span style={{ marginLeft: "auto", fontSize: 10, color: "#6B7280" }}>{total.toLocaleString("vi-VN")} SP</span>
+            <span style={{ marginLeft: "auto", fontSize: 10, color: "#6B7280" }}>{fmtNum(total)} SP</span>
           </form>
 
           {/* Table */}
@@ -345,20 +346,26 @@ export default function InventoryView({
                 <th style={{ width: 110 }}>SKU</th>
                 <th>Tên sản phẩm</th>
                 <th style={{ width: 70 }}>Danh mục</th>
-                <th className="text-right" style={{ width: 60 }}>Tồn</th>
+                <th className="text-right" style={{ width: 55 }}>Kho Trữ</th>
+                <th className="text-right" style={{ width: 45 }}>SSC</th>
+                <th className="text-right" style={{ width: 55, fontWeight: 800 }}>Tổng</th>
                 <th className="text-right" style={{ width: 80 }}>Giá vốn</th>
                 <th className="text-right" style={{ width: 80 }}>Giá bán</th>
-                <th style={{ width: 45 }}>Trạng thái</th>
+                <th style={{ width: 45 }}>TT</th>
               </tr></thead>
               <tbody>
                 {rows.map((r) => {
                   const avail = toNum(r.available_qty);
+                  const khoTru = toNum(r.stock_kho_tru);
+                  const ssc = toNum(r.stock_ssc);
                   return (
                     <tr key={r.sku}>
                       <td style={{ fontFamily: "monospace", fontSize: 10 }}>{r.sku}</td>
-                      <td style={{ fontSize: 11, maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.product_name || "—"}</td>
+                      <td style={{ fontSize: 11, maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.product_name || "—"}</td>
                       <td style={{ fontSize: 10, color: "#6B7280" }}>{r.category || "—"}</td>
-                      <td className="text-right" style={{ fontWeight: 600 }}>{avail > 0 ? avail.toLocaleString("vi-VN") : <span style={{ color: "#9CA3AF" }}>0</span>}</td>
+                      <td className="text-right" style={{ fontSize: 11, color: "#6B7280" }}>{khoTru > 0 ? fmtNum(khoTru) : <span style={{ color: "#D1D5DB" }}>0</span>}</td>
+                      <td className="text-right" style={{ fontSize: 11, color: "#7C3AED" }}>{ssc > 0 ? fmtNum(ssc) : <span style={{ color: "#D1D5DB" }}>0</span>}</td>
+                      <td className="text-right" style={{ fontWeight: 700 }}>{avail > 0 ? fmtNum(avail) : <span style={{ color: "#9CA3AF" }}>0</span>}</td>
                       <td className="text-right muted" style={{ fontSize: 11 }}>{toNum(r.cost_price) > 0 ? formatVND(toNum(r.cost_price)) : "—"}</td>
                       <td className="text-right" style={{ fontWeight: 600, fontSize: 11 }}>{toNum(r.sell_price) > 0 ? formatVND(toNum(r.sell_price)) : "—"}</td>
                       <td>
@@ -378,8 +385,8 @@ export default function InventoryView({
           {/* Footer + pagination */}
           <div style={{ padding: "8px 14px", borderTop: "1px solid var(--border)", background: "var(--bg)", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, fontWeight: 600, color: "#6B7280" }}>
             <div style={{ display: "flex", gap: 14 }}>
-              <span>Tổng {total.toLocaleString("vi-VN")} SP</span>
-              <span>Tồn: {invTotals.totalStock.toLocaleString("vi-VN")}</span>
+              <span>Tổng {fmtNum(total)} SP</span>
+              <span>Tồn: {fmtNum(invTotals.totalStock)}</span>
               <span>Giá trị: <span style={{ color: "#16A34A" }}>{formatVNDCompact(invTotals.totalValue)}</span></span>
             </div>
             {totalPages > 1 && (
@@ -451,9 +458,9 @@ export default function InventoryView({
         {salesSummary && !salesLoading && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", borderBottom: "1px solid var(--border)" }}>
             {[
-              { label: "Tổng SKU bán", value: salesSummary.totalSkus.toLocaleString("vi-VN"), color: "#3B82F6" },
-              { label: "Tổng đơn", value: salesSummary.totalOrders.toLocaleString("vi-VN"), color: "#D97706" },
-              { label: "Tổng sản lượng", value: salesSummary.totalQty.toLocaleString("vi-VN"), color: "#7C3AED" },
+              { label: "Tổng SKU bán", value: fmtNum(salesSummary.totalSkus), color: "#3B82F6" },
+              { label: "Tổng đơn", value: fmtNum(salesSummary.totalOrders), color: "#D97706" },
+              { label: "Tổng sản lượng", value: fmtNum(salesSummary.totalQty), color: "#7C3AED" },
               { label: "Tổng doanh thu", value: formatVNDCompact(salesSummary.totalRevenue), color: "#16A34A" },
             ].map((k) => (
               <div key={k.label} style={{ padding: "10px 14px", borderRight: "1px solid #F3F4F6" }}>
@@ -502,8 +509,8 @@ export default function InventoryView({
                     <td style={{ fontFamily: "monospace", fontSize: 10 }}>{s.sku}</td>
                     <td style={{ fontSize: 11 }}>{s.product_name}</td>
                     <td style={{ fontSize: 10, color: "#6B7280" }}>{s.channels}</td>
-                    <td className="text-right" style={{ fontWeight: 600 }}>{s.qty.toLocaleString("vi-VN")}</td>
-                    <td className="text-right">{s.orders.toLocaleString("vi-VN")}</td>
+                    <td className="text-right" style={{ fontWeight: 600 }}>{fmtNum(s.qty)}</td>
+                    <td className="text-right">{fmtNum(s.orders)}</td>
                     <td className="text-right" style={{ color: "#16A34A", fontWeight: 700, fontSize: 11 }}>{formatVND(s.revenue)}</td>
                   </tr>
                 ))}
@@ -578,7 +585,7 @@ export default function InventoryView({
               ✕ {CAT_GROUPS.find((c) => c.k === analysisFilter)?.label}
             </button>
           )}
-          <span style={{ marginLeft: "auto", fontSize: 10, color: "#6B7280" }}>{searchedAnalysis.length.toLocaleString("vi-VN")} sản phẩm</span>
+          <span style={{ marginLeft: "auto", fontSize: 10, color: "#6B7280" }}>{fmtNum(searchedAnalysis.length)} sản phẩm</span>
         </div>
 
         {/* Warning box for no_data */}
@@ -609,8 +616,8 @@ export default function InventoryView({
                   <tr key={`${a.sku}-${idx}`}>
                     <td style={{ fontFamily: "'SF Mono',Menlo,monospace", fontSize: 10, color: "#374151" }}>{a.sku}</td>
                     <td style={{ fontSize: 11, maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.product_name || "—"}</td>
-                    <td className="text-right" style={{ fontWeight: 700 }}>{a.stock > 0 ? a.stock.toLocaleString("vi-VN") : "—"}</td>
-                    <td className="text-right" style={{ fontWeight: 700 }}>{a.sold > 0 ? a.sold.toLocaleString("vi-VN") : "—"}</td>
+                    <td className="text-right" style={{ fontWeight: 700 }}>{a.stock > 0 ? fmtNum(a.stock) : "—"}</td>
+                    <td className="text-right" style={{ fontWeight: 700 }}>{a.sold > 0 ? fmtNum(a.sold) : "—"}</td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                         <div style={{ flex: 1, height: 8, background: "#F3F4F6", borderRadius: 4, overflow: "hidden" }}>
@@ -642,9 +649,9 @@ export default function InventoryView({
         {/* Footer */}
         <div style={{ padding: "8px 16px", borderTop: "1px solid #E5E7EB", background: "#F9FAFB", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, fontWeight: 600, color: "#6B7280" }}>
           <div style={{ display: "flex", gap: 16 }}>
-            <span>Tổng {analysisGroupTotals.count.toLocaleString("vi-VN")} SP</span>
-            <span>Tổng tồn {analysisGroupTotals.stock.toLocaleString("vi-VN")}</span>
-            <span>Bán 30d <span style={{ color: "#3B82F6", fontWeight: 800 }}>{analysisGroupTotals.sold.toLocaleString("vi-VN")}</span></span>
+            <span>Tổng {fmtNum(analysisGroupTotals.count)} SP</span>
+            <span>Tổng tồn {fmtNum(analysisGroupTotals.stock)}</span>
+            <span>Bán 30d <span style={{ color: "#3B82F6", fontWeight: 800 }}>{fmtNum(analysisGroupTotals.sold)}</span></span>
             <span>Giá trị tồn <span style={{ color: "#16A34A", fontWeight: 800 }}>{formatVND(analysisGroupTotals.value)}</span></span>
           </div>
           {analysisTotalPages > 1 && (

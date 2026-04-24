@@ -7,6 +7,8 @@ export type InventoryRow = {
   product_name: string | null;
   category: string | null;
   available_qty: number | null;
+  stock_kho_tru: number | null;
+  stock_ssc: number | null;
   cost_price: number | null;
   sell_price: number | null;
   is_active: boolean | null;
@@ -155,7 +157,7 @@ export async function listInventory(opts: {
 
   let q = db
     .from("products")
-    .select("id, sku, product_name, category, stock, cost_price, sell_price, is_active, last_sync", { count: "exact" });
+    .select("id, sku, product_name, category, stock, stock_kho_tru, stock_ssc, cost_price, sell_price, is_active, last_sync", { count: "exact" });
 
   if (search) {
     q = q.or(`sku.ilike.%${search}%,product_name.ilike.%${search}%`);
@@ -180,6 +182,8 @@ export async function listInventory(opts: {
     product_name: r.product_name as string | null,
     category: r.category as string | null,
     available_qty: Number(r.stock || 0),
+    stock_kho_tru: Number(r.stock_kho_tru || 0),
+    stock_ssc: Number(r.stock_ssc || 0),
     cost_price: Number(r.cost_price || 0),
     sell_price: Number(r.sell_price || 0),
     is_active: r.is_active as boolean | null,

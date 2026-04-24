@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { formatVNDCompact } from "@/lib/format";
+import { formatVNDCompact, fmtNum } from "@/lib/format";
 
 const statusColor = (pct: number) => pct >= 100 ? "#16A34A" : pct >= 70 ? "#D97706" : pct > 0 ? "#DC2626" : "#94A3B8";
 
@@ -24,23 +24,23 @@ export default function InventoryMobile(p: InventoryMobileProps) {
       {/* Header */}
       <div style={{ background: "linear-gradient(135deg,#7C3AED,#4C1D95)", padding: "14px 14px 16px", color: "#fff" }}>
         <div style={{ fontSize: 17, fontWeight: 800 }}>📦 Tồn kho</div>
-        <div style={{ fontSize: 11, opacity: .6 }}>{s.total.toLocaleString()} SKU · Cập nhật mới nhất</div>
+        <div style={{ fontSize: 11, opacity: .6 }}>{fmtNum(s.total)} SKU · Cập nhật mới nhất</div>
       </div>
 
       {/* Hero stats */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, padding: "8px 10px 0", marginTop: -1, background: "linear-gradient(135deg,#7C3AED,#4C1D95)" }}>
         <div style={{ background: "rgba(255,255,255,.1)", borderRadius: 10, padding: 10, textAlign: "center", color: "#fff" }}>
           <div style={{ fontSize: 8, textTransform: "uppercase", opacity: .6 }}>Tổng SKU</div>
-          <div style={{ fontSize: 22, fontWeight: 900 }}>{s.total.toLocaleString()}</div>
+          <div style={{ fontSize: 22, fontWeight: 900 }}>{fmtNum(s.total)}</div>
         </div>
         <div style={{ background: "rgba(239,68,68,.2)", borderRadius: 10, padding: 10, textAlign: "center", color: "#fff" }}>
           <div style={{ fontSize: 8, textTransform: "uppercase", opacity: .6 }}>Hết hàng</div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: "#FCA5A5" }}>{s.outOfStock.toLocaleString()}</div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: "#FCA5A5" }}>{fmtNum(s.outOfStock)}</div>
           <div style={{ fontSize: 8, opacity: .5 }}>{outPct}%</div>
         </div>
         <div style={{ background: "rgba(245,158,11,.2)", borderRadius: 10, padding: 10, textAlign: "center", color: "#fff" }}>
           <div style={{ fontSize: 8, textTransform: "uppercase", opacity: .6 }}>Sắp hết ≤5</div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: "#FCD34D" }}>{s.lowStock.toLocaleString()}</div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: "#FCD34D" }}>{fmtNum(s.lowStock)}</div>
           <div style={{ fontSize: 8, opacity: .5 }}>{lowPct}%</div>
         </div>
       </div>
@@ -154,7 +154,7 @@ export default function InventoryMobile(p: InventoryMobileProps) {
               const totalStock = p.noSales.reduce((s, r) => s + r.stock, 0);
               return (
                 <div style={{ padding: 8, background: "#18181B", borderRadius: 8, color: "#fff", marginTop: 6, display: "flex", justifyContent: "space-between", fontSize: 10 }}>
-                  <div><div style={{ fontSize: 8, opacity: .5 }}>{p.noSales.length} SKU · 0 bán</div><div style={{ fontWeight: 800 }}>{totalStock.toLocaleString()} SP</div></div>
+                  <div><div style={{ fontSize: 8, opacity: .5 }}>{p.noSales.length} SKU · 0 bán</div><div style={{ fontWeight: 800 }}>{fmtNum(totalStock)} SP</div></div>
                   <div style={{ textAlign: "right" }}><div style={{ fontSize: 8, opacity: .5 }}>Vốn đọng</div><div style={{ fontWeight: 800, color: "#FCA5A5" }}>{formatVNDCompact(totalCost)}</div></div>
                 </div>
               );
