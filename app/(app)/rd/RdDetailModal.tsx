@@ -631,9 +631,18 @@ function ModalInner({
                 dlLabel = poEtaVal ? "ETA mẫu về (từ PO)" : "Deadline đặt mẫu (từ Duyệt NC)";
               } else if (stepLabel === "Hàng về" || stepLabel === "QC & Nhận hàng") {
                 const qcDl = String(data.deadline_qc || "");
-                const etaFallback = String(data.sample_eta || "");
-                dlValue = qcDl || etaFallback;
-                dlLabel = qcDl ? "Deadline QC" : etaFallback ? "ETA mẫu về (từ PO đặt mẫu)" : "Deadline QC";
+                const etaVal = String(data.sample_eta || "");
+                if (qcDl) {
+                  dlLabel = `Deadline QC (ETA ${etaVal || "?"} + 3 ngày)`;
+                  dlValue = qcDl;
+                } else if (etaVal) {
+                  // Auto-compute ETA + 3 days
+                  const etaD = new Date(etaVal);
+                  if (!isNaN(etaD.getTime())) { etaD.setDate(etaD.getDate() + 3); dlValue = etaD.toISOString().split("T")[0]; }
+                  dlLabel = `Deadline QC (ETA ${etaVal} + 3 ngày)`;
+                } else {
+                  dlLabel = "Deadline QC"; dlValue = "";
+                }
               } else if (stepLabel === "Duyệt mẫu") {
                 dlLabel = "Deadline QC"; dlValue = String(data.deadline_qc || "");
               } else if (stepLabel === "Nhập hàng" || stepLabel === "Đặt hàng") {
@@ -852,12 +861,46 @@ function ModalInner({
                       {!!data.sample_eta && <span style={{ color: "#64748B", marginLeft: 8 }}>· ETA: {String(data.sample_eta)}</span>}
                     </div>
                   )}
-                  {/* Lịch sử bước */}
+                  {/* Lịch sử bước — chi tiết */}
                   {(() => {
                     const hasLogs = step.logs && step.logs.length > 0;
+                    // Build rich summary from step data
+                    const summaryLines: Array<{ label: string; value: string; color?: string }> = [];
+                    if (step.label === "Đặt mẫu") {
+                      if (data.sample_supplier) summaryLines.push({ label: "NCC", value: `${String(data.sample_supplier)}${data.sample_platform ? ` (${String(data.sample_platform)})` : ""}` });
+                      if (data.sample_contact) summaryLines.push({ label: "Liên hệ", value: String(data.sample_contact) });
+                      if (data.sample_qty) summaryLines.push({ label: "SL mẫu", value: `${Number(data.sample_qty).toLocaleString("vi-VN")} cái` });
+                      if (data.sample_price_usd) summaryLines.push({ label: "Giá mẫu", value: `$${Number(data.sample_price_usd).toLocaleString("vi-VN")}` });
+                      if (data.linked_sample_po) summaryLines.push({ label: "Đơn PO", value: String(data.linked_sample_po), color: "#2563EB" });
+                      if (data.sample_eta) summaryLines.push({ label: "ETA hàng về", value: String(data.sample_eta) });
+                    } else if (step.label === "Nghiên cứu") {
+                      if (data.supplier_name) summaryLines.push({ label: "NCC", value: String(data.supplier_name) });
+                      if (data.price_buy) summaryLines.push({ label: "Giá nhập", value: `${Number(data.price_buy).toLocaleString("vi-VN")}đ` });
+                      if (data.price_sell) summaryLines.push({ label: "Giá bán", value: `${Number(data.price_sell).toLocaleString("vi-VN")}đ` });
+                      if (data.evaluation) summaryLines.push({ label: "Đánh giá", value: String(data.evaluation).substring(0, 60) });
+                    } else if (step.label === "Duyệt NC" || step.label === "Duyệt mẫu" || step.label === "Duyệt B1" || step.label === "Duyệt 2A") {
+                      if (data.approve_verdict) summaryLines.push({ label: "Kết quả", value: String(data.approve_verdict), color: String(data.approve_verdict).includes("Duyệt") ? "#15803D" : "#B91C1C" });
+                      if (data.approve_note) summaryLines.push({ label: "Nhận xét", value: String(data.approve_note).substring(0, 60) });
+                    } else if (step.label === "Nhập hàng" || step.label === "Đặt hàng") {
+                      if (data.bulk_qty) summaryLines.push({ label: "SL nhập", value: `${Number(data.bulk_qty).toLocaleString("vi-VN")} cái` });
+                      if (data.bulk_price) summaryLines.push({ label: "Giá nhập", value: `${Number(data.bulk_price).toLocaleString("vi-VN")}đ` });
+                      if (data.linked_bulk_po) summaryLines.push({ label: "Đơn PO", value: String(data.linked_bulk_po), color: "#2563EB" });
+                    }
                     return (
                     <div style={{ marginTop: 8 }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", textTransform: "uppercase", marginBottom: 4 }}>Lịch sử</div>
+                      {/* Rich summary */}
+                      {summaryLines.length > 0 && (
+                        <div style={{ padding: "6px 10px", background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 7, marginBottom: 6, display: "grid", gridTemplateColumns: "auto 1fr", gap: "2px 10px", fontSize: 10 }}>
+                          {summaryLines.map((s, si) => (
+                            <div key={si} style={{ display: "contents" }}>
+                              <span style={{ color: "#94A3B8", fontWeight: 600 }}>{s.label}:</span>
+                              <span style={{ color: s.color || "#374151", fontWeight: s.color ? 700 : 500 }}>{s.value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {/* Activity log entries */}
                       {hasLogs ? step.logs.map((log, li) => {
                         const at = String(log.at || "");
                         const by = String(log.by || "");
@@ -1501,8 +1544,9 @@ function ModalInner({
                 <button type="button" onClick={() => setShowPoForm(false)} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#F1F5F9", color: "#64748B", cursor: "pointer" }}>Huỷ</button>
                 <button type="button" disabled={pending} onClick={() => {
                   startTransition(async () => {
-                    const newData = { ...data, ...formData, [stepsKey]: JSON.stringify(buildUpdatedSteps()) };
-                    await saveRdItemAction(item.id, { name: itemName, data: newData });
+                    // Save form data first, then create PO which adds linked_sample_po
+                    const preData = { ...data, ...formData, sample_eta: poEta || formData.sample_eta || data.sample_eta, [stepsKey]: JSON.stringify(buildUpdatedSteps()) };
+                    await saveRdItemAction(item.id, { name: itemName, data: preData });
                     const r = await createSamplePoAction(item.id, {
                       order_name: poName, owner: poOwner, pay_status: poPayStatus,
                       goods_type: poGoodsType, supplier_name: poSupplier,
@@ -1510,6 +1554,9 @@ function ModalInner({
                       deposit_amount: Number(poDeposit) || 0, note: poNote,
                     });
                     if (r.ok) {
+                      // Update local data so subsequent save/markComplete won't overwrite linked_sample_po
+                      (data as Record<string, unknown>).linked_sample_po = r.orderId;
+                      (data as Record<string, unknown>).sample_eta = poEta;
                       setShowPoForm(false);
                       onRefresh();
                     } else {
