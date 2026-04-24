@@ -731,15 +731,39 @@ function ModalInner({
 
             {/* ══ APPROVAL / CONFIRMATION STEPS — dedicated UI ══ */}
             {isApprovalStep && (() => {
-              // Completed approval → show summary only
-              if (step.status === "approved") {
+              // Completed approval → show summary + edit button (unless editing)
+              if (step.status === "approved" && !editingCompleted) {
+                const isDuyetNC2 = step.label === "Duyệt NC";
+                const isDuyetMau2 = step.label === "Duyệt mẫu";
+                const assignedTo = isDuyetNC2 ? String(data.assign_dat_mau || "") : isDuyetMau2 ? String(data.assign_nhap_hang || "") : "";
+                const assignedName = assignedTo ? (users.find((u) => u.email === assignedTo)?.name || assignedTo) : "";
+                const dlSet = isDuyetNC2 ? String(data.deadline_dat_mau || "") : isDuyetMau2 ? String(data.deadline_nhap_hang || "") : "";
                 return (
-                  <div style={{ padding: 14, background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 10 }}>
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600, marginBottom: 8, background: "#DCFCE7", color: "#15803D" }}>
-                      ✓ {step.label} — Đã duyệt
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ padding: 14, background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 10, marginBottom: 8 }}>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600, marginBottom: 8, background: "#DCFCE7", color: "#15803D" }}>
+                        ✓ {step.label} — Đã duyệt
+                      </div>
+                      {step.result && <div style={{ fontSize: 11, color: "#374151", marginBottom: 4 }}>Nhận xét: {step.result}</div>}
+                      {step.assignee_name && <div style={{ fontSize: 10, color: "#64748B", marginBottom: 2 }}>Duyệt bởi: {step.assignee_name}</div>}
+                      {assignedName && <div style={{ fontSize: 10, color: "#64748B", marginBottom: 2 }}>Giao cho: {assignedName}</div>}
+                      {dlSet && <div style={{ fontSize: 10, color: "#64748B", marginBottom: 2 }}>Deadline: {dlSet}</div>}
+                      {/* Log entries */}
+                      {step.logs && step.logs.length > 0 && step.logs.map((log, li) => {
+                        const at = String(log.at || "");
+                        const by = String(log.by || "");
+                        const byName = users.find((u) => u.email === by)?.name || by;
+                        const timeStr = at ? new Date(at).toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
+                        return (
+                          <div key={li} style={{ fontSize: 9, color: "#94A3B8", marginTop: 2 }}>
+                            {timeStr} — {byName}
+                          </div>
+                        );
+                      })}
                     </div>
-                    {step.result && <div style={{ fontSize: 11, color: "#374151", marginBottom: 4 }}>{step.result}</div>}
-                    {step.assignee_name && <div style={{ fontSize: 9, color: "#94A3B8" }}>Bởi: {step.assignee_name}</div>}
+                    <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                      <button type="button" onClick={() => setEditingCompleted(true)} style={{ padding: "5px 12px", borderRadius: 7, fontSize: 10, fontWeight: 600, border: "1px solid #D97706", background: "#fff", color: "#D97706", cursor: "pointer" }}>✏️ Sửa</button>
+                    </div>
                   </div>
                 );
               }
@@ -1241,46 +1265,7 @@ function ModalInner({
                   <textarea value={formData.qc_evaluation || ""} onChange={(e) => setField("qc_evaluation", e.target.value)} placeholder="VD: 8/10. Pin tốt, phun sương OK 2/3 chế độ. Đề xuất: PASS — nhập 200 cái test." style={{ ...S.textarea, minHeight: 60 }} />
                 </div>
 
-                {/* Deadline QC — chọn 1-3 ngày */}
-                <div style={S.section}>
-                  <div style={S.label}>Deadline QC (từ ngày hàng về)</div>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    {[1, 2, 3].map((d) => {
-                      const current = String(data.qc_days || "");
-                      const isSelected = current === String(d);
-                      return (
-                        <button key={d} type="button" onClick={() => {
-                          const today = new Date();
-                          const dl = new Date(today.getTime() + d * 86400000);
-                          const dlStr = dl.toISOString().split("T")[0];
-                          setField("qc_days", String(d));
-                          setField("deadline_qc", dlStr);
-                        }} style={{
-                          flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: "pointer",
-                          border: `2px solid ${isSelected ? "#7C3AED" : "#E2E8F0"}`,
-                          background: isSelected ? "#F5F3FF" : "#fff",
-                          color: isSelected ? "#7C3AED" : "#64748B",
-                        }}>
-                          {d} ngày
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {!!data.deadline_qc && <div style={{ fontSize: 9, color: "#94A3B8", marginTop: 4 }}>Deadline: {String(data.deadline_qc || "")}</div>}
-                </div>
-
-                {/* Gửi Leader duyệt */}
-                <div style={S.section}>
-                  <div style={S.label}>Gửi Leader duyệt</div>
-                  <select value={assignee} onChange={(e) => {
-                    const email = e.target.value;
-                    const u = users.find((u) => u.email === email);
-                    setAssignee(email); setAssigneeName(u ? (u.name || email) : ""); setDirty(true);
-                  }} style={S.select}>
-                    <option value="">— Chọn Leader —</option>
-                    {users.filter((u) => u.role === "ADMIN" || u.role?.startsWith("LEADER_")).map((u) => <option key={u.email} value={u.email}>{u.name || u.email}</option>)}
-                  </select>
-                </div>
+                {/* Deadline QC tự tính từ ETA + 3 ngày — không cần chọn thủ công */}
               </>
               );
             })() : step.label === "Nghiên cứu" ? (
