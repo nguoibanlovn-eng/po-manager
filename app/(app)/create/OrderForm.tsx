@@ -44,12 +44,16 @@ export default function OrderForm({
   items: initialItems,
   suppliers,
   users,
+  isModal,
+  onClose,
 }: {
   user: { email: string; name: string; role: string } | null;
   order: Order | null;
   items: Item[];
   suppliers: SupplierRef[];
   users: UserRef[];
+  isModal?: boolean;
+  onClose?: () => void;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -191,7 +195,10 @@ export default function OrderForm({
         alert("Lỗi lưu: " + r.error);
         return;
       }
-      if (isEdit) {
+      if (isModal) {
+        router.refresh();
+        onClose?.();
+      } else if (isEdit) {
         router.refresh();
         alert("Đã lưu đơn " + r.order_id);
       } else {
@@ -246,8 +253,8 @@ export default function OrderForm({
   }
 
   return (
-    <form className="section" onSubmit={onSubmit}>
-      <div className="page-hdr">
+    <form className={isModal ? "" : "section"} onSubmit={onSubmit} style={isModal ? { padding: "14px 16px" } : undefined}>
+      {!isModal && <div className="page-hdr">
         <div>
           <div className="page-title">
             {isEdit ? `✏️ Sửa đơn ${order!.order_id}` : "✏️ Tạo đơn mới"}
@@ -294,7 +301,7 @@ export default function OrderForm({
             {pending ? "Đang lưu..." : "💾 Lưu đơn"}
           </button>
         </div>
-      </div>
+      </div>}
 
       {/* NHANH BILL IMPORT */}
       <div className="nhanh-banner">
@@ -565,23 +572,32 @@ export default function OrderForm({
         />
       )}
 
-      {/* STICKY BAR */}
-      <div className="sticky-bar">
-        <div style={{ fontSize: 12, color: "var(--muted)" }}>
-          {isEdit ? `Đang sửa: ${order!.order_id}` : "Đơn mới"}
-        </div>
-        <div className="row">
-          {isEdit && (
-            <button type="button" className="btn btn-danger btn-sm" onClick={onDelete} disabled={pending}>
-              🗑 Xoá
-            </button>
-          )}
-          <Link href="/list" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Huỷ</Link>
+      {/* STICKY BAR / MODAL FOOTER */}
+      {isModal ? (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0 4px", borderTop: "1px solid var(--border)", marginTop: 14 }}>
+          <button type="button" className="btn btn-ghost" onClick={onClose}>Huỷ</button>
           <button type="submit" className="btn btn-primary" disabled={pending}>
             {pending ? "Đang lưu..." : "💾 Lưu đơn"}
           </button>
         </div>
-      </div>
+      ) : (
+        <div className="sticky-bar">
+          <div style={{ fontSize: 12, color: "var(--muted)" }}>
+            {isEdit ? `Đang sửa: ${order!.order_id}` : "Đơn mới"}
+          </div>
+          <div className="row">
+            {isEdit && (
+              <button type="button" className="btn btn-danger btn-sm" onClick={onDelete} disabled={pending}>
+                🗑 Xoá
+              </button>
+            )}
+            <Link href="/list" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Huỷ</Link>
+            <button type="submit" className="btn btn-primary" disabled={pending}>
+              {pending ? "Đang lưu..." : "💾 Lưu đơn"}
+            </button>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

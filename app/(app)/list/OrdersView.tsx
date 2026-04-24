@@ -239,7 +239,7 @@ export default function OrdersView({
               <button onClick={() => setShowCreateModal(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--muted)", padding: "4px 8px" }}>✕</button>
             </div>
             <div style={{ padding: 0 }}>
-              <OrderForm user={user} order={null} items={[]} suppliers={suppliers} users={users} />
+              <OrderForm user={user} order={null} items={[]} suppliers={suppliers} users={users} isModal onClose={() => setShowCreateModal(false)} />
             </div>
           </div>
         </div>
