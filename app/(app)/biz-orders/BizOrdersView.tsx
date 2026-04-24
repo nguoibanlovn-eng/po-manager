@@ -75,7 +75,8 @@ export default function BizOrdersView({
 
   // Approver selection (create view)
   const [selectedApprovers, setSelectedApprovers] = useState<string[]>([]);
-  const [showApproverPicker, setShowApproverPicker] = useState(false);
+  const [showApproverDrop, setShowApproverDrop] = useState(false);
+  const [deadline, setDeadline] = useState("");
   const approverCandidates = useMemo(() => {
     return users.filter(
       (u) => u.role === "ADMIN" || (u.role && u.role.startsWith("LEADER_")),
@@ -589,30 +590,52 @@ export default function BizOrdersView({
           </div>
         )}
 
-        {/* Approver selection */}
+        {/* Actions + approver + deadline */}
         <div className="card" style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 8 }}>Gửi duyệt cho</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            {approverCandidates.map((u) => {
-              const checked = selectedApprovers.includes(u.email);
-              const isKeToan = u.role === "LEADER_KETOAN" || u.role === "NV_KETOAN";
-              return (
-                <div key={u.email} onClick={() => toggleApprover(u.email)} style={{ display: "grid", gridTemplateColumns: "20px 1fr auto", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 8, cursor: "pointer", background: checked ? "var(--blue-lt)" : "var(--bg)", border: checked ? "1px solid var(--blue-bd)" : "1px solid var(--border)" }}>
-                  <input type="checkbox" checked={checked} readOnly style={{ accentColor: "var(--blue)", margin: 0 }} />
-                  <span style={{ fontSize: 13, fontWeight: checked ? 700 : 400 }}>{u.name || u.email} <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 400 }}>({u.role})</span></span>
-                  {isKeToan ? <span style={{ fontSize: 9, color: "var(--teal)", fontWeight: 700 }}>Kế toán</span> : <span />}
+          <div className="form-grid fg-2" style={{ gap: 10 }}>
+            <div className="form-group" style={{ position: "relative" }}>
+              <label>Gửi duyệt cho *</label>
+              <div
+                onClick={() => setShowApproverDrop(!showApproverDrop)}
+                style={{ padding: "6px 10px", border: "1px solid var(--border)", borderRadius: 7, fontSize: 12, cursor: "pointer", background: "#fff", minHeight: 34, display: "flex", alignItems: "center", flexWrap: "wrap", gap: 4 }}
+              >
+                {selectedApprovers.length === 0 ? (
+                  <span style={{ color: "var(--subtle)" }}>Chọn người duyệt...</span>
+                ) : (
+                  selectedApprovers.map((email) => {
+                    const u = approverCandidates.find((c) => c.email === email);
+                    return (
+                      <span key={email} style={{ background: "var(--blue-lt)", color: "#1E40AF", padding: "1px 6px", borderRadius: 4, fontSize: 11, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 3 }}>
+                        {u?.name || email}
+                        <span onClick={(e) => { e.stopPropagation(); toggleApprover(email); }} style={{ cursor: "pointer", fontSize: 13, lineHeight: 1 }}>×</span>
+                      </span>
+                    );
+                  })
+                )}
+              </div>
+              {showApproverDrop && (
+                <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 10, background: "#fff", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "0 4px 12px rgba(0,0,0,.1)", maxHeight: 200, overflowY: "auto", marginTop: 2 }}>
+                  {approverCandidates.map((u) => {
+                    const checked = selectedApprovers.includes(u.email);
+                    const isKeToan = u.role === "LEADER_KETOAN" || u.role === "NV_KETOAN";
+                    return (
+                      <div key={u.email} onClick={() => toggleApprover(u.email)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", cursor: "pointer", background: checked ? "var(--blue-lt)" : undefined, borderBottom: "1px solid var(--border)", fontSize: 12 }}>
+                        <input type="checkbox" checked={checked} readOnly style={{ accentColor: "var(--blue)", margin: 0 }} />
+                        <span style={{ fontWeight: checked ? 700 : 400, flex: 1 }}>{u.name || u.email} <span style={{ color: "var(--muted)", fontSize: 10 }}>({u.role})</span></span>
+                        {isKeToan && <span style={{ fontSize: 9, color: "var(--teal)", fontWeight: 700 }}>KT</span>}
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
-          {selectedApprovers.length > 0 && (
-            <div style={{ marginTop: 6, fontSize: 11, color: "var(--blue)" }}>
-              Đã chọn {selectedApprovers.length} người
+              )}
             </div>
-          )}
+            <div className="form-group">
+              <label>Deadline xử lý</label>
+              <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+            </div>
+          </div>
         </div>
 
-        {/* Actions */}
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 16 }}>
           <button type="button" className="btn btn-ghost" onClick={onSave} disabled={pending}>
             {pending ? "Đang lưu..." : "Lưu nháp"}
@@ -778,20 +801,47 @@ export default function BizOrdersView({
         {/* Draft — submit */}
         {detail.status === "draft" && detail.created_by === user.email && (
           <div className="card" style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 8 }}>Gửi duyệt cho</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 10 }}>
-              {approverCandidates.map((u) => {
-                const checked = selectedApprovers.includes(u.email);
-                const isKeToan = u.role === "LEADER_KETOAN" || u.role === "NV_KETOAN";
-                return (
-                  <label key={u.email} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 8, cursor: "pointer", background: checked ? "var(--blue-lt)" : "var(--bg)", border: checked ? "1px solid var(--blue-bd)" : "1px solid var(--border)", justifyContent: "flex-start", textAlign: "left" }}>
-                    <input type="checkbox" checked={checked} onChange={() => toggleApprover(u.email)} style={{ accentColor: "var(--blue)" }} />
-                    <span style={{ fontSize: 13, fontWeight: checked ? 700 : 400 }}>{u.name || u.email}</span>
-                    <span style={{ fontSize: 10, color: "var(--muted)" }}>({u.role})</span>
-                    {isKeToan && <span style={{ fontSize: 9, color: "var(--teal)", fontWeight: 700, marginLeft: "auto" }}>Kế toán</span>}
-                  </label>
-                );
-              })}
+            <div className="form-grid fg-2" style={{ gap: 10, marginBottom: 10 }}>
+              <div className="form-group" style={{ position: "relative" }}>
+                <label>Gửi duyệt cho *</label>
+                <div
+                  onClick={() => setShowApproverDrop(!showApproverDrop)}
+                  style={{ padding: "6px 10px", border: "1px solid var(--border)", borderRadius: 7, fontSize: 12, cursor: "pointer", background: "#fff", minHeight: 34, display: "flex", alignItems: "center", flexWrap: "wrap", gap: 4 }}
+                >
+                  {selectedApprovers.length === 0 ? (
+                    <span style={{ color: "var(--subtle)" }}>Chọn người duyệt...</span>
+                  ) : (
+                    selectedApprovers.map((email) => {
+                      const u = approverCandidates.find((c) => c.email === email);
+                      return (
+                        <span key={email} style={{ background: "var(--blue-lt)", color: "#1E40AF", padding: "1px 6px", borderRadius: 4, fontSize: 11, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 3 }}>
+                          {u?.name || email}
+                          <span onClick={(e) => { e.stopPropagation(); toggleApprover(email); }} style={{ cursor: "pointer", fontSize: 13, lineHeight: 1 }}>×</span>
+                        </span>
+                      );
+                    })
+                  )}
+                </div>
+                {showApproverDrop && (
+                  <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 10, background: "#fff", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "0 4px 12px rgba(0,0,0,.1)", maxHeight: 200, overflowY: "auto", marginTop: 2 }}>
+                    {approverCandidates.map((u) => {
+                      const checked = selectedApprovers.includes(u.email);
+                      const isKeToan = u.role === "LEADER_KETOAN" || u.role === "NV_KETOAN";
+                      return (
+                        <div key={u.email} onClick={() => toggleApprover(u.email)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", cursor: "pointer", background: checked ? "var(--blue-lt)" : undefined, borderBottom: "1px solid var(--border)", fontSize: 12 }}>
+                          <input type="checkbox" checked={checked} readOnly style={{ accentColor: "var(--blue)", margin: 0 }} />
+                          <span style={{ fontWeight: checked ? 700 : 400, flex: 1 }}>{u.name || u.email} <span style={{ color: "var(--muted)", fontSize: 10 }}>({u.role})</span></span>
+                          {isKeToan && <span style={{ fontSize: 9, color: "var(--teal)", fontWeight: 700 }}>KT</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              <div className="form-group">
+                <label>Deadline xử lý</label>
+                <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+              </div>
             </div>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
               <button
