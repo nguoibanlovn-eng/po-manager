@@ -422,6 +422,11 @@ function ModalInner({
       if (isFinished) {
         alert("✓ Ticket hoàn thành! Sản phẩm đã kết thúc quy trình R&D.");
         onClose();
+      } else if (isApprovalWithAssign) {
+        // Approval steps: alert + close — leader can leave
+        const nextName = nextAssignName || "NV";
+        alert(`✓ Đã duyệt! Giao ${nextName} thực hiện bước tiếp theo.`);
+        onClose();
       } else if (activeIdx + 1 < initSteps.length) {
         const next = updated[activeIdx + 1];
         setActiveIdx(activeIdx + 1);
@@ -1360,7 +1365,7 @@ function ModalInner({
                   <textarea value={formData.evaluation || ""} onChange={(e) => setField("evaluation", e.target.value)} style={{ ...S.textarea, minHeight: 50 }} />
                 </div>
               </>
-            ) : formFields.length > 0 ? (
+            ) : formFields.length > 0 && step.label !== "Nhập hàng" && step.label !== "Đặt hàng" ? (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
                 {formFields.map((f) => renderField(f))}
               </div>
