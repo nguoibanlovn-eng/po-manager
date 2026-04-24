@@ -1601,7 +1601,7 @@ function ModalInner({
         <div onClick={() => setShowPoForm(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", zIndex: 10001, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 14, width: 780, maxWidth: "96vw", boxShadow: "0 25px 70px rgba(0,0,0,.3)", overflow: "hidden" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "#F5F3FF", borderBottom: "1px solid #E2E8F0" }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: "#7C3AED" }}>📦 Tạo đơn PO mua mẫu</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: "#7C3AED" }}>📦 {poMode === "bulk" ? "Tạo đơn PO nhập hàng" : "Tạo đơn PO mua mẫu"}</span>
               <button type="button" onClick={() => setShowPoForm(false)} style={{ padding: "2px 8px", borderRadius: 5, fontSize: 12, border: "1px solid #E2E8F0", background: "#fff", color: "#64748B", cursor: "pointer" }}>✕</button>
             </div>
             <div style={{ padding: 16 }}>
