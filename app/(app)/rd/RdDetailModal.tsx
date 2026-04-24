@@ -609,13 +609,17 @@ function ModalInner({
               } else if (stepLabel === "Duyệt NC") {
                 dlLabel = "Deadline NC (từ Đề xuất)"; dlValue = dxDeadline;
               } else if (stepLabel === "Đặt mẫu") {
-                dlLabel = "Deadline đặt mẫu"; dlValue = String(data.deadline_dat_mau || "");
+                // Ưu tiên: ETA từ PO mẫu > deadline từ Duyệt NC
+                const poEtaVal = String(data.sample_eta || "");
+                const dlFromStep4 = String(data.deadline_dat_mau || "");
+                dlValue = poEtaVal || dlFromStep4;
+                dlLabel = poEtaVal ? "ETA mẫu về (từ PO)" : "Deadline đặt mẫu (từ Duyệt NC)";
               } else if (stepLabel === "Hàng về" || stepLabel === "QC & Nhận hàng") {
                 dlLabel = "Deadline QC"; dlValue = String(data.deadline_qc || "");
               } else if (stepLabel === "Duyệt mẫu") {
                 dlLabel = "Deadline QC"; dlValue = String(data.deadline_qc || "");
               } else if (stepLabel === "Nhập hàng" || stepLabel === "Đặt hàng") {
-                dlLabel = "Deadline nhập hàng"; dlValue = String(data.deadline_nhap_hang || "");
+                dlLabel = "Deadline nhập hàng (từ Duyệt mẫu)"; dlValue = String(data.deadline_nhap_hang || "");
               }
               const dlOverdue = dlValue && step.status !== "approved" ? isOverdue(dlValue) : false;
 
