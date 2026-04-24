@@ -31,6 +31,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     title: "KINH DOANH",
     items: [
+      { href: "/biz-orders",    label: "Order nhập",       icon: i("✦"), perm: "deploy" },
       { href: "/deploy",        label: "Thông tin SP",     icon: i("⊞"), perm: "deploy" },
       { href: "/sales-leader",  label: "TikTok",           icon: i("♪"), perm: "deploy" },
       { href: "/fb-pages",      label: "Facebook",         icon: i("f"), perm: "fb_pages" },
