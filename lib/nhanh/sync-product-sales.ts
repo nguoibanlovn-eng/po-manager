@@ -67,15 +67,15 @@ function addDays(dateStr: string, days: number): string {
   return d.toISOString().substring(0, 10);
 }
 
-// ─── V3: 1 ngày (theo ngày cập nhật, chỉ status=60 Thành công) ──
+// ─── V3: 1 ngày (đơn tạo ngày này + đã thành công) ──
 async function syncV3Day(date: string): Promise<{ orders: number; rows: Row[]; skipped: number; log: string }> {
   const fromTs = Math.floor(new Date(date + "T00:00:00+07:00").getTime() / 1000);
   const toTs = Math.floor(new Date(date + "T23:59:59+07:00").getTime() / 1000);
 
-  // updatedAt + status=60 → đơn thành công được cập nhật ngày này
-  // Bao gồm cả đơn sàn tự giao (TikTok/Shopee) không có deliveryAt
+  // createdAt + status=60 → đơn TẠO ngày này + đã THÀNH CÔNG
+  // Bao gồm cả đơn sàn tự giao, khớp cách Nhanh report đếm
   const orders = await nhanhV3FetchAll<V3Order>("order/list", {
-    filters: { updatedAtFrom: fromTs, updatedAtTo: toTs, statuses: [60] },
+    filters: { createdAtFrom: fromTs, createdAtTo: toTs, statuses: [60] },
   }, { maxPages: 200 });
 
   const now = nowVN();
@@ -91,13 +91,11 @@ async function syncV3Day(date: string): Promise<{ orders: number; rows: Row[]; s
     const chCode = String(o.channel?.saleChannel || "0");
     const chName = CHANNEL_MAP[chCode] || `Kênh ${chCode}`;
     const customerId = String(o.customer?.customerId || o.customerId || o.customerMobile || "");
-    // Ngày bán: ưu tiên deliveryAt (ngày giao) > updatedAt > date param
+    // Ngày bán = ngày tạo đơn (createdAt)
     let orderDate = date;
-    if (o.carrier?.deliveryAt) {
-      orderDate = String(o.carrier.deliveryAt).substring(0, 10);
-    } else if (info.updatedAt) {
+    if (info.createdAt) {
       try {
-        const ts = Number(info.updatedAt);
+        const ts = Number(info.createdAt);
         if (ts > 1e9) orderDate = new Date(ts * 1000).toLocaleDateString("sv-SE", { timeZone: "Asia/Ho_Chi_Minh" });
       } catch { /* */ }
     }
