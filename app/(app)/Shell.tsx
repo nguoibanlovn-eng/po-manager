@@ -3,7 +3,7 @@
 import Link from "next/link";
 import PushSubscribe from "./components/PushSubscribe";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { type AppUser } from "@/lib/auth/user";
 import { hasPermission, ROLES, type RoleCode } from "@/lib/auth/roles";
 import { NAV_SECTIONS } from "./nav-items";
@@ -66,6 +66,12 @@ export default function Shell({
           <input type="text" placeholder="Tìm đơn, sản phẩm, NCC..." />
         </div>
         <div className="spacer" />
+        <button
+          onClick={() => { window.location.reload(); }}
+          title="Tải lại trang"
+          style={{ background: "none", border: "none", cursor: "pointer", padding: 4, marginRight: 4, color: "#6B7280", fontSize: 16 }}
+          aria-label="Refresh"
+        >↻</button>
         <div id="pill" className="ok">✓ Sẵn sàng</div>
         <div id="user-badge">
           <span id="user-name">{user.name || user.email}</span>
@@ -112,8 +118,76 @@ export default function Shell({
 
       {/* Mobile bottom nav */}
       <PushSubscribe />
+      <PullToRefresh />
       <MobileBottomNav user={user} />
     </>
+  );
+}
+
+function PullToRefresh() {
+  const [pulling, setPulling] = useState(false);
+  const [pullY, setPullY] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const startY = useRef(0);
+  const threshold = 80;
+
+  const onTouchStart = useCallback((e: TouchEvent) => {
+    if (window.scrollY > 5) return;
+    startY.current = e.touches[0].clientY;
+    setPulling(true);
+  }, []);
+
+  const onTouchMove = useCallback((e: TouchEvent) => {
+    if (!startY.current || window.scrollY > 5) return;
+    const dy = e.touches[0].clientY - startY.current;
+    if (dy > 0) {
+      setPullY(Math.min(dy * 0.4, 120));
+      if (dy > 20) e.preventDefault();
+    }
+  }, []);
+
+  const onTouchEnd = useCallback(() => {
+    if (pullY >= threshold) {
+      setRefreshing(true);
+      setTimeout(() => window.location.reload(), 300);
+    }
+    setPulling(false);
+    setPullY(0);
+    startY.current = 0;
+  }, [pullY]);
+
+  useEffect(() => {
+    if (window.innerWidth > 900) return;
+    const opts: AddEventListenerOptions = { passive: false };
+    document.addEventListener("touchstart", onTouchStart, { passive: true });
+    document.addEventListener("touchmove", onTouchMove, opts);
+    document.addEventListener("touchend", onTouchEnd, { passive: true });
+    return () => {
+      document.removeEventListener("touchstart", onTouchStart);
+      document.removeEventListener("touchmove", onTouchMove);
+      document.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [onTouchStart, onTouchMove, onTouchEnd]);
+
+  if (!pulling && !refreshing && pullY === 0) return null;
+
+  return (
+    <div style={{
+      position: "fixed", top: 0, left: 0, right: 0, zIndex: 999,
+      display: "flex", justifyContent: "center", alignItems: "center",
+      height: pullY, overflow: "hidden",
+      background: "linear-gradient(180deg, #F1F5F9, transparent)",
+      transition: pulling ? "none" : "height .3s ease",
+    }}>
+      <div style={{
+        fontSize: 20,
+        opacity: Math.min(pullY / threshold, 1),
+        transform: `rotate(${pullY >= threshold ? 180 : (pullY / threshold) * 180}deg)`,
+        transition: pulling ? "none" : "transform .3s ease",
+      }}>
+        {refreshing ? "⟳" : "↓"}
+      </div>
+    </div>
   );
 }
 
