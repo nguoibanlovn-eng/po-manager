@@ -45,6 +45,12 @@ export default function Shell({
   const roleLabel =
     user.role === "VIEWER" ? "Viewer" : ROLES[user.role as Exclude<RoleCode, "VIEWER">]?.label || user.role;
 
+  // Embed mode: only render children (no sidebar/header) — for iframe popups
+  const sp = useSearchParams();
+  if (sp.get("embed") === "1") {
+    return <div style={{ padding: 16, maxWidth: 900, margin: "0 auto" }}>{children}</div>;
+  }
+
   return (
     <>
       {/* TOPBAR */}

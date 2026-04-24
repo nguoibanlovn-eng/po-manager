@@ -724,7 +724,7 @@ function ModalInner({
                       onClick={() => {
                         if (linkedSamplePo) {
                           // Already has PO → open it in popup
-                          setPoPopupUrl(`/create?order_id=${linkedSamplePo}`);
+                          setPoPopupUrl(`/create?order_id=${linkedSamplePo}&embed=1`);
                           return;
                         }
                         setCreatingPo(true);
@@ -733,7 +733,7 @@ function ModalInner({
                           await saveRdItemAction(item.id, { name: itemName, data: newData });
                           const r = await createSamplePoAction(item.id);
                           setCreatingPo(false);
-                          if (r.ok) { onRefresh(); setPoPopupUrl(`/create?order_id=${r.orderId}`); }
+                          if (r.ok) { onRefresh(); setPoPopupUrl(`/create?order_id=${r.orderId}&embed=1`); }
                           else alert(r.error || "Lỗi tạo đơn");
                         });
                       }}>
@@ -751,7 +751,7 @@ function ModalInner({
                     <div style={{ fontSize: 11, marginBottom: 2 }}>{linkedSamplePo} — {item.name || "SP mẫu"}</div>
                     <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                       <span style={{ fontSize: 9, color: "#94A3B8" }}>Theo dõi bên Danh sách đơn</span>
-                      <span onClick={() => setPoPopupUrl(`/create?order_id=${linkedSamplePo}`)} style={{ fontSize: 9, color: "#7C3AED", fontWeight: 600, cursor: "pointer" }}>Xem đơn ↗</span>
+                      <span onClick={() => setPoPopupUrl(`/create?order_id=${linkedSamplePo}&embed=1`)} style={{ fontSize: 9, color: "#7C3AED", fontWeight: 600, cursor: "pointer" }}>Xem đơn ↗</span>
                     </div>
                   </div>
                 )}
@@ -939,7 +939,7 @@ function ModalInner({
                     await saveRdItemAction(item.id, { name: itemName, data: newData });
                     const r = await createPoFromRdAction(item.id);
                     setCreatingPo(false);
-                    if (r.ok) { onRefresh(); window.location.href = `/create?order_id=${r.orderId}`; }
+                    if (r.ok) { onRefresh(); window.location.href = `/create?order_id=${r.orderId}&embed=1`; }
                     else alert(r.error || "Lỗi tạo đơn");
                   });
                 }}>
