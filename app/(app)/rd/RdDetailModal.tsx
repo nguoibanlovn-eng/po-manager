@@ -234,6 +234,7 @@ function ModalInner({
   // Item name (editable)
   const [itemName, setItemName] = useState(item.name || "");
   const [creatingPo, setCreatingPo] = useState(false);
+  const [poPopupUrl, setPoPopupUrl] = useState<string | null>(null);
   // Auto-detect role: LEADER_* / ADMIN → leader, NV_* → staff
   const isAdmin = currentUserRole === "ADMIN";
   const autoRole = currentUserRole.startsWith("LEADER_") || currentUserRole === "ADMIN" ? "leader" : "staff";
@@ -715,36 +716,50 @@ function ModalInner({
                   <input type="text" value={formData.sample_contact || ""} onChange={(e) => setField("sample_contact", e.target.value)} placeholder="Liên hệ (WeChat, phone...)" style={S.input} />
                 </div>
 
-                {/* Tạo đơn PO mua mẫu */}
+                {/* Tạo đơn PO mua mẫu — popup iframe */}
                 <div style={S.section}>
                   <div style={S.label}>Tạo đơn PO mua mẫu</div>
-                  <div style={{ padding: 12, border: "2px dashed #C4B5FD", borderRadius: 10, textAlign: "center", cursor: "pointer" }}
-                    onClick={() => {
-                      setCreatingPo(true);
-                      startTransition(async () => {
-                        // Save supplier info first
-                        const newData = { ...data, ...formData, [stepsKey]: JSON.stringify(buildUpdatedSteps()) };
-                        await saveRdItemAction(item.id, { name: itemName, data: newData });
-                        const r = await createSamplePoAction(item.id);
-                        setCreatingPo(false);
-                        if (r.ok) { onRefresh(); window.location.href = `/create?order_id=${r.orderId}`; }
-                        else alert(r.error || "Lỗi tạo đơn");
-                      });
-                    }}>
-                    <div style={{ fontSize: 20, marginBottom: 4 }}>📦</div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "#7C3AED" }}>{creatingPo ? "Đang tạo..." : "Tạo đơn PO mua mẫu"}</div>
-                    <div style={{ fontSize: 9, color: "#94A3B8" }}>Nhảy sang form tạo đơn hàng</div>
-                  </div>
+                  {!poPopupUrl ? (
+                    <div style={{ padding: 12, border: "2px dashed #C4B5FD", borderRadius: 10, textAlign: "center", cursor: "pointer" }}
+                      onClick={() => {
+                        if (linkedSamplePo) {
+                          // Already has PO → open it in popup
+                          setPoPopupUrl(`/create?order_id=${linkedSamplePo}`);
+                          return;
+                        }
+                        setCreatingPo(true);
+                        startTransition(async () => {
+                          const newData = { ...data, ...formData, [stepsKey]: JSON.stringify(buildUpdatedSteps()) };
+                          await saveRdItemAction(item.id, { name: itemName, data: newData });
+                          const r = await createSamplePoAction(item.id);
+                          setCreatingPo(false);
+                          if (r.ok) { onRefresh(); setPoPopupUrl(`/create?order_id=${r.orderId}`); }
+                          else alert(r.error || "Lỗi tạo đơn");
+                        });
+                      }}>
+                      <div style={{ fontSize: 20, marginBottom: 4 }}>📦</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#7C3AED" }}>{creatingPo ? "Đang tạo..." : linkedSamplePo ? "Mở đơn PO mẫu" : "Tạo đơn PO mua mẫu"}</div>
+                      <div style={{ fontSize: 9, color: "#94A3B8" }}>{linkedSamplePo ? `Đơn ${linkedSamplePo}` : "Mở form tạo đơn hàng tại đây"}</div>
+                    </div>
+                  ) : (
+                    <div style={{ border: "2px solid #C4B5FD", borderRadius: 10, overflow: "hidden" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 10px", background: "#F5F3FF", borderBottom: "1px solid #E2E8F0" }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: "#7C3AED" }}>📦 Form đơn hàng</span>
+                        <button type="button" onClick={() => { setPoPopupUrl(null); onRefresh(); }} style={{ padding: "2px 8px", borderRadius: 5, fontSize: 10, fontWeight: 600, border: "1px solid #E2E8F0", background: "#fff", color: "#64748B", cursor: "pointer" }}>✕ Đóng</button>
+                      </div>
+                      <iframe src={poPopupUrl} style={{ width: "100%", height: 500, border: "none" }} />
+                    </div>
+                  )}
                 </div>
 
                 {/* Đơn PO đã tạo */}
-                {linkedSamplePo && (
+                {linkedSamplePo && !poPopupUrl && (
                   <div style={{ background: "#F0FDF4", borderRadius: 8, padding: "8px 10px", marginBottom: 14 }}>
                     <div style={{ fontSize: 10, fontWeight: 600, color: "#16A34A", marginBottom: 4 }}>Đơn PO đã tạo</div>
                     <div style={{ fontSize: 11, marginBottom: 2 }}>{linkedSamplePo} — {item.name || "SP mẫu"}</div>
                     <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                      <span style={{ fontSize: 9, color: "#94A3B8" }}>Trạng thái: Theo dõi bên Danh sách đơn</span>
-                      <a href={`/create?order_id=${linkedSamplePo}`} style={{ fontSize: 9, color: "#7C3AED", fontWeight: 600, textDecoration: "none" }}>Xem đơn ↗</a>
+                      <span style={{ fontSize: 9, color: "#94A3B8" }}>Theo dõi bên Danh sách đơn</span>
+                      <span onClick={() => setPoPopupUrl(`/create?order_id=${linkedSamplePo}`)} style={{ fontSize: 9, color: "#7C3AED", fontWeight: 600, cursor: "pointer" }}>Xem đơn ↗</span>
                     </div>
                   </div>
                 )}
