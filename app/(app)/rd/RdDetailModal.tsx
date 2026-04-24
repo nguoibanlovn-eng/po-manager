@@ -763,14 +763,34 @@ function ModalInner({
               );
             })() : step.label === "Hàng về" || step.label === "QC & Nhận hàng" ? (() => {
               const samplePo = String(data.linked_sample_po || "");
+              // Find original assignee (from Đề xuất step) and Leader KT
+              const dxStep = initSteps.find((s) => s.label === "Đề xuất");
+              const originalAssignee = dxStep?.assignee_name || dxStep?.assignee || "";
+              const leaderKt = users.find((u) => u.role === "LEADER_KT");
               return (
               <>
-                {/* Info banner */}
-                {samplePo && (
-                  <div style={{ padding: "8px 10px", background: "#EFF6FF", borderRadius: 8, marginBottom: 12, fontSize: 11, color: "#1E40AF" }}>
-                    📦 Mẫu đã về — {samplePo}. Thông báo đã gửi cho NV + Leader KT.
+                {/* Info banner — thông báo cho NV + Leader KT */}
+                <div style={{ padding: "8px 10px", background: "#EFF6FF", borderRadius: 8, marginBottom: 12, fontSize: 11, color: "#1E40AF" }}>
+                  📦 {samplePo ? `Mẫu đã về — ${samplePo}. ` : "Hàng về — "}Thông báo đã gửi cho NV + Leader KT.
+                </div>
+
+                {/* Người tham gia QC */}
+                <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+                  <div style={{ flex: 1, padding: "8px 10px", background: "#F8FAFC", borderRadius: 8, border: "1px solid #E2E8F0" }}>
+                    <div style={{ fontSize: 9, color: "#94A3B8", marginBottom: 3 }}>NV tiếp nhận</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#DBEAFE", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: "#2563EB" }}>NV</div>
+                      <span style={{ fontSize: 11, fontWeight: 600 }}>{originalAssignee || "Chưa giao"}</span>
+                    </div>
                   </div>
-                )}
+                  <div style={{ flex: 1, padding: "8px 10px", background: "#F8FAFC", borderRadius: 8, border: "1px solid #E2E8F0" }}>
+                    <div style={{ fontSize: 9, color: "#94A3B8", marginBottom: 3 }}>Leader Kỹ thuật</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#F3E8FF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: "#7C3AED" }}>KT</div>
+                      <span style={{ fontSize: 11, fontWeight: 600 }}>{leaderKt?.name || "Chưa có"}</span>
+                    </div>
+                  </div>
+                </div>
 
                 {/* Thông tin thực tế */}
                 <div style={S.section}>
