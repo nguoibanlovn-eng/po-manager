@@ -392,216 +392,130 @@ function ModalInner({
     }
   }
 
+  const isApprovalStep = step.label === "Xác nhận" || step.label === "Duyệt NC" || step.label === "Duyệt mẫu"
+    || step.label === "Duyệt B1" || step.label === "Duyệt 2A";
+
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 12, width: "94vw", maxWidth: 1100, maxHeight: "94vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, width: 920, maxWidth: "96vw", height: "85vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,.2)", overflow: "hidden" }}>
 
         {/* ═══ HEADER ═══ */}
-        <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", display: "flex", gap: 10, alignItems: "center" }}>
-          <span className="chip" style={{ background: step.phaseBg || step.phaseColorBg || "#EDE9FE", color: step.phaseColor || "#6D28D9", fontWeight: 700, fontSize: 10 }}>
-            {isProduction(item) ? "Sản xuất / TK" : "Nghiên cứu SP"}
-          </span>
-          <div style={{ fontWeight: 800, fontSize: 15, flex: 1, display: "flex", alignItems: "center", gap: 6 }}>
-            {step.icon || ""} Bước {activeIdx + 1}/{initSteps.length} — {step.label} ·
-            <input
-              type="text" value={itemName}
-              onChange={(e) => { setItemName(e.target.value); setDirty(true); }}
-              placeholder="Nhập tên SP..."
-              style={{ border: "none", borderBottom: "2px dashed var(--border)", fontWeight: 800, fontSize: 15, color: "var(--text)", outline: "none", padding: "2px 4px", width: 280, background: "transparent" }}
-            />
+        <div style={{ padding: "14px 20px", borderBottom: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 15, display: "flex", alignItems: "center", gap: 8 }}>
+              <input type="text" value={itemName} onChange={(e) => { setItemName(e.target.value); setDirty(true); }} placeholder="Tên sản phẩm..."
+                style={{ border: "none", borderBottom: "2px dashed #E2E8F0", fontWeight: 800, fontSize: 15, outline: "none", padding: "2px 4px", width: 320, background: "transparent" }} />
+            </div>
+            <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 2 }}>
+              {item.created_by || ""} · {item.created_at ? String(item.created_at).substring(0, 10) : ""}
+            </div>
           </div>
-          <span className="chip" style={{ background: stepStatus.bg, color: stepStatus.color, fontSize: 10, fontWeight: 700 }}>
-            {stepStatus.label}
-          </span>
-          {deadlineOverdue && <span style={{ background: "#FEE2E2", color: "#B91C1C", fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 4 }}>QUÁ HẠN</span>}
-          <button type="button" className="btn btn-ghost btn-sm" onClick={save} disabled={pending || !dirty}>{pending ? "..." : "Lưu nháp"}</button>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <span style={{
+              display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600,
+              background: isApprovalStep ? "#FFF7ED" : "#EFF6FF",
+              color: isApprovalStep ? "#D97706" : "#3B82F6",
+            }}>
+              Bước {activeIdx + 1}: {step.label}
+            </span>
+            <button type="button" onClick={save} disabled={pending || !dirty} style={{ padding: "4px 10px", borderRadius: 6, fontSize: 10, fontWeight: 600, border: "1px solid #E2E8F0", background: dirty ? "#7C3AED" : "#F1F5F9", color: dirty ? "#fff" : "#94A3B8", cursor: "pointer" }}>
+              {pending ? "..." : "Lưu"}
+            </button>
+            <button type="button" onClick={onClose} style={{ padding: "4px 8px", borderRadius: 6, fontSize: 12, border: "1px solid #E2E8F0", background: "#F1F5F9", color: "#64748B", cursor: "pointer" }}>✕</button>
+          </div>
         </div>
 
-        {/* ═══ STEPPER ═══ */}
-        <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border)", background: "#FAFAFA", display: "flex", gap: 4, overflowX: "auto" }}>
-          {initSteps.map((s, idx) => {
-            const isActive = idx === activeIdx;
-            const isDone = s.status === "approved";
-            const isSkipped = s.status === "skipped";
-            return (
-              <button key={idx} type="button" onClick={() => switchStep(idx)} style={{
-                flex: "0 0 auto", padding: "6px 10px", borderRadius: 6,
-                border: "1px solid " + (isActive ? "var(--blue)" : isDone ? "#86EFAC" : "var(--border)"),
-                background: isActive ? "var(--blue)" : isDone ? "#F0FDF4" : "#fff",
-                color: isActive ? "#fff" : isDone ? "#15803D" : isSkipped ? "#A1A1AA" : "var(--muted)",
-                fontSize: 11, fontWeight: 700, cursor: "pointer",
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
-                minWidth: 78, textDecoration: isSkipped ? "line-through" : "none",
-                opacity: s.status === "locked" ? 0.5 : 1,
-              }}>
-                <div style={{ display: "flex", gap: 4 }}>
-                  <span>{s.icon || (isDone ? "✓" : isSkipped ? "—" : idx + 1)}</span>
-                  <span>{s.label}</span>
+        {/* ═══ BODY: Stepper left + Form right ═══ */}
+        <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+
+          {/* ── LEFT STEPPER ── */}
+          <div style={{ width: 190, background: "#F8FAFC", borderRight: "1px solid #E2E8F0", padding: "14px 10px", overflowY: "auto", flexShrink: 0 }}>
+            {initSteps.map((s, idx) => {
+              const isActive = idx === activeIdx;
+              const isDone = s.status === "approved";
+              const isLocked = s.status === "locked";
+              const dotClass = isDone ? { bg: "#22C55E", color: "#fff" }
+                : isActive ? (isApprovalStep ? { bg: "#FEF3C7", color: "#D97706" } : { bg: "#3B82F6", color: "#fff" })
+                : { bg: "#E2E8F0", color: "#94A3B8" };
+              const statusText = isActive
+                ? (isApprovalStep ? "Chờ duyệt" : "Đang làm")
+                : isDone ? "✓ Xong" : "—";
+              return (
+                <div key={idx}>
+                  <div onClick={() => switchStep(idx)} style={{
+                    display: "flex", alignItems: "flex-start", gap: 8, padding: "7px 6px", borderRadius: 6, cursor: "pointer",
+                    background: isActive ? "#EFF6FF" : "transparent", opacity: isLocked ? 0.5 : 1,
+                  }}>
+                    <div style={{
+                      width: 22, height: 22, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 9, fontWeight: 800, flexShrink: 0, background: dotClass.bg, color: dotClass.color,
+                    }}>
+                      {isDone ? "✓" : idx + 1}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600 }}>{s.label}</div>
+                      <div style={{ fontSize: 9, color: "#94A3B8" }}>{statusText}</div>
+                      {s.assignee_name && <div style={{ fontSize: 9, color: "#94A3B8" }}>→ {s.assignee_name.split("(")[0].trim()}</div>}
+                    </div>
+                  </div>
+                  {idx < initSteps.length - 1 && <div style={{ width: 1, height: 8, background: "#D1D5DB", marginLeft: 20 }} />}
                 </div>
-                {s.assignee_name && <div style={{ fontSize: 9, fontWeight: 400, opacity: 0.8 }}>{s.assignee_name.split("(")[0].trim()}</div>}
-              </button>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
 
-        {/* ═══ BODY ═══ */}
-        <div style={{ flex: 1, overflowY: "auto", display: "flex", gap: 16, padding: 16 }}>
-          {/* ── LEFT ── */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {/* Assignee + Deadline */}
-            <div style={{ display: "flex", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
-              <div className="form-group" style={{ flex: 1, minWidth: 180 }}>
-                <label>Người phụ trách</label>
+          {/* ── RIGHT FORM AREA ── */}
+          <div style={{ flex: 1, padding: 18, overflowY: "auto" }}>
+
+            {/* Assignee + Deadline row */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: ".3px", marginBottom: 5 }}>Người phụ trách</div>
                 <select value={assignee} onChange={(e) => {
                   const email = e.target.value;
                   const u = users.find((u) => u.email === email);
-                  setAssignee(email);
-                  setAssigneeName(u ? (u.name || email) : "");
-                  setDirty(true);
-                }}>
+                  setAssignee(email); setAssigneeName(u ? (u.name || email) : ""); setDirty(true);
+                }} style={{ width: "100%", padding: "7px 11px", border: "1px solid #E2E8F0", borderRadius: 7, fontSize: 12, outline: "none" }}>
                   <option value="">— Chọn —</option>
-                  {users.map((u) => <option key={u.email} value={u.email}>{u.name || u.email}{u.role ? ` (${u.role})` : ""}</option>)}
+                  {users.map((u) => <option key={u.email} value={u.email}>{u.name || u.email}</option>)}
                 </select>
               </div>
-              <div className="form-group" style={{ minWidth: 160 }}>
-                <label>Deadline{deadlineOverdue && <span style={{ color: "var(--red)", fontWeight: 700, marginLeft: 6, fontSize: 10 }}>QUÁ HẠN</span>}</label>
-                <input type="date" value={deadlineToISO(deadline)} onChange={(e) => { setDeadline(e.target.value); setDirty(true); }} style={deadlineOverdue ? { borderColor: "var(--red)", color: "var(--red)" } : undefined} />
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: ".3px", marginBottom: 5 }}>
+                  Deadline{deadlineOverdue && <span style={{ color: "#DC2626", fontWeight: 700, marginLeft: 4, fontSize: 10 }}>QUÁ HẠN</span>}
+                </div>
+                <input type="date" value={deadlineToISO(deadline)} onChange={(e) => { setDeadline(e.target.value); setDirty(true); }}
+                  style={{ width: "100%", padding: "7px 11px", border: `1px solid ${deadlineOverdue ? "#DC2626" : "#E2E8F0"}`, borderRadius: 7, fontSize: 12, outline: "none", color: deadlineOverdue ? "#DC2626" : undefined }} />
               </div>
-              <div className="form-group" style={{ flex: 1, minWidth: 180 }}>
-                <label>Ghi chú bước</label>
-                <input type="text" value={result} onChange={(e) => { setResult(e.target.value); setDirty(true); }} placeholder="Kết quả / ghi chú..." />
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: ".3px", marginBottom: 5 }}>Ghi chú bước</div>
+                <input type="text" value={result} onChange={(e) => { setResult(e.target.value); setDirty(true); }} placeholder="Kết quả / ghi chú..."
+                  style={{ width: "100%", padding: "7px 11px", border: "1px solid #E2E8F0", borderRadius: 7, fontSize: 12, outline: "none" }} />
               </div>
             </div>
 
             {/* Form fields */}
             {formFields.length > 0 && (
-              <div className="form-grid fg-2" style={{ marginBottom: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
                 {formFields.map((f) => renderField(f))}
               </div>
             )}
 
-            {/* ── Links ── */}
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", marginBottom: 6 }}>Links ({links.length})</div>
-              {links.length > 0 && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 6 }}>
-                  {links.map((link, i) => {
-                    const url = getLinkUrl(link);
-                    const tag = getLinkTag(link);
-                    return (
-                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
-                        {tag && <span className="chip" style={{ fontSize: 9, padding: "1px 5px" }}>{tag}</span>}
-                        <a href={url.startsWith("http") ? url : `https://${url}`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, color: "var(--blue)", wordBreak: "break-all" }}>
-                          {url.length > 60 ? url.substring(0, 57) + "..." : url}
-                        </a>
-                        <button type="button" onClick={() => removeLink(i)} style={{ background: "none", border: "none", color: "var(--red)", cursor: "pointer", fontSize: 11, padding: 2 }}>✕</button>
-                      </div>
-                    );
-                  })}
+            {/* ── QC Checklist (for Hàng về step) ── */}
+            {(checklist.length > 0 || isQcStep) && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: ".3px", marginBottom: 5 }}>
+                  {isQcStep ? `QC Checklist (${passCount}/${checklist.length} Pass${failCount > 0 ? ` · ${failCount} Fail` : ""})` : `Checklist (${checkedCount}/${checklist.length})`}
                 </div>
-              )}
-              <div style={{ display: "flex", gap: 4 }}>
-                <input value={newLink} onChange={(e) => setNewLink(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addLink())} placeholder="Dán link..." style={{ flex: 1, fontSize: 12 }} />
-                <button type="button" className="btn btn-primary btn-xs" onClick={addLink}>+ Link</button>
-              </div>
-            </div>
-
-            {/* ── Photos ── */}
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", marginBottom: 6 }}>Ảnh ({photos.length})</div>
-              {photos.length > 0 && (
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
-                  {photos.map((url, i) => (
-                    <div key={i} style={{ position: "relative" }}>
-                      {isImageUrl(url) ? (
-                        <a href={url} target="_blank" rel="noopener noreferrer">
-                          <img src={url} alt="" style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 6, border: "1px solid var(--border)" }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                        </a>
-                      ) : (
-                        <a href={url} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 72, height: 72, borderRadius: 6, border: "1px solid var(--border)", background: "#F9FAFB", fontSize: 10, color: "var(--blue)", textDecoration: "none", padding: 4, textAlign: "center", wordBreak: "break-all" }}>
-                          {url.length > 30 ? url.substring(0, 27) + "..." : url}
-                        </a>
-                      )}
-                      <button type="button" onClick={() => removePhoto(i)} style={{ position: "absolute", top: -4, right: -4, width: 16, height: 16, borderRadius: "50%", background: "var(--red)", color: "#fff", border: "none", fontSize: 10, cursor: "pointer", lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div style={{ display: "flex", gap: 4 }}>
-                <input value={newPhoto} onChange={(e) => setNewPhoto(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addPhoto())} placeholder="Dán link ảnh..." style={{ flex: 1, fontSize: 12 }} />
-                <button type="button" className="btn btn-primary btn-xs" onClick={addPhoto}>+ Ảnh</button>
-              </div>
-            </div>
-
-            {/* ── Create PO banner (for Nhập? / Đặt hàng steps) ── */}
-            {(step.label === "Nhập hàng" || step.label === "Nhập?" || step.label === "Đặt hàng") && (
-              <div style={{ marginTop: 16, padding: "14px 16px", background: "linear-gradient(135deg, #EFF6FF 0%, #F0FDF4 100%)", border: "1px solid #86EFAC", borderRadius: 10 }}>
-                <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 6, color: "var(--green)" }}>📦 Tạo đơn nhập hàng</div>
-                <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 10 }}>
-                  Tự động tạo PO trong mục &quot;Tạo/Sửa đơn&quot; với thông tin đã nghiên cứu. Có thể chỉnh sửa sau.
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 10 }}>
-                  <div style={{ fontSize: 10 }}><div style={{ color: "var(--muted)" }}>Tên SP</div><div style={{ fontWeight: 700, fontSize: 12 }}>{itemName || "—"}</div></div>
-                  <div style={{ fontSize: 10 }}><div style={{ color: "var(--muted)" }}>NCC</div><div style={{ fontWeight: 700, fontSize: 12 }}>{String(formData.sample_supplier || data.sample_supplier || "—")}</div></div>
-                  <div style={{ fontSize: 10 }}><div style={{ color: "var(--muted)" }}>SL x Giá</div><div style={{ fontWeight: 700, fontSize: 12 }}>{String(formData.bulk_qty || data.bulk_qty || "—")} x {Number(formData.bulk_price || data.bulk_price || data.price_buy || 0).toLocaleString("vi-VN")}đ</div></div>
-                  <div style={{ fontSize: 10 }}><div style={{ color: "var(--muted)" }}>Tổng giá trị</div><div style={{ fontWeight: 700, fontSize: 12, color: "var(--green)" }}>{(Number(formData.bulk_qty || data.bulk_qty || 0) * Number(formData.bulk_price || data.bulk_price || data.price_buy || 0)).toLocaleString("vi-VN")}đ</div></div>
-                </div>
-                <button type="button" className="btn btn-success" disabled={pending || creatingPo}
-                  onClick={() => {
-                    setCreatingPo(true);
-                    // Save current step data first, then create PO
-                    startTransition(async () => {
-                      const newData = { ...data, ...formData, [stepsKey]: JSON.stringify(buildUpdatedSteps()) };
-                      await saveRdItemAction(item.id, { name: itemName, data: newData });
-                      const r = await createPoFromRdAction(item.id);
-                      setCreatingPo(false);
-                      if (r.ok) {
-                        onRefresh();
-                        window.location.href = `/create?order_id=${r.orderId}`;
-                      } else {
-                        alert(r.error || "Lỗi tạo đơn");
-                      }
-                    });
-                  }}
-                  style={{ fontSize: 13, padding: "8px 20px" }}
-                >
-                  {creatingPo ? "Đang tạo..." : "📋 Tạo đơn nhập → Chuyển sang Mua hàng"}
-                </button>
-              </div>
-            )}
-
-            {/* ── Action buttons ── */}
-            <div style={{ marginTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              {step.status === "approved" ? <div className="chip chip-green">✓ Hoàn thành</div> : <span />}
-              {step.status !== "approved" ? (
-                <button type="button" className="btn btn-success btn-sm" onClick={markComplete} disabled={pending}>✓ Hoàn thành bước + Chuyển tiếp</button>
-              ) : (
-                <div style={{ display: "flex", gap: 6 }}>
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={save} disabled={pending || !dirty}>Cập nhật dữ liệu</button>
-                  {activeIdx < initSteps.length - 1 && <button type="button" className="btn btn-primary btn-sm" onClick={() => switchStep(activeIdx + 1)} disabled={pending}>Bước tiếp →</button>}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* ── RIGHT SIDEBAR ── */}
-          <div style={{ width: 280, flexShrink: 0, display: "flex", flexDirection: "column", gap: 14 }}>
-            {/* Checklist */}
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", marginBottom: 6 }}>
-                {isQcStep ? `QC Checklist (${passCount}/${checklist.length} Pass${failCount > 0 ? ` · ${failCount} Fail` : ""})` : `Checklist (${checkedCount}/${checklist.length})`}
-              </div>
-              {checklist.length > 0 && (
-                <div style={{ height: 3, borderRadius: 2, background: "#E5E7EB", marginBottom: 6, overflow: "hidden" }}>
-                  <div style={{ height: "100%", borderRadius: 2, width: checklist.length ? `${((isQcStep ? passCount : checkedCount) / checklist.length) * 100}%` : "0%", background: failCount > 0 ? "var(--red)" : (isQcStep ? passCount : checkedCount) === checklist.length ? "var(--green)" : "var(--blue)", transition: "width .2s" }} />
-                </div>
-              )}
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                {checklist.map((c, i) => (
-                  <div key={i} style={{ padding: "6px 8px", background: c.verdict === "pass" ? "#F0FDF4" : c.verdict === "fail" ? "#FEF2F2" : c.checked ? "#F0FDF4" : "#FAFAFA", borderRadius: 4, fontSize: 12 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <span style={{ flex: 1, color: c.verdict === "fail" ? "var(--red)" : c.verdict === "pass" || c.checked ? "var(--muted)" : "var(--text)" }}>{c.text}</span>
+                {checklist.length > 0 && (
+                  <div style={{ height: 3, borderRadius: 2, background: "#E5E7EB", marginBottom: 8, overflow: "hidden" }}>
+                    <div style={{ height: "100%", borderRadius: 2, width: `${((isQcStep ? passCount : checkedCount) / checklist.length) * 100}%`, background: failCount > 0 ? "#DC2626" : (isQcStep ? passCount : checkedCount) === checklist.length ? "#16A34A" : "#3B82F6", transition: "width .2s" }} />
+                  </div>
+                )}
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {checklist.map((c, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 0", borderBottom: "1px solid #F1F5F9" }}>
+                      <span style={{ flex: 1, fontSize: 11, color: c.verdict === "fail" ? "#DC2626" : c.verdict === "pass" ? "#94A3B8" : "#18181B" }}>{c.text}</span>
                       {isQcStep ? (
                         <div style={{ display: "flex", gap: 3 }}>
                           <button type="button" onClick={() => setVerdict(i, c.verdict === "pass" ? null : "pass")} style={{
@@ -620,44 +534,113 @@ function ModalInner({
                       ) : (
                         <input type="checkbox" checked={c.checked} onChange={() => toggleCheck(i)} style={{ width: 14, height: 14 }} />
                       )}
-                      <button type="button" onClick={() => removeCheck(i)} style={{ background: "none", border: "none", color: "var(--red)", cursor: "pointer", padding: 2, fontSize: 11 }}>✕</button>
+                      <button type="button" onClick={() => removeCheck(i)} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 14, padding: 2 }}>✕</button>
                     </div>
-                    <input type="text" value={c.note || ""} onChange={(e) => updateCheckNote(i, e.target.value)} placeholder="Ghi chú..." style={{ marginTop: 3, fontSize: 11, width: "100%", border: "none", borderBottom: "1px dashed var(--border)", background: "transparent", padding: "2px 0", marginLeft: 4, color: "var(--muted)" }} />
-                  </div>
-                ))}
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
+                  <input value={newCheckLabel} onChange={(e) => setNewCheckLabel(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCheckItem())} placeholder="Thêm mục kiểm tra..."
+                    style={{ flex: 1, padding: "5px 11px", border: "1px solid #E2E8F0", borderRadius: 7, fontSize: 12, outline: "none" }} />
+                  <button type="button" onClick={addCheckItem} style={{ padding: "5px 10px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#7C3AED", color: "#fff", cursor: "pointer" }}>+</button>
+                </div>
               </div>
-              <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
-                <input value={newCheckLabel} onChange={(e) => setNewCheckLabel(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCheckItem())} placeholder="Thêm mục..." style={{ flex: 1, fontSize: 12 }} />
-                <button type="button" className="btn btn-primary btn-xs" onClick={addCheckItem}>+</button>
-              </div>
-            </div>
+            )}
 
-            {/* Timeline */}
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", marginBottom: 6 }}>Timeline</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 12 }}>
-                {initSteps.map((s, idx) => {
-                  const st = STATUS_STYLE[s.status] || STATUS_STYLE.locked;
-                  return (
-                    <div key={idx} onClick={() => switchStep(idx)} style={{
-                      display: "flex", flexDirection: "column", gap: 1, padding: "4px 6px", borderRadius: 4, cursor: "pointer",
-                      background: idx === activeIdx ? "var(--blue-lt)" : "transparent",
-                      fontWeight: idx === activeIdx ? 700 : 400, opacity: s.status === "locked" ? 0.5 : 1,
-                    }}>
-                      <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span style={{ color: st.color }}>{s.status === "approved" ? "✓" : s.status === "skipped" ? "—" : "○"} {s.label}</span>
-                        <span className="chip" style={{ background: st.bg, color: st.color, fontSize: 9, padding: "1px 5px" }}>{st.label}</span>
+            {/* ── Links ── */}
+            {(links.length > 0 || true) && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: ".3px", marginBottom: 5 }}>Tài liệu ({links.length})</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 6 }}>
+                  {links.map((link, i) => {
+                    const url = getLinkUrl(link);
+                    const tag = getLinkTag(link);
+                    return (
+                      <div key={i} style={{ padding: "3px 7px", background: "#F1F5F9", borderRadius: 5, fontSize: 9, display: "flex", alignItems: "center", gap: 3 }}>
+                        <a href={url.startsWith("http") ? url : `https://${url}`} target="_blank" rel="noopener noreferrer" style={{ color: "#3B82F6", textDecoration: "none" }}>
+                          {tag || (url.length > 35 ? url.substring(0, 32) + "..." : url)}
+                        </a>
+                        <button type="button" onClick={() => removeLink(i)} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 10, padding: 0 }}>✕</button>
                       </div>
-                      {(s.assignee_name || s.deadline) && (
-                        <div style={{ fontSize: 10, color: "var(--muted)", paddingLeft: 16, display: "flex", gap: 8 }}>
-                          {s.assignee_name && <span>→ {s.assignee_name.split("(")[0].trim()}</span>}
-                          {s.deadline && <span style={s.status !== "approved" && isOverdue(s.deadline) ? { color: "var(--red)", fontWeight: 700 } : undefined}>{s.deadline}</span>}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                  <div style={{ display: "flex", gap: 3 }}>
+                    <input value={newLink} onChange={(e) => setNewLink(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addLink())} placeholder="Dán link..."
+                      style={{ padding: "3px 7px", border: "1px dashed #D1D5DB", borderRadius: 5, fontSize: 9, width: 140, outline: "none" }} />
+                    {newLink && <button type="button" onClick={addLink} style={{ padding: "3px 7px", borderRadius: 5, fontSize: 9, fontWeight: 600, border: "none", background: "#7C3AED", color: "#fff", cursor: "pointer" }}>+</button>}
+                  </div>
+                </div>
               </div>
+            )}
+
+            {/* ── Photos ── */}
+            {(photos.length > 0 || true) && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: ".3px", marginBottom: 5 }}>Hình ảnh ({photos.length})</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 6 }}>
+                  {photos.map((url, i) => (
+                    <div key={i} style={{ position: "relative" }}>
+                      {isImageUrl(url) ? (
+                        <a href={url} target="_blank" rel="noopener noreferrer">
+                          <img src={url} alt="" style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 6, border: "1px solid #E2E8F0" }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                        </a>
+                      ) : (
+                        <a href={url} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 60, height: 60, borderRadius: 6, border: "1px solid #E2E8F0", background: "#F8FAFC", fontSize: 8, color: "#3B82F6", textDecoration: "none", padding: 3, textAlign: "center", wordBreak: "break-all" }}>
+                          {url.length > 25 ? url.substring(0, 22) + "..." : url}
+                        </a>
+                      )}
+                      <button type="button" onClick={() => removePhoto(i)} style={{ position: "absolute", top: -4, right: -4, width: 14, height: 14, borderRadius: "50%", background: "#DC2626", color: "#fff", border: "none", fontSize: 9, cursor: "pointer", lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+                    </div>
+                  ))}
+                  <div style={{ display: "flex", gap: 3, alignItems: "flex-end" }}>
+                    <input value={newPhoto} onChange={(e) => setNewPhoto(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addPhoto())} placeholder="Dán link ảnh..."
+                      style={{ padding: "3px 7px", border: "1px dashed #D1D5DB", borderRadius: 5, fontSize: 9, width: 120, outline: "none" }} />
+                    {newPhoto && <button type="button" onClick={addPhoto} style={{ padding: "3px 7px", borderRadius: 5, fontSize: 9, fontWeight: 600, border: "none", background: "#7C3AED", color: "#fff", cursor: "pointer" }}>+</button>}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── Create PO banner ── */}
+            {(step.label === "Nhập hàng" || step.label === "Nhập?" || step.label === "Đặt hàng") && (
+              <div style={{ padding: 12, border: "2px dashed #BBF7D0", borderRadius: 10, textAlign: "center", cursor: "pointer", marginBottom: 14 }}
+                onClick={() => {
+                  setCreatingPo(true);
+                  startTransition(async () => {
+                    const newData = { ...data, ...formData, [stepsKey]: JSON.stringify(buildUpdatedSteps()) };
+                    await saveRdItemAction(item.id, { name: itemName, data: newData });
+                    const r = await createPoFromRdAction(item.id);
+                    setCreatingPo(false);
+                    if (r.ok) { onRefresh(); window.location.href = `/create?order_id=${r.orderId}`; }
+                    else alert(r.error || "Lỗi tạo đơn");
+                  });
+                }}>
+                <div style={{ fontSize: 20, marginBottom: 4 }}>📦</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#16A34A" }}>{creatingPo ? "Đang tạo..." : "Tạo đơn PO nhập hàng"}</div>
+                <div style={{ fontSize: 9, color: "#94A3B8" }}>
+                  {String(formData.bulk_qty || data.bulk_qty || "—")} cái × {Number(formData.bulk_price || data.bulk_price || data.price_buy || 0).toLocaleString("vi-VN")}đ
+                </div>
+              </div>
+            )}
+
+            {/* ── Action buttons ── */}
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", paddingTop: 10, borderTop: "1px solid #E2E8F0" }}>
+              {step.status === "approved" ? (
+                <>
+                  <span style={{ fontSize: 11, color: "#16A34A", fontWeight: 600, padding: "7px 0" }}>✓ Bước hoàn thành</span>
+                  <div style={{ flex: 1 }} />
+                  <button type="button" onClick={save} disabled={pending || !dirty} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#F1F5F9", color: "#64748B", cursor: "pointer" }}>Cập nhật</button>
+                  {activeIdx < initSteps.length - 1 && (
+                    <button type="button" onClick={() => switchStep(activeIdx + 1)} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#3B82F6", color: "#fff", cursor: "pointer" }}>Bước tiếp →</button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <button type="button" onClick={save} disabled={pending || !dirty} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#F1F5F9", color: "#64748B", cursor: "pointer" }}>Lưu nháp</button>
+                  <button type="button" onClick={markComplete} disabled={pending} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: isApprovalStep ? "#16A34A" : "#7C3AED", color: "#fff", cursor: "pointer" }}>
+                    {isApprovalStep ? "✓ Duyệt & Chuyển bước →" : "Hoàn thành & Chuyển bước →"}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
