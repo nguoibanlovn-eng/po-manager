@@ -170,9 +170,9 @@ function deadlineToISO(d: string): string {
    MAIN COMPONENT
    ═══════════════════════════════════════════════════════════ */
 export default function RdDetailModal({
-  item, users = [], onClose, onRefresh,
+  item, users = [], currentUserRole = "VIEWER", currentUserEmail = "", onClose, onRefresh,
 }: {
-  item: RdItem; users?: UserRef[]; onClose: () => void; onRefresh: () => void;
+  item: RdItem; users?: UserRef[]; currentUserRole?: string; currentUserEmail?: string; onClose: () => void; onRefresh: () => void;
 }) {
   const [pending, startTransition] = useTransition();
   const steps = getSteps(item);
@@ -194,14 +194,14 @@ export default function RdDetailModal({
     );
   }
 
-  return <ModalInner item={item} steps={steps} stepsKey={stepsKey} data={data} users={users} onClose={onClose} onRefresh={onRefresh} pending={pending} startTransition={startTransition} />;
+  return <ModalInner item={item} steps={steps} stepsKey={stepsKey} data={data} users={users} currentUserRole={currentUserRole || "VIEWER"} currentUserEmail={currentUserEmail || ""} onClose={onClose} onRefresh={onRefresh} pending={pending} startTransition={startTransition} />;
 }
 
 function ModalInner({
-  item, steps: initSteps, stepsKey, data, users, onClose, onRefresh, pending, startTransition,
+  item, steps: initSteps, stepsKey, data, users, currentUserRole, currentUserEmail, onClose, onRefresh, pending, startTransition,
 }: {
   item: RdItem; steps: RdStep[]; stepsKey: string; data: Record<string, unknown>;
-  users: UserRef[]; onClose: () => void; onRefresh: () => void;
+  users: UserRef[]; currentUserRole: string; currentUserEmail: string; onClose: () => void; onRefresh: () => void;
   pending: boolean; startTransition: (fn: () => Promise<void>) => void;
 }) {
   const firstActive = initSteps.findIndex((s) => s.status === "active");
@@ -211,7 +211,13 @@ function ModalInner({
   // Item name (editable)
   const [itemName, setItemName] = useState(item.name || "");
   const [creatingPo, setCreatingPo] = useState(false);
-  const [proposerRole, setProposerRole] = useState<"leader" | "staff">(String(data.proposer_role || "leader") as "leader" | "staff");
+  // Auto-detect role: LEADER_* / ADMIN → leader, NV_* → staff
+  const isAdmin = currentUserRole === "ADMIN";
+  const autoRole = currentUserRole.startsWith("LEADER_") || currentUserRole === "ADMIN" ? "leader" : "staff";
+  const [proposerRole, setProposerRole] = useState<"leader" | "staff">(
+    data.proposer_role ? String(data.proposer_role) as "leader" | "staff" : autoRole
+  );
+  const [priority, setPriority] = useState(String(data.priority || "normal"));
 
   // Step-level state
   const [assignee, setAssignee] = useState(step.assignee || "");
@@ -274,7 +280,7 @@ function ModalInner({
 
   function save() {
     startTransition(async () => {
-      const newData = { ...data, ...formData, proposer_role: proposerRole, [stepsKey]: JSON.stringify(buildUpdatedSteps()) };
+      const newData = { ...data, ...formData, proposer_role: proposerRole, priority, [stepsKey]: JSON.stringify(buildUpdatedSteps()) };
       await saveRdItemAction(item.id, { name: itemName, data: newData });
       setDirty(false);
       onRefresh();
@@ -288,7 +294,7 @@ function ModalInner({
         if (i === activeIdx + 1 && (s.status === "locked" || s.status === "skipped")) return { ...s, status: "active" as const };
         return s;
       });
-      const newData = { ...data, ...formData, proposer_role: proposerRole, [stepsKey]: JSON.stringify(updated) };
+      const newData = { ...data, ...formData, proposer_role: proposerRole, priority, [stepsKey]: JSON.stringify(updated) };
       await saveRdItemAction(item.id, { name: itemName, data: newData });
       setDirty(false);
       onRefresh();
@@ -479,26 +485,36 @@ function ModalInner({
 
             {/* Role selector — only at Đề xuất step */}
             {step.label === "Đề xuất" && (
-              <div style={{ marginBottom: 14 }}>
-                <div style={S.label}>Bạn đang ở vị trí nào?</div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  {([
-                    { key: "leader" as const, icon: "👔", name: "Leader", desc: "Giao nhân viên làm" },
-                    { key: "staff" as const, icon: "💡", name: "Nhân viên", desc: "Gửi sếp duyệt" },
-                  ]).map((r) => (
-                    <div key={r.key} onClick={() => { setProposerRole(r.key); setDirty(true); }}
-                      style={{
-                        flex: 1, padding: 10, border: `2px solid ${proposerRole === r.key ? "#7C3AED" : "#E2E8F0"}`,
-                        borderRadius: 10, cursor: "pointer", textAlign: "center",
-                        background: proposerRole === r.key ? "#F5F3FF" : "#fff",
-                      }}>
-                      <div style={{ fontSize: 22 }}>{r.icon}</div>
-                      <div style={{ fontSize: 11, fontWeight: 700 }}>{r.name}</div>
-                      <div style={{ fontSize: 9, color: "#94A3B8" }}>{r.desc}</div>
-                    </div>
-                  ))}
+              <>
+                <div style={{ marginBottom: 14 }}>
+                  <div style={S.label}>Bạn đang ở vị trí nào?</div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {([
+                      { key: "leader" as const, icon: "👔", name: "Leader", desc: "Giao nhân viên làm" },
+                      { key: "staff" as const, icon: "💡", name: "Nhân viên", desc: "Gửi sếp duyệt" },
+                    ]).map((r) => (
+                      <div key={r.key} onClick={() => { if (isAdmin) { setProposerRole(r.key); setDirty(true); } }}
+                        style={{
+                          flex: 1, padding: 10, border: `2px solid ${proposerRole === r.key ? "#7C3AED" : "#E2E8F0"}`,
+                          borderRadius: 10, cursor: isAdmin ? "pointer" : "default", textAlign: "center",
+                          background: proposerRole === r.key ? "#F5F3FF" : "#fff",
+                          opacity: !isAdmin && proposerRole !== r.key ? 0.4 : 1,
+                        }}>
+                        <div style={{ fontSize: 22 }}>{r.icon}</div>
+                        <div style={{ fontSize: 11, fontWeight: 700 }}>{r.name}</div>
+                        <div style={{ fontSize: 9, color: "#94A3B8" }}>{r.desc}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {!isAdmin && <div style={{ fontSize: 9, color: "#94A3B8", marginTop: 4 }}>Tự động theo vị trí của bạn</div>}
                 </div>
-              </div>
+
+                {/* Tên SP inline */}
+                <div style={S.section}>
+                  <div style={S.label}>Tên sản phẩm</div>
+                  <input type="text" value={itemName} onChange={(e) => { setItemName(e.target.value); setDirty(true); }} placeholder="VD: Quạt phun sương mini USB" style={S.input} />
+                </div>
+              </>
             )}
 
             {/* Xác nhận step — dynamic label based on proposer role */}
@@ -530,19 +546,19 @@ function ModalInner({
               </div>
             )}
 
-            {/* Assignee + Deadline row */}
+            {/* Assignee row — dynamic label based on step + role */}
+            <div style={S.section}>
+              <div style={S.label}>{step.label === "Đề xuất" ? (proposerRole === "leader" ? "Giao cho nhân viên" : "Gửi Leader duyệt") : "Giao cho"}</div>
+              <select value={assignee} onChange={(e) => {
+                const email = e.target.value;
+                const u = users.find((u) => u.email === email);
+                setAssignee(email); setAssigneeName(u ? (u.name || email) : ""); setDirty(true);
+              }} style={S.select}>
+                <option value="">— Chọn —</option>
+                {users.map((u) => <option key={u.email} value={u.email}>{u.name || u.email}</option>)}
+              </select>
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
-              <div style={S.section}>
-                <div style={S.label}>Giao cho</div>
-                <select value={assignee} onChange={(e) => {
-                  const email = e.target.value;
-                  const u = users.find((u) => u.email === email);
-                  setAssignee(email); setAssigneeName(u ? (u.name || email) : ""); setDirty(true);
-                }} style={S.select}>
-                  <option value="">— Chọn —</option>
-                  {users.map((u) => <option key={u.email} value={u.email}>{u.name || u.email}</option>)}
-                </select>
-              </div>
               <div style={S.section}>
                 <div style={S.label}>
                   Deadline{deadlineOverdue && <span style={{ color: "#DC2626", fontWeight: 700, marginLeft: 4, fontSize: 10 }}>QUÁ HẠN</span>}
@@ -550,6 +566,16 @@ function ModalInner({
                 <input type="date" value={deadlineToISO(deadline)} onChange={(e) => { setDeadline(e.target.value); setDirty(true); }}
                   style={{ ...S.input, ...(deadlineOverdue ? { borderColor: "#DC2626", color: "#DC2626" } : {}) }} />
               </div>
+              {step.label === "Đề xuất" && (
+                <div style={S.section}>
+                  <div style={S.label}>Ưu tiên</div>
+                  <select value={priority} onChange={(e) => { setPriority(e.target.value); setDirty(true); }} style={S.select}>
+                    <option value="normal">Bình thường</option>
+                    <option value="urgent">Gấp</option>
+                    <option value="low">Thấp</option>
+                  </select>
+                </div>
+              )}
             </div>
 
             {/* Form fields */}

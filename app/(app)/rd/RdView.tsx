@@ -85,7 +85,7 @@ function progressFor(stage: string | null, type: "research" | "production"): num
 
 type Tab = "research" | "production";
 
-export default function RdView({ items, users = [] }: { items: RdItem[]; users?: UserRef[]; filterStage?: string }) {
+export default function RdView({ items, users = [], currentUserRole = "VIEWER", currentUserEmail = "" }: { items: RdItem[]; users?: UserRef[]; filterStage?: string; currentUserRole?: string; currentUserEmail?: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState<RdItem | "new" | null>(null);
@@ -252,6 +252,8 @@ export default function RdView({ items, users = [] }: { items: RdItem[]; users?:
         <RdDetailModal
           item={detailItem}
           users={users}
+          currentUserRole={currentUserRole}
+          currentUserEmail={currentUserEmail}
           onClose={() => setDetailItem(null)}
           onRefresh={() => router.refresh()}
         />
