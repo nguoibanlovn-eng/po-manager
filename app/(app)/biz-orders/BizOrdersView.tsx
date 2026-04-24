@@ -19,6 +19,14 @@ type ItemDraft = Partial<BizOrderItem> & { _key: string };
 let _k = 0;
 const nk = () => "bk-" + ++_k;
 
+// Format number with dots: 185000 → "185.000"
+const fmtNum = (v: number | string | null | undefined) => {
+  const n = Number(v) || 0;
+  return n === 0 ? "" : n.toLocaleString("vi-VN");
+};
+// Parse dotted string back: "185.000" → 185000
+const parseNum = (s: string) => Number(s.replace(/\./g, "").replace(/,/g, "")) || 0;
+
 const STATUS_LABEL: Record<string, string> = {
   draft: "Nháp",
   pending: "Chờ duyệt",
@@ -244,7 +252,7 @@ export default function BizOrdersView({
   // MH assignment (approval)
   const [mhAssignee, setMhAssignee] = useState("");
   const [mhDeadline, setMhDeadline] = useState("");
-  const mhUsers = useMemo(() => users.filter((u) => u.role === "LEADER_MH" || u.role === "NV_MH"), [users]);
+  const mhUsers = useMemo(() => users.filter((u) => u.role === "ADMIN" || u.role === "LEADER_MH" || u.role === "NV_MH"), [users]);
 
   // Approve/reject
   function onApprove() {
@@ -521,8 +529,8 @@ export default function BizOrdersView({
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
                     <span style={{ fontSize: 9, color: "var(--muted)", fontWeight: 700 }}>SỐ LƯỢNG</span>
                     <input
-                      type="number" min={0} value={String(it.qty ?? 0)}
-                      onChange={(e) => patchItem(it._key, { qty: Number(e.target.value) || 0 })}
+                      type="text" inputMode="numeric" value={fmtNum(it.qty)}
+                      onChange={(e) => patchItem(it._key, { qty: parseNum(e.target.value) })}
                       style={{ width: 80, textAlign: "center" }}
                     />
                   </div>
@@ -544,15 +552,15 @@ export default function BizOrdersView({
                 <div className="form-grid fg-3" style={{ marginBottom: 10 }}>
                   <div className="form-group">
                     <label>Số lượng</label>
-                    <input type="number" min={0} value={String(it.qty ?? 0)} onChange={(e) => patchItem(it._key, { qty: Number(e.target.value) || 0 })} />
+                    <input type="text" inputMode="numeric" value={fmtNum(it.qty)} onChange={(e) => patchItem(it._key, { qty: parseNum(e.target.value) })} />
                   </div>
                   <div className="form-group">
                     <label>Giá nhập dự kiến</label>
-                    <input type="number" min={0} value={String(it.unit_price ?? 0)} onChange={(e) => patchItem(it._key, { unit_price: Number(e.target.value) || 0 })} />
+                    <input type="text" inputMode="numeric" value={fmtNum(it.unit_price)} onChange={(e) => patchItem(it._key, { unit_price: parseNum(e.target.value) })} />
                   </div>
                   <div className="form-group">
                     <label>Giá bán dự kiến</label>
-                    <input type="number" min={0} value={String(it.sell_price ?? 0)} onChange={(e) => patchItem(it._key, { sell_price: Number(e.target.value) || 0 })} />
+                    <input type="text" inputMode="numeric" value={fmtNum(it.sell_price)} onChange={(e) => patchItem(it._key, { sell_price: parseNum(e.target.value) })} />
                   </div>
                 </div>
                 <div className="form-group" style={{ marginBottom: 10 }}>
@@ -660,7 +668,17 @@ export default function BizOrdersView({
             <span className={`chip ${TEAM_CHIP[detail.team || ""] || "chip-gray"}`} style={{ fontSize: 10 }}>{detail.team}</span>
           </div>
           <div className="row">
-            {detail.status === "draft" && (
+            {canApprove && (
+              <button className="btn btn-ghost btn-sm" onClick={() => {
+                setEditingId(detail.id);
+                setTeam(detail.team || TEAMS[0]);
+                setNote(detail.note || "");
+                setItems(detail.items.map((it) => ({ ...it, _key: nk() })));
+                setOrderType(detail.order_type as "new" | "existing");
+                setView("create");
+              }}>Sửa</button>
+            )}
+            {(detail.status === "draft" || canApprove) && (
               <button className="btn btn-danger btn-sm" onClick={() => onDelete(detail.id)} disabled={pending}>Xoá</button>
             )}
             <button className="btn btn-ghost" onClick={() => setView("list")}>← Quay lại</button>
