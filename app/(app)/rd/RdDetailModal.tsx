@@ -726,9 +726,58 @@ function ModalInner({
               );
             })()}
 
-            {/* ══ NORMAL WORK STEPS — full form ══ */}
+            {/* ══ NORMAL WORK STEPS ══ */}
             {!isApprovalStep && (<>
-            <div style={isLocked ? { pointerEvents: "none", opacity: 0.55, userSelect: "none" } as const : undefined}>
+
+            {/* ── Locked summary view for completed steps ── */}
+            {isLocked ? (() => {
+              // Collect all non-empty field values for this step
+              const fields = STEP_FORM_FIELDS[step.label] || [];
+              const filledFields = fields.filter((f) => {
+                const v = String(data[f.key] || "").trim();
+                return v && v !== "0";
+              });
+              return (
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ padding: 12, background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 10, marginBottom: 10 }}>
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600, marginBottom: 8, background: "#DCFCE7", color: "#15803D" }}>
+                      ✓ {step.label} — Hoàn thành
+                    </div>
+                    {filledFields.length > 0 ? (
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 16px", fontSize: 11 }}>
+                        {filledFields.map((f) => {
+                          const val = String(data[f.key] || "");
+                          const display = f.type === "number" ? Number(val).toLocaleString("vi-VN") : val.length > 80 ? val.substring(0, 77) + "..." : val;
+                          return (
+                            <div key={f.key} style={{ padding: "3px 0", borderBottom: "1px solid #F1F5F9" }}>
+                              <span style={{ color: "#94A3B8", fontSize: 10 }}>{f.label}: </span>
+                              <span style={{ color: "#374151", fontWeight: 500 }}>{display}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 11, color: "#94A3B8" }}>Không có dữ liệu nhập</div>
+                    )}
+                    {step.assignee_name && <div style={{ fontSize: 9, color: "#94A3B8", marginTop: 6 }}>Người thực hiện: {step.assignee_name}</div>}
+                    {step.result && <div style={{ fontSize: 10, color: "#64748B", marginTop: 4 }}>Ghi chú: {step.result}</div>}
+                  </div>
+                  {/* Checklist summary */}
+                  {checklist.length > 0 && (
+                    <div style={{ fontSize: 11, color: "#64748B", marginBottom: 6 }}>
+                      Checklist: {checklist.filter((c) => c.checked || c.verdict === "pass").length}/{checklist.length} pass
+                    </div>
+                  )}
+                  {/* Links/photos count */}
+                  {(links.length > 0 || photos.length > 0) && (
+                    <div style={{ fontSize: 10, color: "#94A3B8" }}>
+                      {links.length > 0 && `${links.length} tài liệu`}{links.length > 0 && photos.length > 0 && " · "}{photos.length > 0 && `${photos.length} hình ảnh`}
+                    </div>
+                  )}
+                </div>
+              );
+            })() : (
+            <div>
 
             {/* Assignee + Deadline — only at Đề xuất step */}
             {step.label === "Đề xuất" && (
@@ -1160,7 +1209,7 @@ function ModalInner({
               </div>
             )}
 
-            </div>{/* end locked wrapper */}
+            </div>)}{/* end locked summary / editable form */}
 
             {/* ── Action buttons (normal steps only) ── */}
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", paddingTop: 10, borderTop: "1px solid #E2E8F0" }}>
