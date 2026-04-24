@@ -1089,6 +1089,21 @@ function ModalInner({
               );
             })() : step.label === "Nghiên cứu" ? (
               <>
+                {/* Tóm tắt yêu cầu từ Đề xuất */}
+                {(data.description || data.reason || data.ref_links) && (
+                  <div style={{ padding: "8px 12px", background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, marginBottom: 14, fontSize: 11 }}>
+                    <div style={{ fontWeight: 700, color: "#475569", marginBottom: 4 }}>📋 Yêu cầu nghiên cứu</div>
+                    <div style={{ fontWeight: 600, color: "#18181B", marginBottom: 2 }}>{itemName}</div>
+                    {!!data.description && <div style={{ color: "#64748B", marginBottom: 2 }}>{String(data.description)}</div>}
+                    {!!data.reason && <div style={{ color: "#64748B", marginBottom: 2 }}>Lý do: {String(data.reason)}</div>}
+                    {!!data.ref_links && (
+                      <a href={String(data.ref_links)} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: "#7C3AED", textDecoration: "none" }}>
+                        Link tham khảo ↗
+                      </a>
+                    )}
+                  </div>
+                )}
+
                 {/* USP */}
                 <div style={S.section}>
                   <div style={S.label}>Phân tích USP</div>
