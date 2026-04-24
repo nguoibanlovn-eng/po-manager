@@ -593,6 +593,18 @@ function ModalInner({
 
             {/* ══ APPROVAL / CONFIRMATION STEPS — dedicated UI ══ */}
             {isApprovalStep && (() => {
+              // Completed approval → show summary only
+              if (step.status === "approved") {
+                return (
+                  <div style={{ padding: 14, background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 10 }}>
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600, marginBottom: 8, background: "#DCFCE7", color: "#15803D" }}>
+                      ✓ {step.label} — Đã duyệt
+                    </div>
+                    {step.result && <div style={{ fontSize: 11, color: "#374151", marginBottom: 4 }}>{step.result}</div>}
+                    {step.assignee_name && <div style={{ fontSize: 9, color: "#94A3B8" }}>Bởi: {step.assignee_name}</div>}
+                  </div>
+                );
+              }
               const isXacNhan = step.label === "Xác nhận";
               const isDuyetNC = step.label === "Duyệt NC";
               const isDuyetMau = step.label === "Duyệt mẫu";

@@ -301,9 +301,14 @@ function RdRow({
   const updatedDate = item.updated_at ? String(item.updated_at).substring(0, 10) : "—";
   const barColor = realProgress >= 80 ? "#22C55E" : realProgress >= 40 ? "#F59E0B" : realProgress > 0 ? "#3B82F6" : "#D1D5DB";
   const pipelineSteps = tab === "production" ? PRODUCTION_STEPS : RESEARCH_STEPS;
-  const resolved = resolveStage(item.stage);
-  const currentStepIdx = pipelineSteps.findIndex((s) => resolved.toLowerCase().includes(s.toLowerCase()));
-  const currentStep = currentStepIdx >= 0 ? pipelineSteps[currentStepIdx] : null;
+  // Derive current step from steps JSON (more accurate than stage field)
+  const activeStepFromJson = steps.find((s) => s.status === "active");
+  const lastApprovedIdx = steps.reduce((acc, s, i) => s.status === "approved" ? i : acc, -1);
+  const derivedStepLabel = activeStepFromJson?.label || (lastApprovedIdx >= 0 && lastApprovedIdx + 1 < steps.length ? steps[lastApprovedIdx + 1]?.label : null) || item.stage || "Đề xuất";
+  const currentStepIdx = steps.length > 0
+    ? (activeStepFromJson ? steps.indexOf(activeStepFromJson) : lastApprovedIdx + 1)
+    : pipelineSteps.findIndex((s) => (item.stage || "").toLowerCase().includes(s.toLowerCase()));
+  const currentStep = derivedStepLabel;
 
   return (
     <tr onClick={onOpen} style={{ cursor: "pointer" }}>
@@ -340,7 +345,7 @@ function RdRow({
         </div>
         <div style={{ fontSize: 10, color: "#6B7280" }}>
           {currentStep ? (
-            <><span style={{ fontWeight: 600, color: barColor }}>Bước {(currentStepIdx || 0) + 1}/{pipelineSteps.length}</span> · {currentStep}</>
+            <><span style={{ fontWeight: 600, color: barColor }}>Bước {(currentStepIdx || 0) + 1}/{steps.length || pipelineSteps.length}</span> · {currentStep}</>
           ) : (
             <span style={{ color: "#D1D5DB" }}>Chưa bắt đầu</span>
           )}
