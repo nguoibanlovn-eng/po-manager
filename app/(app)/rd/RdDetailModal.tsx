@@ -356,9 +356,24 @@ function ModalInner({
     startTransition(async () => {
       const now = new Date().toISOString();
       const logEntry = { action: "complete", by: currentUserEmail, at: now, step: step.label };
+      // Khi Duyệt NC / Duyệt mẫu → giao NV + deadline cho bước tiếp
+      const isApprovalWithAssign = step.label === "Duyệt NC" || step.label === "Duyệt mẫu";
+      const nextAssignKey = step.label === "Duyệt NC" ? "assign_dat_mau" : "assign_nhap_hang";
+      const nextAssignEmail = isApprovalWithAssign ? String(formData[nextAssignKey] || data[nextAssignKey] || "") : "";
+      const nextAssignName = nextAssignEmail ? (users.find((u) => u.email === nextAssignEmail)?.name || nextAssignEmail) : "";
+      const nextDlKey = step.label === "Duyệt NC" ? "deadline_dat_mau" : "deadline_nhap_hang";
+      const nextDl = isApprovalWithAssign ? String(formData[nextDlKey] || data[nextDlKey] || "") : "";
+
       const updated = initSteps.map((s, i) => {
         if (i === activeIdx) return { ...s, status: "approved" as const, assignee, assignee_name: assigneeName, assigneeName, deadline, checklist, links, photos, result, logs: [...(s.logs || []), logEntry] };
-        if (i === activeIdx + 1 && (s.status === "locked" || s.status === "skipped")) return { ...s, status: "active" as const, logs: [...(s.logs || []), { action: "activate", by: currentUserEmail, at: now, from: step.label }] };
+        if (i === activeIdx + 1 && (s.status === "locked" || s.status === "skipped")) {
+          return {
+            ...s, status: "active" as const,
+            ...(nextAssignEmail ? { assignee: nextAssignEmail, assignee_name: nextAssignName, assigneeName: nextAssignName } : {}),
+            ...(nextDl ? { deadline: nextDl } : {}),
+            logs: [...(s.logs || []), { action: "activate", by: currentUserEmail, at: now, from: step.label, ...(nextAssignName ? { assigned_to: nextAssignName } : {}) }],
+          };
+        }
         return s;
       });
       const isFinished = isLastStep;
@@ -766,17 +781,28 @@ function ModalInner({
                     <div style={S.label}>{isDuyetNC || isDuyetMau ? "Nhận xét Leader" : "Ghi chú"}</div>
                     <textarea value={result} onChange={(e) => { setResult(e.target.value); setDirty(true); }} placeholder={isXacNhan && leaderFlow ? "Ghi chú khi nhận việc hoặc lý do từ chối..." : "Nhận xét, góp ý..."} style={S.textarea} />
                   </div>
-                  {/* Deadline cho bước tiếp theo — Duyệt NC → Đặt mẫu, Duyệt mẫu → Nhập hàng */}
+                  {/* Giao việc + Deadline cho bước tiếp theo */}
                   {(isDuyetNC || isDuyetMau) && (() => {
                     const dlKey = isDuyetNC ? "deadline_dat_mau" : "deadline_nhap_hang";
                     const dlVal = formData[dlKey] || String(data[dlKey] || "");
+                    const assignNextKey = isDuyetNC ? "assign_dat_mau" : "assign_nhap_hang";
+                    const assignNextVal = formData[assignNextKey] || String(data[assignNextKey] || "");
                     return (
+                    <>
+                    <div style={S.section}>
+                      <div style={S.label}>Giao NV {isDuyetNC ? "đặt mẫu" : "nhập hàng"}</div>
+                      <select value={assignNextVal} onChange={(e) => setField(assignNextKey, e.target.value)} style={S.select}>
+                        <option value="">— Chọn nhân viên —</option>
+                        {users.map((u) => <option key={u.email} value={u.email}>{u.name || u.email}</option>)}
+                      </select>
+                    </div>
                     <div style={S.section}>
                       <div style={S.label}>Deadline {isDuyetNC ? "Đặt mẫu" : "Nhập hàng"}</div>
                       <input type="date" value={deadlineToISO(dlVal)}
                         onChange={(e) => { setField(dlKey, e.target.value); }}
                         style={S.input} />
                     </div>
+                    </>
                     );
                   })()}
                   {/* 3 Action buttons */}
@@ -1420,19 +1446,6 @@ function ModalInner({
               const linkedBulkPo = String(data.linked_bulk_po || "");
               return (
               <>
-                {/* Giao việc cho NV */}
-                <div style={S.section}>
-                  <div style={S.label}>Người phụ trách nhập</div>
-                  <select value={assignee} onChange={(e) => {
-                    const email = e.target.value;
-                    const u = users.find((u) => u.email === email);
-                    setAssignee(email); setAssigneeName(u ? (u.name || email) : ""); setDirty(true);
-                  }} style={S.select}>
-                    <option value="">— Tự nhập —</option>
-                    {users.map((u) => <option key={u.email} value={u.email}>{u.name || u.email}</option>)}
-                  </select>
-                </div>
-
                 {/* Thông tin NCC */}
                 <div style={S.section}>
                   <div style={S.label}>Thông tin nhà cung cấp</div>
