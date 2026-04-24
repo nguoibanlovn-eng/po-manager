@@ -12,11 +12,22 @@ import { nhanhV3FetchAll, nhanhFetchAll } from "./client";
  * Dedup: upsert on (order_id, sku).
  */
 
+// Nhanh.vn Order Sale Channel — theo API docs chính thức
 const CHANNEL_MAP: Record<string, string> = {
-  "0": "Admin", "1": "API", "2": "Facebook", "3": "Zalo",
-  "5": "Shopee", "7": "TikTok", "8": "Lazada",
-  "10": "Kênh 10", "20": "Shopee Levu01", "21": "Shopee Velasboost",
-  "42": "Kênh 42", "48": "TikTok Shop", "100": "Web/App",
+  "1": "Admin",
+  "2": "Website",
+  "10": "API",
+  "20": "Facebook",
+  "21": "Instagram",
+  "41": "Lazada",
+  "42": "Shopee",
+  "43": "Sendo",
+  "45": "Tiki",
+  "48": "TikTok Shop",
+  "49": "Zalo OA",
+  "50": "Shopee chat",
+  "51": "Lazada chat",
+  "52": "Zalo cá nhân",
 };
 
 // Không cần status filter — lọc theo deliveryAt = chỉ đơn đã giao thành công

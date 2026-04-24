@@ -246,13 +246,22 @@ const TIKTOK_SHOP_MAP: Record<string, string> = {
   "7494688600083827363": "Vuabanlo Shop",
 };
 
-// Nhanh saleChannel ID → category name
+// Nhanh saleChannel ID → category name (theo API docs chính thức)
 const CHANNEL_MAP: Record<string, string> = {
-  "20": "Facebook",
-  "42": "Shopee",
-  "48": "TikTok",
   "1": "Admin",
+  "2": "Website",
   "10": "API",
+  "20": "Facebook",
+  "21": "Instagram",
+  "41": "Lazada",
+  "42": "Shopee",
+  "43": "Sendo",
+  "45": "Tiki",
+  "48": "TikTok Shop",
+  "49": "Zalo OA",
+  "50": "Shopee chat",
+  "51": "Lazada chat",
+  "52": "Zalo cá nhân",
 };
 
 export async function syncSalesByChannel(opts: {
