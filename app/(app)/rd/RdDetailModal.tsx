@@ -134,6 +134,19 @@ function fmtNum(v: string): string {
 function rawNum(v: string): string {
   return v.replace(/\D/g, "");
 }
+/** Smart format: if value is all digits (after removing dots) → format with dots, else leave as-is */
+function smartFmt(v: string): string {
+  const stripped = v.replace(/\./g, "");
+  if (/^\d+$/.test(stripped) && stripped.length > 0) return Number(stripped).toLocaleString("vi-VN");
+  return v;
+}
+function smartRaw(v: string, prev: string): string {
+  // If previous was formatted number and user is typing, keep as number
+  const stripped = v.replace(/\./g, "");
+  const prevStripped = prev.replace(/\./g, "");
+  if (/^\d+$/.test(prevStripped) && /^\d*$/.test(stripped)) return stripped;
+  return v;
+}
 
 /* ─── Verdict color ─────────────────────────────────────── */
 function verdictStyle(v: string): { bg: string; color: string } | null {
@@ -694,7 +707,7 @@ function ModalInner({
                     <div key={i} style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 5 }}>
                       <input value={f.key} onChange={(e) => { const n = [...marketFields]; n[i] = { ...n[i], key: e.target.value }; setMarketFields(n); setDirty(true); }}
                         style={{ ...S.input, width: 120, flex: "none" }} />
-                      <input value={f.value} onChange={(e) => { const n = [...marketFields]; n[i] = { ...n[i], value: e.target.value }; setMarketFields(n); setDirty(true); }}
+                      <input value={smartFmt(f.value)} onChange={(e) => { const n = [...marketFields]; n[i] = { ...n[i], value: smartRaw(e.target.value, f.value) }; setMarketFields(n); setDirty(true); }}
                         style={{ ...S.input, flex: 1 }} />
                       <button type="button" onClick={() => { setMarketFields(marketFields.filter((_, j) => j !== i)); setDirty(true); }}
                         style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 14 }}>✕</button>
@@ -710,7 +723,7 @@ function ModalInner({
                     <div key={i} style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 5 }}>
                       <input value={f.key} onChange={(e) => { const n = [...supplyFields]; n[i] = { ...n[i], key: e.target.value }; setSupplyFields(n); setDirty(true); }}
                         style={{ ...S.input, width: 120, flex: "none" }} />
-                      <input value={f.value} onChange={(e) => { const n = [...supplyFields]; n[i] = { ...n[i], value: e.target.value }; setSupplyFields(n); setDirty(true); }}
+                      <input value={smartFmt(f.value)} onChange={(e) => { const n = [...supplyFields]; n[i] = { ...n[i], value: smartRaw(e.target.value, f.value) }; setSupplyFields(n); setDirty(true); }}
                         style={{ ...S.input, flex: 1 }} />
                       <button type="button" onClick={() => { setSupplyFields(supplyFields.filter((_, j) => j !== i)); setDirty(true); }}
                         style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 14 }}>✕</button>
