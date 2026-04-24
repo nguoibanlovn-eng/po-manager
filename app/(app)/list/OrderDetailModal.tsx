@@ -135,10 +135,10 @@ export default function OrderDetailModal({
               {canEdit && (
                 <Link
                   href={`/create?order_id=${o.order_id}`}
-                  className="btn btn-primary btn-sm"
+                  className={`btn ${stage === "PENDING_PURCHASE" ? "btn-success" : "btn-primary"} btn-sm`}
                   style={{ textDecoration: "none" }}
                 >
-                  ✏ Sửa
+                  {stage === "PENDING_PURCHASE" ? "📋 Tạo đơn" : "✏ Sửa"}
                 </Link>
               )}
               <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
