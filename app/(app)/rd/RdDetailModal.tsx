@@ -371,6 +371,50 @@ function ModalInner({
   const isLastStep = activeIdx === initSteps.length - 1;
 
   function markComplete() {
+    // ── Validation trước khi chuyển bước ──
+    const missing: string[] = [];
+    const sl = step.label;
+    const fd = formData;
+    const d = data;
+
+    if (sl === "Đề xuất") {
+      if (!itemName.trim()) missing.push("Tên sản phẩm");
+      if (!assignee) missing.push("Giao cho ai");
+      if (!deadline) missing.push("Deadline");
+      if (!String(fd.description || d.description || "").trim()) missing.push("Mô tả sản phẩm");
+      if (!String(fd.reason || d.reason || "").trim()) missing.push("Lý do đề xuất");
+    } else if (sl === "Nghiên cứu") {
+      if (!String(fd.usp || d.usp || "").trim()) missing.push("Phân tích USP");
+      if (!Number(fd.price_buy || d.price_buy || 0)) missing.push("Giá nhập dự kiến");
+      if (!Number(fd.price_sell || d.price_sell || 0)) missing.push("Giá bán dự kiến");
+      if (!String(fd.evaluation || d.evaluation || "").trim()) missing.push("Đánh giá chung");
+    } else if (sl === "Duyệt NC") {
+      if (!String(fd.assign_dat_mau || d.assign_dat_mau || "")) missing.push("Giao NV đặt mẫu");
+      if (!String(fd.deadline_dat_mau || d.deadline_dat_mau || "")) missing.push("Deadline đặt mẫu");
+    } else if (sl === "Đặt mẫu") {
+      if (!String(d.linked_sample_po || "")) missing.push("Tạo đơn PO mẫu");
+    } else if (sl === "Hàng về" || sl === "QC & Nhận hàng") {
+      if (!String(fd.qc_actual || d.qc_actual || "").trim()) missing.push("Thông tin thực tế");
+      const evaluated = checklist.filter(c => c.verdict === "pass" || c.verdict === "fail");
+      if (checklist.length < 3) missing.push("Tối thiểu 3 mục checklist");
+      else if (evaluated.length < checklist.length) missing.push("Đánh giá hết checklist (pass/fail)");
+      if (!String(fd.qc_evaluation || d.qc_evaluation || "").trim()) missing.push("Đánh giá chung");
+    } else if (sl === "Duyệt mẫu") {
+      if (!String(fd.assign_nhap_hang || d.assign_nhap_hang || "")) missing.push("Giao NV nhập hàng");
+      if (!String(fd.deadline_nhap_hang || d.deadline_nhap_hang || "")) missing.push("Deadline nhập hàng");
+    } else if (sl === "Nhập hàng" || sl === "Đặt hàng") {
+      if (!String(d.linked_bulk_po || "")) missing.push("Tạo đơn PO nhập hàng");
+    }
+    // Staff flow: Xác nhận = leader duyệt → cần verdict
+    if (sl === "Xác nhận" && proposerRole === "staff") {
+      // Leader duyệt đề xuất — không cần validation thêm
+    }
+
+    if (missing.length > 0) {
+      alert("Chưa đủ thông tin để chuyển bước:\n\n• " + missing.join("\n• "));
+      return;
+    }
+
     startTransition(async () => {
       const now = new Date().toISOString();
       const logEntry = { action: "complete", by: currentUserEmail, at: now, step: step.label };
