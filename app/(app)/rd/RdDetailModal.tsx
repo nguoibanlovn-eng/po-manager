@@ -606,19 +606,23 @@ function ModalInner({
 
               if (["Xác nhận", "NV nhận việc", "Nghiên cứu", "Duyệt ĐX"].includes(stepLabel)) {
                 dlLabel = "Deadline NC (từ Đề xuất)"; dlValue = dxDeadline;
+              } else if (stepLabel === "Duyệt NC") {
+                dlLabel = "Deadline NC (từ Đề xuất)"; dlValue = dxDeadline;
               } else if (stepLabel === "Đặt mẫu") {
                 dlLabel = "Deadline đặt mẫu"; dlValue = String(data.deadline_dat_mau || "");
               } else if (stepLabel === "Hàng về" || stepLabel === "QC & Nhận hàng") {
+                dlLabel = "Deadline QC"; dlValue = String(data.deadline_qc || "");
+              } else if (stepLabel === "Duyệt mẫu") {
                 dlLabel = "Deadline QC"; dlValue = String(data.deadline_qc || "");
               } else if (stepLabel === "Nhập hàng" || stepLabel === "Đặt hàng") {
                 dlLabel = "Deadline nhập hàng"; dlValue = String(data.deadline_nhap_hang || "");
               }
               const dlOverdue = dlValue && step.status !== "approved" ? isOverdue(dlValue) : false;
 
-              return dlValue ? (
-                <div style={{ padding: "6px 10px", background: dlOverdue ? "#FEF2F2" : "#F0F9FF", border: `1px solid ${dlOverdue ? "#FECACA" : "#BAE6FD"}`, borderRadius: 7, marginBottom: 12, fontSize: 11, display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ color: dlOverdue ? "#DC2626" : "#0369A1", fontWeight: 600 }}>
-                    {dlOverdue ? "⚠ QUÁ HẠN" : "⏰"} {dlLabel}: {dlValue}
+              return dlLabel ? (
+                <div style={{ padding: "6px 10px", background: dlOverdue ? "#FEF2F2" : dlValue ? "#F0F9FF" : "#FFF7ED", border: `1px solid ${dlOverdue ? "#FECACA" : dlValue ? "#BAE6FD" : "#FED7AA"}`, borderRadius: 7, marginBottom: 12, fontSize: 11, display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ color: dlOverdue ? "#DC2626" : dlValue ? "#0369A1" : "#D97706", fontWeight: 600 }}>
+                    {dlOverdue ? "⚠ QUÁ HẠN" : dlValue ? "⏰" : "⚠"} {dlLabel}: {dlValue || "Chưa đặt — vui lòng set deadline ở bước trước"}
                   </span>
                 </div>
               ) : null;
