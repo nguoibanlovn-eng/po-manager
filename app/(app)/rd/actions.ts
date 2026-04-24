@@ -120,11 +120,12 @@ export async function createPoFromRdAction(rdItemId: string) {
   return { ok: true as const, orderId };
 }
 
-/** Create sample PO from R&D "Đặt mẫu" step → returns order_id */
+/** Create PO from R&D step — mode "sample" (step 5) or "bulk" (step 8) */
 export async function createSamplePoAction(rdItemId: string, poFields: {
   order_name: string; owner: string; pay_status: string; goods_type: string;
   supplier_name: string; order_date: string; eta_date: string;
   arrival_date: string; deposit_amount: number; note: string;
+  mode?: "sample" | "bulk";
 }) {
   const u = await requireUser();
   const item = await getRdItem(rdItemId);
@@ -133,13 +134,16 @@ export async function createSamplePoAction(rdItemId: string, poFields: {
   const data = (item.data as Record<string, unknown>) || {};
   const steps = getSteps(item);
   const stepsKey = getStepsKey(item);
+  const isBulk = poFields.mode === "bulk";
+  const linkKey = isBulk ? "linked_bulk_po" : "linked_sample_po";
+  const etaKey = isBulk ? "bulk_eta" : "sample_eta";
 
-  // Already has a linked sample PO?
-  if (data.linked_sample_po) {
-    return { ok: true as const, orderId: String(data.linked_sample_po) };
+  // Already has a linked PO?
+  if (data[linkKey]) {
+    return { ok: true as const, orderId: String(data[linkKey]) };
   }
 
-  const contact = String(data.sample_contact || "");
+  const contact = String(data[isBulk ? "bulk_contact" : "sample_contact"] || "");
 
   // Generate order_id
   const db = supabaseAdmin();
@@ -170,13 +174,13 @@ export async function createSamplePoAction(rdItemId: string, poFields: {
 
   if (error) return { ok: false as const, error: error.message };
 
-  // Link sample PO back to R&D item + save ETA for deadline tracking
+  // Link PO back to R&D item + save ETA for deadline tracking
   await saveRdItem(rdItemId, {
     data: {
       ...data,
       [stepsKey]: steps,
-      linked_sample_po: orderId,
-      ...(poFields.eta_date ? { sample_eta: poFields.eta_date } : {}),
+      [linkKey]: orderId,
+      ...(poFields.eta_date ? { [etaKey]: poFields.eta_date } : {}),
     },
   });
 

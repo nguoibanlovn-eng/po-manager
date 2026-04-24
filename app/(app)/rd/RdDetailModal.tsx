@@ -238,6 +238,7 @@ function ModalInner({
   const [itemName, setItemName] = useState(item.name || "");
   const [creatingPo, setCreatingPo] = useState(false);
   const [showPoForm, setShowPoForm] = useState(false);
+  const [poMode, setPoMode] = useState<"sample" | "bulk">("sample"); // sample = step 5, bulk = step 8
   // PO form fields
   const [poName, setPoName] = useState(`[Mẫu] ${item.name || "SP mới"}`);
   const [poOwner, setPoOwner] = useState(currentUserEmail);
@@ -249,6 +250,23 @@ function ModalInner({
   const [poArrivalDate, setPoArrivalDate] = useState("");
   const [poDeposit, setPoDeposit] = useState("0");
   const [poNote, setPoNote] = useState(`Đơn mẫu từ R&D: ${item.name || ""}`);
+  function openPoForm(mode: "sample" | "bulk") {
+    setPoMode(mode);
+    if (mode === "bulk") {
+      setPoName(item.name || "SP nhập từ R&D");
+      setPoGoodsType(String(data.sample_platform || "").includes("1688") ? "Trung Quốc đặt hàng" : "Trung Quốc trữ sẵn");
+      setPoSupplier(String(formData.bulk_supplier || data.bulk_supplier || data.sample_supplier || ""));
+      setPoEta(String(formData.bulk_eta || data.bulk_eta || ""));
+      setPoNote(`Nhập hàng từ R&D: ${item.name || ""}`);
+    } else {
+      setPoName(`[Mẫu] ${item.name || "SP mới"}`);
+      setPoGoodsType("Hàng mẫu");
+      setPoSupplier(String(data.sample_supplier || ""));
+      setPoEta(String(data.sample_eta || ""));
+      setPoNote(`Đơn mẫu từ R&D: ${item.name || ""}`);
+    }
+    setShowPoForm(true);
+  }
   // Auto-detect role: LEADER_* / ADMIN → leader, NV_* → staff
   const isAdmin = currentUserRole === "ADMIN";
   const autoRole = currentUserRole.startsWith("LEADER_") || currentUserRole === "ADMIN" ? "leader" : "staff";
@@ -392,6 +410,12 @@ function ModalInner({
         }
       }
       const newData = { ...clearRevision(data), ...formData, ...autoDeadline, proposer_role: proposerRole, priority, market_fields: marketFields, supply_fields: supplyFields, [stepsKey]: JSON.stringify(updated) };
+      // Mutate local data so next step reads correct values immediately
+      if (isApprovalWithAssign) {
+        (data as Record<string, unknown>)[nextAssignKey] = nextAssignEmail;
+        (data as Record<string, unknown>)[nextDlKey] = nextDl;
+      }
+      Object.assign(data, autoDeadline, formData);
       await saveRdItemAction(item.id, { name: itemName, stage: nextStepLabel, data: newData });
       setDirty(false);
       onRefresh();
@@ -1058,7 +1082,7 @@ function ModalInner({
                   <div style={S.label}>Tạo đơn PO mua mẫu</div>
                   {!linkedSamplePo ? (
                     <div style={{ padding: 12, border: "2px dashed #C4B5FD", borderRadius: 10, textAlign: "center", cursor: "pointer" }}
-                      onClick={() => setShowPoForm(true)}>
+                      onClick={() => openPoForm("sample")}>
                       <div style={{ fontSize: 20, marginBottom: 4 }}>📦</div>
                       <div style={{ fontSize: 12, fontWeight: 600, color: "#7C3AED" }}>Tạo đơn PO mua mẫu</div>
                       <div style={{ fontSize: 9, color: "#94A3B8" }}>Điền thông tin đơn hàng mẫu</div>
@@ -1461,24 +1485,10 @@ function ModalInner({
                   <div style={S.label}>Tạo đơn PO nhập hàng</div>
                   {!linkedBulkPo ? (
                     <div style={{ padding: 12, border: "2px dashed #BBF7D0", borderRadius: 10, textAlign: "center", cursor: "pointer" }}
-                      onClick={() => {
-                        setCreatingPo(true);
-                        startTransition(async () => {
-                          const newData = { ...data, ...formData, bulk_eta: formData.bulk_eta || data.bulk_eta, [stepsKey]: JSON.stringify(buildUpdatedSteps()) };
-                          await saveRdItemAction(item.id, { name: itemName, data: newData });
-                          const r = await createPoFromRdAction(item.id);
-                          setCreatingPo(false);
-                          if (r.ok) {
-                            (data as Record<string, unknown>).linked_bulk_po = r.orderId;
-                            onRefresh();
-                          } else alert(r.error || "Lỗi tạo đơn");
-                        });
-                      }}>
+                      onClick={() => openPoForm("bulk")}>
                       <div style={{ fontSize: 20, marginBottom: 4 }}>📦</div>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: "#16A34A" }}>{creatingPo ? "Đang tạo..." : "Tạo đơn PO nhập hàng"}</div>
-                      <div style={{ fontSize: 9, color: "#94A3B8" }}>
-                        {String(formData.bulk_qty || data.bulk_qty || "—")} cái × {Number(formData.bulk_price || data.bulk_price || data.price_buy || 0).toLocaleString("vi-VN")}đ
-                      </div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#16A34A" }}>Tạo đơn PO nhập hàng</div>
+                      <div style={{ fontSize: 9, color: "#94A3B8" }}>Điền thông tin đơn hàng nhập</div>
                     </div>
                   ) : (
                     <div style={{ background: "#F0FDF4", borderRadius: 8, padding: "8px 10px" }}>
@@ -1630,24 +1640,24 @@ function ModalInner({
                 <button type="button" onClick={() => setShowPoForm(false)} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#F1F5F9", color: "#64748B", cursor: "pointer" }}>Huỷ</button>
                 <button type="button" disabled={pending} onClick={() => {
                   startTransition(async () => {
-                    // Save form data first, then create PO which adds linked_sample_po
-                    const preData = { ...data, ...formData, sample_eta: poEta || formData.sample_eta || data.sample_eta, [stepsKey]: JSON.stringify(buildUpdatedSteps()) };
+                    const isBulk = poMode === "bulk";
+                    const etaKey = isBulk ? "bulk_eta" : "sample_eta";
+                    const linkKey = isBulk ? "linked_bulk_po" : "linked_sample_po";
+                    const preData = { ...data, ...formData, [etaKey]: poEta || formData[etaKey] || data[etaKey], [stepsKey]: JSON.stringify(buildUpdatedSteps()) };
                     await saveRdItemAction(item.id, { name: itemName, data: preData });
                     const r = await createSamplePoAction(item.id, {
                       order_name: poName, owner: poOwner, pay_status: poPayStatus,
                       goods_type: poGoodsType, supplier_name: poSupplier,
                       order_date: poOrderDate, eta_date: poEta, arrival_date: poArrivalDate,
                       deposit_amount: Number(poDeposit) || 0, note: poNote,
+                      mode: poMode,
                     });
                     if (r.ok) {
-                      // Update local data so subsequent save/markComplete won't overwrite linked_sample_po
-                      (data as Record<string, unknown>).linked_sample_po = r.orderId;
-                      (data as Record<string, unknown>).sample_eta = poEta;
+                      (data as Record<string, unknown>)[linkKey] = r.orderId;
+                      (data as Record<string, unknown>)[etaKey] = poEta;
                       setShowPoForm(false);
                       onRefresh();
-                    } else {
-                      alert(r.error || "Lỗi tạo đơn");
-                    }
+                    } else alert(r.error || "Lỗi tạo đơn");
                   });
                 }} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#7C3AED", color: "#fff", cursor: "pointer" }}>
                   {pending ? "Đang tạo..." : "Tạo đơn PO"}
