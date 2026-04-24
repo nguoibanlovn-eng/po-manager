@@ -1633,11 +1633,11 @@ function ModalInner({
               {/* Row 2: Tên đơn | Nhà cung cấp */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <div style={S.section}>
-                  <div style={S.label}>Tên đơn</div>
+                  <div style={S.label}>Tên đơn<span style={{ color: "#DC2626", marginLeft: 2 }}>*</span></div>
                   <input type="text" value={poName} onChange={(e) => setPoName(e.target.value)} placeholder="VD: Lô máy chiếu HY320 tháng 3/2026" style={S.input} />
                 </div>
                 <div style={S.section}>
-                  <div style={S.label}>Nhà cung cấp</div>
+                  <div style={S.label}>Nhà cung cấp<span style={{ color: "#DC2626", marginLeft: 2 }}>*</span></div>
                   <input type="text" value={poSupplier} onChange={(e) => setPoSupplier(e.target.value)} placeholder="Chọn hoặc nhập NCC mới" style={S.input} />
                 </div>
               </div>
@@ -1648,7 +1648,7 @@ function ModalInner({
                   <input type="date" value={poOrderDate} onChange={(e) => setPoOrderDate(e.target.value)} style={S.input} />
                 </div>
                 <div style={S.section}>
-                  <div style={S.label}>ETA (dự kiến về)</div>
+                  <div style={S.label}>ETA (dự kiến về)<span style={{ color: "#DC2626", marginLeft: 2 }}>*</span></div>
                   <input type="date" value={deadlineToISO(poEta)} onChange={(e) => setPoEta(e.target.value)} style={S.input} />
                 </div>
                 <div style={S.section}>
@@ -1669,6 +1669,14 @@ function ModalInner({
               <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", paddingTop: 10, borderTop: "1px solid #E2E8F0" }}>
                 <button type="button" onClick={() => setShowPoForm(false)} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#F1F5F9", color: "#64748B", cursor: "pointer" }}>Huỷ</button>
                 <button type="button" disabled={pending} onClick={() => {
+                  const poMissing: string[] = [];
+                  if (!poName.trim()) poMissing.push("Tên đơn");
+                  if (!poSupplier.trim()) poMissing.push("Nhà cung cấp");
+                  if (!poEta) poMissing.push("ETA (dự kiến về)");
+                  if (poMissing.length > 0) {
+                    alert("Chưa đủ thông tin tạo PO:\n\n• " + poMissing.join("\n• "));
+                    return;
+                  }
                   startTransition(async () => {
                     const isBulk = poMode === "bulk";
                     const etaKey = isBulk ? "bulk_eta" : "sample_eta";
