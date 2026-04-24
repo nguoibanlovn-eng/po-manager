@@ -635,18 +635,21 @@ function ModalInner({
             {/* ══ NORMAL WORK STEPS — full form ══ */}
             {!isApprovalStep && (<>
 
-            {/* Assignee row — dynamic label based on step + role */}
-            <div style={S.section}>
-              <div style={S.label}>{step.label === "Đề xuất" ? (proposerRole === "leader" ? "Giao cho nhân viên" : "Gửi Leader duyệt") : "Giao cho"}</div>
-              <select value={assignee} onChange={(e) => {
-                const email = e.target.value;
-                const u = users.find((u) => u.email === email);
-                setAssignee(email); setAssigneeName(u ? (u.name || email) : ""); setDirty(true);
-              }} style={S.select}>
-                <option value="">— Chọn —</option>
-                {users.map((u) => <option key={u.email} value={u.email}>{u.name || u.email}</option>)}
-              </select>
-            </div>
+            {/* Assignee + Deadline — only at Đề xuất step */}
+            {step.label === "Đề xuất" && (
+              <div style={S.section}>
+                <div style={S.label}>{proposerRole === "leader" ? "Giao cho nhân viên" : "Gửi Leader duyệt"}</div>
+                <select value={assignee} onChange={(e) => {
+                  const email = e.target.value;
+                  const u = users.find((u) => u.email === email);
+                  setAssignee(email); setAssigneeName(u ? (u.name || email) : ""); setDirty(true);
+                }} style={S.select}>
+                  <option value="">— Chọn —</option>
+                  {users.map((u) => <option key={u.email} value={u.email}>{u.name || u.email}</option>)}
+                </select>
+              </div>
+            )}
+            {step.label === "Đề xuất" && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
               <div style={S.section}>
                 <div style={S.label}>
@@ -655,17 +658,16 @@ function ModalInner({
                 <input type="date" value={deadlineToISO(deadline)} onChange={(e) => { setDeadline(e.target.value); setDirty(true); }}
                   style={{ ...S.input, ...(deadlineOverdue ? { borderColor: "#DC2626", color: "#DC2626" } : {}) }} />
               </div>
-              {step.label === "Đề xuất" && (
-                <div style={S.section}>
-                  <div style={S.label}>Ưu tiên</div>
-                  <select value={priority} onChange={(e) => { setPriority(e.target.value); setDirty(true); }} style={S.select}>
-                    <option value="normal">Bình thường</option>
-                    <option value="urgent">Gấp</option>
-                    <option value="low">Thấp</option>
-                  </select>
+              <div style={S.section}>
+                <div style={S.label}>Ưu tiên</div>
+                <select value={priority} onChange={(e) => { setPriority(e.target.value); setDirty(true); }} style={S.select}>
+                  <option value="normal">Bình thường</option>
+                  <option value="urgent">Gấp</option>
+                  <option value="low">Thấp</option>
+                </select>
                 </div>
-              )}
             </div>
+            )}
 
             {/* Form fields — custom for Nghiên cứu, generic for others */}
             {step.label === "Nghiên cứu" ? (
