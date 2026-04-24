@@ -710,14 +710,18 @@ function ModalInner({
                     <textarea value={result} onChange={(e) => { setResult(e.target.value); setDirty(true); }} placeholder={isXacNhan && leaderFlow ? "Ghi chú khi nhận việc hoặc lý do từ chối..." : "Nhận xét, góp ý..."} style={S.textarea} />
                   </div>
                   {/* Deadline cho bước tiếp theo — Duyệt NC → Đặt mẫu, Duyệt mẫu → Nhập hàng */}
-                  {(isDuyetNC || isDuyetMau) && (
+                  {(isDuyetNC || isDuyetMau) && (() => {
+                    const dlKey = isDuyetNC ? "deadline_dat_mau" : "deadline_nhap_hang";
+                    const dlVal = formData[dlKey] || String(data[dlKey] || "");
+                    return (
                     <div style={S.section}>
                       <div style={S.label}>Deadline {isDuyetNC ? "Đặt mẫu" : "Nhập hàng"}</div>
-                      <input type="date" value={deadlineToISO(String(data[isDuyetNC ? "deadline_dat_mau" : "deadline_nhap_hang"] || ""))}
-                        onChange={(e) => { setField(isDuyetNC ? "deadline_dat_mau" : "deadline_nhap_hang", e.target.value); }}
+                      <input type="date" value={deadlineToISO(dlVal)}
+                        onChange={(e) => { setField(dlKey, e.target.value); }}
                         style={S.input} />
                     </div>
-                  )}
+                    );
+                  })()}
                   {/* 3 Action buttons */}
                   <div style={{ display: "flex", gap: 6 }}>
                     <button type="button" disabled={pending} onClick={() => {
