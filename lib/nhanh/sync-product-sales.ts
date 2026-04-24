@@ -19,8 +19,7 @@ const CHANNEL_MAP: Record<string, string> = {
   "42": "Kênh 42", "48": "TikTok Shop", "100": "Web/App",
 };
 
-// V3 status whitelist giống GAS
-const SUCCESS_STATUS = new Set([54, 56, 42, 72, 64, 60, 74]);
+// Không cần status filter — lọc theo deliveryAt = chỉ đơn đã giao thành công
 
 type V3Order = {
   info?: { id?: string | number; status?: string | number; createdAt?: string | number };
@@ -58,13 +57,14 @@ function addDays(dateStr: string, days: number): string {
   return d.toISOString().substring(0, 10);
 }
 
-// ─── V3: 1 ngày ──
+// ─── V3: 1 ngày (theo ngày giao hàng thành công) ──
 async function syncV3Day(date: string): Promise<{ orders: number; rows: Row[]; skipped: number; log: string }> {
   const fromTs = Math.floor(new Date(date + "T00:00:00+07:00").getTime() / 1000);
   const toTs = Math.floor(new Date(date + "T23:59:59+07:00").getTime() / 1000);
 
+  // Lọc theo deliveryAt = chỉ đơn đã giao thành công
   const orders = await nhanhV3FetchAll<V3Order>("order/list", {
-    filters: { createdAtFrom: fromTs, createdAtTo: toTs },
+    filters: { deliveryAtFrom: fromTs, deliveryAtTo: toTs },
   }, { maxPages: 200 });
 
   const now = nowVN();
@@ -74,30 +74,27 @@ async function syncV3Day(date: string): Promise<{ orders: number; rows: Row[]; s
 
   for (const o of orders) {
     const info = o.info || {};
-    const status = Number(info.status || 0);
-    if (!SUCCESS_STATUS.has(status)) { skipped++; continue; }
-
     const orderId = String(info.id || "");
+    if (!orderId) { skipped++; continue; }
+
     const chCode = String(o.channel?.saleChannel || "0");
     const chName = CHANNEL_MAP[chCode] || `Kênh ${chCode}`;
     const customerId = String(o.customer?.customerId || o.customerId || o.customerMobile || "");
-    let orderDate = date;
-    if (info.createdAt) {
-      try {
-        const ts = Number(info.createdAt);
-        if (ts > 1e9) orderDate = new Date(ts * 1000).toLocaleDateString("sv-SE", { timeZone: "Asia/Ho_Chi_Minh" });
-      } catch { /* */ }
-    }
+    // Dùng ngày giao (delivery date) làm ngày bán — không dùng createdAt
+    const orderDate = date;
 
     for (const p of parseProducts(o.products)) {
       const sku = String(p.barcode || p.code || "").trim();
       const qty = toNum(p.quantity || p.qty);
       const price = toNum(p.price || p.displaySalePrice);
+      const discount = toNum(p.discount);
       if (!sku || qty <= 0) continue;
+      // Revenue = (price - discount) × qty — doanh thu thực sau giảm giá
+      const revenue = (price - discount) * qty;
       rows.push({
         date: orderDate, sku, product_name: String(p.name || ""), order_id: orderId,
         channel: chCode, channel_name: chName,
-        qty, unit_price: price, revenue: qty * price, status: "success", synced_at: now,
+        qty, unit_price: price, revenue, status: String(info.status || "delivered"), synced_at: now,
         customer_id: customerId,
       });
       channels[chName] = (channels[chName] || 0) + qty;
@@ -109,11 +106,11 @@ async function syncV3Day(date: string): Promise<{ orders: number; rows: Row[]; s
   return { orders: orders.length, rows, skipped, log };
 }
 
-// ─── V1: 1 ngày (supplement — lấy đơn V3 miss, max 30 pages tránh timeout) ──
+// ─── V1: 1 ngày (supplement — lấy đơn V3 miss, theo ngày giao) ──
 async function syncV1Day(date: string): Promise<{ orders: number; rows: Row[]; log: string }> {
   const orders = await nhanhFetchAll<V1Order>("/order/index", {
-    filters: { createdFrom: date, createdTo: date },
-  }, 30); // max 30 pages giống GAS
+    filters: { deliveryFrom: date, deliveryTo: date },
+  }, 30); // max 30 pages
 
   const now = nowVN();
   const rows: Row[] = [];
