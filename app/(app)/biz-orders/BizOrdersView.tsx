@@ -73,6 +73,15 @@ export default function BizOrdersView({
   // Approval note (detail view)
   const [approvalNote, setApprovalNote] = useState("");
 
+  // Approver selection (create view)
+  const [selectedApprovers, setSelectedApprovers] = useState<string[]>([]);
+  const [showApproverPicker, setShowApproverPicker] = useState(false);
+  const approverCandidates = useMemo(() => {
+    return users.filter(
+      (u) => u.role === "ADMIN" || (u.role && u.role.startsWith("LEADER_")),
+    );
+  }, [users]);
+
   // Filters
   const [filterStatus, setFilterStatus] = useState("");
   const [filterTeam, setFilterTeam] = useState("");
@@ -199,20 +208,9 @@ export default function BizOrdersView({
   function onSubmitForApproval() {
     if (items.length === 0) return alert("Thêm ít nhất 1 sản phẩm.");
     if (items.some((it) => !it.product_name?.trim())) return alert("Nhập tên cho tất cả SP.");
+    if (selectedApprovers.length === 0) return alert("Chọn ít nhất 1 người duyệt.");
 
-    const leaders = users.filter(
-      (u) => u.role === "ADMIN" || (u.role && u.role.startsWith("LEADER_")),
-    );
-    if (leaders.length === 0) return alert("Không tìm thấy leader/admin để duyệt.");
-
-    const choice = prompt(
-      "Chọn người duyệt (nhập số):\n" +
-        leaders.map((u, i) => `${i + 1}. ${u.name || u.email} (${u.role})`).join("\n"),
-    );
-    if (!choice) return;
-    const idx = parseInt(choice) - 1;
-    if (idx < 0 || idx >= leaders.length) return alert("Lựa chọn không hợp lệ.");
-    const approver = leaders[idx].email;
+    const approver = selectedApprovers.join(",");
 
     start(async () => {
       const r = await saveBizOrderAction({
@@ -227,10 +225,20 @@ export default function BizOrdersView({
       const s = await submitBizOrderAction(r.id!, approver);
       if (!s.ok) return alert("Lỗi gửi duyệt: " + s.error);
 
-      alert(`Đã gửi duyệt cho ${leaders[idx].name || approver}`);
+      const names = selectedApprovers.map((e) => {
+        const u = users.find((u) => u.email === e);
+        return u?.name || e;
+      }).join(", ");
+      alert(`Đã gửi duyệt cho ${names}`);
       router.refresh();
       setView("list");
     });
+  }
+
+  function toggleApprover(email: string) {
+    setSelectedApprovers((prev) =>
+      prev.includes(email) ? prev.filter((e) => e !== email) : [...prev, email],
+    );
   }
 
   // Approve/reject
@@ -581,6 +589,35 @@ export default function BizOrdersView({
           </div>
         )}
 
+        {/* Approver selection */}
+        <div className="card" style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 8 }}>Gửi duyệt cho</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {approverCandidates.map((u) => {
+              const checked = selectedApprovers.includes(u.email);
+              const isKeToan = u.role === "LEADER_KETOAN" || u.role === "NV_KETOAN";
+              return (
+                <label key={u.email} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 8, cursor: "pointer", background: checked ? "var(--blue-lt)" : undefined, border: checked ? "1px solid var(--blue-bd)" : "1px solid transparent" }}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggleApprover(u.email)}
+                    style={{ accentColor: "var(--blue)" }}
+                  />
+                  <span style={{ fontSize: 13, fontWeight: checked ? 700 : 400 }}>{u.name || u.email}</span>
+                  <span style={{ fontSize: 10, color: "var(--muted)" }}>({u.role})</span>
+                  {isKeToan && <span style={{ fontSize: 9, color: "var(--teal)", fontWeight: 700, marginLeft: "auto" }}>Kế toán</span>}
+                </label>
+              );
+            })}
+          </div>
+          {selectedApprovers.length > 0 && (
+            <div style={{ marginTop: 6, fontSize: 11, color: "var(--blue)" }}>
+              Đã chọn {selectedApprovers.length} người
+            </div>
+          )}
+        </div>
+
         {/* Actions */}
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 16 }}>
           <button type="button" className="btn btn-ghost" onClick={onSave} disabled={pending}>
@@ -746,32 +783,42 @@ export default function BizOrdersView({
 
         {/* Draft — submit */}
         {detail.status === "draft" && detail.created_by === user.email && (
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <button
-              className="btn btn-success"
-              style={{ padding: "10px 24px", fontSize: 13 }}
-              onClick={() => {
-                const leaders = users.filter((u) => u.role === "ADMIN" || (u.role && u.role.startsWith("LEADER_")));
-                if (leaders.length === 0) return alert("Không tìm thấy leader/admin.");
-                const choice = prompt(
-                  "Chọn người duyệt (nhập số):\n" +
-                    leaders.map((u, i) => `${i + 1}. ${u.name || u.email} (${u.role})`).join("\n"),
+          <div className="card" style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 8 }}>Gửi duyệt cho</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 10 }}>
+              {approverCandidates.map((u) => {
+                const checked = selectedApprovers.includes(u.email);
+                const isKeToan = u.role === "LEADER_KETOAN" || u.role === "NV_KETOAN";
+                return (
+                  <label key={u.email} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 8, cursor: "pointer", background: checked ? "var(--blue-lt)" : undefined, border: checked ? "1px solid var(--blue-bd)" : "1px solid transparent" }}>
+                    <input type="checkbox" checked={checked} onChange={() => toggleApprover(u.email)} style={{ accentColor: "var(--blue)" }} />
+                    <span style={{ fontSize: 13, fontWeight: checked ? 700 : 400 }}>{u.name || u.email}</span>
+                    <span style={{ fontSize: 10, color: "var(--muted)" }}>({u.role})</span>
+                    {isKeToan && <span style={{ fontSize: 9, color: "var(--teal)", fontWeight: 700, marginLeft: "auto" }}>Kế toán</span>}
+                  </label>
                 );
-                if (!choice) return;
-                const ci = parseInt(choice) - 1;
-                if (ci < 0 || ci >= leaders.length) return alert("Không hợp lệ.");
-                start(async () => {
-                  const s = await submitBizOrderAction(detail.id, leaders[ci].email);
-                  if (!s.ok) return alert("Lỗi: " + s.error);
-                  alert(`Đã gửi duyệt cho ${leaders[ci].name || leaders[ci].email}`);
-                  router.refresh();
-                  setView("list");
-                });
-              }}
-              disabled={pending}
-            >
-              {pending ? "Đang xử lý..." : "Gửi duyệt →"}
-            </button>
+              })}
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button
+                className="btn btn-success"
+                style={{ padding: "10px 24px", fontSize: 13 }}
+                onClick={() => {
+                  if (selectedApprovers.length === 0) return alert("Chọn ít nhất 1 người duyệt.");
+                  start(async () => {
+                    const s = await submitBizOrderAction(detail.id, selectedApprovers.join(","));
+                    if (!s.ok) return alert("Lỗi: " + s.error);
+                    const names = selectedApprovers.map((e) => users.find((u) => u.email === e)?.name || e).join(", ");
+                    alert(`Đã gửi duyệt cho ${names}`);
+                    router.refresh();
+                    setView("list");
+                  });
+                }}
+                disabled={pending}
+              >
+                {pending ? "Đang xử lý..." : "Gửi duyệt →"}
+              </button>
+            </div>
           </div>
         )}
       </div>
