@@ -858,8 +858,11 @@ function ModalInner({
                     </>
                     );
                   })()}
-                  {/* 3 Action buttons */}
+                  {/* Action buttons */}
                   <div style={{ display: "flex", gap: 6 }}>
+                    {step.status === "approved" && editingCompleted && (
+                      <button type="button" onClick={() => setEditingCompleted(false)} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#F1F5F9", color: "#64748B", cursor: "pointer" }}>Huỷ sửa</button>
+                    )}
                     <button type="button" disabled={pending} onClick={() => {
                       markComplete();
                     }} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#16A34A", color: "#fff", cursor: "pointer" }}>
@@ -1357,7 +1360,7 @@ function ModalInner({
             ) : null}
 
             {/* ── QC Checklist (for Hàng về step) — skip if custom rendered ── */}
-            {step.label !== "Hàng về" && step.label !== "QC & Nhận hàng" && (checklist.length > 0 || isQcStep) && (
+            {step.label !== "Hàng về" && step.label !== "QC & Nhận hàng" && step.label !== "Nhập hàng" && step.label !== "Đặt hàng" && (checklist.length > 0 || isQcStep) && (
               <div style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: ".3px", marginBottom: 5 }}>
                   {isQcStep ? `QC Checklist (${passCount}/${checklist.length} Pass${failCount > 0 ? ` · ${failCount} Fail` : ""})` : `Checklist (${checkedCount}/${checklist.length})`}
@@ -1402,7 +1405,7 @@ function ModalInner({
             )}
 
             {/* ── Links ── */}
-            {step.label !== "Hàng về" && step.label !== "QC & Nhận hàng" && (links.length > 0 || true) && (
+            {step.label !== "Hàng về" && step.label !== "QC & Nhận hàng" && step.label !== "Nhập hàng" && step.label !== "Đặt hàng" && (links.length > 0 || true) && (
               <div style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: ".3px", marginBottom: 5 }}>Tài liệu ({links.length})</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 6 }}>
@@ -1428,7 +1431,7 @@ function ModalInner({
             )}
 
             {/* ── Photos ── */}
-            {step.label !== "Hàng về" && step.label !== "QC & Nhận hàng" && (photos.length > 0 || true) && (
+            {step.label !== "Hàng về" && step.label !== "QC & Nhận hàng" && step.label !== "Nhập hàng" && step.label !== "Đặt hàng" && (photos.length > 0 || true) && (
               <div style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: ".3px", marginBottom: 5 }}>Hình ảnh ({photos.length})</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 6 }}>
@@ -1460,16 +1463,6 @@ function ModalInner({
               const linkedBulkPo = String(data.linked_bulk_po || "");
               return (
               <>
-                {/* Thông tin NCC */}
-                <div style={S.section}>
-                  <div style={S.label}>Thông tin nhà cung cấp</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 6 }}>
-                    <input type="text" value={formData.bulk_supplier || ""} onChange={(e) => setField("bulk_supplier", e.target.value)} placeholder="Tên NCC" style={S.input} />
-                    <input type="text" value={formData.bulk_platform || ""} onChange={(e) => setField("bulk_platform", e.target.value)} placeholder="Nền tảng (1688, Alibaba...)" style={S.input} />
-                  </div>
-                  <input type="text" value={formData.bulk_contact || ""} onChange={(e) => setField("bulk_contact", e.target.value)} placeholder="Liên hệ (WeChat, phone...)" style={S.input} />
-                </div>
-
                 {/* Tạo đơn PO nhập hàng */}
                 <div style={S.section}>
                   <div style={S.label}>Tạo đơn PO nhập hàng</div>
