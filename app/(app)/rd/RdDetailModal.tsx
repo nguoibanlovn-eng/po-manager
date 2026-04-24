@@ -6,7 +6,7 @@ import {
   type RdItem, type RdStep, type RdCheckItem, type RdLink,
 } from "@/lib/db/rd-types";
 import type { UserRef } from "@/lib/db/users";
-import { saveRdItemAction, createPoFromRdAction, createSamplePoAction } from "./actions";
+import { saveRdItemAction, createPoFromRdAction, createSamplePoAction, deleteSamplePoAction } from "./actions";
 
 /* ─── Field definitions per step label ──────────────────── */
 type FieldDef = {
@@ -739,7 +739,18 @@ function ModalInner({
                     </div>
                   ) : (
                     <div style={{ background: "#F0FDF4", borderRadius: 8, padding: "8px 10px" }}>
-                      <div style={{ fontSize: 10, fontWeight: 600, color: "#16A34A", marginBottom: 4 }}>Đơn PO đã tạo</div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: "#16A34A" }}>Đơn PO đã tạo</div>
+                        <button type="button" onClick={() => {
+                          if (!confirm(`Xoá đơn nháp ${linkedSamplePo}?`)) return;
+                          startTransition(async () => {
+                            await deleteSamplePoAction(item.id);
+                            onRefresh();
+                          });
+                        }} style={{ fontSize: 9, color: "#DC2626", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>
+                          Xoá đơn nháp
+                        </button>
+                      </div>
                       <div style={{ fontSize: 11, marginBottom: 2 }}>{linkedSamplePo} — {item.name || "SP mẫu"}</div>
                       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                         <span style={{ fontSize: 9, color: "#94A3B8" }}>Theo dõi bên Danh sách đơn</span>

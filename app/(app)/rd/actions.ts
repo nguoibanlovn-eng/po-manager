@@ -179,3 +179,27 @@ export async function createSamplePoAction(rdItemId: string, poFields: {
   revalidatePath("/list");
   return { ok: true as const, orderId };
 }
+
+/** Unlink and delete sample PO from R&D item */
+export async function deleteSamplePoAction(rdItemId: string) {
+  await requireUser();
+  const item = await getRdItem(rdItemId);
+  if (!item) return { ok: false as const, error: "R&D item not found" };
+
+  const data = (item.data as Record<string, unknown>) || {};
+  const stepsKey = getStepsKey(item);
+  const steps = getSteps(item);
+  const poId = String(data.linked_sample_po || "");
+
+  if (poId) {
+    const db = supabaseAdmin();
+    await db.from("orders").delete().eq("order_id", poId).eq("stage", "DRAFT");
+  }
+
+  const { linked_sample_po: _, ...rest } = data;
+  await saveRdItem(rdItemId, { data: { ...rest, [stepsKey]: steps } });
+
+  revalidatePath("/rd");
+  revalidatePath("/list");
+  return { ok: true as const };
+}
