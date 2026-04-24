@@ -1605,7 +1605,7 @@ function ModalInner({
               <button type="button" onClick={() => setShowPoForm(false)} style={{ padding: "2px 8px", borderRadius: 5, fontSize: 12, border: "1px solid #E2E8F0", background: "#fff", color: "#64748B", cursor: "pointer" }}>✕</button>
             </div>
             <div style={{ padding: 16 }}>
-              {/* Row 1: Mã đơn | Người phụ trách | Thanh toán | Phân loại hàng */}
+              {/* Row 1: Mã đơn | Người phụ trách | Thanh toán | Phân loại hàng — readonly */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10 }}>
                 <div style={S.section}>
                   <div style={S.label}>Mã đơn</div>
@@ -1613,21 +1613,15 @@ function ModalInner({
                 </div>
                 <div style={S.section}>
                   <div style={S.label}>Người phụ trách</div>
-                  <select value={poOwner} onChange={(e) => setPoOwner(e.target.value)} style={S.select}>
-                    {users.map((u) => <option key={u.email} value={u.email}>{u.name || u.email}</option>)}
-                  </select>
+                  <input type="text" value={users.find((u) => u.email === poOwner)?.name || poOwner} readOnly style={{ ...S.input, background: "#F8FAFC", color: "#94A3B8" }} />
                 </div>
                 <div style={S.section}>
                   <div style={S.label}>Thanh toán</div>
-                  <select value={poPayStatus} onChange={(e) => setPoPayStatus(e.target.value)} style={S.select}>
-                    {["Chưa thanh toán", "Đã cọc", "Đã thanh toán", "Công nợ"].map((o) => <option key={o} value={o}>{o}</option>)}
-                  </select>
+                  <input type="text" value={poPayStatus} readOnly style={{ ...S.input, background: "#F8FAFC", color: "#94A3B8" }} />
                 </div>
                 <div style={S.section}>
                   <div style={S.label}>Phân loại hàng</div>
-                  <select value={poGoodsType} onChange={(e) => setPoGoodsType(e.target.value)} style={S.select}>
-                    {["Trung Quốc trữ sẵn", "Trung Quốc đặt hàng", "Nội địa", "Hàng mẫu", "Hàng sản xuất"].map((o) => <option key={o} value={o}>{o}</option>)}
-                  </select>
+                  <input type="text" value={poGoodsType} readOnly style={{ ...S.input, background: "#F8FAFC", color: "#94A3B8" }} />
                 </div>
               </div>
               {/* Row 2: Tên đơn | Nhà cung cấp */}
