@@ -622,15 +622,9 @@ function ModalInner({
                   </div>
                   {/* Note */}
                   <div style={S.section}>
-                    <div style={S.label}>Ghi chú</div>
+                    <div style={S.label}>{isDuyetNC || isDuyetMau ? "Nhận xét Leader" : "Ghi chú"}</div>
                     <textarea value={result} onChange={(e) => { setResult(e.target.value); setDirty(true); }} placeholder={isXacNhan && leaderFlow ? "Ghi chú khi nhận việc hoặc lý do từ chối..." : "Nhận xét, góp ý..."} style={S.textarea} />
                   </div>
-                  {/* Verdict select for Duyệt NC / Duyệt mẫu */}
-                  {(isDuyetNC || isDuyetMau) && formFields.length > 0 && (
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
-                      {formFields.map((f) => renderField(f))}
-                    </div>
-                  )}
                   {/* 3 Action buttons */}
                   <div style={{ display: "flex", gap: 6 }}>
                     <button type="button" onClick={markComplete} disabled={pending} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#16A34A", color: "#fff", cursor: "pointer" }}>
