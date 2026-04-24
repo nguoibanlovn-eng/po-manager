@@ -265,20 +265,7 @@ export async function syncNhanhReport(opts: {
       continue;
     }
 
-    // 2b. Revenue drop check — don't overwrite if new revenue_success drops >40%
-    const newRevenueTotal = rows.reduce((s, r) => s + Number(r.revenue_success || 0), 0);
-    if ((existingCount || 0) > 0 && newRevenueTotal > 0) {
-      const { data: existingRevRows } = await db.from("sales_sync")
-        .select("revenue_success")
-        .eq("period_from", dateStr).eq("period_to", dateStr);
-      const existingRevTotal = (existingRevRows || []).reduce((s, r) => s + Number(r.revenue_success || 0), 0);
-      if (existingRevTotal > 0 && newRevenueTotal < existingRevTotal * 0.6) {
-        logs.push(`[nhanhReport] ${dateStr}: revenue drop too large (${(newRevenueTotal/1e6).toFixed(1)}M vs ${(existingRevTotal/1e6).toFixed(1)}M existing), skipped`);
-        continue;
-      }
-    }
-
-    // 2c. Success report returned nothing but create report did — don't wipe revenue_success
+    // 2b. Success report returned nothing but create report did — don't wipe revenue_success
     if (channels.length === 0 && rows.length > 0) {
       const hasAnySuccess = rows.some((r) => Number(r.revenue_success || 0) > 0);
       if (!hasAnySuccess && (existingCount || 0) > 0) {
