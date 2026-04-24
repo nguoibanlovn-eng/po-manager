@@ -6,7 +6,7 @@ import {
   type RdItem, type RdStep, type RdCheckItem, type RdLink,
 } from "@/lib/db/rd-types";
 import type { UserRef } from "@/lib/db/users";
-import { saveRdItemAction, createPoFromRdAction } from "./actions";
+import { saveRdItemAction, createPoFromRdAction, createSamplePoAction } from "./actions";
 
 /* ─── Field definitions per step label ──────────────────── */
 type FieldDef = {
@@ -686,8 +686,71 @@ function ModalInner({
             </div>
             )}
 
-            {/* Form fields — custom for Nghiên cứu, generic for others */}
-            {step.label === "Nghiên cứu" ? (
+            {/* Form fields — custom for Nghiên cứu / Đặt mẫu, generic for others */}
+            {step.label === "Đặt mẫu" ? (() => {
+              const linkedSamplePo = String(data.linked_sample_po || "");
+              return (
+              <>
+                {/* Chọn người đặt mẫu */}
+                <div style={S.section}>
+                  <div style={S.label}>Người đặt mẫu</div>
+                  <select value={assignee} onChange={(e) => {
+                    const email = e.target.value;
+                    const u = users.find((u) => u.email === email);
+                    setAssignee(email); setAssigneeName(u ? (u.name || email) : ""); setDirty(true);
+                  }} style={S.select}>
+                    <option value="">— Tự đặt —</option>
+                    {users.map((u) => <option key={u.email} value={u.email}>{u.name || u.email}</option>)}
+                  </select>
+                  {assigneeName && <div style={{ fontSize: 9, color: "#94A3B8", marginTop: 3 }}>Giao cho: {assigneeName}</div>}
+                </div>
+
+                {/* Thông tin NCC */}
+                <div style={S.section}>
+                  <div style={S.label}>Thông tin nhà cung cấp</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 6 }}>
+                    <input type="text" value={formData.sample_supplier || ""} onChange={(e) => setField("sample_supplier", e.target.value)} placeholder="Tên NCC" style={S.input} />
+                    <input type="text" value={formData.sample_platform || ""} onChange={(e) => setField("sample_platform", e.target.value)} placeholder="Nền tảng (1688, Alibaba...)" style={S.input} />
+                  </div>
+                  <input type="text" value={formData.sample_contact || ""} onChange={(e) => setField("sample_contact", e.target.value)} placeholder="Liên hệ (WeChat, phone...)" style={S.input} />
+                </div>
+
+                {/* Tạo đơn PO mua mẫu */}
+                <div style={S.section}>
+                  <div style={S.label}>Tạo đơn PO mua mẫu</div>
+                  <div style={{ padding: 12, border: "2px dashed #C4B5FD", borderRadius: 10, textAlign: "center", cursor: "pointer" }}
+                    onClick={() => {
+                      setCreatingPo(true);
+                      startTransition(async () => {
+                        // Save supplier info first
+                        const newData = { ...data, ...formData, [stepsKey]: JSON.stringify(buildUpdatedSteps()) };
+                        await saveRdItemAction(item.id, { name: itemName, data: newData });
+                        const r = await createSamplePoAction(item.id);
+                        setCreatingPo(false);
+                        if (r.ok) { onRefresh(); window.location.href = `/create?order_id=${r.orderId}`; }
+                        else alert(r.error || "Lỗi tạo đơn");
+                      });
+                    }}>
+                    <div style={{ fontSize: 20, marginBottom: 4 }}>📦</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "#7C3AED" }}>{creatingPo ? "Đang tạo..." : "Tạo đơn PO mua mẫu"}</div>
+                    <div style={{ fontSize: 9, color: "#94A3B8" }}>Nhảy sang form tạo đơn hàng</div>
+                  </div>
+                </div>
+
+                {/* Đơn PO đã tạo */}
+                {linkedSamplePo && (
+                  <div style={{ background: "#F0FDF4", borderRadius: 8, padding: "8px 10px", marginBottom: 14 }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: "#16A34A", marginBottom: 4 }}>Đơn PO đã tạo</div>
+                    <div style={{ fontSize: 11, marginBottom: 2 }}>{linkedSamplePo} — {item.name || "SP mẫu"}</div>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      <span style={{ fontSize: 9, color: "#94A3B8" }}>Trạng thái: Theo dõi bên Danh sách đơn</span>
+                      <a href={`/create?order_id=${linkedSamplePo}`} style={{ fontSize: 9, color: "#7C3AED", fontWeight: 600, textDecoration: "none" }}>Xem đơn ↗</a>
+                    </div>
+                  </div>
+                )}
+              </>
+              );
+            })() : step.label === "Nghiên cứu" ? (
               <>
                 {/* USP */}
                 <div style={S.section}>
@@ -896,7 +959,7 @@ function ModalInner({
                 <>
                   <button type="button" onClick={save} disabled={pending || !dirty} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#F1F5F9", color: "#64748B", cursor: "pointer" }}>Lưu nháp</button>
                   <button type="button" onClick={markComplete} disabled={pending} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#7C3AED", color: "#fff", cursor: "pointer" }}>
-                    Hoàn thành & Chuyển bước →
+                    {step.label === "Đặt mẫu" ? "Đã đặt mẫu — Chờ hàng về →" : "Hoàn thành & Chuyển bước →"}
                   </button>
                 </>
               )}
