@@ -741,15 +741,7 @@ function ModalInner({
                       <div style={{ fontSize: 12, fontWeight: 600, color: "#7C3AED" }}>{creatingPo ? "Đang tạo..." : linkedSamplePo ? "Mở đơn PO mẫu" : "Tạo đơn PO mua mẫu"}</div>
                       <div style={{ fontSize: 9, color: "#94A3B8" }}>{linkedSamplePo ? `Đơn ${linkedSamplePo}` : "Mở form tạo đơn hàng tại đây"}</div>
                     </div>
-                  ) : (
-                    <div style={{ border: "2px solid #C4B5FD", borderRadius: 10, overflow: "hidden" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 10px", background: "#F5F3FF", borderBottom: "1px solid #E2E8F0" }}>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: "#7C3AED" }}>📦 Form đơn hàng</span>
-                        <button type="button" onClick={() => { setPoPopupUrl(null); onRefresh(); }} style={{ padding: "2px 8px", borderRadius: 5, fontSize: 10, fontWeight: 600, border: "1px solid #E2E8F0", background: "#fff", color: "#64748B", cursor: "pointer" }}>✕ Đóng</button>
-                      </div>
-                      <iframe src={poPopupUrl} style={{ width: "100%", height: 500, border: "none" }} />
-                    </div>
-                  )}
+                  ) : null}
                 </div>
 
                 {/* Đơn PO đã tạo */}
@@ -984,6 +976,19 @@ function ModalInner({
           </div>
         </div>
       </div>
+
+      {/* ═══ PO POPUP OVERLAY ═══ */}
+      {poPopupUrl && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", zIndex: 10001, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: "#fff", borderRadius: 14, width: 960, maxWidth: "96vw", height: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 25px 70px rgba(0,0,0,.3)", overflow: "hidden" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", background: "#F5F3FF", borderBottom: "1px solid #E2E8F0", flexShrink: 0 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#7C3AED" }}>📦 Tạo / Sửa đơn hàng</span>
+              <button type="button" onClick={() => { setPoPopupUrl(null); onRefresh(); }} style={{ padding: "4px 12px", borderRadius: 6, fontSize: 11, fontWeight: 600, border: "1px solid #E2E8F0", background: "#fff", color: "#64748B", cursor: "pointer" }}>✕ Đóng</button>
+            </div>
+            <iframe src={poPopupUrl} style={{ flex: 1, width: "100%", border: "none" }} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
