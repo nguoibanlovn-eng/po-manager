@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MOCKUP — Order Flow (3 buoc)</title>
+<style>
+  :root {
+    --bg:#F5F5F7;--card:#FFFFFF;--border:#E4E4E7;--text:#18181B;--muted:#71717A;--subtle:#A1A1AA;
+    --blue:#2563EB;--blue-lt:#EFF6FF;--blue-bd:#BFDBFE;
+    --green:#16A34A;--green-lt:#F0FDF4;
+    --amber:#D97706;--amber-lt:#FFFBEB;
+    --red:#DC2626;--red-lt:#FEF2F2;
+    --purple:#7C3AED;--purple-lt:#F5F3FF;
+    --teal:#0D9488;--teal-lt:#F0FDFA;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); font-family:'Inter',system-ui,sans-serif; font-size:14px; color:var(--text); }
+  .btn { display:inline-flex; align-items:center; gap:5px; border:0; border-radius:7px; padding:7px 12px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .btn-primary { background:var(--blue); color:#fff; }
+  .btn-ghost { background:transparent; color:var(--muted); border:1px solid var(--border); }
+  .btn-success { background:var(--green); color:#fff; }
+  .btn-danger { background:var(--red); color:#fff; }
+  .btn-sm { padding:5px 10px; font-size:11px; }
+  .chip { display:inline-flex; align-items:center; gap:3px; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; border:1px solid; }
+  .chip-blue { background:var(--blue-lt); color:#1E40AF; border-color:var(--blue-bd); }
+  .chip-green { background:var(--green-lt); color:#15803D; border-color:#86EFAC; }
+  .chip-amber { background:var(--amber-lt); color:#B45309; border-color:#FCD34D; }
+  .chip-red { background:var(--red-lt); color:#991B1B; border-color:#FECACA; }
+  .chip-gray { background:#F4F4F5; color:#52525B; border-color:#D4D4D8; }
+  .chip-purple { background:var(--purple-lt); color:#6D28D9; border-color:#DDD6FE; }
+  .chip-teal { background:var(--teal-lt); color:#0F766E; border-color:#99F6E4; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+  .wrapper { max-width:760px; margin:0 auto; padding:20px 16px; }
+  .page-title { font-size:17px; font-weight:800; }
+  .page-sub { font-size:13px; color:var(--muted); margin-top:2px; }
+  .form-group { display:flex; flex-direction:column; gap:4px; }
+  .form-group label { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; }
+  .form-group input, .form-group select, .form-group textarea { width:100%; padding:6px 10px; border:1px solid var(--border); border-radius:7px; font-size:12px; font-family:inherit; background:#fff; color:var(--text); outline:none; }
+  .form-group input:read-only { background:var(--bg); color:var(--muted); }
+  .form-grid { display:grid; gap:10px; }
+  .fg-2 { grid-template-columns:1fr 1fr; }
+  .fg-3 { grid-template-columns:1fr 1fr 1fr; }
+  .fg-4 { grid-template-columns:1fr 1fr 1fr 1fr; }
+
+  /* Pipeline */
+  .flow-pipe { display:flex; align-items:center; gap:0; margin-bottom:20px; padding:10px 0; }
+  .fp-step { display:flex; flex-direction:column; align-items:center; gap:5px; flex-shrink:0; min-width:80px; }
+  .fp-dot { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; color:#fff; z-index:2; }
+  .fp-dot.done { background:var(--green); }
+  .fp-dot.active { background:var(--blue); box-shadow:0 0 0 4px rgba(37,99,235,.15); }
+  .fp-dot.future { background:#D4D4D8; }
+  .fp-dot.rejected { background:var(--red); }
+  .fp-lbl { font-size:10px; font-weight:700; text-transform:uppercase; color:var(--muted); text-align:center; max-width:80px; }
+  .fp-lbl.done { color:var(--green); }
+  .fp-lbl.active { color:var(--blue); font-weight:800; }
+  .fp-who { font-size:9px; color:var(--subtle); margin-top:-2px; }
+  .fp-line { flex:1; height:3px; background:#E4E4E7; min-width:16px; margin-top:-18px; z-index:1; }
+  .fp-line.done { background:var(--green); }
+
+  /* Notification banner */
+  .noti { display:flex; align-items:center; gap:8px; padding:10px 14px; border-radius:10px; margin-bottom:12px; font-size:12px; font-weight:600; }
+  .noti.amber { background:var(--amber-lt); border:1px solid #FCD34D; color:#92400E; }
+  .noti.green { background:var(--green-lt); border:1px solid #86EFAC; color:#166534; }
+  .noti.blue { background:var(--blue-lt); border:1px solid var(--blue-bd); color:#1E40AF; }
+  .noti.red { background:var(--red-lt); border:1px solid #FECACA; color:#991B1B; }
+
+  /* Summary box */
+  .summary-box { background:linear-gradient(135deg, #EFF6FF 0%, #F0FDF4 100%); border:1px solid #86EFAC; border-radius:12px; padding:14px 16px; }
+  .summary-row { display:flex; justify-content:space-between; padding:4px 0; font-size:13px; }
+  .summary-row.total { border-top:1px solid #86EFAC; padding-top:8px; margin-top:4px; font-weight:800; font-size:15px; color:var(--green); }
+
+  /* Field mapping highlight */
+  .field-map { position:relative; }
+  .field-map::after { content:attr(data-maps); position:absolute; top:-6px; right:4px; font-size:8px; background:var(--blue); color:#fff; padding:1px 5px; border-radius:4px; font-weight:700; letter-spacing:.3px; }
+
+  /* Demo bar */
+  .demo-bar { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); z-index:9999; display:flex; gap:4px; background:#1F2937; padding:8px 12px; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.3); flex-wrap:wrap; justify-content:center; max-width:95vw; }
+  .demo-bar button { padding:6px 12px; border-radius:8px; border:none; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap; }
+  .demo-bar button.on { background:var(--blue); color:#fff; }
+  .demo-bar button.off { background:#374151; color:#9CA3AF; }
+  .demo-bar .sep { color:#4B5563; font-size:14px; align-self:center; margin:0 2px; }
+
+  .view { display:none; }
+  .view.show { display:block; }
+
+  /* Item block */
+  .item-block { border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:10px; background:#fff; position:relative; }
+  .item-block .ib-num { position:absolute; top:-8px; left:12px; background:var(--blue); color:#fff; font-size:10px; font-weight:800; padding:1px 8px; border-radius:99px; }
+
+  .mapping-note { font-size:10px; background:var(--blue-lt); color:#1E40AF; border:1px solid var(--blue-bd); border-radius:6px; padding:4px 8px; margin-top:4px; display:inline-block; }
+
+  /* Comparison table */
+  .cmp-table { width:100%; border-collapse:collapse; font-size:12px; margin-top:8px; }
+  .cmp-table th { background:#FAFAFA; padding:6px 10px; text-align:left; font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; border-bottom:1px solid var(--border); }
+  .cmp-table td { padding:6px 10px; border-bottom:1px solid var(--border); }
+  .cmp-table .arrow { color:var(--green); font-weight:800; text-align:center; }
+</style>
+</head>
+<body>
+
+<div class="demo-bar">
+  <span style="color:#6B7280; font-size:10px; align-self:center; margin-right:4px">FLOW:</span>
+  <button class="on" onclick="show('v-overview')">Tong quan</button>
+  <span class="sep">|</span>
+  <button class="off" onclick="show('v-create')">1. Tao Order</button>
+  <button class="off" onclick="show('v-boss')">2. Sep duyet</button>
+  <button class="off" onclick="show('v-purchase')">3. MH xu ly</button>
+  <span class="sep">|</span>
+  <button class="off" onclick="show('v-result')">4. Ket qua</button>
+  <button class="off" onclick="show('v-mapping')">Field mapping</button>
+</div>
+
+<!-- ═══════════════════════════════════════
+     TONG QUAN FLOW
+     ═══════════════════════════════════════ -->
+<div id="v-overview" class="view show">
+  <div class="wrapper">
+    <div style="margin-bottom:16px">
+      <div class="page-title">Flow Order nhap hang</div>
+      <div class="page-sub">3 buoc: Tao → Sep duyet → Mua hang xu ly → Tu dong tao PO</div>
+    </div>
+
+    <div class="flow-pipe">
+      <div class="fp-step">
+        <div class="fp-dot active">1</div>
+        <div class="fp-lbl active">Tao Order</div>
+        <div class="fp-who">Sales</div>
+      </div>
+      <div class="fp-line"></div>
+      <div class="fp-step">
+        <div class="fp-dot future">2</div>
+        <div class="fp-lbl">Sep duyet</div>
+        <div class="fp-who">Leader/Admin</div>
+      </div>
+      <div class="fp-line"></div>
+      <div class="fp-step">
+        <div class="fp-dot future">3</div>
+        <div class="fp-lbl">MH xu ly</div>
+        <div class="fp-who">Mua hang</div>
+      </div>
+      <div class="fp-line"></div>
+      <div class="fp-step">
+        <div class="fp-dot future" style="background:var(--green)">&#10003;</div>
+        <div class="fp-lbl">Tao PO</div>
+        <div class="fp-who">/create</div>
+      </div>
+    </div>
+
+    <!-- Step cards -->
+    <div class="card" style="margin-bottom:10px; border-left:3px solid var(--blue)">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px">
+        <span style="background:var(--blue); color:#fff; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; flex-shrink:0">1</span>
+        <span style="font-size:14px; font-weight:800">Tao Order</span>
+        <span class="chip chip-blue" style="font-size:9px">Sales Staff / Leader</span>
+      </div>
+      <div style="font-size:12px; color:var(--muted); line-height:1.6; padding-left:32px">
+        Team KD nhap: ten SP, so luong, gia nhap/ban du kien, link tham khao, ghi chu.<br>
+        Chon team (FB/TT/Shopee/Web). Luu nhap hoac gui duyet ngay.
+      </div>
+    </div>
+
+    <div style="text-align:center; font-size:16px; color:var(--subtle); margin:4px 0">↓</div>
+
+    <div class="card" style="margin-bottom:10px; border-left:3px solid var(--amber)">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px">
+        <span style="background:var(--amber); color:#fff; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; flex-shrink:0">2</span>
+        <span style="font-size:14px; font-weight:800">Sep duyet</span>
+        <span class="chip chip-amber" style="font-size:9px">Leader / Admin</span>
+      </div>
+      <div style="font-size:12px; color:var(--muted); line-height:1.6; padding-left:32px">
+        Sep xem order, kiem tra SP + gia + ly do nhap.<br>
+        <strong>Duyet</strong> → chuyen sang MH. <strong>Tu choi</strong> → ghi ly do, ket thuc.<br>
+        <em>Co the yeu cau sua truoc khi duyet.</em>
+      </div>
+    </div>
+
+    <div style="text-align:center; font-size:16px; color:var(--subtle); margin:4px 0">↓</div>
+
+    <div class="card" style="margin-bottom:10px; border-left:3px solid var(--teal)">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px">
+        <span style="background:var(--teal); color:#fff; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; flex-shrink:0">3</span>
+        <span style="font-size:14px; font-weight:800">Mua hang xu ly</span>
+        <span class="chip chip-teal" style="font-size:9px">Bo phan Mua hang</span>
+      </div>
+      <div style="font-size:12px; color:var(--muted); line-height:1.6; padding-left:32px">
+        MH xem order, bo sung: NCC, gia nhap chinh xac, phan loai hang, ETA.<br>
+        <strong>Xac nhan</strong> → he thong <strong>tu dong tao PO</strong> tren /create voi du lieu da dien.<br>
+        <strong>Tra lai</strong> → yeu cau KD sua lai.
+      </div>
+    </div>
+
+    <div style="text-align:center; font-size:16px; color:var(--subtle); margin:4px 0">↓</div>
+
+    <div class="card" style="margin-bottom:10px; border-left:3px solid var(--green)">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px">
+        <span style="background:var(--green); color:#fff; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; flex-shrink:0">&#10003;</span>
+        <span style="font-size:14px; font-weight:800">PO da tao</span>
+        <span class="chip chip-green" style="font-size:9px">Tu dong</span>
+      </div>
+      <div style="font-size:12px; color:var(--muted); line-height:1.6; padding-left:32px">
+        PO tao tren /create o stage DRAFT. Du lieu copy tu order:<br>
+        Ten don, NCC, phan loai, gia, SL, link, ghi chu → khop 1:1.<br>
+        Tu day PO chay theo pipeline binh thuong: DRAFT → DA DAT → HANG VE → ...
+      </div>
+    </div>
+
+    <!-- Reject paths -->
+    <div class="card" style="margin-bottom:60px; border:1px dashed var(--red)">
+      <div style="font-size:13px; font-weight:700; color:var(--red); margin-bottom:6px">Truong hop tu choi</div>
+      <div style="font-size:12px; color:var(--muted); line-height:1.6">
+        <strong>Sep tu choi (buoc 2):</strong> Ghi ly do → thong bao Sales → Order ket thuc. Sales co the tao order moi.<br>
+        <strong>MH tra lai (buoc 3):</strong> Ghi ly do → order quay ve Sales de sua → gui duyet lai tu dau.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     STEP 1: TAO ORDER
+     ═══════════════════════════════════════ -->
+<div id="v-create" class="view">
+  <div class="wrapper">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px">
+      <div>
+        <div class="page-title">Buoc 1 — Tao Order</div>
+        <div class="page-sub">Sales nhap yeu cau nhap hang</div>
+      </div>
+      <span class="chip chip-blue">Sales</span>
+    </div>
+
+    <div class="flow-pipe">
+      <div class="fp-step"><div class="fp-dot active">1</div><div class="fp-lbl active">Tao</div></div>
+      <div class="fp-line"></div>
+      <div class="fp-step"><div class="fp-dot future">2</div><div class="fp-lbl">Sep duyet</div></div>
+      <div class="fp-line"></div>
+      <div class="fp-step"><div class="fp-dot future">3</div><div class="fp-lbl">MH xu ly</div></div>
+      <div class="fp-line"></div>
+      <div class="fp-step"><div class="fp-dot future">&#10003;</div><div class="fp-lbl">PO</div></div>
+    </div>
+
+    <!-- Form giong OrderForm /create -->
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-size:13px; font-weight:800; margin-bottom:10px">Thong tin Order</div>
+      <div class="form-grid fg-4" style="margin-bottom:10px">
+        <div class="form-group">
+          <label>Ten don *</label>
+          <input value="Lo cap sac GaN 67W" />
+        </div>
+        <div class="form-group">
+          <label>Team *</label>
+          <select><option>Team FB</option></select>
+        </div>
+        <div class="form-group">
+          <label>Phan loai hang *</label>
+          <select>
+            <option>Trung Quoc dat hang</option>
+            <option>Trung Quoc tru san</option>
+            <option>Noi dia</option>
+            <option>Hang mau</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Nguoi tao</label>
+          <input value="Phat (SALES_LEADER)" readonly />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Ghi chu</label>
+        <textarea rows="2" style="font-family:inherit">Hang ban chay TikTok, can nhap gap chay ads thang 5. Doi thu Anker ban 450k.</textarea>
+      </div>
+    </div>
+
+    <!-- Items — giong format /create -->
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+        <span style="font-size:13px; font-weight:800">San pham (2)</span>
+        <button class="btn btn-ghost btn-sm">+ Them SP</button>
+      </div>
+
+      <div class="item-block">
+        <span class="ib-num">1</span>
+        <div class="form-grid fg-4" style="margin-bottom:8px">
+          <div class="form-group">
+            <label>SKU</label>
+            <input value="" placeholder="(de trong)" />
+          </div>
+          <div class="form-group" style="grid-column:span 2">
+            <label>Ten san pham *</label>
+            <input value="Cap sac nhanh GaN 67W PD 3.0" />
+          </div>
+          <div class="form-group">
+            <label>Kieu hang</label>
+            <select><option>Hang chinh</option></select>
+          </div>
+        </div>
+        <div class="form-grid fg-4" style="margin-bottom:8px">
+          <div class="form-group">
+            <label>So luong *</label>
+            <input type="text" value="500" />
+          </div>
+          <div class="form-group">
+            <label>Gia nhap (d) *</label>
+            <input type="text" value="185.000" />
+          </div>
+          <div class="form-group">
+            <label>Thanh tien</label>
+            <input value="92.500.000" readonly />
+          </div>
+          <div class="form-group">
+            <label>Link tham khao</label>
+            <input value="https://1688.com/gan-67w" />
+          </div>
+        </div>
+        <div class="form-grid fg-2">
+          <div class="form-group">
+            <label>Gia ban du kien</label>
+            <input value="399.000" />
+          </div>
+          <div class="form-group">
+            <label>Ghi chu SP</label>
+            <input value="GaN 67W, USB-C PD 3.0, tuong thich iPhone 16" />
+          </div>
+        </div>
+        <div style="margin-top:6px; display:flex; gap:6px; align-items:center">
+          <span style="font-size:11px; color:var(--muted)">Bien loi DK:</span>
+          <span style="font-size:13px; font-weight:800; color:var(--green)">53.6%</span>
+        </div>
+      </div>
+
+      <div class="item-block">
+        <span class="ib-num">2</span>
+        <div class="form-grid fg-4" style="margin-bottom:8px">
+          <div class="form-group">
+            <label>SKU</label>
+            <input value="" placeholder="(de trong)" />
+          </div>
+          <div class="form-group" style="grid-column:span 2">
+            <label>Ten san pham *</label>
+            <input value="Day cap USB-C to USB-C 100W 2m" />
+          </div>
+          <div class="form-group">
+            <label>Kieu hang</label>
+            <select><option>Hang chinh</option></select>
+          </div>
+        </div>
+        <div class="form-grid fg-4">
+          <div class="form-group">
+            <label>So luong *</label>
+            <input type="text" value="1.000" />
+          </div>
+          <div class="form-group">
+            <label>Gia nhap (d) *</label>
+            <input type="text" value="25.000" />
+          </div>
+          <div class="form-group">
+            <label>Thanh tien</label>
+            <input value="25.000.000" readonly />
+          </div>
+          <div class="form-group">
+            <label>Link tham khao</label>
+            <input value="" placeholder="https://..." />
+          </div>
+        </div>
+      </div>
+
+      <div style="text-align:right; font-size:13px; font-weight:700; margin-top:8px">
+        Tong SL: 1.500 · Tong tien: <span style="color:var(--blue)">117.500.000d</span>
+      </div>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; margin-bottom:60px">
+      <button class="btn btn-ghost">Luu nhap</button>
+      <button class="btn btn-success" style="padding:10px 24px; font-size:13px">Gui duyet →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     STEP 2: SEP DUYET
+     ═══════════════════════════════════════ -->
+<div id="v-boss" class="view">
+  <div class="wrapper">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px">
+      <div>
+        <div class="page-title">Buoc 2 — Sep duyet</div>
+        <div class="page-sub">Leader/Admin xem xet va quyet dinh</div>
+      </div>
+      <span class="chip chip-amber">Cho duyet</span>
+    </div>
+
+    <div class="flow-pipe">
+      <div class="fp-step"><div class="fp-dot done">&#10003;</div><div class="fp-lbl done">Tao</div></div>
+      <div class="fp-line done"></div>
+      <div class="fp-step"><div class="fp-dot active">2</div><div class="fp-lbl active">Sep duyet</div></div>
+      <div class="fp-line"></div>
+      <div class="fp-step"><div class="fp-dot future">3</div><div class="fp-lbl">MH xu ly</div></div>
+      <div class="fp-line"></div>
+      <div class="fp-step"><div class="fp-dot future">&#10003;</div><div class="fp-lbl">PO</div></div>
+    </div>
+
+    <div class="noti amber">
+      &#9888; <strong>Phat (Team FB)</strong> gui duyet order ORD-047 — 117.5M — 2 san pham
+    </div>
+
+    <!-- Order summary (read-only) -->
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px">
+        <span style="font-size:15px; font-weight:800">ORD-047</span>
+        <span class="chip chip-blue" style="font-size:10px">Team FB</span>
+        <span class="chip chip-purple" style="font-size:10px">TQ dat hang</span>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:10px; font-size:12px; margin-bottom:10px">
+        <div><div style="font-size:10px; color:var(--muted); font-weight:700; text-transform:uppercase">Nguoi tao</div><div style="font-weight:700">Phat</div></div>
+        <div><div style="font-size:10px; color:var(--muted); font-weight:700; text-transform:uppercase">Ngay tao</div><div style="font-weight:700">25/04/2026</div></div>
+        <div><div style="font-size:10px; color:var(--muted); font-weight:700; text-transform:uppercase">San pham</div><div style="font-weight:700">2 SP · 1.500 cai</div></div>
+        <div><div style="font-size:10px; color:var(--muted); font-weight:700; text-transform:uppercase">Tong gia tri</div><div style="font-weight:800; color:var(--green); font-size:14px">117.500.000</div></div>
+      </div>
+      <div style="font-size:12px; color:var(--muted); background:var(--bg); padding:8px 10px; border-radius:6px; line-height:1.5">
+        <strong>Ghi chu:</strong> Hang ban chay TikTok, can nhap gap chay ads thang 5. Doi thu Anker ban 450k.
+      </div>
+    </div>
+
+    <!-- Products read-only -->
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-size:12px; font-weight:800; margin-bottom:8px">San pham</div>
+      <div style="border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:6px; border-left:3px solid var(--blue)">
+        <div style="font-weight:700; margin-bottom:4px">1. Cap sac GaN 67W PD 3.0</div>
+        <div style="display:flex; gap:16px; font-size:11px; color:var(--muted); flex-wrap:wrap">
+          <span>SL: <strong style="color:var(--text)">500</strong></span>
+          <span>Gia nhap: <strong style="color:var(--text)">185.000</strong></span>
+          <span>Gia ban: <strong style="color:var(--text)">399.000</strong></span>
+          <span>Bien loi: <strong style="color:var(--green)">53.6%</strong></span>
+        </div>
+        <div style="text-align:right; font-weight:700; font-size:12px; margin-top:4px">= 92.500.000</div>
+      </div>
+      <div style="border:1px solid var(--border); border-radius:8px; padding:10px 12px; border-left:3px solid var(--blue)">
+        <div style="font-weight:700; margin-bottom:4px">2. Day cap USB-C 100W 2m</div>
+        <div style="display:flex; gap:16px; font-size:11px; color:var(--muted); flex-wrap:wrap">
+          <span>SL: <strong style="color:var(--text)">1.000</strong></span>
+          <span>Gia nhap: <strong style="color:var(--text)">25.000</strong></span>
+          <span>Gia ban: <strong style="color:var(--text)">89.000</strong></span>
+          <span>Bien loi: <strong style="color:var(--green)">71.9%</strong></span>
+        </div>
+        <div style="text-align:right; font-weight:700; font-size:12px; margin-top:4px">= 25.000.000</div>
+      </div>
+    </div>
+
+    <!-- Approval box -->
+    <div class="card" style="border:2px solid var(--amber); background:var(--amber-lt); margin-bottom:60px">
+      <div style="font-size:14px; font-weight:800; margin-bottom:10px; color:#92400E">Duyet Order</div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Ghi chu duyet</label>
+        <textarea rows="2" placeholder="Ghi chu khi duyet hoac tu choi..." style="font-family:inherit; background:#fff">OK, nhap gap. Uu tien cap sac.</textarea>
+      </div>
+      <div style="display:flex; gap:10px; justify-content:flex-end">
+        <button class="btn btn-danger" style="padding:10px 20px">&#10007; Tu choi</button>
+        <button class="btn btn-success" style="padding:10px 24px; font-size:13px">&#10003; Duyet →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     STEP 3: MUA HANG XU LY
+     ═══════════════════════════════════════ -->
+<div id="v-purchase" class="view">
+  <div class="wrapper">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px">
+      <div>
+        <div class="page-title">Buoc 3 — Mua hang xu ly</div>
+        <div class="page-sub">Bo sung NCC, gia chinh xac, xac nhan tao PO</div>
+      </div>
+      <span class="chip chip-teal">MH xu ly</span>
+    </div>
+
+    <div class="flow-pipe">
+      <div class="fp-step"><div class="fp-dot done">&#10003;</div><div class="fp-lbl done">Tao</div></div>
+      <div class="fp-line done"></div>
+      <div class="fp-step"><div class="fp-dot done">&#10003;</div><div class="fp-lbl done">Sep duyet</div></div>
+      <div class="fp-line done"></div>
+      <div class="fp-step"><div class="fp-dot active">3</div><div class="fp-lbl active">MH xu ly</div></div>
+      <div class="fp-line"></div>
+      <div class="fp-step"><div class="fp-dot future">&#10003;</div><div class="fp-lbl">PO</div></div>
+    </div>
+
+    <div class="noti green">
+      &#10003; Sep da duyet. Mua hang can bo sung thong tin va xac nhan.
+    </div>
+
+    <!-- Order info + editable fields for MH -->
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px">
+        <span style="font-size:15px; font-weight:800">ORD-047</span>
+        <span class="chip chip-green" style="font-size:10px">Sep da duyet</span>
+      </div>
+
+      <div style="font-size:11px; font-weight:700; color:var(--teal); text-transform:uppercase; margin-bottom:8px">Mua hang bo sung ↓</div>
+
+      <div class="form-grid fg-4" style="margin-bottom:10px">
+        <div class="form-group">
+          <label>Nha cung cap *</label>
+          <input value="Shenzhen GaN Tech" style="border-color:var(--teal)" />
+        </div>
+        <div class="form-group">
+          <label>Phan loai hang</label>
+          <select style="border-color:var(--teal)">
+            <option selected>Trung Quoc dat hang</option>
+            <option>Trung Quoc tru san</option>
+            <option>Noi dia</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>ETA du kien</label>
+          <input type="date" value="2026-05-10" style="border-color:var(--teal)" />
+        </div>
+        <div class="form-group">
+          <label>Tien coc</label>
+          <input type="text" value="35.250.000" style="border-color:var(--teal)" />
+        </div>
+      </div>
+
+      <div style="font-size:10px; color:var(--teal); background:var(--teal-lt); padding:6px 10px; border-radius:6px">
+        &#9432; Cac truong khac (ten don, SP, SL, gia) da co san tu order KD. MH chi can bo sung NCC + ETA + coc.
+      </div>
+    </div>
+
+    <!-- Products — MH can adjust price -->
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-size:12px; font-weight:800; margin-bottom:8px">San pham (co the sua gia nhap)</div>
+
+      <div style="border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:6px">
+        <div style="display:flex; justify-content:space-between; align-items:center">
+          <div style="font-weight:700">1. Cap sac GaN 67W PD 3.0</div>
+          <span style="font-size:11px; color:var(--green); font-weight:700">92.5M</span>
+        </div>
+        <div style="display:flex; gap:12px; font-size:11px; margin-top:4px; align-items:center">
+          <span style="color:var(--muted)">SL: 500</span>
+          <span style="color:var(--muted)">Gia KD: 185.000</span>
+          <span style="color:var(--muted)">→</span>
+          <span style="font-weight:700; color:var(--teal)">Gia MH: <input type="text" value="182.000" style="width:70px; padding:2px 6px; border:1px solid var(--teal); border-radius:4px; font-size:11px; font-weight:700; text-align:right" /></span>
+        </div>
+      </div>
+
+      <div style="border:1px solid var(--border); border-radius:8px; padding:10px 12px">
+        <div style="display:flex; justify-content:space-between; align-items:center">
+          <div style="font-weight:700">2. Day cap USB-C 100W 2m</div>
+          <span style="font-size:11px; color:var(--green); font-weight:700">25M</span>
+        </div>
+        <div style="display:flex; gap:12px; font-size:11px; margin-top:4px; align-items:center">
+          <span style="color:var(--muted)">SL: 1.000</span>
+          <span style="color:var(--muted)">Gia KD: 25.000</span>
+          <span style="color:var(--muted)">→</span>
+          <span style="font-weight:700; color:var(--teal)">Gia MH: <input type="text" value="24.500" style="width:70px; padding:2px 6px; border:1px solid var(--teal); border-radius:4px; font-size:11px; font-weight:700; text-align:right" /></span>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:10px; justify-content:space-between; margin-bottom:60px">
+      <button class="btn btn-ghost" style="padding:10px 20px; border-color:var(--red); color:var(--red)">← Tra lai KD</button>
+      <button class="btn btn-success" style="padding:10px 24px; font-size:13px">&#10003; Xac nhan & Tao PO →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     STEP 4: KET QUA — PO DA TAO
+     ═══════════════════════════════════════ -->
+<div id="v-result" class="view">
+  <div class="wrapper">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px">
+      <div>
+        <div class="page-title">Ket qua — PO da tao</div>
+        <div class="page-sub">Don nhap tu dong tao tren /create</div>
+      </div>
+      <span class="chip chip-green">Hoan tat</span>
+    </div>
+
+    <div class="flow-pipe">
+      <div class="fp-step"><div class="fp-dot done">&#10003;</div><div class="fp-lbl done">Tao</div></div>
+      <div class="fp-line done"></div>
+      <div class="fp-step"><div class="fp-dot done">&#10003;</div><div class="fp-lbl done">Sep duyet</div></div>
+      <div class="fp-line done"></div>
+      <div class="fp-step"><div class="fp-dot done">&#10003;</div><div class="fp-lbl done">MH xu ly</div></div>
+      <div class="fp-line done"></div>
+      <div class="fp-step"><div class="fp-dot done" style="box-shadow:0 0 0 4px rgba(22,163,74,.15)">&#10003;</div><div class="fp-lbl done" style="font-weight:800">PO</div></div>
+    </div>
+
+    <div class="noti green">
+      &#10003; PO <strong>PO-20260425-001</strong> da duoc tao thanh cong tu order ORD-047. <a href="#" style="color:#166534; text-decoration:underline; margin-left:4px">Mo PO →</a>
+    </div>
+
+    <!-- PO preview — as it appears on /create -->
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-size:14px; font-weight:800; margin-bottom:10px">PO-20260425-001 <span class="chip chip-gray" style="font-size:10px; margin-left:6px">DRAFT</span></div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:12px">
+        <div><span style="color:var(--muted)">Ten don:</span> <strong>Lo cap sac GaN 67W</strong></div>
+        <div><span style="color:var(--muted)">NCC:</span> <strong>Shenzhen GaN Tech</strong></div>
+        <div><span style="color:var(--muted)">Phan loai:</span> <strong>TQ dat hang</strong></div>
+        <div><span style="color:var(--muted)">Nguoi PT:</span> <strong>Phat</strong></div>
+        <div><span style="color:var(--muted)">ETA:</span> <strong>10/05/2026</strong></div>
+        <div><span style="color:var(--muted)">Coc:</span> <strong style="color:var(--amber)">35.250.000</strong></div>
+        <div style="grid-column:span 2"><span style="color:var(--muted)">Ghi chu:</span> Tu order KD: ORD-047 · Team: Team FB · Hang ban chay TikTok...</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-size:12px; font-weight:800; margin-bottom:8px">San pham trong PO</div>
+      <table style="width:100%; border-collapse:collapse; font-size:12px">
+        <thead>
+          <tr style="background:#FAFAFA">
+            <th style="text-align:left; padding:6px 8px; font-size:10px; color:var(--muted); border-bottom:1px solid var(--border)">#</th>
+            <th style="text-align:left; padding:6px 8px; font-size:10px; color:var(--muted); border-bottom:1px solid var(--border)">Ten SP</th>
+            <th style="text-align:right; padding:6px 8px; font-size:10px; color:var(--muted); border-bottom:1px solid var(--border)">SL</th>
+            <th style="text-align:right; padding:6px 8px; font-size:10px; color:var(--muted); border-bottom:1px solid var(--border)">Gia nhap</th>
+            <th style="text-align:right; padding:6px 8px; font-size:10px; color:var(--muted); border-bottom:1px solid var(--border)">Thanh tien</th>
+            <th style="text-align:left; padding:6px 8px; font-size:10px; color:var(--muted); border-bottom:1px solid var(--border)">Link</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:6px 8px">1</td>
+            <td style="padding:6px 8px; font-weight:600">Cap sac GaN 67W PD 3.0</td>
+            <td style="padding:6px 8px; text-align:right">500</td>
+            <td style="padding:6px 8px; text-align:right">182.000</td>
+            <td style="padding:6px 8px; text-align:right; font-weight:700">91.000.000</td>
+            <td style="padding:6px 8px"><a href="#" style="color:var(--blue); font-size:11px">1688</a></td>
+          </tr>
+          <tr>
+            <td style="padding:6px 8px">2</td>
+            <td style="padding:6px 8px; font-weight:600">Day cap USB-C 100W 2m</td>
+            <td style="padding:6px 8px; text-align:right">1.000</td>
+            <td style="padding:6px 8px; text-align:right">24.500</td>
+            <td style="padding:6px 8px; text-align:right; font-weight:700">24.500.000</td>
+            <td style="padding:6px 8px">—</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr style="background:#FAFAFA">
+            <td colspan="4" style="padding:8px; font-weight:800; text-align:right">Tong:</td>
+            <td style="padding:8px; text-align:right; font-weight:800; color:var(--green); font-size:14px">115.500.000</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <div style="text-align:center; margin-bottom:60px">
+      <div style="font-size:12px; color:var(--muted); margin-bottom:8px">PO o stage DRAFT. Tu day chay pipeline binh thuong:</div>
+      <div style="display:flex; justify-content:center; gap:4px; flex-wrap:wrap">
+        <span class="chip chip-gray" style="font-size:10px">DRAFT</span>
+        <span style="color:var(--subtle)">→</span>
+        <span class="chip chip-amber" style="font-size:10px">DA DAT</span>
+        <span style="color:var(--subtle)">→</span>
+        <span class="chip chip-teal" style="font-size:10px">HANG VE</span>
+        <span style="color:var(--subtle)">→</span>
+        <span class="chip chip-blue" style="font-size:10px">QC XONG</span>
+        <span style="color:var(--subtle)">→</span>
+        <span class="chip chip-purple" style="font-size:10px">LEN KE</span>
+        <span style="color:var(--subtle)">→</span>
+        <span class="chip chip-green" style="font-size:10px">HOAN TAT</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     FIELD MAPPING
+     ═══════════════════════════════════════ -->
+<div id="v-mapping" class="view">
+  <div class="wrapper">
+    <div style="margin-bottom:16px">
+      <div class="page-title">Field Mapping: Order → PO</div>
+      <div class="page-sub">Cac truong du lieu map 1:1 sang form /create</div>
+    </div>
+
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-size:13px; font-weight:800; margin-bottom:10px">Thong tin don</div>
+      <table class="cmp-table">
+        <thead><tr><th>Order KD</th><th style="width:40px"></th><th>PO (/create)</th><th>Ai nhap</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Ten don</strong></td><td class="arrow">→</td><td>order_name</td><td>Sales</td></tr>
+          <tr><td><strong>Team</strong></td><td class="arrow">→</td><td>note (ghi vao)</td><td>Sales</td></tr>
+          <tr><td><strong>Phan loai hang</strong></td><td class="arrow">→</td><td>goods_type</td><td>Sales</td></tr>
+          <tr><td><strong>Nguoi tao</strong></td><td class="arrow">→</td><td>owner</td><td>Sales</td></tr>
+          <tr><td><strong>Ghi chu</strong></td><td class="arrow">→</td><td>note</td><td>Sales</td></tr>
+          <tr><td style="color:var(--teal)"><strong>NCC</strong></td><td class="arrow">→</td><td>supplier_name</td><td style="color:var(--teal); font-weight:700">Mua hang</td></tr>
+          <tr><td style="color:var(--teal)"><strong>ETA</strong></td><td class="arrow">→</td><td>eta_date</td><td style="color:var(--teal); font-weight:700">Mua hang</td></tr>
+          <tr><td style="color:var(--teal)"><strong>Tien coc</strong></td><td class="arrow">→</td><td>deposit_amount</td><td style="color:var(--teal); font-weight:700">Mua hang</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-size:13px; font-weight:800; margin-bottom:10px">San pham (moi dong)</div>
+      <table class="cmp-table">
+        <thead><tr><th>Order KD</th><th style="width:40px"></th><th>PO Item</th><th>Ai nhap</th></tr></thead>
+        <tbody>
+          <tr><td><strong>SKU</strong></td><td class="arrow">→</td><td>sku</td><td>Sales (neu co)</td></tr>
+          <tr><td><strong>Ten SP</strong></td><td class="arrow">→</td><td>product_name</td><td>Sales</td></tr>
+          <tr><td><strong>So luong</strong></td><td class="arrow">→</td><td>qty</td><td>Sales</td></tr>
+          <tr><td><strong>Gia nhap</strong></td><td class="arrow">→</td><td>unit_price</td><td>Sales → <span style="color:var(--teal)">MH sua</span></td></tr>
+          <tr><td><strong>Kieu hang</strong></td><td class="arrow">→</td><td>item_type</td><td>Sales</td></tr>
+          <tr><td><strong>Link tham khao</strong></td><td class="arrow">→</td><td>link</td><td>Sales</td></tr>
+          <tr><td><strong>Ghi chu SP</strong></td><td class="arrow">→</td><td>note</td><td>Sales</td></tr>
+          <tr><td style="color:var(--muted)"><strong>Gia ban DK</strong></td><td style="text-align:center; color:var(--muted)">—</td><td colspan="2" style="color:var(--muted); font-size:11px">Chi de tinh bien loi, khong copy sang PO</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card" style="margin-bottom:60px; border-left:3px solid var(--teal)">
+      <div style="font-size:13px; font-weight:700; color:var(--teal); margin-bottom:6px">Nguyen tac</div>
+      <div style="font-size:12px; color:var(--muted); line-height:1.8">
+        1. <strong>Sales nhap cang nhieu cang tot</strong> — de MH khong phai nhap lai<br>
+        2. <strong>MH chi bo sung</strong>: NCC, ETA, coc, va co the sua gia nhap cho chinh xac<br>
+        3. <strong>Form Order dung cung layout voi form /create</strong> → nguoi dung quen giao dien<br>
+        4. Khi tao PO, he thong <strong>copy 1:1</strong> tat ca fields → khong mat du lieu<br>
+        5. PO tao xong o <strong>DRAFT</strong> → MH co the sua them truoc khi chuyen DA DAT
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function show(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('show'));
+  document.getElementById(id).classList.add('show');
+  document.querySelectorAll('.demo-bar button').forEach(b => { b.className = 'off'; });
+  const map = {'v-overview':0,'v-create':2,'v-boss':3,'v-purchase':4,'v-result':6,'v-mapping':7};
+  const btns = document.querySelectorAll('.demo-bar button');
+  if (btns[map[id]]) btns[map[id]].className = 'on';
+  window.scrollTo(0,0);
+}
+</script>
+
+</body>
+</html>

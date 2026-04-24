@@ -1,12 +1,14 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { daysFromNow, formatDate, formatVND, payClass } from "@/lib/format";
 import type { OrderListItem } from "@/lib/types";
+import type { SupplierRef } from "@/lib/db/suppliers";
+import type { UserRef } from "@/lib/db/users";
 import { deleteOrderAction } from "./actions";
 import OrderDetailModal from "./OrderDetailModal";
+import OrderForm from "../create/OrderForm";
 
 const STAGE_LABEL: Record<string, string> = {
   DRAFT: "Nháp",
@@ -21,9 +23,15 @@ const STAGE_LABEL: Record<string, string> = {
 export default function OrdersView({
   orders,
   userRole,
+  user,
+  suppliers,
+  users,
 }: {
   orders: OrderListItem[];
   userRole: string;
+  user: { email: string; name: string; role: string } | null;
+  suppliers: SupplierRef[];
+  users: UserRef[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -32,6 +40,7 @@ export default function OrdersView({
   const [pay, setPay] = useState<string>("");
   const [eta, setEta] = useState<string>("");
   const [detailOrderId, setDetailOrderId] = useState<string | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const canEdit = userRole === "ADMIN" || userRole.startsWith("LEADER_") || userRole === "NV_MH";
 
@@ -104,9 +113,9 @@ export default function OrdersView({
           </select>
           <button className="btn btn-ghost btn-sm" onClick={() => router.refresh()}>🔄</button>
           {canEdit && (
-            <Link href="/create" className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>
+            <button className="btn btn-primary btn-sm" onClick={() => setShowCreateModal(true)}>
               + Tạo đơn
-            </Link>
+            </button>
           )}
         </div>
       </div>
@@ -218,6 +227,23 @@ export default function OrdersView({
           canEdit={canEdit}
         />
       )}
+
+      {showCreateModal && (
+        <div
+          onClick={() => setShowCreateModal(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 9999, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "20px 10px", overflowY: "auto" }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 960, background: "#fff", borderRadius: 16, overflow: "hidden", boxShadow: "0 25px 50px rgba(0,0,0,.25)", maxHeight: "95vh", overflowY: "auto" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid var(--border)", background: "#FAFAFA", position: "sticky", top: 0, zIndex: 1 }}>
+              <div style={{ fontWeight: 800, fontSize: 15 }}>Tạo đơn mới</div>
+              <button onClick={() => setShowCreateModal(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--muted)", padding: "4px 8px" }}>✕</button>
+            </div>
+            <div style={{ padding: 0 }}>
+              <OrderForm user={user} order={null} items={[]} suppliers={suppliers} users={users} />
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -306,7 +332,7 @@ function OrderCard({
       )}
       {canEdit && (
         <div style={{ marginTop: 8, display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
-          <Link href={`/create?order_id=${o.order_id}`} className="btn btn-ghost btn-sm" style={{ flex: 1, textAlign: "center", textDecoration: "none" }}>Sửa</Link>
+          <a href={`/create?order_id=${o.order_id}`} className="btn btn-ghost btn-sm" style={{ flex: 1, textAlign: "center", textDecoration: "none" }}>Sửa</a>
           <button className="btn btn-danger btn-sm" onClick={() => onDelete(o.order_id, o.order_name || "")}>🗑</button>
         </div>
       )}

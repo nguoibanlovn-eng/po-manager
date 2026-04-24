@@ -15,8 +15,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     title: "MUA HÀNG",
     items: [
-      { href: "/create",       label: "Tạo / Sửa đơn",    icon: i("✎"), perm: "create_order" },
-      { href: "/list",         label: "Danh sách đơn",    icon: i("☰"), perm: "list_order" },
+      { href: "/list",         label: "Đơn hàng",          icon: i("☰"), perm: "list_order" },
       { href: "/rd",           label: "R&D",              icon: i("◉"), perm: "create_order" },
       { href: "/damage-mgmt",  label: "Hàng hỏng",        icon: i("△"), perm: "damage_mgmt" },
     ],
