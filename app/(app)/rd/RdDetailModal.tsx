@@ -661,7 +661,13 @@ function ModalInner({
                   </div>
                   {/* 3 Action buttons */}
                   <div style={{ display: "flex", gap: 6 }}>
-                    <button type="button" onClick={markComplete} disabled={pending} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#16A34A", color: "#fff", cursor: "pointer" }}>
+                    <button type="button" disabled={pending} onClick={() => {
+                      startTransition(async () => {
+                        markComplete();
+                        alert("✓ Đã duyệt — chuyển bước tiếp theo.");
+                        onClose();
+                      });
+                    }} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#16A34A", color: "#fff", cursor: "pointer" }}>
                       {greenLabel}
                     </button>
                     <button type="button" disabled={pending} onClick={() => {
@@ -675,19 +681,23 @@ function ModalInner({
                           [stepsKey]: JSON.stringify(initSteps),
                         };
                         await saveRdItemAction(item.id, { name: itemName, data: newData });
-                        setDirty(false);
                         onRefresh();
+                        alert("↺ Đã gửi yêu cầu chỉnh sửa. NV sẽ thấy thông báo trên ticket.");
+                        onClose();
                       });
                     }} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#D97706", color: "#fff", cursor: "pointer" }}>
                       {amberLabel}
                     </button>
-                    <button type="button" style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#DC2626", color: "#fff", cursor: "pointer" }}
+                    <button type="button" disabled={pending} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#DC2626", color: "#fff", cursor: "pointer" }}
                       onClick={() => {
+                        if (!confirm("Từ chối ticket này? Sẽ chuyển sang trạng thái Loại bỏ.")) return;
                         startTransition(async () => {
                           const updated = initSteps.map((s, i) => i === activeIdx ? { ...s, status: "rejected" as const, result } : s);
                           const newData = { ...data, proposer_role: proposerRole, priority, [stepsKey]: JSON.stringify(updated) };
                           await saveRdItemAction(item.id, { name: itemName, stage: "Loại bỏ", data: newData });
-                          onRefresh(); onClose();
+                          onRefresh();
+                          alert("✕ Đã từ chối ticket.");
+                          onClose();
                         });
                       }}>
                       ✕ Từ chối
