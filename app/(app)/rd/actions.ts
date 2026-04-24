@@ -158,7 +158,7 @@ export async function createSamplePoAction(rdItemId: string) {
     owner: u.email,
     created_by: u.email,
     note: `Đơn mẫu từ R&D: ${item.name} (${rdItemId})`,
-    eta_date: String(data.sample_eta || ""),
+    ...(data.sample_eta ? { eta_date: String(data.sample_eta) } : {}),
     created_at: nowVN(),
     updated_at: nowVN(),
   });
