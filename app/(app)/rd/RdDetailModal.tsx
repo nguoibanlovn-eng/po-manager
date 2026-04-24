@@ -351,9 +351,11 @@ function ModalInner({
 
   function markComplete() {
     startTransition(async () => {
+      const now = new Date().toISOString();
+      const logEntry = { action: "complete", by: currentUserEmail, at: now, step: step.label };
       const updated = initSteps.map((s, i) => {
-        if (i === activeIdx) return { ...s, status: "approved" as const, assignee, assignee_name: assigneeName, assigneeName, deadline, checklist, links, photos, result };
-        if (i === activeIdx + 1 && (s.status === "locked" || s.status === "skipped")) return { ...s, status: "active" as const };
+        if (i === activeIdx) return { ...s, status: "approved" as const, assignee, assignee_name: assigneeName, assigneeName, deadline, checklist, links, photos, result, logs: [...(s.logs || []), logEntry] };
+        if (i === activeIdx + 1 && (s.status === "locked" || s.status === "skipped")) return { ...s, status: "active" as const, logs: [...(s.logs || []), { action: "activate", by: currentUserEmail, at: now, from: step.label }] };
         return s;
       });
       const isFinished = isLastStep;
@@ -615,7 +617,10 @@ function ModalInner({
                 dlValue = poEtaVal || dlFromStep4;
                 dlLabel = poEtaVal ? "ETA mẫu về (từ PO)" : "Deadline đặt mẫu (từ Duyệt NC)";
               } else if (stepLabel === "Hàng về" || stepLabel === "QC & Nhận hàng") {
-                dlLabel = "Deadline QC"; dlValue = String(data.deadline_qc || "");
+                const qcDl = String(data.deadline_qc || "");
+                const etaFallback = String(data.sample_eta || "");
+                dlValue = qcDl || etaFallback;
+                dlLabel = qcDl ? "Deadline QC" : etaFallback ? "ETA mẫu về (từ PO đặt mẫu)" : "Deadline QC";
               } else if (stepLabel === "Duyệt mẫu") {
                 dlLabel = "Deadline QC"; dlValue = String(data.deadline_qc || "");
               } else if (stepLabel === "Nhập hàng" || stepLabel === "Đặt hàng") {
@@ -739,9 +744,10 @@ function ModalInner({
                         const now = new Date().toLocaleDateString("vi-VN");
                         const byName = users.find((u) => u.email === currentUserEmail)?.name || currentUserEmail;
                         // Reopen previous work step, lock this approval step
+                        const revLog = { action: "revision", by: currentUserEmail, at: now, step: step.label, note: result };
                         const updatedSteps = initSteps.map((s, i) => {
-                          if (i === activeIdx) return { ...s, status: "locked" as const };
-                          if (i === activeIdx - 1) return { ...s, status: "active" as const };
+                          if (i === activeIdx) return { ...s, status: "locked" as const, logs: [...(s.logs || []), revLog] };
+                          if (i === activeIdx - 1) return { ...s, status: "active" as const, logs: [...(s.logs || []), { action: "reopened", by: currentUserEmail, at: now, from: step.label }] };
                           return s;
                         });
                         const newData = {
@@ -761,7 +767,8 @@ function ModalInner({
                       onClick={() => {
                         if (!confirm("Từ chối ticket này? Sẽ chuyển sang trạng thái Loại bỏ.")) return;
                         startTransition(async () => {
-                          const updated = initSteps.map((s, i) => i === activeIdx ? { ...s, status: "rejected" as const, result } : s);
+                          const rejectLog = { action: "reject", by: currentUserEmail, at: new Date().toISOString(), step: step.label, note: result };
+                          const updated = initSteps.map((s, i) => i === activeIdx ? { ...s, status: "rejected" as const, result, logs: [...(s.logs || []), rejectLog] } : s);
                           const newData = { ...data, proposer_role: proposerRole, priority, [stepsKey]: JSON.stringify(updated) };
                           await saveRdItemAction(item.id, { name: itemName, stage: "Loại bỏ", data: newData });
                           onRefresh();
@@ -822,6 +829,40 @@ function ModalInner({
                   {(links.length > 0 || photos.length > 0) && (
                     <div style={{ fontSize: 10, color: "#94A3B8" }}>
                       {links.length > 0 && `${links.length} tài liệu`}{links.length > 0 && photos.length > 0 && " · "}{photos.length > 0 && `${photos.length} hình ảnh`}
+                    </div>
+                  )}
+                  {/* Linked PO for Đặt mẫu */}
+                  {step.label === "Đặt mẫu" && !!data.linked_sample_po && (
+                    <div style={{ marginTop: 8, padding: "6px 10px", background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 7, fontSize: 11 }}>
+                      <span style={{ color: "#15803D", fontWeight: 600 }}>📦 PO mẫu: </span>
+                      <a href={`/list?q=${String(data.linked_sample_po)}`} style={{ color: "#2563EB", fontWeight: 700, textDecoration: "none" }}>{String(data.linked_sample_po)}</a>
+                      {!!data.sample_eta && <span style={{ color: "#64748B", marginLeft: 8 }}>· ETA: {String(data.sample_eta)}</span>}
+                    </div>
+                  )}
+                  {/* Lịch sử bước */}
+                  {step.logs && step.logs.length > 0 && (
+                    <div style={{ marginTop: 8 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", textTransform: "uppercase", marginBottom: 4 }}>Lịch sử</div>
+                      {step.logs.map((log, li) => {
+                        const at = String(log.at || "");
+                        const by = String(log.by || "");
+                        const byName = users.find((u) => u.email === by)?.name || by;
+                        const timeStr = at ? new Date(at).toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
+                        const actionLabel = log.action === "complete" ? "✓ Hoàn thành"
+                          : log.action === "activate" ? "▸ Bắt đầu"
+                          : log.action === "revision" ? "↺ Yêu cầu chỉnh sửa"
+                          : log.action === "reopened" ? "↺ Mở lại"
+                          : log.action === "reject" ? "✕ Từ chối"
+                          : String(log.action || "");
+                        return (
+                          <div key={li} style={{ fontSize: 10, color: "#64748B", padding: "2px 0", display: "flex", gap: 6, alignItems: "baseline" }}>
+                            <span style={{ color: "#94A3B8", minWidth: 75, flexShrink: 0 }}>{timeStr}</span>
+                            <span style={{ fontWeight: 600 }}>{actionLabel}</span>
+                            <span>— {byName}</span>
+                            {!!log.note && <span style={{ color: "#94A3B8", fontStyle: "italic" }}>&quot;{String(log.note).substring(0, 50)}&quot;</span>}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1305,6 +1346,33 @@ function ModalInner({
             )}
 
             </div>)}{/* end locked summary / editable form */}
+
+            {/* ── Lịch sử bước (active/editable) ── */}
+            {!isLocked && step.logs && step.logs.length > 0 && (
+              <div style={{ marginTop: 14, marginBottom: 10, padding: "8px 10px", background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", textTransform: "uppercase", marginBottom: 4 }}>Lịch sử</div>
+                {step.logs.map((log, li) => {
+                  const at = String(log.at || "");
+                  const by = String(log.by || "");
+                  const byName = users.find((u) => u.email === by)?.name || by;
+                  const timeStr = at ? new Date(at).toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
+                  const actionLabel = log.action === "complete" ? "✓ Hoàn thành"
+                    : log.action === "activate" ? "▸ Bắt đầu"
+                    : log.action === "revision" ? "↺ Yêu cầu chỉnh sửa"
+                    : log.action === "reopened" ? "↺ Mở lại"
+                    : log.action === "reject" ? "✕ Từ chối"
+                    : String(log.action || "");
+                  return (
+                    <div key={li} style={{ fontSize: 10, color: "#64748B", padding: "2px 0", display: "flex", gap: 6, alignItems: "baseline" }}>
+                      <span style={{ color: "#94A3B8", minWidth: 75, flexShrink: 0 }}>{timeStr}</span>
+                      <span style={{ fontWeight: 600 }}>{actionLabel}</span>
+                      <span>— {byName}</span>
+                      {!!log.note && <span style={{ color: "#94A3B8", fontStyle: "italic" }}>&quot;{String(log.note).substring(0, 50)}&quot;</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             {/* ── Action buttons (normal steps only) ── */}
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", paddingTop: 10, borderTop: "1px solid #E2E8F0" }}>

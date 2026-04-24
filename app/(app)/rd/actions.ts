@@ -170,9 +170,14 @@ export async function createSamplePoAction(rdItemId: string, poFields: {
 
   if (error) return { ok: false as const, error: error.message };
 
-  // Link sample PO back to R&D item
+  // Link sample PO back to R&D item + save ETA for deadline tracking
   await saveRdItem(rdItemId, {
-    data: { ...data, [stepsKey]: steps, linked_sample_po: orderId },
+    data: {
+      ...data,
+      [stepsKey]: steps,
+      linked_sample_po: orderId,
+      ...(poFields.eta_date ? { sample_eta: poFields.eta_date } : {}),
+    },
   });
 
   revalidatePath("/rd");
