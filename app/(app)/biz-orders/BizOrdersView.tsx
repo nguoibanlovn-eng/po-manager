@@ -316,30 +316,32 @@ export default function BizOrdersView({
           <div className="stat-card c-red"><div className="sl">Từ chối</div><div className="sv" style={{ color: "var(--red)" }}>{stats.rejected}</div><div className="ss">{stats.total > 0 ? Math.round(stats.rejected / stats.total * 100) : 0}%</div></div>
         </div>
 
-        {/* Tabs + Filters inline */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
-          <div className="mini-tabs" style={{ marginBottom: 0 }}>
-            {[
-              { key: "", label: "Tất cả", count: stats.total },
-              { key: "pending", label: "Chờ duyệt", count: stats.pending, urgent: stats.pending > 0 },
-              { key: "approved", label: "Đã duyệt", count: stats.approved },
-              { key: "rejected", label: "Từ chối", count: stats.rejected },
-            ].map((tab) => (
-              <button key={tab.key} className={`mini-tab${filterStatus === tab.key ? " active" : ""}`} onClick={() => setFilterStatus(tab.key)}>
-                {tab.label} <span className="cnt" style={tab.urgent ? { background: "#DC2626", color: "#fff" } : undefined}>{tab.count}</span>
-              </button>
-            ))}
-          </div>
-          <select value={filterTeam} onChange={(e) => setFilterTeam(e.target.value)} style={{ padding: "5px 8px", fontSize: 12 }}>
+        {/* Tabs */}
+        <div className="mini-tabs">
+          {[
+            { key: "", label: "Tất cả", count: stats.total },
+            { key: "pending", label: "Chờ duyệt", count: stats.pending, urgent: stats.pending > 0 },
+            { key: "approved", label: "Đã duyệt", count: stats.approved },
+            { key: "rejected", label: "Từ chối", count: stats.rejected },
+          ].map((tab) => (
+            <button key={tab.key} className={`mini-tab${filterStatus === tab.key ? " active" : ""}`} onClick={() => setFilterStatus(tab.key)}>
+              {tab.label} <span className="cnt" style={tab.urgent ? { background: "#DC2626", color: "#fff" } : undefined}>{tab.count}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Filters */}
+        <div style={{ display: "flex", gap: 6, marginBottom: 10, alignItems: "center" }}>
+          <select value={filterTeam} onChange={(e) => setFilterTeam(e.target.value)} style={{ padding: "5px 8px", fontSize: 12, width: "auto" }}>
             <option value="">Team</option>
             {TEAMS.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
-          <select value={filterType} onChange={(e) => setFilterType(e.target.value)} style={{ padding: "5px 8px", fontSize: 12 }}>
+          <select value={filterType} onChange={(e) => setFilterType(e.target.value)} style={{ padding: "5px 8px", fontSize: 12, width: "auto" }}>
             <option value="">Loại</option>
             <option value="new">Hàng mới</option>
             <option value="existing">Hàng cũ</option>
           </select>
-          <input type="text" placeholder="Tìm order..." value={filterQ} onChange={(e) => setFilterQ(e.target.value)} style={{ padding: "5px 9px", fontSize: 12, border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", flex: 1, minWidth: 120 }} />
+          <input type="text" placeholder="Tìm order..." value={filterQ} onChange={(e) => setFilterQ(e.target.value)} style={{ padding: "5px 9px", fontSize: 12, border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", flex: 1, minWidth: 100 }} />
         </div>
 
         <div className="tbl-wrap">
