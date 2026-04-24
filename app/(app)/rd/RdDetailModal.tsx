@@ -678,6 +678,15 @@ function ModalInner({
                     <div style={S.label}>{isDuyetNC || isDuyetMau ? "Nhận xét Leader" : "Ghi chú"}</div>
                     <textarea value={result} onChange={(e) => { setResult(e.target.value); setDirty(true); }} placeholder={isXacNhan && leaderFlow ? "Ghi chú khi nhận việc hoặc lý do từ chối..." : "Nhận xét, góp ý..."} style={S.textarea} />
                   </div>
+                  {/* Deadline cho bước tiếp theo — Duyệt NC → Đặt mẫu, Duyệt mẫu → Nhập hàng */}
+                  {(isDuyetNC || isDuyetMau) && (
+                    <div style={S.section}>
+                      <div style={S.label}>Deadline {isDuyetNC ? "Đặt mẫu" : "Nhập hàng"}</div>
+                      <input type="date" value={deadlineToISO(String(data[isDuyetNC ? "deadline_dat_mau" : "deadline_nhap_hang"] || ""))}
+                        onChange={(e) => { setField(isDuyetNC ? "deadline_dat_mau" : "deadline_nhap_hang", e.target.value); }}
+                        style={S.input} />
+                    </div>
+                  )}
                   {/* 3 Action buttons */}
                   <div style={{ display: "flex", gap: 6 }}>
                     <button type="button" disabled={pending} onClick={() => {
@@ -784,6 +793,33 @@ function ModalInner({
               );
             })() : (
             <div>
+
+            {/* ── Deadline banner for non-Đề xuất steps ── */}
+            {(() => {
+              const dxStep = initSteps.find((s) => s.label === "Đề xuất");
+              const dxDeadline = dxStep?.deadline || "";
+              const stepLabel = step.label;
+              let dlLabel = ""; let dlValue = ""; let dlOverdue = false;
+
+              if (stepLabel === "Xác nhận" || stepLabel === "NV nhận việc" || stepLabel === "Nghiên cứu") {
+                dlLabel = "Deadline NC (từ Đề xuất)"; dlValue = dxDeadline;
+              } else if (stepLabel === "Đặt mẫu") {
+                dlLabel = "Deadline đặt mẫu"; dlValue = String(data.deadline_dat_mau || "");
+              } else if (stepLabel === "Hàng về" || stepLabel === "QC & Nhận hàng") {
+                dlLabel = "Deadline QC"; dlValue = String(data.deadline_qc || "");
+              } else if (stepLabel === "Nhập hàng" || stepLabel === "Đặt hàng") {
+                dlLabel = "Deadline nhập hàng"; dlValue = String(data.deadline_nhap_hang || "");
+              }
+              if (dlValue && step.status !== "approved") dlOverdue = isOverdue(dlValue);
+
+              return dlValue ? (
+                <div style={{ padding: "6px 10px", background: dlOverdue ? "#FEF2F2" : "#F0F9FF", border: `1px solid ${dlOverdue ? "#FECACA" : "#BAE6FD"}`, borderRadius: 7, marginBottom: 12, fontSize: 11, display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ color: dlOverdue ? "#DC2626" : "#0369A1", fontWeight: 600 }}>
+                    {dlOverdue ? "⚠ QUÁ HẠN" : "⏰"} {dlLabel}: {dlValue}
+                  </span>
+                </div>
+              ) : null;
+            })()}
 
             {/* Assignee + Deadline — only at Đề xuất step */}
             {step.label === "Đề xuất" && (
@@ -1005,6 +1041,34 @@ function ModalInner({
                 <div style={S.section}>
                   <div style={S.label}>Đánh giá chung</div>
                   <textarea value={formData.qc_evaluation || ""} onChange={(e) => setField("qc_evaluation", e.target.value)} placeholder="VD: 8/10. Pin tốt, phun sương OK 2/3 chế độ. Đề xuất: PASS — nhập 200 cái test." style={{ ...S.textarea, minHeight: 60 }} />
+                </div>
+
+                {/* Deadline QC — chọn 1-3 ngày */}
+                <div style={S.section}>
+                  <div style={S.label}>Deadline QC (từ ngày hàng về)</div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {[1, 2, 3].map((d) => {
+                      const current = String(data.qc_days || "");
+                      const isSelected = current === String(d);
+                      return (
+                        <button key={d} type="button" onClick={() => {
+                          const today = new Date();
+                          const dl = new Date(today.getTime() + d * 86400000);
+                          const dlStr = dl.toISOString().split("T")[0];
+                          setField("qc_days", String(d));
+                          setField("deadline_qc", dlStr);
+                        }} style={{
+                          flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: "pointer",
+                          border: `2px solid ${isSelected ? "#7C3AED" : "#E2E8F0"}`,
+                          background: isSelected ? "#F5F3FF" : "#fff",
+                          color: isSelected ? "#7C3AED" : "#64748B",
+                        }}>
+                          {d} ngày
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {!!data.deadline_qc && <div style={{ fontSize: 9, color: "#94A3B8", marginTop: 4 }}>Deadline: {String(data.deadline_qc || "")}</div>}
                 </div>
 
                 {/* Gửi Leader duyệt */}
