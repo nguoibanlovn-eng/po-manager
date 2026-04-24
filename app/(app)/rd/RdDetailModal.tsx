@@ -1337,7 +1337,7 @@ function ModalInner({
 
                 {/* USP */}
                 <div style={S.section}>
-                  <div style={S.label}>Phân tích USP</div>
+                  <div style={S.label}>Phân tích USP<span style={{ color: "#DC2626", marginLeft: 2 }}>*</span></div>
                   <textarea value={formData.usp || ""} onChange={(e) => setField("usp", e.target.value)} style={S.textarea} />
                 </div>
                 {/* Đánh giá thị trường — dynamic rows */}
@@ -1375,11 +1375,11 @@ function ModalInner({
                 {/* Giá nhập/bán + profit */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 6 }}>
                   <div style={S.section}>
-                    <div style={S.label}>Giá nhập dự kiến</div>
+                    <div style={S.label}>Giá nhập dự kiến<span style={{ color: "#DC2626", marginLeft: 2 }}>*</span></div>
                     <input type="text" inputMode="numeric" value={fmtNum(formData.price_buy || "")} onChange={(e) => setField("price_buy", rawNum(e.target.value))} style={S.input} />
                   </div>
                   <div style={S.section}>
-                    <div style={S.label}>Giá bán dự kiến</div>
+                    <div style={S.label}>Giá bán dự kiến<span style={{ color: "#DC2626", marginLeft: 2 }}>*</span></div>
                     <input type="text" inputMode="numeric" value={fmtNum(formData.price_sell || "")} onChange={(e) => setField("price_sell", rawNum(e.target.value))} style={S.input} />
                   </div>
                 </div>
