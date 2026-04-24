@@ -30,11 +30,10 @@ const CHANNEL_MAP: Record<string, string> = {
   "52": "Zalo cá nhân",
 };
 
-// Không cần status filter — lọc theo deliveryAt = chỉ đơn đã giao thành công
-
 type V3Order = {
-  info?: { id?: string | number; status?: string | number; createdAt?: string | number };
+  info?: { id?: string | number; status?: string | number; createdAt?: string | number; updatedAt?: string | number };
   channel?: { saleChannel?: string | number };
+  carrier?: { deliveryAt?: string };
   customer?: { customerId?: string | number; customerMobile?: string };
   customerId?: string | number;
   customerMobile?: string;
@@ -68,14 +67,15 @@ function addDays(dateStr: string, days: number): string {
   return d.toISOString().substring(0, 10);
 }
 
-// ─── V3: 1 ngày (theo ngày giao hàng thành công) ──
+// ─── V3: 1 ngày (theo ngày cập nhật, chỉ status=60 Thành công) ──
 async function syncV3Day(date: string): Promise<{ orders: number; rows: Row[]; skipped: number; log: string }> {
   const fromTs = Math.floor(new Date(date + "T00:00:00+07:00").getTime() / 1000);
   const toTs = Math.floor(new Date(date + "T23:59:59+07:00").getTime() / 1000);
 
-  // Lọc theo deliveryAt + status=60 (Thành công) = chỉ đơn đã giao xong
+  // updatedAt + status=60 → đơn thành công được cập nhật ngày này
+  // Bao gồm cả đơn sàn tự giao (TikTok/Shopee) không có deliveryAt
   const orders = await nhanhV3FetchAll<V3Order>("order/list", {
-    filters: { deliveryAtFrom: fromTs, deliveryAtTo: toTs, statuses: [60] },
+    filters: { updatedAtFrom: fromTs, updatedAtTo: toTs, statuses: [60] },
   }, { maxPages: 200 });
 
   const now = nowVN();
@@ -91,8 +91,16 @@ async function syncV3Day(date: string): Promise<{ orders: number; rows: Row[]; s
     const chCode = String(o.channel?.saleChannel || "0");
     const chName = CHANNEL_MAP[chCode] || `Kênh ${chCode}`;
     const customerId = String(o.customer?.customerId || o.customerId || o.customerMobile || "");
-    // Dùng ngày giao (delivery date) làm ngày bán — không dùng createdAt
-    const orderDate = date;
+    // Ngày bán: ưu tiên deliveryAt (ngày giao) > updatedAt > date param
+    let orderDate = date;
+    if (o.carrier?.deliveryAt) {
+      orderDate = String(o.carrier.deliveryAt).substring(0, 10);
+    } else if (info.updatedAt) {
+      try {
+        const ts = Number(info.updatedAt);
+        if (ts > 1e9) orderDate = new Date(ts * 1000).toLocaleDateString("sv-SE", { timeZone: "Asia/Ho_Chi_Minh" });
+      } catch { /* */ }
+    }
 
     for (const p of parseProducts(o.products)) {
       const sku = String(p.barcode || p.code || "").trim();
