@@ -74,7 +74,16 @@ async function enrichSampleEta(db: ReturnType<typeof supabaseAdmin>, items: RdIt
     const poId = String(d.linked_sample_po);
     const eta = etaMap.get(poId);
     if (eta) {
-      (it.data as Record<string, unknown>).sample_eta = eta;
+      d.sample_eta = eta;
+      // Auto-set deadline_qc = ETA + 3 ngày nếu chưa có
+      if (!d.deadline_qc) {
+        const etaDate = new Date(eta);
+        if (!isNaN(etaDate.getTime())) {
+          etaDate.setDate(etaDate.getDate() + 3);
+          d.deadline_qc = etaDate.toISOString().split("T")[0];
+          d.qc_days = "3";
+        }
+      }
     }
   }
 }

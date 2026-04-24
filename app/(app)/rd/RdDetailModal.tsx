@@ -360,7 +360,20 @@ function ModalInner({
       });
       const isFinished = isLastStep;
       const nextStepLabel = isFinished ? "Hoàn thành" : (activeIdx + 1 < updated.length ? updated[activeIdx + 1].label : step.label);
-      const newData = { ...clearRevision(data), ...formData, proposer_role: proposerRole, priority, market_fields: marketFields, supply_fields: supplyFields, [stepsKey]: JSON.stringify(updated) };
+      // Auto-set deadline_qc = sample_eta + 3 ngày khi hoàn thành bước Đặt mẫu
+      const autoDeadline: Record<string, string> = {};
+      if (step.label === "Đặt mẫu") {
+        const eta = String(formData.sample_eta || data.sample_eta || "");
+        if (eta) {
+          const etaDate = new Date(eta);
+          if (!isNaN(etaDate.getTime())) {
+            etaDate.setDate(etaDate.getDate() + 3);
+            autoDeadline.deadline_qc = etaDate.toISOString().split("T")[0];
+            autoDeadline.qc_days = "3";
+          }
+        }
+      }
+      const newData = { ...clearRevision(data), ...formData, ...autoDeadline, proposer_role: proposerRole, priority, market_fields: marketFields, supply_fields: supplyFields, [stepsKey]: JSON.stringify(updated) };
       await saveRdItemAction(item.id, { name: itemName, stage: nextStepLabel, data: newData });
       setDirty(false);
       onRefresh();
@@ -840,10 +853,12 @@ function ModalInner({
                     </div>
                   )}
                   {/* Lịch sử bước */}
-                  {step.logs && step.logs.length > 0 && (
+                  {(() => {
+                    const hasLogs = step.logs && step.logs.length > 0;
+                    return (
                     <div style={{ marginTop: 8 }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", textTransform: "uppercase", marginBottom: 4 }}>Lịch sử</div>
-                      {step.logs.map((log, li) => {
+                      {hasLogs ? step.logs.map((log, li) => {
                         const at = String(log.at || "");
                         const by = String(log.by || "");
                         const byName = users.find((u) => u.email === by)?.name || by;
@@ -862,9 +877,14 @@ function ModalInner({
                             {!!log.note && <span style={{ color: "#94A3B8", fontStyle: "italic" }}>&quot;{String(log.note).substring(0, 50)}&quot;</span>}
                           </div>
                         );
-                      })}
+                      }) : (
+                        <div style={{ fontSize: 10, color: "#64748B", padding: "2px 0" }}>
+                          ✓ Hoàn thành{step.assignee_name ? ` — ${step.assignee_name}` : ""}
+                        </div>
+                      )}
                     </div>
-                  )}
+                    );
+                  })()}
                 </div>
               );
             })() : (
