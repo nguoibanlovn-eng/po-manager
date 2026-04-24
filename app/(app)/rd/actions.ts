@@ -121,7 +121,11 @@ export async function createPoFromRdAction(rdItemId: string) {
 }
 
 /** Create sample PO from R&D "Đặt mẫu" step → returns order_id */
-export async function createSamplePoAction(rdItemId: string) {
+export async function createSamplePoAction(rdItemId: string, poFields: {
+  order_name: string; owner: string; pay_status: string; goods_type: string;
+  supplier_name: string; order_date: string; eta_date: string;
+  arrival_date: string; deposit_amount: number; note: string;
+}) {
   const u = await requireUser();
   const item = await getRdItem(rdItemId);
   if (!item) return { ok: false as const, error: "R&D item not found" };
@@ -135,10 +139,7 @@ export async function createSamplePoAction(rdItemId: string) {
     return { ok: true as const, orderId: String(data.linked_sample_po) };
   }
 
-  const supplier = String(data.sample_supplier || "");
   const contact = String(data.sample_contact || "");
-  const qty = Number(data.sample_qty || 0);
-  const priceUsd = Number(data.sample_price_usd || 0);
 
   // Generate order_id
   const db = supabaseAdmin();
@@ -147,18 +148,22 @@ export async function createSamplePoAction(rdItemId: string) {
 
   const { error } = await db.from("orders").insert({
     order_id: orderId,
-    order_name: `[Mẫu] ${item.name || "SP từ R&D"}`,
-    supplier_name: supplier,
+    order_name: poFields.order_name || `[Mẫu] ${item.name || "SP từ R&D"}`,
+    supplier_name: poFields.supplier_name,
     supplier_contact: contact,
-    total_qty: qty || 1,
-    order_total: qty * priceUsd,
-    item_count: 1,
+    goods_type: poFields.goods_type || "Hàng mẫu",
+    total_qty: 0,
+    order_total: 0,
+    item_count: 0,
     stage: "DRAFT",
-    pay_status: "UNPAID",
-    owner: u.email,
+    pay_status: poFields.pay_status || "Chưa thanh toán",
+    owner: poFields.owner || u.email,
     created_by: u.email,
-    note: `Đơn mẫu từ R&D: ${item.name} (${rdItemId})`,
-    ...(data.sample_eta ? { eta_date: String(data.sample_eta) } : {}),
+    deposit_amount: poFields.deposit_amount || 0,
+    note: poFields.note,
+    ...(poFields.order_date ? { order_date: poFields.order_date } : {}),
+    ...(poFields.eta_date ? { eta_date: poFields.eta_date } : {}),
+    ...(poFields.arrival_date ? { arrival_date: poFields.arrival_date } : {}),
     created_at: nowVN(),
     updated_at: nowVN(),
   });

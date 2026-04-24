@@ -237,10 +237,15 @@ function ModalInner({
   const [showPoForm, setShowPoForm] = useState(false);
   // PO form fields
   const [poName, setPoName] = useState(`[Mẫu] ${item.name || "SP mới"}`);
-  const [poQty, setPoQty] = useState(String(data.sample_qty || "1"));
-  const [poPrice, setPoPrice] = useState(String(data.sample_price_usd || ""));
+  const [poOwner, setPoOwner] = useState(currentUserEmail);
+  const [poPayStatus, setPoPayStatus] = useState("Chưa thanh toán");
+  const [poGoodsType, setPoGoodsType] = useState("Hàng mẫu");
+  const [poSupplier, setPoSupplier] = useState(String(data.sample_supplier || ""));
+  const [poOrderDate, setPoOrderDate] = useState("");
   const [poEta, setPoEta] = useState(String(data.sample_eta || ""));
-  const [poNote, setPoNote] = useState("");
+  const [poArrivalDate, setPoArrivalDate] = useState("");
+  const [poDeposit, setPoDeposit] = useState("0");
+  const [poNote, setPoNote] = useState(`Đơn mẫu từ R&D: ${item.name || ""}`);
   // Auto-detect role: LEADER_* / ADMIN → leader, NV_* → staff
   const isAdmin = currentUserRole === "ADMIN";
   const autoRole = currentUserRole.startsWith("LEADER_") || currentUserRole === "ADMIN" ? "leader" : "staff";
@@ -968,52 +973,85 @@ function ModalInner({
       {/* ═══ PO SIMPLE POPUP FORM ═══ */}
       {showPoForm && (
         <div onClick={() => setShowPoForm(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", zIndex: 10001, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 14, width: 520, maxWidth: "96vw", boxShadow: "0 25px 70px rgba(0,0,0,.3)", overflow: "hidden" }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 14, width: 780, maxWidth: "96vw", boxShadow: "0 25px 70px rgba(0,0,0,.3)", overflow: "hidden" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "#F5F3FF", borderBottom: "1px solid #E2E8F0" }}>
               <span style={{ fontSize: 14, fontWeight: 700, color: "#7C3AED" }}>📦 Tạo đơn PO mua mẫu</span>
               <button type="button" onClick={() => setShowPoForm(false)} style={{ padding: "2px 8px", borderRadius: 5, fontSize: 12, border: "1px solid #E2E8F0", background: "#fff", color: "#64748B", cursor: "pointer" }}>✕</button>
             </div>
             <div style={{ padding: 16 }}>
-              <div style={S.section}>
-                <div style={S.label}>Tên đơn</div>
-                <input type="text" value={poName} onChange={(e) => setPoName(e.target.value)} style={S.input} />
+              {/* Row 1: Mã đơn | Người phụ trách | Thanh toán | Phân loại hàng */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10 }}>
+                <div style={S.section}>
+                  <div style={S.label}>Mã đơn</div>
+                  <input type="text" value="Tự sinh khi lưu" readOnly style={{ ...S.input, background: "#F8FAFC", color: "#94A3B8" }} />
+                </div>
+                <div style={S.section}>
+                  <div style={S.label}>Người phụ trách</div>
+                  <select value={poOwner} onChange={(e) => setPoOwner(e.target.value)} style={S.select}>
+                    {users.map((u) => <option key={u.email} value={u.email}>{u.name || u.email}</option>)}
+                  </select>
+                </div>
+                <div style={S.section}>
+                  <div style={S.label}>Thanh toán</div>
+                  <select value={poPayStatus} onChange={(e) => setPoPayStatus(e.target.value)} style={S.select}>
+                    {["Chưa thanh toán", "Đã cọc", "Đã thanh toán", "Công nợ"].map((o) => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                </div>
+                <div style={S.section}>
+                  <div style={S.label}>Phân loại hàng</div>
+                  <select value={poGoodsType} onChange={(e) => setPoGoodsType(e.target.value)} style={S.select}>
+                    {["Trung Quốc trữ sẵn", "Trung Quốc đặt hàng", "Nội địa", "Hàng mẫu", "Hàng sản xuất"].map((o) => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                </div>
               </div>
+              {/* Row 2: Tên đơn | Nhà cung cấp */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <div style={S.section}>
-                  <div style={S.label}>NCC</div>
-                  <input type="text" value={formData.sample_supplier || ""} readOnly style={{ ...S.input, background: "#F8FAFC" }} />
+                  <div style={S.label}>Tên đơn</div>
+                  <input type="text" value={poName} onChange={(e) => setPoName(e.target.value)} placeholder="VD: Lô máy chiếu HY320 tháng 3/2026" style={S.input} />
                 </div>
                 <div style={S.section}>
-                  <div style={S.label}>Liên hệ</div>
-                  <input type="text" value={formData.sample_contact || ""} readOnly style={{ ...S.input, background: "#F8FAFC" }} />
+                  <div style={S.label}>Nhà cung cấp</div>
+                  <input type="text" value={poSupplier} onChange={(e) => setPoSupplier(e.target.value)} placeholder="Chọn hoặc nhập NCC mới" style={S.input} />
                 </div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              {/* Row 3: Ngày đặt | ETA | Ngày về thực tế | Tiền cọc */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10 }}>
                 <div style={S.section}>
-                  <div style={S.label}>Số lượng mẫu</div>
-                  <input type="text" inputMode="numeric" value={fmtNum(poQty)} onChange={(e) => setPoQty(rawNum(e.target.value))} style={S.input} />
+                  <div style={S.label}>Ngày đặt</div>
+                  <input type="date" value={poOrderDate} onChange={(e) => setPoOrderDate(e.target.value)} style={S.input} />
                 </div>
                 <div style={S.section}>
-                  <div style={S.label}>Giá mẫu (USD)</div>
-                  <input type="text" inputMode="numeric" value={fmtNum(poPrice)} onChange={(e) => setPoPrice(rawNum(e.target.value))} style={S.input} />
+                  <div style={S.label}>ETA (dự kiến về)</div>
+                  <input type="date" value={deadlineToISO(poEta)} onChange={(e) => setPoEta(e.target.value)} style={S.input} />
+                </div>
+                <div style={S.section}>
+                  <div style={S.label}>Ngày về thực tế</div>
+                  <input type="date" value={poArrivalDate} onChange={(e) => setPoArrivalDate(e.target.value)} style={S.input} />
+                </div>
+                <div style={S.section}>
+                  <div style={S.label}>Tiền cọc (đ)</div>
+                  <input type="text" inputMode="numeric" value={fmtNum(poDeposit)} onChange={(e) => setPoDeposit(rawNum(e.target.value))} style={S.input} />
                 </div>
               </div>
-              <div style={S.section}>
-                <div style={S.label}>Dự kiến mẫu về (ETA)</div>
-                <input type="date" value={deadlineToISO(poEta)} onChange={(e) => setPoEta(e.target.value)} style={S.input} />
-              </div>
+              {/* Row 4: Ghi chú */}
               <div style={S.section}>
                 <div style={S.label}>Ghi chú</div>
-                <textarea value={poNote} onChange={(e) => setPoNote(e.target.value)} placeholder="Ghi chú thêm..." style={S.textarea} />
+                <textarea value={poNote} onChange={(e) => setPoNote(e.target.value)} placeholder="Ghi chú..." style={S.textarea} />
               </div>
+              {/* Actions */}
               <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", paddingTop: 10, borderTop: "1px solid #E2E8F0" }}>
                 <button type="button" onClick={() => setShowPoForm(false)} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#F1F5F9", color: "#64748B", cursor: "pointer" }}>Huỷ</button>
                 <button type="button" disabled={pending} onClick={() => {
                   startTransition(async () => {
-                    // Save RD data first
-                    const newData = { ...data, ...formData, sample_qty: poQty, sample_price_usd: poPrice, sample_eta: poEta, [stepsKey]: JSON.stringify(buildUpdatedSteps()) };
+                    const newData = { ...data, ...formData, [stepsKey]: JSON.stringify(buildUpdatedSteps()) };
                     await saveRdItemAction(item.id, { name: itemName, data: newData });
-                    const r = await createSamplePoAction(item.id);
+                    const r = await createSamplePoAction(item.id, {
+                      order_name: poName, owner: poOwner, pay_status: poPayStatus,
+                      goods_type: poGoodsType, supplier_name: poSupplier,
+                      order_date: poOrderDate, eta_date: poEta, arrival_date: poArrivalDate,
+                      deposit_amount: Number(poDeposit) || 0, note: poNote,
+                    });
                     if (r.ok) {
                       setShowPoForm(false);
                       onRefresh();
