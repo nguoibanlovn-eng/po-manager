@@ -136,9 +136,8 @@ function PullToRefresh() {
     if (typeof window === "undefined" || window.innerWidth > 900) return;
 
     function getScrollTop() {
-      // Check multiple scroll sources — iOS PWA can use different containers
       const main = document.getElementById("main");
-      return Math.min(
+      return Math.max(
         window.scrollY || window.pageYOffset || 0,
         document.documentElement.scrollTop || 0,
         main?.scrollTop || 0,
