@@ -231,6 +231,17 @@ function ModalInner({
   const [newLink, setNewLink] = useState("");
   const [newPhoto, setNewPhoto] = useState("");
 
+  // Dynamic key-value fields for Nghiên cứu
+  type KV = { key: string; value: string };
+  const [marketFields, setMarketFields] = useState<KV[]>(() => {
+    const saved = data.market_fields as KV[] | undefined;
+    return saved?.length ? saved : [{ key: "Đối thủ", value: "" }, { key: "Giá thị trường", value: "" }, { key: "Volume", value: "" }, { key: "Đánh giá KH", value: "" }];
+  });
+  const [supplyFields, setSupplyFields] = useState<KV[]>(() => {
+    const saved = data.supply_fields as KV[] | undefined;
+    return saved?.length ? saved : [{ key: "NCC", value: "" }, { key: "Uy tín", value: "" }, { key: "MOQ", value: "" }];
+  });
+
   // Form fields (data.* flat)
   const formFields = STEP_FORM_FIELDS[step.label] || [];
   const [formData, setFormData] = useState<Record<string, string>>(() => {
@@ -256,6 +267,11 @@ function ModalInner({
     const d: Record<string, string> = {};
     for (const f of fields) d[f.key] = String(data[f.key] ?? "");
     setFormData(d);
+    // Reload dynamic fields
+    const mf = data.market_fields as KV[] | undefined;
+    setMarketFields(mf?.length ? mf : [{ key: "Đối thủ", value: "" }, { key: "Giá thị trường", value: "" }, { key: "Volume", value: "" }, { key: "Đánh giá KH", value: "" }]);
+    const sf = data.supply_fields as KV[] | undefined;
+    setSupplyFields(sf?.length ? sf : [{ key: "NCC", value: "" }, { key: "Uy tín", value: "" }, { key: "MOQ", value: "" }]);
     setDirty(false);
   }
 
@@ -280,7 +296,7 @@ function ModalInner({
 
   function save() {
     startTransition(async () => {
-      const newData = { ...data, ...formData, proposer_role: proposerRole, priority, [stepsKey]: JSON.stringify(buildUpdatedSteps()) };
+      const newData = { ...data, ...formData, proposer_role: proposerRole, priority, market_fields: marketFields, supply_fields: supplyFields, [stepsKey]: JSON.stringify(buildUpdatedSteps()) };
       await saveRdItemAction(item.id, { name: itemName, data: newData });
       setDirty(false);
       onRefresh();
@@ -294,7 +310,7 @@ function ModalInner({
         if (i === activeIdx + 1 && (s.status === "locked" || s.status === "skipped")) return { ...s, status: "active" as const };
         return s;
       });
-      const newData = { ...data, ...formData, proposer_role: proposerRole, priority, [stepsKey]: JSON.stringify(updated) };
+      const newData = { ...data, ...formData, proposer_role: proposerRole, priority, market_fields: marketFields, supply_fields: supplyFields, [stepsKey]: JSON.stringify(updated) };
       await saveRdItemAction(item.id, { name: itemName, data: newData });
       setDirty(false);
       onRefresh();
@@ -651,12 +667,79 @@ function ModalInner({
               )}
             </div>
 
-            {/* Form fields */}
-            {formFields.length > 0 && (
+            {/* Form fields — custom for Nghiên cứu, generic for others */}
+            {step.label === "Nghiên cứu" ? (
+              <>
+                {/* USP */}
+                <div style={S.section}>
+                  <div style={S.label}>Phân tích USP</div>
+                  <textarea value={formData.usp || ""} onChange={(e) => setField("usp", e.target.value)} style={S.textarea} />
+                </div>
+                {/* Đánh giá thị trường — dynamic rows */}
+                <div style={S.section}>
+                  <div style={S.label}>Đánh giá thị trường</div>
+                  {marketFields.map((f, i) => (
+                    <div key={i} style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 5 }}>
+                      <input value={f.key} onChange={(e) => { const n = [...marketFields]; n[i] = { ...n[i], key: e.target.value }; setMarketFields(n); setDirty(true); }}
+                        style={{ ...S.input, width: 120, flex: "none" }} />
+                      <input value={f.value} onChange={(e) => { const n = [...marketFields]; n[i] = { ...n[i], value: e.target.value }; setMarketFields(n); setDirty(true); }}
+                        style={{ ...S.input, flex: 1 }} />
+                      <button type="button" onClick={() => { setMarketFields(marketFields.filter((_, j) => j !== i)); setDirty(true); }}
+                        style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 14 }}>✕</button>
+                    </div>
+                  ))}
+                  <div onClick={() => { setMarketFields([...marketFields, { key: "", value: "" }]); setDirty(true); }}
+                    style={{ fontSize: 10, color: "#7C3AED", cursor: "pointer", fontWeight: 600 }}>+ Thêm trường</div>
+                </div>
+                {/* Phân tích nguồn hàng — dynamic rows */}
+                <div style={S.section}>
+                  <div style={S.label}>Phân tích nguồn hàng</div>
+                  {supplyFields.map((f, i) => (
+                    <div key={i} style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 5 }}>
+                      <input value={f.key} onChange={(e) => { const n = [...supplyFields]; n[i] = { ...n[i], key: e.target.value }; setSupplyFields(n); setDirty(true); }}
+                        style={{ ...S.input, width: 120, flex: "none" }} />
+                      <input value={f.value} onChange={(e) => { const n = [...supplyFields]; n[i] = { ...n[i], value: e.target.value }; setSupplyFields(n); setDirty(true); }}
+                        style={{ ...S.input, flex: 1 }} />
+                      <button type="button" onClick={() => { setSupplyFields(supplyFields.filter((_, j) => j !== i)); setDirty(true); }}
+                        style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 14 }}>✕</button>
+                    </div>
+                  ))}
+                  <div onClick={() => { setSupplyFields([...supplyFields, { key: "", value: "" }]); setDirty(true); }}
+                    style={{ fontSize: 10, color: "#7C3AED", cursor: "pointer", fontWeight: 600 }}>+ Thêm trường</div>
+                </div>
+                {/* Giá nhập/bán + profit */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 6 }}>
+                  <div style={S.section}>
+                    <div style={S.label}>Giá nhập dự kiến</div>
+                    <input type="text" inputMode="numeric" value={formData.price_buy || ""} onChange={(e) => setField("price_buy", e.target.value)} style={S.input} />
+                  </div>
+                  <div style={S.section}>
+                    <div style={S.label}>Giá bán dự kiến</div>
+                    <input type="text" inputMode="numeric" value={formData.price_sell || ""} onChange={(e) => setField("price_sell", e.target.value)} style={S.input} />
+                  </div>
+                </div>
+                {(() => {
+                  const buy = Number(String(formData.price_buy || "0").replace(/\D/g, ""));
+                  const sell = Number(String(formData.price_sell || "0").replace(/\D/g, ""));
+                  const margin = sell > 0 ? Math.round(((sell - buy) / sell) * 100) : 0;
+                  const profit = sell - buy;
+                  return (buy > 0 && sell > 0) ? (
+                    <div style={{ padding: "6px 10px", background: "#F0FDF4", borderRadius: 6, marginBottom: 14, fontSize: 11, color: "#16A34A", fontWeight: 600 }}>
+                      Biên lợi nhuận: ~{margin}% · Lãi/SP: ~{profit.toLocaleString("vi-VN")}đ
+                    </div>
+                  ) : null;
+                })()}
+                {/* Đánh giá chung */}
+                <div style={S.section}>
+                  <div style={S.label}>Đánh giá chung</div>
+                  <textarea value={formData.evaluation || ""} onChange={(e) => setField("evaluation", e.target.value)} style={{ ...S.textarea, minHeight: 50 }} />
+                </div>
+              </>
+            ) : formFields.length > 0 ? (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
                 {formFields.map((f) => renderField(f))}
               </div>
-            )}
+            ) : null}
 
             {/* ── QC Checklist (for Hàng về step) ── */}
             {(checklist.length > 0 || isQcStep) && (
