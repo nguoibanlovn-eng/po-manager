@@ -299,71 +299,47 @@ export default function BizOrdersView({
   if (view === "list") {
     return (
       <div className="section">
+        {/* Header */}
         <div className="page-hdr">
           <div>
             <div className="page-title">Order nhập hàng</div>
-            <div className="page-sub">Team kinh doanh yêu cầu nhập hàng</div>
+            <div className="page-sub">{stats.total} order · Tháng {new Date().getMonth() + 1}/{new Date().getFullYear()}</div>
           </div>
           <button className="btn btn-primary" onClick={openCreate}>+ Tạo Order</button>
         </div>
 
-        <div className="stat-grid">
-          <div className="stat-card c-blue">
-            <div className="sl">Tổng Order</div>
-            <div className="sv">{stats.total}</div>
-            <div className="ss">Tháng {new Date().toLocaleDateString("vi-VN", { month: "2-digit", year: "numeric" })}</div>
-          </div>
-          <div className="stat-card c-amber">
-            <div className="sl">Chờ duyệt</div>
-            <div className="sv" style={{ color: "var(--amber)" }}>{stats.pending}</div>
-            <div className="ss">{stats.pending > 0 ? "Cần xử lý" : "Không có"}</div>
-          </div>
-          <div className="stat-card c-green">
-            <div className="sl">Đã duyệt</div>
-            <div className="sv" style={{ color: "var(--green)" }}>{stats.approved}</div>
-            <div className="ss">{stats.total > 0 ? Math.round(stats.approved / stats.total * 100) : 0}% duyệt</div>
-          </div>
-          <div className="stat-card c-red">
-            <div className="sl">Từ chối</div>
-            <div className="sv" style={{ color: "var(--red)" }}>{stats.rejected}</div>
-            <div className="ss">{stats.total > 0 ? Math.round(stats.rejected / stats.total * 100) : 0}%</div>
-          </div>
+        {/* Dashboard strip */}
+        <div className="stat-grid" style={{ gridTemplateColumns: "repeat(4, 1fr)", marginBottom: 12 }}>
+          <div className="stat-card c-blue"><div className="sl">Tổng Order</div><div className="sv">{stats.total}</div><div className="ss">tháng này</div></div>
+          <div className="stat-card c-amber"><div className="sl">Chờ duyệt</div><div className="sv" style={{ color: "var(--amber)" }}>{stats.pending}</div><div className="ss">{stats.pending > 0 ? "Cần xử lý" : "—"}</div></div>
+          <div className="stat-card c-green"><div className="sl">Đã duyệt</div><div className="sv" style={{ color: "var(--green)" }}>{stats.approved}</div><div className="ss">{stats.total > 0 ? Math.round(stats.approved / stats.total * 100) : 0}%</div></div>
+          <div className="stat-card c-red"><div className="sl">Từ chối</div><div className="sv" style={{ color: "var(--red)" }}>{stats.rejected}</div><div className="ss">{stats.total > 0 ? Math.round(stats.rejected / stats.total * 100) : 0}%</div></div>
         </div>
 
-        {/* Tabs */}
-        <div className="mini-tabs">
-          {[
-            { key: "", label: "Tất cả", count: stats.total },
-            { key: "pending", label: "Chờ duyệt", count: stats.pending },
-            { key: "approved", label: "Đã duyệt", count: stats.approved },
-            { key: "rejected", label: "Từ chối", count: stats.rejected },
-          ].map((tab) => (
-            <button
-              key={tab.key}
-              className={`mini-tab${filterStatus === tab.key ? " active" : ""}`}
-              onClick={() => setFilterStatus(tab.key)}
-            >
-              {tab.label} <span className="cnt">{tab.count}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Filters */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-          <select value={filterTeam} onChange={(e) => setFilterTeam(e.target.value)} style={{ minWidth: 130 }}>
-            <option value="">Team: Tất cả</option>
+        {/* Tabs + Filters inline */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <div className="mini-tabs" style={{ marginBottom: 0 }}>
+            {[
+              { key: "", label: "Tất cả", count: stats.total },
+              { key: "pending", label: "Chờ duyệt", count: stats.pending, urgent: stats.pending > 0 },
+              { key: "approved", label: "Đã duyệt", count: stats.approved },
+              { key: "rejected", label: "Từ chối", count: stats.rejected },
+            ].map((tab) => (
+              <button key={tab.key} className={`mini-tab${filterStatus === tab.key ? " active" : ""}`} onClick={() => setFilterStatus(tab.key)}>
+                {tab.label} <span className="cnt" style={tab.urgent ? { background: "#DC2626", color: "#fff" } : undefined}>{tab.count}</span>
+              </button>
+            ))}
+          </div>
+          <select value={filterTeam} onChange={(e) => setFilterTeam(e.target.value)} style={{ padding: "5px 8px", fontSize: 12 }}>
+            <option value="">Team</option>
             {TEAMS.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
-          <select value={filterType} onChange={(e) => setFilterType(e.target.value)} style={{ minWidth: 120 }}>
-            <option value="">Loại: Tất cả</option>
+          <select value={filterType} onChange={(e) => setFilterType(e.target.value)} style={{ padding: "5px 8px", fontSize: 12 }}>
+            <option value="">Loại</option>
             <option value="new">Hàng mới</option>
             <option value="existing">Hàng cũ</option>
           </select>
-          <input
-            type="text" placeholder="Tìm kiếm order..."
-            value={filterQ} onChange={(e) => setFilterQ(e.target.value)}
-            style={{ flex: 1, minWidth: 160 }}
-          />
+          <input type="text" placeholder="Tìm order..." value={filterQ} onChange={(e) => setFilterQ(e.target.value)} style={{ padding: "5px 9px", fontSize: 12, border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", flex: 1, minWidth: 120 }} />
         </div>
 
         <div className="tbl-wrap">
@@ -411,6 +387,12 @@ export default function BizOrdersView({
             </tbody>
           </table>
         </div>
+
+        {orders.length > 0 && (
+          <div style={{ padding: "10px 12px", fontSize: 12, fontWeight: 700, textAlign: "right", color: "var(--muted)" }}>
+            Tổng: {formatVND(orders.reduce((s, o) => s + toNum(o.order_total), 0))} · {orders.length} order
+          </div>
+        )}
       </div>
     );
   }
