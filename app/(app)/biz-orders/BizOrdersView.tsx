@@ -309,11 +309,27 @@ export default function BizOrdersView({
         </div>
 
         {/* Dashboard strip */}
-        <div className="stat-grid" style={{ gridTemplateColumns: "repeat(4, 1fr)", marginBottom: 12 }}>
-          <div className="stat-card c-blue"><div className="sl">Tổng Order</div><div className="sv">{stats.total}</div><div className="ss">tháng này</div></div>
-          <div className="stat-card c-amber"><div className="sl">Chờ duyệt</div><div className="sv" style={{ color: "var(--amber)" }}>{stats.pending}</div><div className="ss">{stats.pending > 0 ? "Cần xử lý" : "—"}</div></div>
-          <div className="stat-card c-green"><div className="sl">Đã duyệt</div><div className="sv" style={{ color: "var(--green)" }}>{stats.approved}</div><div className="ss">{stats.total > 0 ? Math.round(stats.approved / stats.total * 100) : 0}%</div></div>
-          <div className="stat-card c-red"><div className="sl">Từ chối</div><div className="sv" style={{ color: "var(--red)" }}>{stats.rejected}</div><div className="ss">{stats.total > 0 ? Math.round(stats.rejected / stats.total * 100) : 0}%</div></div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", background: "var(--card)", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden", marginBottom: 12 }}>
+          <div style={{ padding: "12px 14px", borderRight: "1px solid var(--border)" }}>
+            <div style={{ fontSize: 10, fontWeight: 800, color: "var(--blue)", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>Tổng Order</div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: "var(--blue)" }}>{stats.total}</div>
+            <div style={{ fontSize: 10, color: "var(--subtle)" }}>tháng này</div>
+          </div>
+          <div style={{ padding: "12px 14px", borderRight: "1px solid var(--border)" }}>
+            <div style={{ fontSize: 10, fontWeight: 800, color: "var(--amber)", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>Chờ duyệt</div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: "var(--amber)" }}>{stats.pending}</div>
+            <div style={{ fontSize: 10, color: "var(--subtle)" }}>{stats.pending > 0 ? "Cần xử lý" : "—"}</div>
+          </div>
+          <div style={{ padding: "12px 14px", borderRight: "1px solid var(--border)" }}>
+            <div style={{ fontSize: 10, fontWeight: 800, color: "var(--green)", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>Đã duyệt</div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: "var(--green)" }}>{stats.approved}</div>
+            <div style={{ fontSize: 10, color: "var(--subtle)" }}>{stats.total > 0 ? Math.round(stats.approved / stats.total * 100) : 0}%</div>
+          </div>
+          <div style={{ padding: "12px 14px" }}>
+            <div style={{ fontSize: 10, fontWeight: 800, color: "var(--red)", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>Từ chối</div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: "var(--red)" }}>{stats.rejected}</div>
+            <div style={{ fontSize: 10, color: "var(--subtle)" }}>{stats.total > 0 ? Math.round(stats.rejected / stats.total * 100) : 0}%</div>
+          </div>
         </div>
 
         {/* Tabs */}

@@ -121,13 +121,21 @@ export default function OrdersView({
       </div>
 
       {/* Dashboard strip */}
-      <div className="stat-grid" style={{ gridTemplateColumns: "repeat(6, 1fr)", marginBottom: 12 }}>
-        <div className="stat-card c-blue"><div className="sl">Ngân sách tháng</div><div className="sv" style={{ color: "var(--blue)" }}>{formatVND(stats.budget)}</div><div className="ss">Tháng {new Date().getMonth() + 1}/{new Date().getFullYear()}</div></div>
-        <div className="stat-card c-green"><div className="sl">Đã nhập</div><div className="sv" style={{ color: "var(--green)" }}>{formatVND(stats.spent)}</div><div className="ss">{stats.budget > 0 ? Math.round(stats.spent / stats.budget * 100) : 0}% ngân sách</div></div>
-        <div className="stat-card c-amber"><div className="sl">Quota còn lại</div><div className="sv" style={{ color: "var(--amber)" }}>{formatVND(Math.max(0, stats.remaining))}</div><div className="ss">{stats.budget > 0 ? Math.round(Math.max(0, stats.remaining) / stats.budget * 100) : 0}% còn</div></div>
-        <div className="stat-card c-red"><div className="sl">Chờ xử lý</div><div className="sv" style={{ color: "var(--red)" }}>{stats.pendingCount}</div><div className="ss">{stats.pendingOverdue > 0 ? `${stats.pendingOverdue} quá hạn` : "Không quá hạn"}</div></div>
-        <div className="stat-card c-teal"><div className="sl">Đang vận chuyển</div><div className="sv" style={{ color: "#0D9488" }}>{stats.inTransit}</div><div className="ss">{stats.inTransitSoon > 0 ? `${stats.inTransitSoon} sắp về` : "—"}</div></div>
-        <div className="stat-card c-purple"><div className="sl">Công nợ NCC</div><div className="sv" style={{ color: "#7C3AED" }}>{formatVND(stats.debt)}</div><div className="ss">{stats.debtNcc} NCC</div></div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", background: "var(--card)", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden", marginBottom: 12 }}>
+        {[
+          { label: "Ngân sách tháng", value: formatVND(stats.budget), sub: `Tháng ${new Date().getMonth() + 1}/${new Date().getFullYear()}`, color: "var(--blue)" },
+          { label: "Đã nhập", value: formatVND(stats.spent), sub: `${stats.budget > 0 ? Math.round(stats.spent / stats.budget * 100) : 0}% ngân sách`, color: "var(--green)" },
+          { label: "Quota còn lại", value: formatVND(Math.max(0, stats.remaining)), sub: `${stats.budget > 0 ? Math.round(Math.max(0, stats.remaining) / stats.budget * 100) : 0}% còn`, color: "var(--amber)" },
+          { label: "Chờ xử lý", value: String(stats.pendingCount), sub: stats.pendingOverdue > 0 ? `${stats.pendingOverdue} quá hạn` : "—", color: "var(--red)" },
+          { label: "Đang vận chuyển", value: String(stats.inTransit), sub: stats.inTransitSoon > 0 ? `${stats.inTransitSoon} sắp về` : "—", color: "#0D9488" },
+          { label: "Công nợ NCC", value: formatVND(stats.debt), sub: `${stats.debtNcc} NCC`, color: "#7C3AED" },
+        ].map((c, i) => (
+          <div key={i} style={{ padding: "12px 14px", borderRight: i < 5 ? "1px solid var(--border)" : undefined }}>
+            <div style={{ fontSize: 10, fontWeight: 800, color: c.color, textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>{c.label}</div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: c.color }}>{c.value}</div>
+            <div style={{ fontSize: 10, color: "var(--subtle)" }}>{c.sub}</div>
+          </div>
+        ))}
       </div>
 
       {/* Tabs */}
