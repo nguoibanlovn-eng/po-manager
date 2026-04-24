@@ -595,21 +595,28 @@ export default function BizOrdersView({
             <div className="form-group">
               <label>Gửi duyệt cho *</label>
               <select
-                multiple
-                value={selectedApprovers}
-                onChange={(e) => setSelectedApprovers(Array.from(e.target.selectedOptions, (o) => o.value))}
-                style={{ minHeight: 80, fontSize: 12 }}
+                value=""
+                onChange={(e) => { if (e.target.value && !selectedApprovers.includes(e.target.value)) setSelectedApprovers([...selectedApprovers, e.target.value]); e.target.value = ""; }}
               >
-                {approverCandidates.map((u) => {
+                <option value="">— Chọn người duyệt —</option>
+                {approverCandidates.filter((u) => !selectedApprovers.includes(u.email)).map((u) => {
                   const isKeToan = u.role === "LEADER_KETOAN" || u.role === "NV_KETOAN";
-                  return (
-                    <option key={u.email} value={u.email}>
-                      {u.name || u.email} ({u.role}){isKeToan ? " — KT" : ""}
-                    </option>
-                  );
+                  return <option key={u.email} value={u.email}>{u.name || u.email} ({u.role}){isKeToan ? " ★" : ""}</option>;
                 })}
               </select>
-              <span style={{ fontSize: 10, color: "var(--muted)" }}>Giữ Ctrl/Cmd để chọn nhiều</span>
+              {selectedApprovers.length > 0 && (
+                <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>
+                  {selectedApprovers.map((email) => {
+                    const u = approverCandidates.find((c) => c.email === email);
+                    return (
+                      <span key={email} style={{ background: "var(--blue-lt)", color: "#1E40AF", padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        {u?.name || email}
+                        <span onClick={() => toggleApprover(email)} style={{ cursor: "pointer", fontSize: 14, lineHeight: 1, color: "#6B7280" }}>×</span>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
             </div>
             <div className="form-group">
               <label>Deadline xử lý</label>
