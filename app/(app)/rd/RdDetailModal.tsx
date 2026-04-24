@@ -13,30 +13,31 @@ type FieldDef = {
   key: string;
   label: string;
   type?: "text" | "textarea" | "url" | "number" | "date" | "verdict";
+  required?: boolean;
 };
 
 const VERDICT_OPTIONS = ["Duyệt", "Từ chối", "Cần chỉnh sửa"];
 
 const STEP_FORM_FIELDS: Record<string, FieldDef[]> = {
   "Đề xuất": [
-    { key: "description",       label: "Mô tả sản phẩm", type: "textarea" },
-    { key: "reason",            label: "Lý do đề xuất", type: "textarea" },
+    { key: "description",       label: "Mô tả sản phẩm", type: "textarea", required: true },
+    { key: "reason",            label: "Lý do đề xuất", type: "textarea", required: true },
     { key: "ref_links",         label: "Link tham khảo (1688, Shopee...)", type: "url" },
   ],
   "Xác nhận": [
     { key: "confirm_note",      label: "Ghi chú", type: "textarea" },
   ],
   "Nghiên cứu": [
-    { key: "usp",               label: "Phân tích USP", type: "textarea" },
+    { key: "usp",               label: "Phân tích USP", type: "textarea", required: true },
     { key: "competitors",       label: "Đối thủ / SP cùng loại", type: "textarea" },
     { key: "market_price",      label: "Giá thị trường" },
     { key: "market_volume",     label: "Volume thị trường" },
     { key: "supplier_name",     label: "NCC dự kiến" },
     { key: "supplier_trust",    label: "Uy tín NCC" },
     { key: "moq",               label: "MOQ" },
-    { key: "price_buy",         label: "Giá nhập dự kiến", type: "number" },
-    { key: "price_sell",        label: "Giá bán dự kiến", type: "number" },
-    { key: "evaluation",        label: "Đánh giá chung", type: "textarea" },
+    { key: "price_buy",         label: "Giá nhập dự kiến", type: "number", required: true },
+    { key: "price_sell",        label: "Giá bán dự kiến", type: "number", required: true },
+    { key: "evaluation",        label: "Đánh giá chung", type: "textarea", required: true },
   ],
   "Duyệt NC": [
     { key: "approve_verdict",   label: "Kết quả duyệt", type: "verdict" },
@@ -52,9 +53,9 @@ const STEP_FORM_FIELDS: Record<string, FieldDef[]> = {
     { key: "sample_eta",        label: "Dự kiến mẫu về", type: "date" },
   ],
   "Hàng về": [
-    { key: "qc_actual",         label: "Thông tin thực tế", type: "textarea" },
+    { key: "qc_actual",         label: "Thông tin thực tế", type: "textarea", required: true },
     { key: "qc_score",          label: "Điểm QC (/10)" },
-    { key: "qc_evaluation",     label: "Đánh giá chung", type: "textarea" },
+    { key: "qc_evaluation",     label: "Đánh giá chung", type: "textarea", required: true },
   ],
   "Duyệt mẫu": [
     { key: "approve_verdict",   label: "Kết quả duyệt mẫu", type: "verdict" },
@@ -523,13 +524,15 @@ function ModalInner({
   };
 
   /* ── render form field ──────────────────────────────────── */
+  const reqStar = (label: string, required?: boolean) => required ? <>{label}<span style={{ color: "#DC2626", marginLeft: 2 }}>*</span></> : label;
+
   function renderField(f: FieldDef) {
     const val = formData[f.key] || "";
     switch (f.type) {
       case "url":
         return (
           <div key={f.key} style={{ ...S.section, gridColumn: "span 2" }}>
-            <div style={S.label}>{f.label}</div>
+            <div style={S.label}>{reqStar(f.label, f.required)}</div>
             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
               <input type="text" value={val} onChange={(e) => setField(f.key, e.target.value)} placeholder="https://..." style={{ ...S.input, flex: 1 }} />
               {val && <a href={val} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: "#7C3AED", fontWeight: 600, whiteSpace: "nowrap", padding: "4px 8px", border: "1px solid #7C3AED", borderRadius: 5, textDecoration: "none" }}>Mở ↗</a>}
@@ -540,7 +543,7 @@ function ModalInner({
         const vs = val ? verdictStyle(val) : null;
         return (
           <div key={f.key} style={S.section}>
-            <div style={S.label}>{f.label}</div>
+            <div style={S.label}>{reqStar(f.label, f.required)}</div>
             <select value={val} onChange={(e) => setField(f.key, e.target.value)} style={{ ...S.select, ...(vs ? { background: vs.bg, color: vs.color, fontWeight: 700 } : {}) }}>
               <option value="">— Chọn —</option>
               {VERDICT_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
@@ -552,7 +555,7 @@ function ModalInner({
         const ov = val && isOverdue(val) && step.status !== "approved";
         return (
           <div key={f.key} style={S.section}>
-            <div style={S.label}>{f.label}{ov && <span style={{ color: "#DC2626", fontWeight: 700, marginLeft: 6, fontSize: 10 }}>QUÁ HẠN</span>}</div>
+            <div style={S.label}>{reqStar(f.label, f.required)}{ov && <span style={{ color: "#DC2626", fontWeight: 700, marginLeft: 6, fontSize: 10 }}>QUÁ HẠN</span>}</div>
             <input type="date" value={deadlineToISO(val)} onChange={(e) => setField(f.key, e.target.value)} style={{ ...S.input, ...(ov ? { borderColor: "#DC2626", color: "#DC2626" } : {}) }} />
           </div>
         );
@@ -560,21 +563,21 @@ function ModalInner({
       case "textarea":
         return (
           <div key={f.key} style={{ ...S.section, gridColumn: "span 2" }}>
-            <div style={S.label}>{f.label}</div>
+            <div style={S.label}>{reqStar(f.label, f.required)}</div>
             <textarea value={val} onChange={(e) => setField(f.key, e.target.value)} style={S.textarea} />
           </div>
         );
       case "number":
         return (
           <div key={f.key} style={S.section}>
-            <div style={S.label}>{f.label}</div>
+            <div style={S.label}>{reqStar(f.label, f.required)}</div>
             <input type="text" inputMode="numeric" value={fmtNum(val)} onChange={(e) => setField(f.key, rawNum(e.target.value))} style={S.input} />
           </div>
         );
       default:
         return (
           <div key={f.key} style={S.section}>
-            <div style={S.label}>{f.label}</div>
+            <div style={S.label}>{reqStar(f.label, f.required)}</div>
             <input type="text" value={val} onChange={(e) => setField(f.key, e.target.value)} style={S.input} />
           </div>
         );
@@ -697,7 +700,7 @@ function ModalInner({
 
                 {/* Tên SP inline */}
                 <div style={S.section}>
-                  <div style={S.label}>Tên sản phẩm</div>
+                  <div style={S.label}>Tên sản phẩm<span style={{ color: "#DC2626", marginLeft: 2 }}>*</span></div>
                   <input type="text" value={itemName} onChange={(e) => { setItemName(e.target.value); setDirty(true); }} placeholder="VD: Quạt phun sương mini USB" style={S.input} />
                 </div>
               </>
@@ -887,14 +890,14 @@ function ModalInner({
                     return (
                     <>
                     <div style={S.section}>
-                      <div style={S.label}>Giao NV {isDuyetNC ? "đặt mẫu" : "nhập hàng"}</div>
+                      <div style={S.label}>Giao NV {isDuyetNC ? "đặt mẫu" : "nhập hàng"}<span style={{ color: "#DC2626", marginLeft: 2 }}>*</span></div>
                       <select value={assignNextVal} onChange={(e) => setField(assignNextKey, e.target.value)} style={S.select}>
                         <option value="">— Chọn nhân viên —</option>
                         {users.map((u) => <option key={u.email} value={u.email}>{u.name || u.email}</option>)}
                       </select>
                     </div>
                     <div style={S.section}>
-                      <div style={S.label}>Deadline {isDuyetNC ? "Đặt mẫu" : "Nhập hàng"}</div>
+                      <div style={S.label}>Deadline {isDuyetNC ? "Đặt mẫu" : "Nhập hàng"}<span style={{ color: "#DC2626", marginLeft: 2 }}>*</span></div>
                       <input type="date" value={deadlineToISO(dlVal)}
                         onChange={(e) => { setField(dlKey, e.target.value); }}
                         style={S.input} />
@@ -1093,7 +1096,7 @@ function ModalInner({
             {/* Assignee + Deadline — only at Đề xuất step */}
             {step.label === "Đề xuất" && (
               <div style={S.section}>
-                <div style={S.label}>{proposerRole === "leader" ? "Giao cho nhân viên" : "Gửi Leader duyệt"}</div>
+                <div style={S.label}>{proposerRole === "leader" ? "Giao cho nhân viên" : "Gửi Leader duyệt"}<span style={{ color: "#DC2626", marginLeft: 2 }}>*</span></div>
                 <select value={assignee} onChange={(e) => {
                   const email = e.target.value;
                   const u = users.find((u) => u.email === email);
@@ -1108,7 +1111,7 @@ function ModalInner({
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
               <div style={S.section}>
                 <div style={S.label}>
-                  Deadline{deadlineOverdue && <span style={{ color: "#DC2626", fontWeight: 700, marginLeft: 4, fontSize: 10 }}>QUÁ HẠN</span>}
+                  Deadline<span style={{ color: "#DC2626", marginLeft: 2 }}>*</span>{deadlineOverdue && <span style={{ color: "#DC2626", fontWeight: 700, marginLeft: 4, fontSize: 10 }}>QUÁ HẠN</span>}
                 </div>
                 <input type="date" value={deadlineToISO(deadline)} onChange={(e) => { setDeadline(e.target.value); setDirty(true); }}
                   style={{ ...S.input, ...(deadlineOverdue ? { borderColor: "#DC2626", color: "#DC2626" } : {}) }} />
@@ -1220,14 +1223,14 @@ function ModalInner({
 
                 {/* Thông tin thực tế */}
                 <div style={S.section}>
-                  <div style={S.label}>Thông tin thực tế</div>
+                  <div style={S.label}>Thông tin thực tế<span style={{ color: "#DC2626", marginLeft: 2 }}>*</span></div>
                   <textarea value={formData.qc_actual || ""} onChange={(e) => setField("qc_actual", e.target.value)} placeholder="Mô tả thực tế: kích thước, trọng lượng, đóng gói..." style={S.textarea} />
                 </div>
 
                 {/* Checklist đánh giá */}
                 <div style={{ marginBottom: 14 }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: ".3px", marginBottom: 5 }}>
-                    Checklist đánh giá ({passCount}/{checklist.length} Pass{failCount > 0 ? ` · ${failCount} Fail` : ""})
+                    Checklist đánh giá ({passCount}/{checklist.length} Pass{failCount > 0 ? ` · ${failCount} Fail` : ""})<span style={{ color: "#DC2626", marginLeft: 2 }}>*</span>
                   </div>
                   {checklist.length > 0 && (
                     <div style={{ height: 3, borderRadius: 2, background: "#E5E7EB", marginBottom: 8, overflow: "hidden" }}>
@@ -1308,7 +1311,7 @@ function ModalInner({
 
                 {/* Đánh giá chung */}
                 <div style={S.section}>
-                  <div style={S.label}>Đánh giá chung</div>
+                  <div style={S.label}>Đánh giá chung<span style={{ color: "#DC2626", marginLeft: 2 }}>*</span></div>
                   <textarea value={formData.qc_evaluation || ""} onChange={(e) => setField("qc_evaluation", e.target.value)} placeholder="VD: 8/10. Pin tốt, phun sương OK 2/3 chế độ. Đề xuất: PASS — nhập 200 cái test." style={{ ...S.textarea, minHeight: 60 }} />
                 </div>
 
@@ -1393,7 +1396,7 @@ function ModalInner({
                 })()}
                 {/* Đánh giá chung */}
                 <div style={S.section}>
-                  <div style={S.label}>Đánh giá chung</div>
+                  <div style={S.label}>Đánh giá chung<span style={{ color: "#DC2626", marginLeft: 2 }}>*</span></div>
                   <textarea value={formData.evaluation || ""} onChange={(e) => setField("evaluation", e.target.value)} style={{ ...S.textarea, minHeight: 50 }} />
                 </div>
               </>
