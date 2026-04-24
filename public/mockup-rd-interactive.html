@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>R&D — Interactive Mockup</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F8FAFC; color: #18181B; }
+
+  /* Modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+  .modal { background: #fff; border-radius: 16px; width: 920px; height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,.2); }
+  .modal-header { padding: 14px 20px; border-bottom: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+  .modal-title { font-size: 15px; font-weight: 800; }
+  .modal-body { display: flex; flex: 1; overflow: hidden; }
+
+  /* Stepper */
+  .stepper { width: 190px; background: #F8FAFC; border-right: 1px solid #E2E8F0; padding: 14px 10px; overflow-y: auto; flex-shrink: 0; }
+  .step-item { display: flex; align-items: flex-start; gap: 8px; padding: 7px 6px; border-radius: 6px; cursor: pointer; margin-bottom: 1px; }
+  .step-item:hover { background: #F1F5F9; }
+  .step-item.active { background: #EFF6FF; }
+  .step-dot { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; flex-shrink: 0; }
+  .dot-done { background: #22C55E; color: #fff; }
+  .dot-active { background: #3B82F6; color: #fff; }
+  .dot-pending { background: #FEF3C7; color: #D97706; }
+  .dot-locked { background: #E2E8F0; color: #94A3B8; }
+  .step-info .sn { font-size: 11px; font-weight: 600; }
+  .step-info .ss { font-size: 9px; color: #94A3B8; }
+  .step-line { width: 1px; height: 8px; background: #D1D5DB; margin-left: 20px; }
+
+  /* Form */
+  .form-area { flex: 1; padding: 18px; overflow-y: auto; }
+  .form-section { margin-bottom: 14px; }
+  .fl { font-size: 11px; font-weight: 600; color: #64748B; text-transform: uppercase; letter-spacing: .3px; margin-bottom: 5px; }
+  .fi { width: 100%; padding: 7px 11px; border: 1px solid #E2E8F0; border-radius: 7px; font-size: 12px; outline: none; }
+  .fi:focus { border-color: #7C3AED; }
+  .ft { width: 100%; padding: 7px 11px; border: 1px solid #E2E8F0; border-radius: 7px; font-size: 12px; min-height: 70px; resize: vertical; outline: none; font-family: inherit; }
+  .fr { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .form-actions { display: flex; gap: 8px; justify-content: flex-end; padding-top: 10px; border-top: 1px solid #E2E8F0; }
+  .btn { padding: 7px 14px; border-radius: 7px; font-size: 11px; font-weight: 600; border: none; cursor: pointer; }
+  .btn-primary { background: #7C3AED; color: #fff; }
+  .btn-green { background: #16A34A; color: #fff; }
+  .btn-amber { background: #D97706; color: #fff; }
+  .btn-red { background: #DC2626; color: #fff; }
+  .btn-ghost { background: #F1F5F9; color: #64748B; }
+  .btn-blue { background: #3B82F6; color: #fff; }
+
+  /* Role selector */
+  .roles { display: flex; gap: 8px; margin-bottom: 14px; }
+  .role { flex: 1; padding: 10px; border: 2px solid #E2E8F0; border-radius: 10px; cursor: pointer; text-align: center; }
+  .role.sel { border-color: #7C3AED; background: #F5F3FF; }
+  .role .ri { font-size: 22px; }
+  .role .rn { font-size: 11px; font-weight: 700; }
+  .role .rd { font-size: 9px; color: #94A3B8; }
+
+  /* Dynamic fields */
+  .df { display: flex; gap: 6px; align-items: center; margin-bottom: 5px; }
+  .df input { flex: 1; }
+  .df .rm { background: none; border: none; color: #DC2626; cursor: pointer; font-size: 14px; }
+  .add-f { font-size: 10px; color: #7C3AED; cursor: pointer; font-weight: 600; }
+
+  /* Chips */
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+  .chip { display: flex; align-items: center; gap: 3px; padding: 2px 7px; background: #F3E8FF; border-radius: 5px; font-size: 10px; color: #7C3AED; font-weight: 600; }
+
+  /* Attachments */
+  .att { display: flex; flex-wrap: wrap; gap: 5px; }
+  .att-item { padding: 3px 7px; background: #F1F5F9; border-radius: 5px; font-size: 9px; display: flex; align-items: center; gap: 3px; }
+  .att-add { padding: 3px 7px; border: 1px dashed #D1D5DB; border-radius: 5px; font-size: 9px; color: #94A3B8; cursor: pointer; }
+
+  /* Checklist */
+  .cl { display: flex; align-items: center; gap: 7px; padding: 5px 0; border-bottom: 1px solid #F1F5F9; }
+  .cl-text { font-size: 11px; flex: 1; }
+  .cl-btns { display: flex; gap: 3px; }
+  .cl-btn { padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 600; border: 1.5px solid #E2E8F0; background: #fff; cursor: pointer; color: #94A3B8; }
+  .cl-btn.pass { border-color: #16A34A; background: #F0FDF4; color: #16A34A; }
+  .cl-btn.fail { border-color: #DC2626; background: #FEF2F2; color: #DC2626; }
+
+  /* Approval */
+  .ap { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 14px; }
+  .ap-info { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .ap-avatar { width: 30px; height: 30px; border-radius: 50%; background: #E2E8F0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+  .ap-summary { background: #fff; border: 1px solid #E2E8F0; border-radius: 7px; padding: 8px; margin-bottom: 10px; font-size: 11px; color: #64748B; }
+
+  /* Timeline */
+  .tl { margin-top: 14px; border-top: 1px solid #E2E8F0; padding-top: 10px; }
+  .tl-title { font-size: 10px; font-weight: 700; color: #94A3B8; margin-bottom: 6px; }
+  .tl-item { display: flex; gap: 8px; padding: 4px 0; }
+  .tl-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+  .tl-text { font-size: 10px; color: #64748B; }
+  .tl-text strong { color: #374151; }
+  .tl-time { font-size: 8px; color: #94A3B8; }
+
+  /* Step indicator */
+  .step-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 600; margin-bottom: 10px; }
+  .step-badge.working { background: #EFF6FF; color: #3B82F6; }
+  .step-badge.approval { background: #FFF7ED; color: #D97706; }
+
+  /* Profit calc */
+  .profit { padding: 6px 10px; background: #F0FDF4; border-radius: 6px; margin-top: 6px; font-size: 11px; color: #16A34A; font-weight: 600; }
+
+  /* Hidden */
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+
+<div class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modal-title">Quạt phun sương mini USB</div>
+        <div style="font-size:10px;color:#94A3B8" id="modal-sub">Đề xuất bởi Lê Vũ · 24/04/2026</div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <span id="step-badge" class="step-badge working">Bước 1: Đề xuất</span>
+      </div>
+    </div>
+    <div class="modal-body">
+
+      <!-- Stepper -->
+      <div class="stepper">
+        <div class="step-item active" data-step="1" onclick="goStep(1)">
+          <div class="step-dot dot-active" id="d1">1</div>
+          <div class="step-info"><div class="sn">Đề xuất</div><div class="ss" id="s1">Đang làm</div></div>
+        </div><div class="step-line"></div>
+        <div class="step-item" data-step="1.5" onclick="goStep(1.5)">
+          <div class="step-dot dot-locked" id="d15">✓</div>
+          <div class="step-info"><div class="sn">NV nhận việc</div><div class="ss" id="s15">—</div></div>
+        </div><div class="step-line"></div>
+        <div class="step-item" data-step="2" onclick="goStep(2)">
+          <div class="step-dot dot-locked" id="d2">2</div>
+          <div class="step-info"><div class="sn">Nghiên cứu</div><div class="ss" id="s2">—</div></div>
+        </div><div class="step-line"></div>
+        <div class="step-item" data-step="2.5" onclick="goStep(2.5)">
+          <div class="step-dot dot-locked" id="d25">✓</div>
+          <div class="step-info"><div class="sn">Duyệt NC</div><div class="ss" id="s25">—</div></div>
+        </div><div class="step-line"></div>
+        <div class="step-item" data-step="4" onclick="goStep(4)">
+          <div class="step-dot dot-locked" id="d4">4</div>
+          <div class="step-info"><div class="sn">Đặt mẫu</div><div class="ss" id="s4">—</div></div>
+        </div><div class="step-line"></div>
+        <div class="step-item" data-step="5" onclick="goStep(5)">
+          <div class="step-dot dot-locked" id="d5">5</div>
+          <div class="step-info"><div class="sn">Hàng về</div><div class="ss" id="s5">—</div></div>
+        </div><div class="step-line"></div>
+        <div class="step-item" data-step="5.5" onclick="goStep(5.5)">
+          <div class="step-dot dot-locked" id="d55">✓</div>
+          <div class="step-info"><div class="sn">Duyệt mẫu</div><div class="ss" id="s55">—</div></div>
+        </div><div class="step-line"></div>
+        <div class="step-item" data-step="7" onclick="goStep(7)">
+          <div class="step-dot dot-locked" id="d7">7</div>
+          <div class="step-info"><div class="sn">Nhập hàng</div><div class="ss" id="s7">—</div></div>
+        </div>
+      </div>
+
+      <!-- Form area -->
+      <div class="form-area" id="form-area">
+
+        <!-- STEP 1: Đề xuất -->
+        <div id="step1">
+          <div class="step-badge working">Bước 1: Đề xuất ý tưởng</div>
+          <div class="form-section">
+            <div class="fl">Bạn đang ở vị trí nào?</div>
+            <div class="roles">
+              <div class="role sel" id="role-leader" onclick="setRole('leader')"><div class="ri">👔</div><div class="rn">Leader</div><div class="rd">Giao nhân viên làm</div></div>
+              <div class="role" id="role-staff" onclick="setRole('staff')"><div class="ri">💡</div><div class="rn">Nhân viên</div><div class="rd">Gửi sếp duyệt</div></div>
+            </div>
+          </div>
+          <div class="form-section"><div class="fl">Tên sản phẩm</div><input class="fi" value="Quạt phun sương mini USB"></div>
+          <div class="form-section"><div class="fl">Mô tả</div><textarea class="ft">Quạt phun sương cầm tay, pin 2000mAh. Trend TikTok.
+Link: https://1688.com/item/xxx</textarea></div>
+          <div class="form-section"><div class="fl">Lý do đề xuất</div><textarea class="ft" style="min-height:50px">Trend 50M views, giá vốn ~30K, biên lãi cao, mùa hè.</textarea></div>
+          <div class="form-section">
+            <div class="fl">Tài liệu</div>
+            <div class="att"><div class="att-item">🔗 1688.com/item/xxx</div><div class="att-item">🖼 ref.jpg</div><div class="att-add">+ Thêm</div></div>
+          </div>
+          <!-- Leader: giao NV -->
+          <div class="form-section" id="assign-leader">
+            <div class="fl">Giao cho nhân viên</div>
+            <div class="chips"><div class="chip">Nguyễn Đức ✕</div><div class="chip">Bùi Việt ✕</div></div>
+            <div class="fr"><div><div style="font-size:9px;color:#94A3B8;margin-bottom:3px">Deadline</div><input class="fi" type="date" value="2026-04-28"></div><div><div style="font-size:9px;color:#94A3B8;margin-bottom:3px">Ưu tiên</div><select class="fi"><option>Bình thường</option><option selected>Gấp</option></select></div></div>
+          </div>
+          <!-- NV: gửi leader duyệt -->
+          <div class="form-section hidden" id="assign-staff">
+            <div class="fl">Gửi Leader duyệt</div>
+            <div class="chips"><div class="chip">Lê Vũ ✕</div></div>
+            <div class="fr"><div><div style="font-size:9px;color:#94A3B8;margin-bottom:3px">Deadline</div><input class="fi" type="date" value="2026-04-28"></div><div><div style="font-size:9px;color:#94A3B8;margin-bottom:3px">Ưu tiên</div><select class="fi"><option>Bình thường</option><option selected>Gấp</option></select></div></div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-ghost">Lưu nháp</button>
+            <button class="btn btn-primary" id="btn-step1" onclick="advance(1)">Giao việc & Chuyển bước →</button>
+          </div>
+        </div>
+
+        <!-- STEP 1.5: Dynamic — depends on role -->
+        <div id="step15" class="hidden">
+          <!-- Case A: Leader đề xuất → NV xác nhận nhận việc -->
+          <div id="step15-leader">
+            <div class="step-badge approval">NV xác nhận nhận việc</div>
+            <div class="ap">
+              <div class="ap-info">
+                <div class="ap-avatar" style="background:#DBEAFE;color:#2563EB">NĐ</div>
+                <div><div style="font-size:12px;font-weight:600">Nguyễn Đức <span style="font-size:9px;color:#3B82F6;background:#EFF6FF;padding:1px 5px;border-radius:4px">Nhân viên</span></div><div style="font-size:9px;color:#94A3B8">Được giao bởi Leader Lê Vũ · Deadline 28/04</div></div>
+              </div>
+              <div class="ap-summary">
+                <strong>Leader Lê Vũ giao việc:</strong><br>
+                Nghiên cứu sản phẩm <strong>Quạt phun sương mini USB</strong><br>
+                Trend TikTok 50M views, giá vốn ~30K, biên lãi cao. Phù hợp mùa hè.
+              </div>
+              <div class="form-section"><div class="fl">Ghi chú</div><textarea class="ft" style="min-height:40px" placeholder="Ghi chú khi nhận việc hoặc lý do từ chối..."></textarea></div>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-green" onclick="advance(1.5)">✓ Nhận việc — Bắt đầu NC</button>
+                <button class="btn btn-amber" onclick="goBack(1.5)">↺ Hỏi lại Leader</button>
+                <button class="btn btn-red">✕ Từ chối</button>
+              </div>
+            </div>
+          </div>
+          <!-- Case B: NV đề xuất → Leader duyệt đề xuất -->
+          <div id="step15-staff" class="hidden">
+            <div class="step-badge approval">Leader duyệt đề xuất</div>
+            <div class="ap">
+              <div class="ap-info">
+                <div class="ap-avatar" style="background:#F3E8FF;color:#7C3AED">LV</div>
+                <div><div style="font-size:12px;font-weight:600">Lê Vũ <span style="font-size:9px;color:#7C3AED;background:#F5F3FF;padding:1px 5px;border-radius:4px">Leader</span></div><div style="font-size:9px;color:#94A3B8">Duyệt đề xuất từ NV Nguyễn Đức · 24/04</div></div>
+              </div>
+              <div class="ap-summary">
+                <div style="font-size:10px;color:#94A3B8;margin-bottom:4px">NV Nguyễn Đức đề xuất:</div>
+                <strong>Quạt phun sương mini USB</strong><br>
+                Trend TikTok 50M views, giá vốn ~30K, biên lãi cao. Phù hợp mùa hè.
+              </div>
+              <div class="form-section"><div class="fl">Nhận xét Leader</div><textarea class="ft" style="min-height:40px" placeholder="Duyệt, yêu cầu sửa hoặc từ chối..."></textarea></div>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-green" onclick="advance(1.5)">✓ Duyệt — Cho nghiên cứu</button>
+                <button class="btn btn-amber" onclick="goBack(1.5)">↺ Yêu cầu sửa ĐX</button>
+                <button class="btn btn-red">✕ Từ chối</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 2: Nghiên cứu — dynamic by role -->
+        <div id="step2" class="hidden">
+          <!-- Case A: Leader view — theo dõi NV nghiên cứu -->
+          <div id="step2-leader">
+            <div class="step-badge working">Bước 2: NV đang nghiên cứu</div>
+            <div style="padding:10px 12px;background:#EFF6FF;border-radius:8px;margin-bottom:12px;font-size:11px;color:#1E40AF">
+              📋 Nguyễn Đức đã nhận việc — đang nghiên cứu sản phẩm. Deadline: 28/04.
+            </div>
+            <div class="ap">
+              <div class="ap-info">
+                <div class="ap-avatar" style="background:#DBEAFE;color:#2563EB">NĐ</div>
+                <div><div style="font-size:12px;font-weight:600">Nguyễn Đức <span style="font-size:9px;color:#3B82F6;background:#EFF6FF;padding:1px 5px;border-radius:4px">Đang làm</span></div><div style="font-size:9px;color:#94A3B8">Nhận việc 24/04 · Deadline 28/04</div></div>
+              </div>
+              <div class="ap-summary">
+                <div style="font-size:10px;font-weight:600;margin-bottom:6px">Kết quả nghiên cứu (NV đã gửi):</div>
+                <strong>USP:</strong> Pin 2000mAh (4-6h), phun sương 3 chế độ, LED 7 màu<br>
+                <strong>Thị trường:</strong> Đối thủ Xiaomi/Baseus, giá 150-350K, ~5000 đơn/ngày Shopee<br>
+                <strong>NCC:</strong> Guangzhou FanTech — Gold supplier 5 năm, MOQ 100 cái<br>
+                <strong>Giá:</strong> Nhập 32K → Bán 159K · Biên lãi ~80%<br>
+                <strong>Đề xuất NV:</strong> PASS — nên đặt mẫu test.
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-blue" onclick="advance(2)">Xem & Duyệt →</button>
+            </div>
+          </div>
+          <!-- Case B: NV view — tự điền nghiên cứu -->
+          <div id="step2-staff" class="hidden">
+            <div class="step-badge working">Bước 2: Nghiên cứu sản phẩm</div>
+            <div class="form-section"><div class="fl">Phân tích USP</div><textarea class="ft">- Pin 2000mAh: 4-6 tiếng
+- Phun sương 3 chế độ
+- Thiết kế nhỏ gọn + LED 7 màu</textarea></div>
+            <div class="form-section">
+              <div class="fl">Đánh giá thị trường</div>
+              <div class="df"><input class="fi" value="Đối thủ" style="width:120px;flex:none"><input class="fi" value="Xiaomi, Baseus, noname"><button class="rm">✕</button></div>
+              <div class="df"><input class="fi" value="Giá thị trường" style="width:120px;flex:none"><input class="fi" value="150K-350K (Shopee)"><button class="rm">✕</button></div>
+              <div class="df"><input class="fi" value="Volume" style="width:120px;flex:none"><input class="fi" value="~5000 đơn/ngày Shopee"><button class="rm">✕</button></div>
+              <div class="df"><input class="fi" value="Đánh giá KH" style="width:120px;flex:none"><input class="fi" value="4.5/5 sao, complaint: pin yếu"><button class="rm">✕</button></div>
+              <div class="add-f" onclick="addField(this)">+ Thêm trường</div>
+            </div>
+            <div class="form-section">
+              <div class="fl">Phân tích nguồn hàng</div>
+              <div class="df"><input class="fi" value="NCC" style="width:120px;flex:none"><input class="fi" value="Guangzhou FanTech — 1688.com"><button class="rm">✕</button></div>
+              <div class="df"><input class="fi" value="Uy tín" style="width:120px;flex:none"><input class="fi" value="5 năm, 98%, Gold supplier"><button class="rm">✕</button></div>
+              <div class="df"><input class="fi" value="MOQ" style="width:120px;flex:none"><input class="fi" value="100 cái, 5-7 ngày"><button class="rm">✕</button></div>
+              <div class="add-f" onclick="addField(this)">+ Thêm trường</div>
+            </div>
+            <div class="form-section">
+              <div class="fr">
+                <div><div class="fl">Giá nhập dự kiến</div><input class="fi" value="32,000đ" oninput="calcProfit()"></div>
+                <div><div class="fl">Giá bán dự kiến</div><input class="fi" value="159,000đ" oninput="calcProfit()"></div>
+              </div>
+              <div class="profit" id="profit">Biên lợi nhuận: ~80% · Lãi/SP: ~127K</div>
+            </div>
+            <div class="form-section"><div class="fl">Đánh giá chung</div><textarea class="ft" style="min-height:50px">SP tiềm năng, biên lợi nhuận cao. Recommend: PASS — nên đặt mẫu.</textarea></div>
+            <div class="form-section">
+              <div class="fl">Tài liệu đi kèm</div>
+              <div class="att"><div class="att-item">🔗 1688.com/supplier</div><div class="att-item">📊 market-analysis.xlsx</div><div class="att-add">+ Thêm</div></div>
+            </div>
+            <div class="form-section">
+              <div class="fl">Gửi Leader duyệt</div>
+              <div class="chips"><div class="chip">Lê Vũ ✕</div></div>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-ghost">Lưu nháp</button>
+              <button class="btn btn-primary" onclick="advance(2)">Gửi duyệt →</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 2.5: Leader duyệt NC -->
+        <div id="step25" class="hidden">
+          <div class="step-badge approval">Leader duyệt nghiên cứu</div>
+          <div class="ap">
+            <div class="ap-info">
+              <div class="ap-avatar" style="background:#F3E8FF;color:#7C3AED">LV</div>
+              <div><div style="font-size:12px;font-weight:600">Lê Vũ <span style="font-size:9px;color:#7C3AED;background:#F5F3FF;padding:1px 5px;border-radius:4px">Leader</span></div><div style="font-size:9px;color:#94A3B8">Duyệt nghiên cứu từ NV Nguyễn Đức · 25/04</div></div>
+            </div>
+            <div class="ap-summary">
+              <div style="font-size:10px;color:#94A3B8;margin-bottom:4px">NV Nguyễn Đức đã nghiên cứu:</div>
+              <strong>Kết quả:</strong> USP tốt, biên lãi 80%, NCC uy tín (Gold 5 năm).<br>
+              <strong>Đề xuất NV:</strong> PASS — nên đặt mẫu test.
+            </div>
+            <div class="form-section"><div class="fl">Nhận xét Leader</div><textarea class="ft" style="min-height:40px" placeholder="Nhận xét, góp ý...">Đồng ý. Đặt 5 mẫu test trước.</textarea></div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-green" onclick="advance(2.5)">✓ Duyệt — Cho đặt mẫu</button>
+              <button class="btn btn-amber" onclick="goBack(2.5)">↺ Yêu cầu NC lại</button>
+              <button class="btn btn-red">✕ Không duyệt</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 4: Đặt mẫu — dynamic -->
+        <div id="step4" class="hidden">
+          <!-- Leader view: theo dõi NV đặt mẫu -->
+          <div id="step4-leader">
+            <div class="step-badge working">Bước 4: NV đang đặt mẫu</div>
+            <div style="padding:10px 12px;background:#EFF6FF;border-radius:8px;margin-bottom:12px;font-size:11px;color:#1E40AF">
+              📋 Leader đã duyệt NC. Nguyễn Đức đang tiến hành đặt mẫu.
+            </div>
+            <div class="ap">
+              <div class="ap-info">
+                <div class="ap-avatar" style="background:#DBEAFE;color:#2563EB">NĐ</div>
+                <div><div style="font-size:12px;font-weight:600">Nguyễn Đức <span style="font-size:9px;color:#3B82F6;background:#EFF6FF;padding:1px 5px;border-radius:4px">Đang đặt mẫu</span></div><div style="font-size:9px;color:#94A3B8">Duyệt NC ngày 25/04</div></div>
+              </div>
+              <div class="ap-summary">
+                <strong>NCC:</strong> Guangzhou FanTech Co. — 1688.com<br>
+                <strong>Liên hệ:</strong> WeChat: fantech_sales<br>
+                <div style="margin-top:6px;padding:6px 8px;background:#F0FDF4;border-radius:6px">
+                  <div style="font-size:10px;font-weight:600;color:#16A34A;margin-bottom:2px">Đơn PO đã tạo</div>
+                  <div style="font-size:11px">PO #1289 — 5 cái × 32,000đ = 160,000đ</div>
+                  <div style="font-size:9px;color:#94A3B8">Trạng thái: Đã đặt · ETA: 30/04</div>
+                </div>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary" onclick="advance(4)">Tiếp → Chờ hàng về</button>
+            </div>
+          </div>
+          <!-- NV view: tự đặt mẫu -->
+          <div id="step4-staff" class="hidden">
+            <div class="step-badge working">Bước 4: Đặt mẫu</div>
+            <div class="form-section"><div class="fl">Thông tin nhà cung cấp</div>
+              <div class="fr" style="margin-bottom:6px">
+                <div><input class="fi" placeholder="Tên NCC" value="Guangzhou FanTech Co."></div>
+                <div><input class="fi" placeholder="Nền tảng" value="1688.com"></div>
+              </div>
+              <input class="fi" placeholder="Liên hệ (WeChat, phone...)" value="WeChat: fantech_sales">
+            </div>
+            <div class="form-section">
+              <div class="fl">Tạo đơn PO mua mẫu</div>
+              <div style="padding:12px;border:2px dashed #C4B5FD;border-radius:10px;text-align:center;cursor:pointer" onclick="alert('Mở popup tạo đơn PO — link tới /create')">
+                <div style="font-size:20px;margin-bottom:4px">📦</div>
+                <div style="font-size:12px;font-weight:600;color:#7C3AED">Tạo đơn PO mua mẫu</div>
+                <div style="font-size:9px;color:#94A3B8">Nhảy sang form tạo đơn hàng</div>
+              </div>
+            </div>
+            <div class="form-section" style="background:#F0FDF4;border-radius:8px;padding:8px 10px">
+              <div style="font-size:10px;font-weight:600;color:#16A34A;margin-bottom:4px">Đơn PO đã tạo</div>
+              <div style="font-size:11px">PO #1289 — 5 cái × 32,000đ = 160,000đ</div>
+              <div style="font-size:9px;color:#94A3B8">Trạng thái: Đã đặt · ETA: 30/04</div>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary" onclick="advance(4)">Đã đặt mẫu — Chờ hàng về →</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 5: Hàng về — dynamic -->
+        <div id="step5" class="hidden">
+          <!-- Leader view: xem NV đánh giá mẫu -->
+          <div id="step5-leader">
+            <div class="step-badge working">Bước 5: NV đánh giá mẫu</div>
+            <div style="padding:8px 10px;background:#EFF6FF;border-radius:8px;margin-bottom:12px;font-size:11px;color:#1E40AF">
+              📦 Mẫu đã về ngày 30/04 — PO #1289. NV Nguyễn Đức đang QC.
+            </div>
+            <div class="ap">
+              <div class="ap-info">
+                <div class="ap-avatar" style="background:#DBEAFE;color:#2563EB">NĐ</div>
+                <div><div style="font-size:12px;font-weight:600">Nguyễn Đức <span style="font-size:9px;color:#3B82F6;background:#EFF6FF;padding:1px 5px;border-radius:4px">Đang QC</span></div><div style="font-size:9px;color:#94A3B8">Mẫu về 30/04 · PO #1289</div></div>
+              </div>
+              <div class="ap-summary">
+                <div style="font-size:10px;font-weight:600;margin-bottom:6px">Kết quả QC (NV đã gửi):</div>
+                <strong>Thực tế:</strong> Kích thước 15x8x5cm, 180g. Đóng gói tốt.<br>
+                <strong>Checklist:</strong> 3/5 pass (đóng gói ✓, kích thước ✓, pin ✓, phun sương ✗, LED ✗)<br>
+                <strong>Đánh giá:</strong> 8/10<br>
+                <strong>Đề xuất NV:</strong> PASS — nhập 200 cái test thị trường.
+                <div style="margin-top:6px">
+                  <div class="att"><div class="att-item">🖼 front.jpg</div><div class="att-item">🖼 back.jpg</div><div class="att-item">🎥 test.mp4</div></div>
+                </div>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary" onclick="advance(5)">Xem & Duyệt mẫu →</button>
+            </div>
+          </div>
+          <!-- NV view: tự QC mẫu -->
+          <div id="step5-staff" class="hidden">
+            <div class="step-badge working">Bước 5: Hàng về — Đánh giá mẫu</div>
+            <div style="padding:8px 10px;background:#EFF6FF;border-radius:8px;margin-bottom:12px;font-size:11px;color:#1E40AF">
+              📦 Mẫu đã về ngày 30/04 — PO #1289. Thông báo đã gửi cho NV + Leader KT.
+            </div>
+            <div class="form-section"><div class="fl">Thông tin thực tế</div><textarea class="ft">Mẫu về nguyên vẹn. Kích thước 15×8×5cm, 180g. Đóng gói tốt.</textarea></div>
+            <div class="form-section">
+              <div class="fl">Checklist đánh giá</div>
+              <div class="cl"><div class="cl-text">Đóng gói nguyên vẹn</div><div class="cl-btns"><button class="cl-btn pass" onclick="toggleCl(this,'pass')">Pass</button><button class="cl-btn" onclick="toggleCl(this,'fail')">Fail</button></div></div>
+              <div class="cl"><div class="cl-text">Kích thước đúng mô tả</div><div class="cl-btns"><button class="cl-btn pass" onclick="toggleCl(this,'pass')">Pass</button><button class="cl-btn" onclick="toggleCl(this,'fail')">Fail</button></div></div>
+              <div class="cl"><div class="cl-text">Pin hoạt động 4+ tiếng</div><div class="cl-btns"><button class="cl-btn pass" onclick="toggleCl(this,'pass')">Pass</button><button class="cl-btn" onclick="toggleCl(this,'fail')">Fail</button></div></div>
+              <div class="cl"><div class="cl-text">Phun sương 3 chế độ</div><div class="cl-btns"><button class="cl-btn" onclick="toggleCl(this,'pass')">Pass</button><button class="cl-btn fail" onclick="toggleCl(this,'fail')">Fail</button></div></div>
+              <div class="cl"><div class="cl-text">Đèn LED 7 màu</div><div class="cl-btns"><button class="cl-btn" onclick="toggleCl(this,'pass')">Pass</button><button class="cl-btn" onclick="toggleCl(this,'fail')">Fail</button></div></div>
+              <div class="add-f" onclick="addChecklist()">+ Thêm mục kiểm tra</div>
+              <div id="cl-summary" style="margin-top:8px;padding:6px 10px;background:#F8FAFC;border-radius:6px;font-size:10px;font-weight:600;color:#64748B">3/5 Pass</div>
+            </div>
+            <div class="form-section">
+              <div class="fl">Tài liệu hình ảnh</div>
+              <div class="att"><div class="att-item">🖼 front.jpg</div><div class="att-item">🖼 back.jpg</div><div class="att-item">🎥 test.mp4</div><div class="att-add">+ Thêm</div></div>
+            </div>
+            <div class="form-section"><div class="fl">Đánh giá chung</div><textarea class="ft" style="min-height:50px">8/10. Pin tốt, phun sương OK 2/3 chế độ. Đề xuất: PASS — nhập 200 cái test.</textarea></div>
+            <div class="form-section">
+              <div class="fl">Gửi Leader duyệt</div>
+              <div class="chips"><div class="chip">Lê Vũ ✕</div></div>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-ghost">Lưu nháp</button>
+              <button class="btn btn-primary" onclick="advance(5)">Gửi duyệt mẫu →</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 5.5: Leader duyệt mẫu -->
+        <div id="step55" class="hidden">
+          <div class="step-badge approval">Leader duyệt mẫu</div>
+          <div class="ap">
+            <div class="ap-info">
+              <div class="ap-avatar" style="background:#F3E8FF;color:#7C3AED">LV</div>
+              <div><div style="font-size:12px;font-weight:600">Lê Vũ <span style="font-size:9px;color:#7C3AED;background:#F5F3FF;padding:1px 5px;border-radius:4px">Leader</span></div><div style="font-size:9px;color:#94A3B8">Duyệt mẫu từ NV Nguyễn Đức · 30/04</div></div>
+            </div>
+            <div class="ap-summary">
+              <div style="font-size:10px;color:#94A3B8;margin-bottom:4px">NV Nguyễn Đức đánh giá mẫu:</div>
+              <strong>Kết quả QC:</strong> 8/10. Pin OK, phun sương 2/3 chế độ.<br>
+              <strong>Checklist:</strong> 3/5 pass<br>
+              <strong>Đề xuất NV:</strong> PASS — nhập lô 200 cái test thị trường.
+            </div>
+            <div class="form-section"><div class="fl">Nhận xét Leader</div><textarea class="ft" style="min-height:40px" placeholder="Nhận xét, quyết định...">OK, đồng ý nhập 200 cái. Giá bán set 149K thay vì 159K.</textarea></div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-green" onclick="advance(5.5)">✓ PASS — Cho nhập hàng</button>
+              <button class="btn btn-amber" onclick="goBack(5.5)">↺ Yêu cầu QC lại</button>
+              <button class="btn btn-red">✕ Không pass</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 7: Nhập hàng -->
+        <div id="step7" class="hidden">
+          <div class="step-badge working" style="background:#F0FDF4;color:#16A34A">Bước 7: Nhập hàng</div>
+          <div style="padding:8px 10px;background:#F0FDF4;border-radius:8px;margin-bottom:12px;font-size:11px;color:#16A34A">
+            ✅ Mẫu đã PASS! Tiến hành đặt đơn nhập hàng lô lớn.
+          </div>
+          <div class="form-section">
+            <div class="fl">Tạo đơn PO nhập hàng</div>
+            <div style="padding:12px;border:2px dashed #BBF7D0;border-radius:10px;text-align:center;cursor:pointer" onclick="alert('Mở popup tạo đơn PO nhập hàng — link tới /create')">
+              <div style="font-size:20px;margin-bottom:4px">📦</div>
+              <div style="font-size:12px;font-weight:600;color:#16A34A">Tạo đơn PO nhập hàng</div>
+              <div style="font-size:9px;color:#94A3B8">200 cái × 32K = 6.4M</div>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-green" onclick="alert('🎉 Hoàn tất! SP chuyển sang pipeline nhập hàng.')">✓ Hoàn tất nghiên cứu</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const STEPS = [1, 1.5, 2, 2.5, 4, 5, 5.5, 7];
+const STEP_IDS = { 1:'step1', 1.5:'step15', 2:'step2', 2.5:'step25', 4:'step4', 5:'step5', 5.5:'step55', 7:'step7' };
+const DOT_IDS = { 1:'d1', 1.5:'d15', 2:'d2', 2.5:'d25', 4:'d4', 5:'d5', 5.5:'d55', 7:'d7' };
+const STATUS_IDS = { 1:'s1', 1.5:'s15', 2:'s2', 2.5:'s25', 4:'s4', 5:'s5', 5.5:'s55', 7:'s7' };
+let currentStep = 1;
+let maxStep = 1;
+let selectedRole = 'leader'; // 'leader' or 'staff'
+
+function getStepName(s) {
+  const names = {
+    1: 'Đề xuất',
+    1.5: selectedRole === 'leader' ? 'NV nhận việc' : 'Leader duyệt ĐX',
+    2: 'Nghiên cứu',
+    2.5: 'Leader duyệt NC',
+    4: 'Đặt mẫu',
+    5: 'Hàng về',
+    5.5: 'Leader duyệt mẫu',
+    7: 'Nhập hàng',
+  };
+  return names[s] || '';
+}
+
+function setRole(role) {
+  selectedRole = role;
+  document.getElementById('role-leader').classList.toggle('sel', role === 'leader');
+  document.getElementById('role-staff').classList.toggle('sel', role === 'staff');
+  document.getElementById('assign-leader').classList.toggle('hidden', role !== 'leader');
+  document.getElementById('assign-staff').classList.toggle('hidden', role !== 'staff');
+  document.getElementById('btn-step1').textContent = role === 'leader' ? 'Giao việc & Chuyển bước →' : 'Gửi Leader duyệt →';
+  // Update stepper label for 1.5
+  document.querySelector('[data-step="1.5"] .sn').textContent = role === 'leader' ? 'NV nhận việc' : 'Duyệt ĐX';
+  render();
+}
+
+function goStep(s) {
+  if (s > maxStep) return;
+  currentStep = s;
+  render();
+}
+
+function advance(fromStep) {
+  const idx = STEPS.indexOf(fromStep);
+  if (idx < STEPS.length - 1) {
+    currentStep = STEPS[idx + 1];
+    maxStep = Math.max(maxStep, currentStep);
+  }
+  render();
+}
+
+function goBack(fromStep) {
+  const idx = STEPS.indexOf(fromStep);
+  if (idx > 0) {
+    currentStep = STEPS[idx - 1];
+  }
+  render();
+}
+
+function render() {
+  // Hide all forms
+  Object.values(STEP_IDS).forEach(id => document.getElementById(id).classList.add('hidden'));
+  // Show current
+  document.getElementById(STEP_IDS[currentStep]).classList.remove('hidden');
+
+  // Toggle sub-panels based on role
+  const panels = ['step15', 'step2', 'step4', 'step5'];
+  for (const p of panels) {
+    const le = document.getElementById(p + '-leader');
+    const se = document.getElementById(p + '-staff');
+    if (le) le.classList.toggle('hidden', selectedRole !== 'leader');
+    if (se) se.classList.toggle('hidden', selectedRole !== 'staff');
+  }
+
+  // Update dots
+  STEPS.forEach(s => {
+    const dot = document.getElementById(DOT_IDS[s]);
+    const status = document.getElementById(STATUS_IDS[s]);
+    const item = dot.closest('.step-item');
+    item.classList.remove('active');
+    dot.className = 'step-dot';
+
+    if (s === currentStep) {
+      const isApprovalStep = (s === 1.5 && selectedRole === 'staff') || s === 2.5 || s === 5.5;
+      const isConfirmStep = s === 1.5 && selectedRole === 'leader';
+      dot.classList.add(isApprovalStep || isConfirmStep ? 'dot-pending' : 'dot-active');
+      item.classList.add('active');
+      status.textContent = isConfirmStep ? 'Chờ xác nhận' : isApprovalStep ? 'Chờ Leader duyệt' : 'Đang làm';
+    } else if (STEPS.indexOf(s) < STEPS.indexOf(currentStep)) {
+      dot.classList.add('dot-done');
+      status.textContent = '✓ Xong';
+    } else {
+      dot.classList.add('dot-locked');
+      status.textContent = '—';
+    }
+  });
+
+  // Update badge
+  const badge = document.getElementById('step-badge');
+  const isApproval = (currentStep === 1.5 && selectedRole === 'staff') || currentStep === 2.5 || currentStep === 5.5;
+  const isConfirm = currentStep === 1.5 && selectedRole === 'leader';
+  badge.className = 'step-badge ' + (isApproval || isConfirm ? 'approval' : 'working');
+  badge.textContent = getStepName(currentStep);
+
+  // Scroll form to top
+  document.getElementById('form-area').scrollTop = 0;
+}
+
+function toggleCl(btn, type) {
+  const btns = btn.parentElement.querySelectorAll('.cl-btn');
+  btns.forEach(b => { b.classList.remove('pass','fail'); });
+  btn.classList.add(type);
+  updateClSummary();
+}
+function updateClSummary() {
+  const all = document.querySelectorAll('#step5-staff .cl-btns');
+  let pass = 0, fail = 0;
+  all.forEach(g => {
+    if (g.querySelector('.cl-btn.pass')) pass++;
+    else if (g.querySelector('.cl-btn.fail')) fail++;
+  });
+  const el = document.getElementById('cl-summary');
+  if (el) {
+    el.textContent = `${pass}/${all.length} Pass` + (fail > 0 ? ` · ${fail} Fail` : '');
+    el.style.color = fail > 0 ? '#DC2626' : '#16A34A';
+  }
+}
+
+function addField(el) {
+  const df = document.createElement('div');
+  df.className = 'df';
+  df.innerHTML = '<input class="fi" placeholder="Tên trường" style="width:120px;flex:none"><input class="fi" placeholder="Giá trị"><button class="rm" onclick="this.parentElement.remove()">✕</button>';
+  el.parentElement.insertBefore(df, el);
+}
+
+function addChecklist() {
+  const name = prompt('Tên mục kiểm tra:');
+  if (!name) return;
+  const cl = document.createElement('div');
+  cl.className = 'cl';
+  cl.innerHTML = `<div class="cl-text">${name}</div><div class="cl-btns"><button class="cl-btn" onclick="toggleCl(this,'pass')">Pass</button><button class="cl-btn" onclick="toggleCl(this,'fail')">Fail</button></div>`;
+  event.target.parentElement.insertBefore(cl, event.target);
+  updateClSummary();
+}
+
+// Initial render
+render();
+</script>
+
+</body>
+</html>

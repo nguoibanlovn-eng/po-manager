@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>R&D — Nghiên cứu sản phẩm</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F8FAFC; color: #18181B; }
+  .page { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid #E2E8F0; }
+  .tab { padding: 10px 20px; font-size: 13px; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; color: #64748B; }
+  .tab.active { color: #7C3AED; border-bottom-color: #7C3AED; }
+
+  /* Header */
+  .hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .hdr-title { font-size: 20px; font-weight: 800; }
+  .hdr-sub { font-size: 12px; color: #94A3B8; }
+  .btn { padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; border: none; cursor: pointer; }
+  .btn-primary { background: #7C3AED; color: #fff; }
+  .btn-ghost { background: #F1F5F9; color: #64748B; border: 1px solid #E2E8F0; }
+  .btn-sm { padding: 5px 10px; font-size: 11px; }
+
+  /* Pipeline board */
+  .pipeline { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 12px; }
+  .pipeline-col { min-width: 220px; flex: 1; background: #F1F5F9; border-radius: 10px; padding: 8px; }
+  .pipeline-header { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; margin-bottom: 6px; }
+  .pipeline-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; }
+  .pipeline-count { font-size: 10px; font-weight: 600; background: #fff; padding: 1px 6px; border-radius: 10px; }
+
+  /* Card */
+  .card { background: #fff; border: 1px solid #E2E8F0; border-radius: 8px; padding: 10px; margin-bottom: 6px; cursor: pointer; transition: box-shadow .15s; }
+  .card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+  .card-name { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+  .card-meta { font-size: 10px; color: #94A3B8; display: flex; gap: 8px; margin-bottom: 4px; }
+  .card-footer { display: flex; justify-content: space-between; align-items: center; }
+  .card-avatar { width: 20px; height: 20px; border-radius: 50%; background: #E2E8F0; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 700; color: #64748B; }
+  .card-deadline { font-size: 9px; font-weight: 600; padding: 1px 6px; border-radius: 4px; }
+  .card-deadline.urgent { background: #FEF2F2; color: #DC2626; }
+  .card-deadline.normal { background: #EFF6FF; color: #3B82F6; }
+  .card-status { font-size: 9px; font-weight: 600; padding: 1px 6px; border-radius: 4px; }
+  .status-pending { background: #FEF3C7; color: #D97706; }
+  .status-approved { background: #F0FDF4; color: #16A34A; }
+  .status-rejected { background: #FEF2F2; color: #DC2626; }
+
+  /* ══════ MODAL ══════ */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+  .modal { background: #fff; border-radius: 16px; width: 900px; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,.2); }
+  .modal-header { padding: 16px 20px; border-bottom: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; }
+  .modal-title { font-size: 16px; font-weight: 800; }
+  .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #94A3B8; }
+  .modal-body { display: flex; flex: 1; overflow: hidden; }
+
+  /* Stepper sidebar */
+  .stepper { width: 200px; background: #F8FAFC; border-right: 1px solid #E2E8F0; padding: 16px 12px; overflow-y: auto; }
+  .step-item { display: flex; align-items: flex-start; gap: 8px; padding: 8px 6px; border-radius: 6px; margin-bottom: 2px; cursor: pointer; }
+  .step-item.active { background: #EFF6FF; }
+  .step-dot { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; flex-shrink: 0; margin-top: 1px; }
+  .step-dot.done { background: #22C55E; color: #fff; }
+  .step-dot.active { background: #3B82F6; color: #fff; }
+  .step-dot.pending { background: #FEF3C7; color: #D97706; }
+  .step-dot.locked { background: #E2E8F0; color: #94A3B8; }
+  .step-info { flex: 1; }
+  .step-name { font-size: 11px; font-weight: 600; }
+  .step-status { font-size: 9px; color: #94A3B8; }
+  .step-line { width: 1px; height: 12px; background: #D1D5DB; margin-left: 22px; }
+
+  /* Form area */
+  .form-area { flex: 1; padding: 20px; overflow-y: auto; }
+  .form-section { margin-bottom: 16px; }
+  .form-label { font-size: 11px; font-weight: 600; color: #64748B; text-transform: uppercase; letter-spacing: .3px; margin-bottom: 6px; }
+  .form-input { width: 100%; padding: 8px 12px; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 13px; outline: none; }
+  .form-input:focus { border-color: #7C3AED; box-shadow: 0 0 0 2px rgba(124,58,237,.1); }
+  .form-textarea { width: 100%; padding: 8px 12px; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 13px; min-height: 80px; resize: vertical; outline: none; font-family: inherit; }
+  .form-textarea:focus { border-color: #7C3AED; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-actions { display: flex; gap: 8px; justify-content: flex-end; padding-top: 12px; border-top: 1px solid #E2E8F0; }
+
+  /* Role selector */
+  .role-selector { display: flex; gap: 8px; margin-bottom: 16px; }
+  .role-option { flex: 1; padding: 12px; border: 2px solid #E2E8F0; border-radius: 10px; cursor: pointer; text-align: center; transition: all .15s; }
+  .role-option.selected { border-color: #7C3AED; background: #F5F3FF; }
+  .role-option .role-icon { font-size: 24px; margin-bottom: 4px; }
+  .role-option .role-name { font-size: 12px; font-weight: 700; }
+  .role-option .role-desc { font-size: 10px; color: #94A3B8; }
+
+  /* Dynamic fields */
+  .dynamic-field { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .dynamic-field input { flex: 1; }
+  .dynamic-field .remove-btn { background: none; border: none; color: #DC2626; cursor: pointer; font-size: 16px; }
+  .add-field-btn { font-size: 11px; color: #7C3AED; cursor: pointer; font-weight: 600; padding: 4px 0; }
+
+  /* Attachments */
+  .attach-list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .attach-item { display: flex; align-items: center; gap: 4px; padding: 4px 8px; background: #F1F5F9; border-radius: 6px; font-size: 10px; }
+  .attach-add { padding: 4px 8px; border: 1px dashed #D1D5DB; border-radius: 6px; font-size: 10px; color: #94A3B8; cursor: pointer; }
+
+  /* User chips */
+  .user-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .user-chip { display: flex; align-items: center; gap: 4px; padding: 3px 8px; background: #F3E8FF; border-radius: 6px; font-size: 10px; color: #7C3AED; font-weight: 600; }
+  .user-chip .remove { cursor: pointer; opacity: .6; }
+
+  /* Approval panel */
+  .approval-panel { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 14px; }
+  .approval-info { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .approval-avatar { width: 32px; height: 32px; border-radius: 50%; background: #E2E8F0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+  .approval-btns { display: flex; gap: 8px; }
+  .btn-approve { background: #16A34A; color: #fff; }
+  .btn-reject { background: #DC2626; color: #fff; }
+  .btn-revision { background: #D97706; color: #fff; }
+
+  /* Checklist */
+  .checklist-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #F8FAFC; }
+  .checklist-check { width: 16px; height: 16px; border: 2px solid #D1D5DB; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .checklist-check.checked { background: #16A34A; border-color: #16A34A; color: #fff; font-size: 10px; }
+  .checklist-text { font-size: 12px; flex: 1; }
+
+  /* Timeline */
+  .timeline { margin-top: 16px; }
+  .timeline-item { display: flex; gap: 10px; padding: 6px 0; }
+  .timeline-dot { width: 8px; height: 8px; border-radius: 50%; background: #D1D5DB; margin-top: 4px; flex-shrink: 0; }
+  .timeline-dot.green { background: #16A34A; }
+  .timeline-dot.amber { background: #D97706; }
+  .timeline-dot.red { background: #DC2626; }
+  .timeline-content { font-size: 11px; color: #64748B; }
+  .timeline-content strong { color: #374151; }
+  .timeline-time { font-size: 9px; color: #94A3B8; }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active">Nghiên cứu sản phẩm</div>
+    <div class="tab">Gia công sản xuất</div>
+  </div>
+
+  <!-- Header -->
+  <div class="hdr">
+    <div>
+      <div class="hdr-title">🔬 Nghiên cứu sản phẩm</div>
+      <div class="hdr-sub">Pipeline 8 bước · 12 sản phẩm đang nghiên cứu</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <input type="text" placeholder="Tìm sản phẩm..." style="padding:6px 12px;border:1px solid #E2E8F0;border-radius:8px;font-size:12px;width:200px">
+      <button class="btn btn-primary">+ Đề xuất mới</button>
+    </div>
+  </div>
+
+  <!-- Pipeline Kanban Board -->
+  <div class="pipeline">
+
+    <!-- Col 1: Đề xuất -->
+    <div class="pipeline-col">
+      <div class="pipeline-header">
+        <span class="pipeline-title" style="color:#7C3AED">1. Đề xuất</span>
+        <span class="pipeline-count">3</span>
+      </div>
+      <div class="card">
+        <div class="card-name">Quạt phun sương mini USB</div>
+        <div class="card-meta"><span>NV: Nguyễn Đức</span></div>
+        <div class="card-footer">
+          <div class="card-avatar">NĐ</div>
+          <span class="card-deadline normal">25/04</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-name">Loa Bluetooth chống nước IP67</div>
+        <div class="card-meta"><span>Leader: Lê Vũ</span></div>
+        <div class="card-footer">
+          <div class="card-avatar">LV</div>
+          <span class="card-deadline normal">26/04</span>
+        </div>
+      </div>
+      <div class="card" style="border-left:3px solid #FEF3C7">
+        <div class="card-name">Pin sạc dự phòng 30K mAh</div>
+        <div class="card-meta"><span>NV: Bùi Việt</span></div>
+        <div class="card-footer">
+          <div class="card-avatar">BV</div>
+          <span class="card-status status-pending">Chờ duyệt</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Col 2: Chờ duyệt đề xuất -->
+    <div class="pipeline-col" style="background:#FFF7ED">
+      <div class="pipeline-header">
+        <span class="pipeline-title" style="color:#D97706">Duyệt ĐX</span>
+        <span class="pipeline-count">1</span>
+      </div>
+      <div class="card" style="border-left:3px solid #FDE68A">
+        <div class="card-name">Pin sạc dự phòng 30K mAh</div>
+        <div class="card-meta"><span>Chờ: Lê Vũ duyệt</span></div>
+        <div class="card-footer">
+          <span class="card-status status-pending">Chờ duyệt</span>
+          <span class="card-deadline urgent">24/04</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Col 3: Nghiên cứu -->
+    <div class="pipeline-col">
+      <div class="pipeline-header">
+        <span class="pipeline-title" style="color:#3B82F6">2. Nghiên cứu</span>
+        <span class="pipeline-count">2</span>
+      </div>
+      <div class="card">
+        <div class="card-name">Đồng hồ thông minh trẻ em</div>
+        <div class="card-meta"><span>NV: Hải Long</span><span>USP ✓</span></div>
+        <div class="card-footer">
+          <div class="card-avatar">HL</div>
+          <span class="card-deadline normal">28/04</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-name">Camera hành trình xe máy</div>
+        <div class="card-meta"><span>NV: Nguyễn Đức</span></div>
+        <div class="card-footer">
+          <div class="card-avatar">NĐ</div>
+          <span class="card-deadline urgent">24/04</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Col 4: Duyệt NC -->
+    <div class="pipeline-col" style="background:#FFF7ED">
+      <div class="pipeline-header">
+        <span class="pipeline-title" style="color:#D97706">Duyệt NC</span>
+        <span class="pipeline-count">1</span>
+      </div>
+      <div class="card" style="border-left:3px solid #FDE68A">
+        <div class="card-name">Tai nghe TWS ANC giá rẻ</div>
+        <div class="card-meta"><span>Chờ: Lê Vũ duyệt</span></div>
+        <div class="card-footer">
+          <span class="card-status status-pending">Chờ duyệt</span>
+          <span class="card-deadline normal">26/04</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Col 5: Đặt mẫu -->
+    <div class="pipeline-col">
+      <div class="pipeline-header">
+        <span class="pipeline-title" style="color:#16A34A">4. Đặt mẫu</span>
+        <span class="pipeline-count">2</span>
+      </div>
+      <div class="card">
+        <div class="card-name">Cáp sạc từ tính xoay 540°</div>
+        <div class="card-meta"><span>PO #1234</span><span>Đang ship</span></div>
+        <div class="card-footer">
+          <div class="card-avatar">BV</div>
+          <span class="card-status" style="background:#EFF6FF;color:#3B82F6">Đang giao</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-name">Bàn phím cơ mini 60%</div>
+        <div class="card-meta"><span>PO #1245</span><span>Đã đặt</span></div>
+        <div class="card-footer">
+          <div class="card-avatar">NĐ</div>
+          <span class="card-deadline normal">30/04</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Col 6: Hàng về / QC -->
+    <div class="pipeline-col">
+      <div class="pipeline-header">
+        <span class="pipeline-title" style="color:#0EA5E9">5. Hàng về</span>
+        <span class="pipeline-count">1</span>
+      </div>
+      <div class="card" style="border-left:3px solid #22C55E">
+        <div class="card-name">Máy chiếu mini LED</div>
+        <div class="card-meta"><span>QC: Phạm Long</span></div>
+        <div class="card-footer">
+          <span class="card-status status-approved">Đang QC</span>
+          <span class="card-deadline normal">25/04</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Col 7: Duyệt mẫu -->
+    <div class="pipeline-col" style="background:#FFF7ED">
+      <div class="pipeline-header">
+        <span class="pipeline-title" style="color:#D97706">Duyệt mẫu</span>
+        <span class="pipeline-count">0</span>
+      </div>
+      <div style="text-align:center;padding:20px;font-size:10px;color:#94A3B8">Chưa có</div>
+    </div>
+
+    <!-- Col 8: Nhập hàng -->
+    <div class="pipeline-col" style="background:#F0FDF4">
+      <div class="pipeline-header">
+        <span class="pipeline-title" style="color:#16A34A">7. Nhập hàng</span>
+        <span class="pipeline-count">1</span>
+      </div>
+      <div class="card" style="border-left:3px solid #22C55E">
+        <div class="card-name">Kính VR PRO v2</div>
+        <div class="card-meta"><span>PO #1198</span><span>500 cái</span></div>
+        <div class="card-footer">
+          <span class="card-status status-approved">Đã pass</span>
+          <span class="card-deadline normal">Đang nhập</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- MODAL: Step 1 — Đề xuất Ý tưởng              -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="modal-overlay" style="display:flex">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Đề xuất sản phẩm mới</div>
+      <button class="modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Stepper sidebar -->
+      <div class="stepper">
+        <div class="step-item active">
+          <div class="step-dot active">1</div>
+          <div class="step-info"><div class="step-name">Đề xuất</div><div class="step-status">Đang làm</div></div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step-item">
+          <div class="step-dot locked">✓</div>
+          <div class="step-info"><div class="step-name">Duyệt ĐX</div><div class="step-status">Chờ</div></div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step-item">
+          <div class="step-dot locked">2</div>
+          <div class="step-info"><div class="step-name">Nghiên cứu</div><div class="step-status">—</div></div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step-item">
+          <div class="step-dot locked">✓</div>
+          <div class="step-info"><div class="step-name">Duyệt NC</div><div class="step-status">—</div></div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step-item">
+          <div class="step-dot locked">4</div>
+          <div class="step-info"><div class="step-name">Đặt mẫu</div><div class="step-status">—</div></div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step-item">
+          <div class="step-dot locked">5</div>
+          <div class="step-info"><div class="step-name">Hàng về</div><div class="step-status">—</div></div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step-item">
+          <div class="step-dot locked">✓</div>
+          <div class="step-info"><div class="step-name">Duyệt mẫu</div><div class="step-status">—</div></div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step-item">
+          <div class="step-dot locked">7</div>
+          <div class="step-info"><div class="step-name">Nhập hàng</div><div class="step-status">—</div></div>
+        </div>
+      </div>
+
+      <!-- Form area -->
+      <div class="form-area">
+
+        <!-- Role selection -->
+        <div class="form-section">
+          <div class="form-label">Bạn đang ở vị trí nào?</div>
+          <div class="role-selector">
+            <div class="role-option selected">
+              <div class="role-icon">👔</div>
+              <div class="role-name">Leader</div>
+              <div class="role-desc">Lên ý tưởng, giao nhân viên</div>
+            </div>
+            <div class="role-option">
+              <div class="role-icon">💡</div>
+              <div class="role-name">Nhân viên</div>
+              <div class="role-desc">Đề xuất ý tưởng, gửi duyệt</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Product info -->
+        <div class="form-section">
+          <div class="form-label">Thông tin sản phẩm</div>
+          <div style="margin-bottom:8px">
+            <input class="form-input" placeholder="Tên sản phẩm *" value="Quạt phun sương mini USB">
+          </div>
+          <div>
+            <textarea class="form-textarea" placeholder="Mô tả thông tin sản phẩm (hỗ trợ link, ảnh...)">Quạt phun sương cầm tay, pin 2000mAh, phun sương siêu mịn. Trend TikTok đang hot.
+
+Link tham khảo: https://1688.com/item/xxx
+Ảnh: https://imgur.com/abc123</textarea>
+          </div>
+        </div>
+
+        <!-- Reason -->
+        <div class="form-section">
+          <div class="form-label">Lý do đề xuất</div>
+          <textarea class="form-textarea" style="min-height:60px" placeholder="Tại sao nên nghiên cứu SP này?">- Trend TikTok 50M views trong 7 ngày
+- Giá vốn thấp (~30K), biên lợi nhuận cao
+- Phù hợp mùa hè, nhu cầu cao T5-T8</textarea>
+        </div>
+
+        <!-- Attachments -->
+        <div class="form-section">
+          <div class="form-label">Tài liệu đính kèm</div>
+          <div class="attach-list">
+            <div class="attach-item">🔗 1688.com/item/xxx <span style="cursor:pointer;color:#DC2626">✕</span></div>
+            <div class="attach-item">🖼 product-ref.jpg <span style="cursor:pointer;color:#DC2626">✕</span></div>
+            <div class="attach-add">+ Thêm link / ảnh</div>
+          </div>
+        </div>
+
+        <!-- Assignment (Leader mode) -->
+        <div class="form-section">
+          <div class="form-label">Giao cho nhân viên nghiên cứu</div>
+          <div class="user-chips" style="margin-bottom:6px">
+            <div class="user-chip">Nguyễn Đức <span class="remove">✕</span></div>
+            <div class="user-chip">Bùi Việt <span class="remove">✕</span></div>
+            <div style="padding:3px 8px;border:1px dashed #C4B5FD;border-radius:6px;font-size:10px;color:#7C3AED;cursor:pointer">+ Thêm</div>
+          </div>
+          <div class="form-row">
+            <div>
+              <div style="font-size:10px;color:#94A3B8;margin-bottom:4px">Deadline</div>
+              <input class="form-input" type="date" value="2026-04-28">
+            </div>
+            <div>
+              <div style="font-size:10px;color:#94A3B8;margin-bottom:4px">Ưu tiên</div>
+              <select class="form-input" style="padding:7px 12px">
+                <option>Bình thường</option>
+                <option>Cao</option>
+                <option selected>Gấp</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="form-actions">
+          <button class="btn btn-ghost">Lưu nháp</button>
+          <button class="btn btn-primary">Giao việc & Chuyển bước →</button>
+        </div>
+
+        <!-- Timeline -->
+        <div class="timeline">
+          <div style="font-size:11px;font-weight:700;color:#64748B;margin-bottom:8px">Lịch sử</div>
+          <div class="timeline-item">
+            <div class="timeline-dot green"></div>
+            <div>
+              <div class="timeline-content"><strong>Lê Vũ</strong> tạo đề xuất</div>
+              <div class="timeline-time">24/04/2026 10:30</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- Scroll down: More modal examples              -->
+<!-- ══════════════════════════════════════════════ -->
+
+<!-- MODAL 2: Step 2 — Nghiên cứu (hidden, for reference) -->
+<div style="display:none">
+  <div class="form-area">
+    <div class="form-section">
+      <div class="form-label">Phân tích USP sản phẩm</div>
+      <textarea class="form-textarea">- Pin 2000mAh: dùng 4-6 tiếng liên tục
+- Phun sương siêu mịn 3 chế độ
+- Thiết kế nhỏ gọn, gắn bàn/cầm tay
+- Có đèn LED 7 màu</textarea>
+    </div>
+
+    <div class="form-section">
+      <div class="form-label">Đánh giá thị trường</div>
+      <div class="dynamic-field">
+        <input class="form-input" value="Đối thủ chính" style="width:140px;flex:none">
+        <input class="form-input" value="Xiaomi, Baseus, noname 1688">
+        <button class="remove-btn">✕</button>
+      </div>
+      <div class="dynamic-field">
+        <input class="form-input" value="Giá cả thị trường" style="width:140px;flex:none">
+        <input class="form-input" value="150K-350K (Shopee), 80K-200K (TikTok)">
+        <button class="remove-btn">✕</button>
+      </div>
+      <div class="dynamic-field">
+        <input class="form-input" value="Volume thị trường" style="width:140px;flex:none">
+        <input class="form-input" value="~5000 đơn/ngày trên Shopee, trending TikTok">
+        <button class="remove-btn">✕</button>
+      </div>
+      <div class="dynamic-field">
+        <input class="form-input" value="Đánh giá KH" style="width:140px;flex:none">
+        <input class="form-input" value="4.5/5 sao TB, complaint chính: pin yếu, phun không đều">
+        <button class="remove-btn">✕</button>
+      </div>
+      <div class="add-field-btn">+ Thêm trường đánh giá</div>
+    </div>
+
+    <div class="form-section">
+      <div class="form-label">Phân tích nguồn hàng</div>
+      <div class="dynamic-field">
+        <input class="form-input" value="NCC chính" style="width:140px;flex:none">
+        <input class="form-input" value="Guangzhou FanTech Co. — 1688.com">
+        <button class="remove-btn">✕</button>
+      </div>
+      <div class="dynamic-field">
+        <input class="form-input" value="Uy tín" style="width:140px;flex:none">
+        <input class="form-input" value="5 năm, 98% positive, Gold supplier">
+        <button class="remove-btn">✕</button>
+      </div>
+      <div class="dynamic-field">
+        <input class="form-input" value="MOQ" style="width:140px;flex:none">
+        <input class="form-input" value="100 cái, lead time 5-7 ngày">
+        <button class="remove-btn">✕</button>
+      </div>
+      <div class="add-field-btn">+ Thêm trường nguồn hàng</div>
+    </div>
+
+    <div class="form-section">
+      <div class="form-row">
+        <div>
+          <div class="form-label">Giá nhập dự kiến</div>
+          <input class="form-input" value="32,000đ" type="text">
+        </div>
+        <div>
+          <div class="form-label">Giá bán dự kiến</div>
+          <input class="form-input" value="159,000đ" type="text">
+        </div>
+      </div>
+      <div style="margin-top:6px;font-size:11px;color:#16A34A;font-weight:600">
+        Biên lợi nhuận dự kiến: ~80% · Lãi/SP: ~127K
+      </div>
+    </div>
+
+    <div class="form-section">
+      <div class="form-label">Đánh giá chung</div>
+      <textarea class="form-textarea">SP tiềm năng, biên lợi nhuận cao. Cần đặt mẫu test chất lượng phun sương và pin.
+Recommend: PASS — nên đặt mẫu test.</textarea>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL 3: Approval panel example (hidden, for reference) -->
+<div style="display:none">
+  <div class="approval-panel">
+    <div style="font-size:12px;font-weight:700;margin-bottom:8px">Duyệt đề xuất</div>
+    <div class="approval-info">
+      <div class="approval-avatar">BV</div>
+      <div>
+        <div style="font-size:12px;font-weight:600">Bùi Việt</div>
+        <div style="font-size:10px;color:#94A3B8">Đề xuất: Pin sạc dự phòng 30K mAh · 23/04</div>
+      </div>
+    </div>
+    <div style="background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:10px;margin-bottom:10px">
+      <div style="font-size:11px;font-weight:600;margin-bottom:4px">Tóm tắt đề xuất:</div>
+      <div style="font-size:11px;color:#64748B">Pin 30000mAh hỗ trợ PD 65W, sạc laptop. Trend cao, biên lãi 60%.</div>
+    </div>
+    <div style="margin-bottom:10px">
+      <div class="form-label">Ghi chú (nếu từ chối/yêu cầu sửa)</div>
+      <textarea class="form-textarea" style="min-height:50px" placeholder="Lý do..."></textarea>
+    </div>
+    <div class="approval-btns">
+      <button class="btn btn-approve">✓ Duyệt</button>
+      <button class="btn btn-revision">↺ Yêu cầu sửa</button>
+      <button class="btn btn-reject">✕ Từ chối</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL 4: Step 5 — Hàng về / QC checklist (hidden) -->
+<div style="display:none">
+  <div class="form-area">
+    <div class="form-section">
+      <div class="form-label">Thông tin thực tế sản phẩm</div>
+      <textarea class="form-textarea">Mẫu đã về ngày 25/04. Đóng gói tốt, không hỏng.
+Kích thước thực tế: 15x8x5cm, nặng 180g.</textarea>
+    </div>
+
+    <div class="form-section">
+      <div class="form-label">Checklist đánh giá</div>
+      <div class="checklist-item">
+        <div class="checklist-check checked">✓</div>
+        <div class="checklist-text">Đóng gói nguyên vẹn</div>
+      </div>
+      <div class="checklist-item">
+        <div class="checklist-check checked">✓</div>
+        <div class="checklist-text">Kích thước đúng mô tả</div>
+      </div>
+      <div class="checklist-item">
+        <div class="checklist-check checked">✓</div>
+        <div class="checklist-text">Pin hoạt động 4+ tiếng</div>
+      </div>
+      <div class="checklist-item">
+        <div class="checklist-check"></div>
+        <div class="checklist-text">Phun sương 3 chế độ</div>
+      </div>
+      <div class="checklist-item">
+        <div class="checklist-check"></div>
+        <div class="checklist-text">Đèn LED 7 màu</div>
+      </div>
+      <div class="add-field-btn">+ Thêm mục kiểm tra</div>
+    </div>
+
+    <div class="form-section">
+      <div class="form-label">Tài liệu, hình ảnh</div>
+      <div class="attach-list">
+        <div class="attach-item">🖼 sample-front.jpg</div>
+        <div class="attach-item">🖼 sample-back.jpg</div>
+        <div class="attach-item">🎥 test-video.mp4</div>
+        <div class="attach-add">+ Thêm</div>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <div class="form-label">Đánh giá chung</div>
+      <textarea class="form-textarea">Chất lượng 8/10. Pin tốt, phun sương OK 2 chế độ (chế độ 3 yếu).
+Đề xuất: PASS — có thể nhập lô nhỏ 200 cái test thị trường.</textarea>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-ghost">Lưu nháp</button>
+      <button class="btn btn-primary">Gửi Leader duyệt →</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

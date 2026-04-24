@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard Năm — Chi tiết tháng</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0F172A; }
+  .phone { max-width: 393px; margin: 20px auto; background: #F8FAFC; border-radius: 24px; overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,.25); padding-bottom: 20px; }
+  @media(min-width:500px) { body { padding: 20px; } }
+
+  .section-title { font-size: 12px; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; padding: 0 10px; }
+
+  /* Month card */
+  .m-card { background: #fff; border: 1px solid #E2E8F0; border-radius: 10px; padding: 8px 10px; margin: 0 10px 4px; }
+  .m-card.current { border-color: #7C3AED; }
+  .m-card.future { background: #FAFBFC; border-color: #F1F5F9; }
+
+  .m-row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .m-label { width: 26px; font-size: 11px; font-weight: 700; }
+  .m-label.current { color: #7C3AED; }
+  .m-label.future { color: #94A3B8; }
+  .m-label.past { color: #64748B; }
+
+  .m-bar { flex: 1; height: 6px; background: #F3F4F6; border-radius: 3px; overflow: hidden; position: relative; }
+  .m-bar-fill { height: 100%; border-radius: 3px; }
+  .m-bar-fill.green { background: #22C55E; }
+  .m-bar-fill.amber { background: #F59E0B; }
+  .m-bar-fill.red { background: #EF4444; }
+  .m-bar-fill.empty { background: #E2E8F0; border: 1px dashed #D1D5DB; }
+
+  .m-rev { font-size: 10px; font-weight: 700; width: 50px; text-align: right; }
+  .m-pct { font-size: 9px; font-weight: 700; width: 28px; text-align: right; }
+  .m-target { font-size: 9px; color: #94A3B8; width: 50px; text-align: right; }
+  .m-arrow { font-size: 10px; color: #94A3B8; transition: transform .2s; }
+  .m-arrow.open { transform: rotate(90deg); }
+
+  /* Expanded detail */
+  .m-detail { margin-top: 6px; border-top: 1px solid #F1F5F9; padding-top: 6px; }
+  .m-detail-header { display: flex; justify-content: space-between; font-size: 9px; color: #94A3B8; margin-bottom: 4px; }
+
+  .ch-row { display: flex; align-items: center; gap: 6px; padding: 4px 0; border-bottom: 1px solid #F8FAFC; }
+  .ch-row:last-child { border: none; }
+  .ch-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .ch-name { font-size: 10px; font-weight: 600; flex: 1; }
+  .ch-actual { font-size: 10px; font-weight: 700; width: 50px; text-align: right; }
+  .ch-target-val { font-size: 9px; color: #94A3B8; width: 45px; text-align: right; }
+  .ch-pct { font-size: 9px; font-weight: 700; width: 30px; text-align: right; }
+  .ch-bar-wrap { width: 40px; height: 4px; background: #F3F4F6; border-radius: 2px; overflow: hidden; }
+  .ch-bar-fill { height: 100%; border-radius: 2px; }
+
+  /* Future month - target breakdown */
+  .future-detail { margin-top: 6px; border-top: 1px solid #F1F5F9; padding-top: 6px; }
+  .future-label { font-size: 9px; color: #94A3B8; margin-bottom: 4px; }
+  .target-row { display: flex; align-items: center; gap: 6px; padding: 3px 0; }
+  .target-name { font-size: 10px; font-weight: 600; flex: 1; }
+  .target-val { font-size: 10px; font-weight: 700; color: #3B82F6; }
+  .target-pct { font-size: 9px; color: #94A3B8; width: 28px; text-align: right; }
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <div style="background:linear-gradient(135deg,#7C3AED,#4C1D95);padding:14px;color:#fff">
+    <div style="font-size:17px;font-weight:800">Chi tiết từng tháng</div>
+    <div style="font-size:11px;opacity:.6">Dashboard Năm 2026 · KH 118.3 tỷ</div>
+  </div>
+
+  <div style="padding:12px 0">
+    <div class="section-title">Chi tiết từng tháng</div>
+
+    <!-- T1 — Past, đạt KH -->
+    <div class="m-card">
+      <div class="m-row">
+        <div class="m-label past">T1</div>
+        <div class="m-bar"><div class="m-bar-fill green" style="width:100%"></div></div>
+        <div class="m-rev" style="color:#16A34A">9.85T</div>
+        <div class="m-pct" style="color:#16A34A">126%</div>
+        <div class="m-target">KH 7.81T</div>
+        <div class="m-arrow">›</div>
+      </div>
+    </div>
+
+    <!-- T2 — Past, chưa đạt -->
+    <div class="m-card">
+      <div class="m-row">
+        <div class="m-label past">T2</div>
+        <div class="m-bar"><div class="m-bar-fill amber" style="width:87%"></div></div>
+        <div class="m-rev" style="color:#D97706">7.33T</div>
+        <div class="m-pct" style="color:#D97706">87%</div>
+        <div class="m-target">KH 8.41T</div>
+        <div class="m-arrow">›</div>
+      </div>
+    </div>
+
+    <!-- T3 — Past, vượt KH -->
+    <div class="m-card">
+      <div class="m-row">
+        <div class="m-label past">T3</div>
+        <div class="m-bar"><div class="m-bar-fill green" style="width:100%"></div></div>
+        <div class="m-rev" style="color:#16A34A">10.45T</div>
+        <div class="m-pct" style="color:#16A34A">127%</div>
+        <div class="m-target">KH 8.20T</div>
+        <div class="m-arrow">›</div>
+      </div>
+    </div>
+
+    <!-- T4 — Current, đang chạy, EXPANDED with channel detail -->
+    <div class="m-card current">
+      <div class="m-row">
+        <div class="m-label current">T4</div>
+        <div class="m-bar">
+          <div class="m-bar-fill amber" style="width:85%"></div>
+          <div style="position:absolute;top:-1px;left:73%;width:1px;height:8px;background:#DC2626;opacity:.4"></div>
+        </div>
+        <div class="m-rev" style="color:#D97706">6.75T</div>
+        <div class="m-pct" style="color:#D97706">85%</div>
+        <div class="m-target">KH 7.97T</div>
+        <div class="m-arrow open">›</div>
+      </div>
+
+      <!-- Expanded: channel breakdown with targets -->
+      <div class="m-detail">
+        <div class="m-detail-header">
+          <span>Kênh</span>
+          <span>Thực tế · KH · Đạt%</span>
+        </div>
+
+        <div class="ch-row">
+          <div class="ch-dot" style="background:#1877F2"></div>
+          <div class="ch-name">Facebook</div>
+          <div class="ch-actual" style="color:#16A34A">4.35T</div>
+          <div class="ch-target-val">/ 4.38T</div>
+          <div class="ch-pct" style="color:#16A34A">99%</div>
+          <div class="ch-bar-wrap"><div class="ch-bar-fill" style="width:99%;background:#22C55E"></div></div>
+        </div>
+
+        <div class="ch-row">
+          <div class="ch-dot" style="background:#18181B"></div>
+          <div class="ch-name">TikTok</div>
+          <div class="ch-actual" style="color:#DC2626">1.21T</div>
+          <div class="ch-target-val">/ 1.99T</div>
+          <div class="ch-pct" style="color:#DC2626">61%</div>
+          <div class="ch-bar-wrap"><div class="ch-bar-fill" style="width:61%;background:#EF4444"></div></div>
+        </div>
+
+        <div class="ch-row">
+          <div class="ch-dot" style="background:#EE4D2D"></div>
+          <div class="ch-name">Shopee</div>
+          <div class="ch-actual" style="color:#D97706">575M</div>
+          <div class="ch-target-val">/ 797M</div>
+          <div class="ch-pct" style="color:#D97706">72%</div>
+          <div class="ch-bar-wrap"><div class="ch-bar-fill" style="width:72%;background:#F59E0B"></div></div>
+        </div>
+
+        <div class="ch-row">
+          <div class="ch-dot" style="background:#6366F1"></div>
+          <div class="ch-name">Web/App</div>
+          <div class="ch-actual">271M</div>
+          <div class="ch-target-val">/ 797M</div>
+          <div class="ch-pct" style="color:#DC2626">34%</div>
+          <div class="ch-bar-wrap"><div class="ch-bar-fill" style="width:34%;background:#EF4444"></div></div>
+        </div>
+
+        <!-- Ads summary -->
+        <div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-top:1px solid #F8FAFC;margin-top:2px">
+          <span style="width:8px;height:2px;background:#DC2626;flex-shrink:0"></span>
+          <span style="font-size:10px;font-weight:600;flex:1;color:#DC2626">Ads</span>
+          <span style="font-size:10px;font-weight:700;color:#DC2626">245M</span>
+          <span style="font-size:9px;color:#DC2626;width:30px;text-align:right">3.6%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- T5 — Future, EXPANDED with target breakdown -->
+    <div class="m-card future">
+      <div class="m-row">
+        <div class="m-label future">T5</div>
+        <div class="m-bar"><div class="m-bar-fill empty" style="width:100%"></div></div>
+        <div class="m-rev" style="color:#94A3B8">—</div>
+        <div class="m-pct"></div>
+        <div class="m-target" style="color:#3B82F6;font-weight:600">KH 8.73T</div>
+        <div class="m-arrow open">›</div>
+      </div>
+
+      <!-- Expanded: target allocation per channel -->
+      <div class="future-detail">
+        <div class="future-label">Phân bổ KH tháng 5</div>
+
+        <div class="target-row">
+          <div class="ch-dot" style="background:#1877F2"></div>
+          <div class="target-name">Facebook</div>
+          <div class="target-val">4.80T</div>
+          <div class="target-pct">55%</div>
+        </div>
+
+        <div class="target-row">
+          <div class="ch-dot" style="background:#18181B"></div>
+          <div class="target-name">TikTok</div>
+          <div class="target-val">2.18T</div>
+          <div class="target-pct">25%</div>
+        </div>
+
+        <div class="target-row">
+          <div class="ch-dot" style="background:#EE4D2D"></div>
+          <div class="target-name">Shopee</div>
+          <div class="target-val">873M</div>
+          <div class="target-pct">10%</div>
+        </div>
+
+        <div class="target-row">
+          <div class="ch-dot" style="background:#6366F1"></div>
+          <div class="target-name">Web/App</div>
+          <div class="target-val">873M</div>
+          <div class="target-pct">10%</div>
+        </div>
+
+        <div style="padding:6px 8px;background:#EFF6FF;border-radius:6px;margin-top:6px;font-size:9px;color:#1E40AF">
+          💡 TB ngày cần đạt: <strong>281.7M/ngày</strong> · 31 ngày
+        </div>
+      </div>
+    </div>
+
+    <!-- T6 — Future, collapsed -->
+    <div class="m-card future">
+      <div class="m-row">
+        <div class="m-label future">T6</div>
+        <div class="m-bar"><div class="m-bar-fill empty" style="width:100%"></div></div>
+        <div class="m-rev" style="color:#94A3B8">—</div>
+        <div class="m-pct"></div>
+        <div class="m-target" style="color:#3B82F6;font-weight:600">KH 8.45T</div>
+        <div class="m-arrow">›</div>
+      </div>
+    </div>
+
+    <!-- T7-T12 collapsed -->
+    <div class="m-card future">
+      <div class="m-row">
+        <div class="m-label future">T7</div>
+        <div class="m-bar"><div class="m-bar-fill empty" style="width:100%"></div></div>
+        <div class="m-rev" style="color:#94A3B8">—</div>
+        <div class="m-pct"></div>
+        <div class="m-target" style="color:#3B82F6;font-weight:600">KH 9.12T</div>
+        <div class="m-arrow">›</div>
+      </div>
+    </div>
+
+    <div class="m-card future">
+      <div class="m-row">
+        <div class="m-label future">T8</div>
+        <div class="m-bar"><div class="m-bar-fill empty" style="width:100%"></div></div>
+        <div class="m-rev" style="color:#94A3B8">—</div>
+        <div class="m-pct"></div>
+        <div class="m-target" style="color:#3B82F6;font-weight:600">KH 9.45T</div>
+        <div class="m-arrow">›</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Legend -->
+  <div style="padding:0 10px 12px;display:flex;gap:12px;font-size:9px;color:#94A3B8;justify-content:center">
+    <span><span style="display:inline-block;width:8px;height:4px;background:#22C55E;border-radius:1px;margin-right:3px;vertical-align:middle"></span>≥100%</span>
+    <span><span style="display:inline-block;width:8px;height:4px;background:#F59E0B;border-radius:1px;margin-right:3px;vertical-align:middle"></span>70-99%</span>
+    <span><span style="display:inline-block;width:8px;height:4px;background:#EF4444;border-radius:1px;margin-right:3px;vertical-align:middle"></span>&lt;70%</span>
+    <span><span style="display:inline-block;width:8px;height:4px;background:#E2E8F0;border:1px dashed #D1D5DB;border-radius:1px;margin-right:3px;vertical-align:middle"></span>Chưa chạy</span>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MOCKUP — Dashboard Ngày</title>
+<style>
+  :root {
+    --bg:#F5F5F7;--card:#FFFFFF;--border:#E4E4E7;--text:#18181B;--muted:#71717A;--subtle:#A1A1AA;
+    --blue:#2563EB;--blue-lt:#EFF6FF;
+    --green:#16A34A;--green-lt:#F0FDF4;
+    --amber:#D97706;--amber-lt:#FFFBEB;
+    --red:#DC2626;--red-lt:#FEF2F2;
+    --purple:#7C3AED;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'Inter',system-ui,sans-serif; font-size:14px; padding:20px; max-width:1200px; margin:0 auto; }
+
+  .mockup-badge { display:inline-block; background:var(--blue); color:#fff; font-size:10px; font-weight:700; padding:3px 10px; border-radius:10px; margin-bottom:6px; letter-spacing:1px; }
+  .mockup-note { font-size:11px; color:var(--muted); margin-bottom:16px; }
+
+  .page-hdr { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:14px; }
+  .page-title { font-size:17px; font-weight:800; }
+  .page-sub { font-size:13px; color:var(--muted); margin-top:2px; }
+
+  .card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 14px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+
+  /* Top KPI strip */
+  .kpi-strip { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin-bottom:12px; }
+  .kpi-card { padding:10px 14px; border-radius:8px; border:1px solid; }
+  .kpi-card .kl { font-size:9px; font-weight:600; letter-spacing:.3px; margin-bottom:2px; }
+  .kpi-card .kv { font-size:20px; font-weight:800; margin:2px 0; }
+  .kpi-card .ks { font-size:9px; opacity:.7; }
+
+  /* Progress */
+  .progress-bar { height:10px; background:#F3F4F6; border-radius:5px; overflow:hidden; position:relative; }
+  .progress-fill { height:100%; border-radius:5px; transition:width .3s; }
+  .progress-mark { position:absolute; top:0; width:2px; height:100%; background:#DC2626; opacity:.5; }
+
+  /* Grid layouts */
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+  .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:12px; }
+  .grid-2-1 { display:grid; grid-template-columns:2fr 1fr; gap:10px; margin-bottom:12px; }
+
+  /* Channel row */
+  .ch-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .ch-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .ch-name { font-size:11px; font-weight:600; width:70px; }
+  .ch-bar-wrap { flex:1; height:8px; background:#F3F4F6; border-radius:2px; overflow:hidden; }
+  .ch-bar { height:100%; border-radius:2px; }
+  .ch-val { font-size:10px; font-weight:700; width:55px; text-align:right; }
+  .ch-pct { font-size:9px; width:32px; text-align:right; }
+
+  /* Table */
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  th { background:#FAFAFA; padding:7px 10px; text-align:left; font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; border-bottom:1px solid var(--border); }
+  td { padding:7px 10px; border-bottom:1px solid var(--border); }
+  .text-right { text-align:right; }
+  .font-bold { font-weight:700; }
+  tr:hover { background:#FAFAFA; }
+  tr.total-row { background:#F9FAFB; font-weight:700; }
+
+  /* Task item */
+  .task-item { display:flex; align-items:flex-start; gap:8px; padding:8px 0; border-bottom:1px solid var(--border); }
+  .task-item:last-child { border-bottom:none; }
+  .task-check { width:18px; height:18px; border-radius:50%; border:2px solid var(--border); flex-shrink:0; margin-top:1px; }
+  .task-check.done { background:var(--green); border-color:var(--green); }
+  .task-info { flex:1; }
+  .task-title { font-size:12px; font-weight:600; }
+  .task-meta { font-size:10px; color:var(--muted); margin-top:2px; }
+  .task-badge { font-size:9px; padding:2px 6px; border-radius:4px; font-weight:600; }
+
+  /* Damage item */
+  .dmg-item { display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--border); font-size:12px; }
+  .dmg-item:last-child { border-bottom:none; }
+
+  /* Mini stat */
+  .mini-stat { text-align:center; padding:8px; }
+  .mini-stat .ms-val { font-size:22px; font-weight:800; }
+  .mini-stat .ms-label { font-size:10px; color:var(--muted); margin-top:2px; }
+
+  /* Section header */
+  .sec-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+  .sec-title { font-weight:700; font-size:12px; }
+  .sec-badge { font-size:10px; color:var(--muted); }
+
+  .btn-xs { font-size:11px; padding:4px 10px; border-radius:6px; border:1px solid var(--border); background:#fff; color:var(--muted); cursor:pointer; font-weight:600; }
+  .btn-xs.active { background:var(--blue); color:#fff; border-color:var(--blue); }
+
+  .date-nav { display:flex; align-items:center; gap:6px; }
+  .date-nav .arrow { width:28px; height:28px; border-radius:6px; border:1px solid var(--border); display:flex; align-items:center; justify-content:center; cursor:pointer; background:#fff; font-size:14px; color:var(--muted); }
+  .date-nav .current { font-size:14px; font-weight:700; min-width:140px; text-align:center; }
+
+  .divider { border:none; border-top:1px solid var(--border); margin:16px 0; }
+
+  /* Alerts */
+  .alert { padding:8px 12px; border-radius:6px; font-size:12px; border:1px solid; margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+  .alert-red { background:var(--red-lt); border-color:#FECACA; color:#991B1B; }
+  .alert-amber { background:var(--amber-lt); border-color:#FCD34D; color:#92400E; }
+  .alert-green { background:var(--green-lt); border-color:#86EFAC; color:#166534; }
+</style>
+</head>
+<body>
+
+<div class="mockup-badge">MOCKUP</div>
+<div class="mockup-note">Dashboard Ngay — Bao cao nhanh moi ngay cho quan ly</div>
+
+<!-- ═══ HEADER ═══ -->
+<div class="page-hdr">
+  <div>
+    <div class="page-title">Dashboard Ngay</div>
+    <div class="page-sub">Thu Ba, 22/04/2026 · Cap nhat luc 09:30</div>
+  </div>
+  <div class="date-nav">
+    <div class="arrow">&larr;</div>
+    <div class="current">22/04/2026</div>
+    <div class="arrow">&rarr;</div>
+    <span style="width:1px;height:20px;background:var(--border)"></span>
+    <button class="btn-xs active">Hom nay</button>
+    <button class="btn-xs">Hom qua</button>
+    <button class="btn-xs">7 ngay</button>
+  </div>
+</div>
+
+<!-- ═══ TOP KPI STRIP ═══ -->
+<div class="kpi-strip">
+  <div class="kpi-card" style="background:var(--green-lt);border-color:#BBF7D0">
+    <div class="kl" style="color:#166534">DOANH THU THUC TE</div>
+    <div class="kv" style="color:#166534">18.5tr</div>
+    <div class="ks" style="color:#166534">142 don · <span style="font-weight:700">+14%</span> vs hom qua</div>
+  </div>
+  <div class="kpi-card" style="background:var(--blue-lt);border-color:#BFDBFE">
+    <div class="kl" style="color:#1E40AF">DU KIEN NGAY</div>
+    <div class="kv" style="color:#1E40AF">15.8tr</div>
+    <div class="ks" style="color:#1E40AF">TB thang / hom qua 16.2tr</div>
+  </div>
+  <div class="kpi-card" style="background:var(--red-lt);border-color:#FECACA">
+    <div class="kl" style="color:#991B1B">CHI PHI ADS</div>
+    <div class="kv" style="color:#991B1B">2.1tr</div>
+    <div class="ks" style="color:#991B1B">Hom qua 1.9tr · <span style="font-weight:700">+11%</span></div>
+  </div>
+  <div class="kpi-card" style="background:var(--amber-lt);border-color:#FDE68A">
+    <div class="kl" style="color:#92400E">ADS / DOANH THU</div>
+    <div class="kv" style="color:#92400E">11.4%</div>
+    <div class="ks" style="color:#92400E">Hom qua 11.7% · ROAS 8.8x</div>
+  </div>
+  <div class="kpi-card" style="background:#fff;border-color:var(--border)">
+    <div class="kl">HANG NHAP HOM NAY</div>
+    <div class="kv">3 don</div>
+    <div class="ks">12.5tr · hom qua 0 don</div>
+  </div>
+  <div class="kpi-card" style="background:#fff;border-color:var(--border)">
+    <div class="kl">THIET HAI HOM NAY</div>
+    <div class="kv" style="color:var(--red)">2 SP</div>
+    <div class="ks">185K · hom qua 0</div>
+  </div>
+</div>
+
+<!-- ═══ PROGRESS: DT thuc te vs du kien ═══ -->
+<div class="card" style="margin-bottom:12px; padding:10px 16px">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px">
+    <div>
+      <span style="font-size:12px; font-weight:700">Tien do ngay</span>
+      <span style="font-size:10px; color:var(--muted); margin-left:8px">15:30 · 65% thoi gian</span>
+    </div>
+    <div style="font-size:10px">
+      <span style="color:var(--green); font-weight:700">18.5tr</span>
+      <span style="color:var(--muted)"> / KH </span>
+      <span style="font-weight:700">15.8tr</span>
+      <span style="color:var(--green); font-weight:700; margin-left:4px">117%</span>
+    </div>
+  </div>
+  <div class="progress-bar">
+    <div class="progress-fill" style="width:100%; background:var(--green)"></div>
+    <div class="progress-mark" style="left:65%"></div>
+  </div>
+  <div style="display:flex; gap:16px; margin-top:4px; font-size:10px; color:var(--muted)">
+    <span>Vuot KH <b style="color:var(--green)">+2.7tr</b></span>
+    <span>|</span>
+    <span>Hom qua: <b>16.2tr</b></span>
+    <span>TB 7 ngay: <b>17.1tr</b></span>
+    <span>TB thang: <b>15.8tr</b></span>
+  </div>
+</div>
+
+<!-- ═══ ROW 1: Doanh thu kenh + Chi phi Ads ═══ -->
+<div class="grid-2">
+  <!-- Doanh thu theo kenh -->
+  <div class="card">
+    <div class="sec-hdr">
+      <span class="sec-title">Doanh thu theo kenh</span>
+      <span class="sec-badge">Hom nay vs hom qua</span>
+    </div>
+
+    <!-- Header row -->
+    <div style="display:grid; grid-template-columns:70px 1fr 55px 55px 40px; gap:0 6px; font-size:9px; color:var(--muted); margin-bottom:4px; padding:0 0 0 16px">
+      <span></span><span></span><span style="text-align:right">Hom nay</span><span style="text-align:right">Hom qua</span><span style="text-align:right">+/-%</span>
+    </div>
+
+    <div class="ch-row">
+      <div class="ch-dot" style="background:#1877F2"></div>
+      <div class="ch-name">Facebook</div>
+      <div class="ch-bar-wrap"><div class="ch-bar" style="width:55%;background:#1877F2"></div></div>
+      <div class="ch-val" style="color:#1877F2">10.2tr</div>
+      <div style="font-size:10px;width:55px;text-align:right;color:var(--muted)">9.1tr</div>
+      <div style="font-size:9px;width:40px;text-align:right;color:var(--green);font-weight:700">+12%</div>
+    </div>
+    <div class="ch-row">
+      <div class="ch-dot" style="background:#FE2C55"></div>
+      <div class="ch-name">TikTok</div>
+      <div class="ch-bar-wrap"><div class="ch-bar" style="width:27%;background:#FE2C55"></div></div>
+      <div class="ch-val" style="color:#FE2C55">5.0tr</div>
+      <div style="font-size:10px;width:55px;text-align:right;color:var(--muted)">4.2tr</div>
+      <div style="font-size:9px;width:40px;text-align:right;color:var(--green);font-weight:700">+19%</div>
+    </div>
+    <div class="ch-row">
+      <div class="ch-dot" style="background:#EE4D2D"></div>
+      <div class="ch-name">Shopee</div>
+      <div class="ch-bar-wrap"><div class="ch-bar" style="width:11%;background:#EE4D2D"></div></div>
+      <div class="ch-val" style="color:#EE4D2D">2.0tr</div>
+      <div style="font-size:10px;width:55px;text-align:right;color:var(--muted)">2.1tr</div>
+      <div style="font-size:9px;width:40px;text-align:right;color:var(--red);font-weight:700">-5%</div>
+    </div>
+    <div class="ch-row">
+      <div class="ch-dot" style="background:#6366F1"></div>
+      <div class="ch-name">Web/App</div>
+      <div class="ch-bar-wrap"><div class="ch-bar" style="width:7%;background:#6366F1"></div></div>
+      <div class="ch-val" style="color:#6366F1">1.3tr</div>
+      <div style="font-size:10px;width:55px;text-align:right;color:var(--muted)">0.8tr</div>
+      <div style="font-size:9px;width:40px;text-align:right;color:var(--green);font-weight:700">+63%</div>
+    </div>
+
+    <div style="border-top:1px solid var(--border); margin-top:6px; padding-top:6px; display:grid; grid-template-columns:1fr 55px 55px 40px; font-size:11px; font-weight:700">
+      <span>Tong</span>
+      <span style="text-align:right;color:var(--green)">18.5tr</span>
+      <span style="text-align:right;color:var(--muted)">16.2tr</span>
+      <span style="text-align:right;color:var(--green)">+14%</span>
+    </div>
+
+    <!-- Stacked bar -->
+    <div style="display:flex; height:14px; border-radius:7px; overflow:hidden; margin-top:8px">
+      <div style="width:55%; background:#1877F2; display:flex; align-items:center; justify-content:center"><span style="font-size:8px;color:#fff;font-weight:700">FB 55%</span></div>
+      <div style="width:27%; background:#FE2C55; display:flex; align-items:center; justify-content:center"><span style="font-size:8px;color:#fff;font-weight:700">TT 27%</span></div>
+      <div style="width:11%; background:#EE4D2D; display:flex; align-items:center; justify-content:center"><span style="font-size:8px;color:#fff;font-weight:700">SP</span></div>
+      <div style="width:7%; background:#6366F1; display:flex; align-items:center; justify-content:center"><span style="font-size:8px;color:#fff;font-weight:700">W</span></div>
+    </div>
+  </div>
+
+  <!-- Chi phi Ads theo kenh -->
+  <div class="card">
+    <div class="sec-hdr">
+      <span class="sec-title">Chi phi Ads theo kenh</span>
+      <span class="sec-badge">Tong: 2.1tr · 11.4% DT</span>
+    </div>
+
+    <table>
+      <thead><tr>
+        <th>Kenh</th>
+        <th class="text-right">Ads Spend</th>
+        <th class="text-right">DT kenh</th>
+        <th class="text-right">Ads/DT</th>
+        <th class="text-right">ROAS</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#1877F2;margin-right:4px;vertical-align:middle"></span>Facebook</td>
+          <td class="text-right" style="color:var(--red)">850K</td>
+          <td class="text-right" style="color:var(--green)">10.2tr</td>
+          <td class="text-right font-bold" style="color:var(--green)">8.3%</td>
+          <td class="text-right font-bold" style="color:var(--green)">12.0x</td>
+        </tr>
+        <tr>
+          <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#FE2C55;margin-right:4px;vertical-align:middle"></span>TikTok</td>
+          <td class="text-right" style="color:var(--red)">1.0tr</td>
+          <td class="text-right" style="color:var(--green)">5.0tr</td>
+          <td class="text-right font-bold" style="color:var(--red)">20.0%</td>
+          <td class="text-right font-bold" style="color:var(--amber)">5.0x</td>
+        </tr>
+        <tr>
+          <td style="padding-left:24px;color:var(--muted);font-size:10px">- BM Ads</td>
+          <td class="text-right" style="color:var(--muted);font-size:10px">80K</td>
+          <td class="text-right" style="color:var(--muted);font-size:10px">—</td>
+          <td class="text-right" style="color:var(--muted);font-size:10px">—</td>
+          <td class="text-right" style="color:var(--muted);font-size:10px">—</td>
+        </tr>
+        <tr>
+          <td style="padding-left:24px;color:var(--muted);font-size:10px">- GMV Max</td>
+          <td class="text-right" style="color:var(--muted);font-size:10px">920K</td>
+          <td class="text-right" style="color:var(--green);font-size:10px">11.8tr</td>
+          <td class="text-right font-bold" style="color:var(--green);font-size:10px">7.8%</td>
+          <td class="text-right font-bold" style="color:var(--green);font-size:10px">12.8x</td>
+        </tr>
+        <tr>
+          <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#EE4D2D;margin-right:4px;vertical-align:middle"></span>Shopee</td>
+          <td class="text-right" style="color:var(--red)">250K</td>
+          <td class="text-right" style="color:var(--green)">2.0tr</td>
+          <td class="text-right font-bold" style="color:var(--amber)">12.5%</td>
+          <td class="text-right font-bold" style="color:var(--amber)">8.0x</td>
+        </tr>
+        <tr class="total-row">
+          <td>Tong</td>
+          <td class="text-right" style="color:var(--red)">2.1tr</td>
+          <td class="text-right" style="color:var(--green)">18.5tr</td>
+          <td class="text-right font-bold" style="color:var(--red)">11.4%</td>
+          <td class="text-right font-bold">8.8x</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Cost breakdown mini -->
+    <div style="margin-top:10px; display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px">
+      <div style="background:#F9FAFB; border-radius:6px; padding:6px 10px">
+        <div style="font-size:9px; color:var(--muted)">Chi phi / Tong DT</div>
+        <div style="font-size:16px; font-weight:800; color:var(--red)">11.4%</div>
+        <div style="font-size:9px; color:var(--red)">Cao — muc tieu &lt;7%</div>
+      </div>
+      <div style="background:#F9FAFB; border-radius:6px; padding:6px 10px">
+        <div style="font-size:9px; color:var(--muted)">Chi phi / Tong (thang)</div>
+        <div style="font-size:16px; font-weight:800; color:var(--amber)">5.8%</div>
+        <div style="font-size:9px; color:var(--green)">TB thang tot</div>
+      </div>
+    </div>
+
+    <!-- TOP TAI KHOAN ADS CHI PHI CAO -->
+    <div style="border-top:1px solid var(--border); padding-top:8px">
+      <div style="font-size:11px; font-weight:700; margin-bottom:6px">Top tai khoan chi phi cao nhat</div>
+
+      <!-- Facebook — 6 accounts -->
+      <div style="margin-bottom:8px">
+        <div style="display:flex; align-items:center; gap:4px; margin-bottom:4px">
+          <span style="width:8px;height:8px;border-radius:50%;background:#1877F2"></span>
+          <span style="font-size:10px; font-weight:700; color:#1877F2">Facebook</span>
+          <span style="font-size:9px; color:var(--muted); margin-left:auto">6 TK · Tong 850K</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px; padding:3px 0 3px 12px; font-size:10px">
+          <span style="color:var(--muted); width:12px; text-align:center">1</span>
+          <span style="flex:1; font-weight:600">PHI 10 BZ 1</span>
+          <div style="width:60px; height:5px; background:#F3F4F6; border-radius:2px; overflow:hidden"><div style="width:45%; height:100%; background:#1877F2; border-radius:2px"></div></div>
+          <span style="font-weight:700; width:45px; text-align:right">385K</span>
+          <span style="color:var(--muted); width:30px; text-align:right; font-size:9px">45%</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px; padding:3px 0 3px 12px; font-size:10px">
+          <span style="color:var(--muted); width:12px; text-align:center">2</span>
+          <span style="flex:1; font-weight:600">VIA PHI BZ 7</span>
+          <div style="width:60px; height:5px; background:#F3F4F6; border-radius:2px; overflow:hidden"><div style="width:30%; height:100%; background:#1877F2; border-radius:2px"></div></div>
+          <span style="font-weight:700; width:45px; text-align:right">255K</span>
+          <span style="color:var(--muted); width:30px; text-align:right; font-size:9px">30%</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px; padding:3px 0 3px 12px; font-size:10px">
+          <span style="color:var(--muted); width:12px; text-align:center">3</span>
+          <span style="flex:1; font-weight:600">PHI 10 BZ 3</span>
+          <div style="width:60px; height:5px; background:#F3F4F6; border-radius:2px; overflow:hidden"><div style="width:15%; height:100%; background:#1877F2; border-radius:2px"></div></div>
+          <span style="font-weight:700; width:45px; text-align:right">125K</span>
+          <span style="color:var(--muted); width:30px; text-align:right; font-size:9px">15%</span>
+        </div>
+      </div>
+
+      <!-- TikTok — 2 loai -->
+      <div style="margin-bottom:8px">
+        <div style="display:flex; align-items:center; gap:4px; margin-bottom:4px">
+          <span style="width:8px;height:8px;border-radius:50%;background:#FE2C55"></span>
+          <span style="font-size:10px; font-weight:700; color:#FE2C55">TikTok</span>
+          <span style="font-size:9px; color:var(--muted); margin-left:auto">2 nguon · Tong 1.0tr</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px; padding:3px 0 3px 12px; font-size:10px">
+          <span style="color:var(--muted); width:12px; text-align:center">1</span>
+          <span style="flex:1; font-weight:600">GMV Max (Lo Vu I)</span>
+          <div style="width:60px; height:5px; background:#F3F4F6; border-radius:2px; overflow:hidden"><div style="width:92%; height:100%; background:#FE2C55; border-radius:2px"></div></div>
+          <span style="font-weight:700; width:45px; text-align:right">920K</span>
+          <span style="color:var(--muted); width:30px; text-align:right; font-size:9px">92%</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px; padding:3px 0 3px 12px; font-size:10px">
+          <span style="color:var(--muted); width:12px; text-align:center">2</span>
+          <span style="flex:1; font-weight:600">Lemon x Velasboost 1 (BM)</span>
+          <div style="width:60px; height:5px; background:#F3F4F6; border-radius:2px; overflow:hidden"><div style="width:8%; height:100%; background:#FE2C55; border-radius:2px"></div></div>
+          <span style="font-weight:700; width:45px; text-align:right">80K</span>
+          <span style="color:var(--muted); width:30px; text-align:right; font-size:9px">8%</span>
+        </div>
+      </div>
+
+      <!-- Shopee — 1 TK -->
+      <div>
+        <div style="display:flex; align-items:center; gap:4px; margin-bottom:4px">
+          <span style="width:8px;height:8px;border-radius:50%;background:#EE4D2D"></span>
+          <span style="font-size:10px; font-weight:700; color:#EE4D2D">Shopee</span>
+          <span style="font-size:9px; color:var(--muted); margin-left:auto">1 TK · Tong 250K</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px; padding:3px 0 3px 12px; font-size:10px">
+          <span style="color:var(--muted); width:12px; text-align:center">1</span>
+          <span style="flex:1; font-weight:600">velasboost (Partner)</span>
+          <div style="width:60px; height:5px; background:#F3F4F6; border-radius:2px; overflow:hidden"><div style="width:100%; height:100%; background:#EE4D2D; border-radius:2px"></div></div>
+          <span style="font-weight:700; width:45px; text-align:right">250K</span>
+          <span style="color:var(--muted); width:30px; text-align:right; font-size:9px">100%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ROW 2: Hang nhap + Thiet hai + Viec hom nay ═══ -->
+<div class="grid-3">
+
+  <!-- Hang nhap hom nay -->
+  <div class="card">
+    <div class="sec-hdr">
+      <span class="sec-title">Hang nhap hom nay</span>
+      <span class="sec-badge">3 don</span>
+    </div>
+
+    <div class="dmg-item">
+      <span style="font-size:10px;font-weight:700;color:var(--blue);width:60px">#PO-142</span>
+      <span style="flex:1;font-size:11px">Cap PD 20W x500</span>
+      <span style="font-size:10px;font-weight:700">5.2tr</span>
+      <span style="font-size:9px;padding:2px 6px;border-radius:4px;background:var(--amber-lt);color:var(--amber);font-weight:600">QC</span>
+    </div>
+    <div class="dmg-item">
+      <span style="font-size:10px;font-weight:700;color:var(--blue);width:60px">#PO-145</span>
+      <span style="flex:1;font-size:11px">Bo sac nhanh x200</span>
+      <span style="font-size:10px;font-weight:700">4.8tr</span>
+      <span style="font-size:9px;padding:2px 6px;border-radius:4px;background:var(--green-lt);color:var(--green);font-weight:600">Da ve</span>
+    </div>
+    <div class="dmg-item">
+      <span style="font-size:10px;font-weight:700;color:var(--blue);width:60px">#PO-147</span>
+      <span style="flex:1;font-size:11px">Op lung iPhone x100</span>
+      <span style="font-size:10px;font-weight:700">2.5tr</span>
+      <span style="font-size:9px;padding:2px 6px;border-radius:4px;background:var(--amber-lt);color:var(--amber);font-weight:600">Dang den</span>
+    </div>
+
+    <div style="border-top:1px solid var(--border); margin-top:6px; padding-top:6px; display:flex; justify-content:space-between; font-size:11px">
+      <span style="color:var(--muted)">Tong gia tri nhap</span>
+      <span style="font-weight:700">12.5tr</span>
+    </div>
+  </div>
+
+  <!-- Thiet hai hom nay -->
+  <div class="card">
+    <div class="sec-hdr">
+      <span class="sec-title">Thiet hai hom nay</span>
+      <span class="sec-badge" style="color:var(--red)">2 SP · 185K</span>
+    </div>
+
+    <div class="dmg-item">
+      <span style="width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0"></span>
+      <span style="flex:1;font-size:11px">Cap Type-C 1m — gay dau ket noi</span>
+      <span style="font-size:10px;font-weight:700;color:var(--red)">85K</span>
+      <span style="font-size:9px;padding:2px 6px;border-radius:4px;background:var(--red-lt);color:var(--red);font-weight:600">Cho xu ly</span>
+    </div>
+    <div class="dmg-item">
+      <span style="width:8px;height:8px;border-radius:50%;background:var(--amber);flex-shrink:0"></span>
+      <span style="flex:1;font-size:11px">Sac 65W — hong mach nap</span>
+      <span style="font-size:10px;font-weight:700;color:var(--red)">100K</span>
+      <span style="font-size:9px;padding:2px 6px;border-radius:4px;background:var(--amber-lt);color:var(--amber);font-weight:600">Da bao NCC</span>
+    </div>
+
+    <div style="border-top:1px solid var(--border); margin-top:6px; padding-top:6px">
+      <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px">
+        <span style="color:var(--muted)">Thiet hai thang nay</span>
+        <span style="font-weight:700; color:var(--red)">1.2tr · 15 SP</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; font-size:11px">
+        <span style="color:var(--muted)">Cho xu ly</span>
+        <span style="font-weight:700; color:var(--amber)">4 SP</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Viec hom nay -->
+  <div class="card">
+    <div class="sec-hdr">
+      <span class="sec-title">Viec hom nay</span>
+      <span class="sec-badge">2/5 xong</span>
+    </div>
+
+    <div class="task-item">
+      <div class="task-check done"></div>
+      <div class="task-info">
+        <div class="task-title" style="text-decoration:line-through;color:var(--muted)">QC don PO-142 cap PD 20W</div>
+        <div class="task-meta">Le Vu · 08:30</div>
+      </div>
+      <span class="task-badge" style="background:var(--green-lt);color:var(--green)">Xong</span>
+    </div>
+    <div class="task-item">
+      <div class="task-check done"></div>
+      <div class="task-info">
+        <div class="task-title" style="text-decoration:line-through;color:var(--muted)">Sync du lieu Nhanh.vn</div>
+        <div class="task-meta">Tu dong · 09:00</div>
+      </div>
+      <span class="task-badge" style="background:var(--green-lt);color:var(--green)">Xong</span>
+    </div>
+    <div class="task-item">
+      <div class="task-check"></div>
+      <div class="task-info">
+        <div class="task-title">Lien he NCC ve SP hong mach nap</div>
+        <div class="task-meta">Phat · Deadline 12:00</div>
+      </div>
+      <span class="task-badge" style="background:var(--amber-lt);color:var(--amber)">Dang lam</span>
+    </div>
+    <div class="task-item">
+      <div class="task-check"></div>
+      <div class="task-info">
+        <div class="task-title">Cap nhat gia ban Shopee (Flash Sale)</div>
+        <div class="task-meta">Le Vu · Deadline 14:00</div>
+      </div>
+      <span class="task-badge" style="background:var(--red-lt);color:var(--red)">Uu tien</span>
+    </div>
+    <div class="task-item">
+      <div class="task-check"></div>
+      <div class="task-info">
+        <div class="task-title">Review creative TikTok tuan moi</div>
+        <div class="task-meta">Le Vu · Deadline 17:00</div>
+      </div>
+      <span class="task-badge" style="background:#F4F4F5;color:#52525B">Cho</span>
+    </div>
+
+    <div style="border-top:1px solid var(--border); margin-top:4px; padding-top:6px; display:flex; justify-content:space-between; font-size:10px; color:var(--muted)">
+      <span>Qua han: <b style="color:var(--red)">0</b></span>
+      <span>Tuan nay: <b>12</b></span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ALERTS ═══ -->
+<div style="margin-bottom:12px">
+  <div class="alert alert-green">
+    <span style="font-weight:700">&#10003;</span>
+    DT hom nay vuot KH ngay +17% — xu huong tot
+  </div>
+  <div class="alert alert-red">
+    <span style="font-weight:700">!</span>
+    TikTok BM Ads ROAS 5.0x — can toi uu, muc tieu &gt;10x
+  </div>
+  <div class="alert alert-amber">
+    <span style="font-weight:700">&#9888;</span>
+    4 SP het hang trong top ban chay — can nhap gap
+  </div>
+</div>
+
+<div style="text-align:center; padding:16px; color:var(--muted); font-size:11px">
+  MOCKUP — Dashboard Ngay · Data mau · 22/04/2026
+</div>
+
+</body>
+</html>

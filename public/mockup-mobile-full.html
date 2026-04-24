@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PO Manager — Mobile Full</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0F172A; }
+  .phone { max-width: 393px; margin: 0 auto; background: #F8FAFC; min-height: 100vh; position: relative; padding-bottom: 70px; }
+  @media (min-width: 500px) { body { padding: 20px; } .phone { border-radius: 24px; overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,.25); min-height: auto; } }
+
+  /* ── Shared ── */
+  .statusbar { height: 44px; background: #0F172A; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; color: #fff; font-size: 12px; font-weight: 600; }
+  .section { padding: 12px; }
+  .stitle { font-size: 12px; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .badge { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 6px; text-transform: none; letter-spacing: 0; }
+  .divider { height: 6px; background: #F1F5F9; }
+  .card { background: #fff; border: 1px solid #E2E8F0; border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
+  .tab-btn { background: rgba(255,255,255,.12); border: none; color: rgba(255,255,255,.6); padding: 7px 14px; border-radius: 8px; font-size: 11px; font-weight: 600; cursor: pointer; }
+  .tab-btn.active { background: rgba(255,255,255,.25); color: #fff; }
+  .sort-btn { display: flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 600; color: #7C3AED; background: #F3E8FF; border: none; padding: 3px 8px; border-radius: 6px; cursor: pointer; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+  /* Bottom nav */
+  .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 393px; max-width: 100%; background: #fff; border-top: 1px solid #E2E8F0; display: flex; padding: 4px 0 22px; z-index: 100; box-shadow: 0 -2px 10px rgba(0,0,0,.05); }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 4px 0; cursor: pointer; }
+  .nav-icon { font-size: 18px; height: 22px; display: flex; align-items: center; justify-content: center; }
+  .nav-label { font-size: 9px; font-weight: 600; color: #94A3B8; }
+  .nav-item.active .nav-label { color: #3B82F6; }
+
+  /* Page tabs - click to switch */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── Headers ── */
+  .hdr-dark { background: linear-gradient(135deg, #1E3A5F 0%, #0F172A 100%); padding: 14px 16px 0; color: #fff; }
+  .hdr-purple { background: linear-gradient(135deg, #7C3AED 0%, #4C1D95 100%); padding: 14px 16px 16px; color: #fff; }
+  .hdr-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .hdr-title { font-size: 17px; font-weight: 800; }
+  .hdr-sub { font-size: 11px; opacity: .6; margin-top: 1px; }
+  .nav-arrows { display: flex; gap: 4px; }
+  .nav-arrows button { background: rgba(255,255,255,.1); border: none; color: #fff; width: 30px; height: 30px; border-radius: 8px; font-size: 16px; cursor: pointer; }
+  .quick-btns { display: flex; gap: 6px; margin-bottom: 14px; }
+  .quick-btns button { background: rgba(255,255,255,.1); border: none; color: rgba(255,255,255,.6); height: 30px; border-radius: 8px; font-size: 11px; cursor: pointer; padding: 0 10px; font-weight: 600; }
+  .quick-btns button.active { background: rgba(255,255,255,.25); color: #fff; }
+  .sub-tabs { display: flex; border-bottom: 2px solid rgba(255,255,255,.1); }
+  .sub-tab { flex: 1; text-align: center; padding: 8px 0; font-size: 11px; font-weight: 600; color: rgba(255,255,255,.4); cursor: pointer; position: relative; }
+  .sub-tab.active { color: #fff; }
+  .sub-tab.active::after { content: ''; position: absolute; bottom: -2px; left: 20%; right: 20%; height: 2px; background: #3B82F6; border-radius: 1px; }
+
+  /* ── Hero cards ── */
+  .hero-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; }
+  .hero-card { border-radius: 14px; padding: 14px; }
+  .hero-card.full { grid-column: 1 / -1; background: linear-gradient(135deg, #059669, #10B981); color: #fff; }
+  .hero-card.full .hv { font-size: 32px; font-weight: 900; letter-spacing: -1px; }
+  .hero-card.full .hl { font-size: 11px; opacity: .8; }
+  .hero-card.full .hs { font-size: 11px; opacity: .7; margin-top: 4px; }
+  .hero-card.full .hc { display: inline-flex; align-items: center; gap: 3px; background: rgba(255,255,255,.2); font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 8px; margin-top: 6px; }
+  .hero-card.full .progress { height: 6px; background: rgba(255,255,255,.2); border-radius: 3px; margin-top: 10px; overflow: hidden; }
+  .hero-card.full .progress-fill { height: 100%; background: #fff; border-radius: 3px; }
+  .hero-card.full .pt { font-size: 10px; opacity: .7; margin-top: 3px; display: flex; justify-content: space-between; }
+  .hero-card.sm { background: #fff; border: 1px solid #E2E8F0; }
+  .hero-card.sm .sl { font-size: 9px; font-weight: 600; color: #94A3B8; text-transform: uppercase; }
+  .hero-card.sm .sv { font-size: 20px; font-weight: 800; margin: 2px 0; }
+  .hero-card.sm .ss { font-size: 9px; color: #94A3B8; }
+  .hero-card.sm .sc { font-size: 9px; font-weight: 600; margin-top: 3px; }
+
+  /* ── Channel items ── */
+  .ch-item { background: #fff; border-radius: 12px; padding: 10px 12px; border: 1px solid #E2E8F0; margin-bottom: 6px; }
+  .ch-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .ch-icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; color: #fff; flex-shrink: 0; }
+  .ch-name { font-size: 13px; font-weight: 700; flex: 1; }
+  .ch-val { font-size: 16px; font-weight: 800; }
+  .ch-detail { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 4px; background: #F8FAFC; border-radius: 8px; padding: 6px 8px; }
+  .ch-detail .dl { font-size: 8px; color: #94A3B8; text-transform: uppercase; }
+  .ch-detail .dv { font-size: 11px; font-weight: 700; }
+
+  /* ── Ads cards ── */
+  .ads-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .ads-card { background: #fff; border: 1px solid #E2E8F0; border-radius: 12px; padding: 10px; }
+  .ads-card .ah { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+  .ads-card .an { font-size: 11px; font-weight: 700; }
+  .ads-card .av { font-size: 18px; font-weight: 800; color: #DC2626; }
+  .ads-card .ar { display: flex; justify-content: space-between; font-size: 10px; margin-top: 3px; }
+  .ads-card .ar .l { color: #94A3B8; }
+  .ads-card .ar .v { font-weight: 700; }
+
+  /* ── Chart bars ── */
+  .chart-bars { display: flex; align-items: flex-end; gap: 4px; }
+  .chart-bars .day { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+  .chart-bars .bar { width: 100%; border-radius: 3px 3px 0 0; min-height: 2px; }
+  .chart-bars .bar-lbl { font-size: 7px; color: #94A3B8; margin-top: 3px; }
+  .chart-bars .bar-val { font-size: 7px; font-weight: 700; margin-bottom: 2px; }
+
+  /* ── Product rows ── */
+  .prod-header { display: grid; gap: 4px; padding: 6px 0; font-size: 8px; color: #94A3B8; text-transform: uppercase; border-bottom: 1px solid #E2E8F0; }
+  .prod-header span:nth-child(n+3) { text-align: right; }
+  .prod-row { display: grid; gap: 4px; align-items: center; padding: 7px 0; border-bottom: 1px solid #F8FAFC; }
+  .prod-row:last-of-type { border: none; }
+  .prod-rank { width: 20px; height: 20px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; }
+  .prod-info { min-width: 0; }
+  .prod-name { font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .prod-sku { font-size: 8px; color: #94A3B8; }
+  .prod-val { font-size: 11px; font-weight: 700; text-align: right; }
+
+  /* ── Info cards ── */
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .info-card { background: #fff; border: 1px solid #E2E8F0; border-radius: 12px; padding: 10px 12px; }
+  .info-card .ii { font-size: 20px; margin-bottom: 4px; }
+  .info-card .it { font-size: 10px; font-weight: 600; color: #64748B; }
+  .info-card .iv { font-size: 18px; font-weight: 800; margin: 2px 0; }
+  .info-card .is { font-size: 9px; color: #94A3B8; }
+
+  /* ── Search & filter ── */
+  .search-bar { position: relative; margin-bottom: 8px; }
+  .search-bar input { width: 100%; padding: 8px 12px 8px 32px; border: 1px solid #E2E8F0; border-radius: 10px; font-size: 12px; background: #fff; outline: none; }
+  .search-bar .si { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 14px; color: #94A3B8; }
+  .filter-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+  .filter-row::-webkit-scrollbar { display: none; }
+  .filter-chip { flex-shrink: 0; padding: 5px 10px; border-radius: 8px; font-size: 10px; font-weight: 600; border: 1px solid #E2E8F0; background: #fff; cursor: pointer; white-space: nowrap; color: #64748B; }
+  .filter-chip.active { background: #7C3AED; color: #fff; border-color: #7C3AED; }
+
+  /* ── Stacked bar ── */
+  .stacked-bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; }
+  .stacked-legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: 9px; color: #64748B; }
+  .stacked-legend span { display: flex; align-items: center; gap: 3px; }
+
+  /* ── Summary strip ── */
+  .summary-strip { display: flex; justify-content: space-between; padding: 8px; background: #F8FAFC; border-radius: 8px; }
+  .summary-strip .si { text-align: center; }
+  .summary-strip .sv { font-size: 14px; font-weight: 800; }
+  .summary-strip .sl { font-size: 8px; color: #94A3B8; }
+
+  /* Animations */
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .ch-item, .ads-card, .info-card, .card { animation: fadeUp .3s ease; }
+
+  /* Health bar */
+  .health-bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; margin-bottom: 4px; }
+  .health-legend { display: flex; gap: 8px; font-size: 9px; color: #64748B; }
+  .health-legend span { display: flex; align-items: center; gap: 3px; }
+
+  /* Hero stat row (inventory) */
+  .hero-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; padding: 0 12px 12px; }
+  .hero-stat { background: rgba(255,255,255,.1); border-radius: 10px; padding: 10px; text-align: center; color: #fff; }
+  .hs-val { font-size: 22px; font-weight: 900; }
+  .hs-label { font-size: 8px; text-transform: uppercase; letter-spacing: .3px; opacity: .6; }
+  .hs-sub { font-size: 8px; opacity: .5; }
+  .hero-stat.red { background: rgba(239,68,68,.2); }
+  .hero-stat.red .hs-val { color: #FCA5A5; }
+  .hero-stat.amber { background: rgba(245,158,11,.2); }
+  .hero-stat.amber .hs-val { color: #FCD34D; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar"><span>20:30</span><span>📶 🔋 85%</span></div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- PAGE 1: DASHBOARD NGÀY                      -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="page active" id="page-day">
+    <div class="hdr-dark">
+      <div class="hdr-row">
+        <div><div class="hdr-title">Dashboard</div><div class="hdr-sub">Thứ tư, 22/04/2026</div></div>
+        <div class="nav-arrows"><button>‹</button><button>›</button></div>
+      </div>
+      <div class="quick-btns">
+        <button class="active">Hôm nay</button><button>Hôm qua</button><button>3 ngày</button><button>7 ngày</button>
+      </div>
+      <div class="sub-tabs">
+        <div class="sub-tab active">Tổng quan</div><div class="sub-tab">Kênh bán</div><div class="sub-tab">Chi phí Ads</div><div class="sub-tab">Vận hành</div>
+      </div>
+    </div>
+
+    <!-- Hero -->
+    <div class="hero-grid">
+      <div class="hero-card full">
+        <div class="hl">DOANH THU THÀNH CÔNG</div>
+        <div class="hv">279.8M</div>
+        <div class="hs">1,156 đơn thành công</div>
+        <div class="hc">▲ +14% vs hôm qua (245.2M)</div>
+        <div class="progress"><div class="progress-fill" style="width:73%"></div></div>
+        <div class="pt"><span>73% KH ngày</span><span>KH: 383M</span></div>
+      </div>
+      <div class="hero-card sm">
+        <div class="sl">DT Dự kiến</div>
+        <div class="sv" style="color:#D97706">368.1M</div>
+        <div class="ss">tạo - hoàn hủy</div>
+        <div class="sc" style="color:#D97706">▲ +20% vs hôm qua</div>
+      </div>
+      <div class="hero-card sm">
+        <div class="sl">Chi phí Ads</div>
+        <div class="sv" style="color:#DC2626">8.4M</div>
+        <div class="ss">3.0% / DT · ROAS 33.2x</div>
+        <div class="sc" style="color:#16A34A">▼ -24% vs hôm qua</div>
+      </div>
+    </div>
+
+    <!-- Channels -->
+    <div class="section">
+      <div class="stitle">Doanh thu theo kênh <span class="badge" style="background:#EFF6FF;color:#3B82F6">4 kênh</span></div>
+      <div class="stacked-bar" style="margin-bottom:4px">
+        <div style="width:53%;background:#1877F2"></div><div style="width:8%;background:#18181B"></div><div style="width:9%;background:#EE4D2D"></div><div style="width:4%;background:#6366F1"></div><div style="width:26%;background:#E2E8F0"></div>
+      </div>
+      <div class="stacked-legend" style="margin-bottom:8px">
+        <span><span class="dot" style="background:#1877F2"></span>FB 53%</span><span><span class="dot" style="background:#18181B"></span>TT 8%</span><span><span class="dot" style="background:#EE4D2D"></span>SP 9%</span><span><span class="dot" style="background:#6366F1"></span>Web 4%</span>
+      </div>
+
+      <div class="ch-item">
+        <div class="ch-top"><div class="ch-icon" style="background:#1877F2">f</div><div class="ch-name">Facebook</div><div class="ch-val" style="color:#1877F2">147.0M</div></div>
+        <div class="ch-detail"><div><div class="dl">TC</div><div class="dv" style="color:#16A34A">147.0M</div></div><div><div class="dl">Dự kiến</div><div class="dv" style="color:#D97706">176.7M</div></div><div><div class="dl">Ads</div><div class="dv" style="color:#DC2626">7.1M</div></div><div><div class="dl">ROAS</div><div class="dv" style="color:#16A34A">20.5x</div></div></div>
+      </div>
+      <div class="ch-item">
+        <div class="ch-top"><div class="ch-icon" style="background:#18181B">T</div><div class="ch-name">TikTok</div><div class="ch-val">21.4M</div></div>
+        <div class="ch-detail"><div><div class="dl">TC</div><div class="dv" style="color:#16A34A">21.4M</div></div><div><div class="dl">Dự kiến</div><div class="dv" style="color:#D97706">25.1M</div></div><div><div class="dl">Ads</div><div class="dv" style="color:#DC2626">1.3M</div></div><div><div class="dl">ROAS</div><div class="dv" style="color:#16A34A">16.5x</div></div></div>
+      </div>
+      <div class="ch-item">
+        <div class="ch-top"><div class="ch-icon" style="background:#EE4D2D">S</div><div class="ch-name">Shopee</div><div class="ch-val" style="color:#EE4D2D">26.3M</div></div>
+        <div class="ch-detail"><div><div class="dl">TC</div><div class="dv" style="color:#16A34A">26.3M</div></div><div><div class="dl">Dự kiến</div><div class="dv" style="color:#D97706">29.4M</div></div><div><div class="dl">Ads</div><div class="dv" style="color:#9CA3AF">0</div></div><div><div class="dl">ROAS</div><div class="dv" style="color:#9CA3AF">—</div></div></div>
+      </div>
+      <div class="ch-item">
+        <div class="ch-top"><div class="ch-icon" style="background:#6366F1">W</div><div class="ch-name">Web/App B2B</div><div class="ch-val" style="color:#6366F1">12.6M</div></div>
+        <div class="ch-detail"><div><div class="dl">TC</div><div class="dv" style="color:#16A34A">12.6M</div></div><div><div class="dl">Dự kiến</div><div class="dv" style="color:#D97706">15.2M</div></div><div><div class="dl">Ads</div><div class="dv" style="color:#9CA3AF">0</div></div><div><div class="dl">ROAS</div><div class="dv" style="color:#9CA3AF">—</div></div></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Ads -->
+    <div class="section">
+      <div class="stitle">Chi phí Ads hôm nay <span class="badge" style="background:#FEF2F2;color:#DC2626">8.4M</span></div>
+      <div class="ads-grid" style="margin-bottom:8px">
+        <div class="ads-card">
+          <div class="ah"><div class="dot" style="background:#1877F2;width:8px;height:8px"></div><div class="an">Facebook</div></div>
+          <div class="av">7.1M</div>
+          <div class="ar"><span class="l">%DT</span><span class="v" style="color:#16A34A">4.9%</span></div>
+          <div class="ar"><span class="l">ROAS</span><span class="v" style="color:#16A34A">20.5x</span></div>
+        </div>
+        <div class="ads-card">
+          <div class="ah"><div class="dot" style="background:#18181B;width:8px;height:8px"></div><div class="an">TikTok</div></div>
+          <div class="av">1.3M</div>
+          <div class="ar"><span class="l">BM</span><span class="v">1.0M</span></div>
+          <div class="ar"><span class="l">GMV Max</span><span class="v">264K</span></div>
+        </div>
+      </div>
+      <div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center">
+        <div><div style="font-size:10px;color:#64748B">Tổng</div><div style="font-size:16px;font-weight:800;color:#DC2626">8.4M</div></div>
+        <div style="text-align:center"><div style="font-size:10px;color:#64748B">% / DT</div><div style="font-size:16px;font-weight:800;color:#16A34A">3.0%</div></div>
+        <div style="text-align:right"><div style="font-size:10px;color:#64748B">ROAS</div><div style="font-size:16px;font-weight:800;color:#16A34A">33.2x</div></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- 7-day chart -->
+    <div class="section">
+      <div class="card">
+        <div style="font-size:11px;font-weight:700;color:#374151;margin-bottom:4px">Doanh thu 7 ngày</div>
+        <div style="font-size:9px;color:#94A3B8;margin-bottom:8px">Cao nhất <strong style="color:#374151">365.6M</strong> 04-20 · TB <strong style="color:#374151">271M</strong>/ngày</div>
+        <div class="chart-bars" style="height:60px">
+          <div class="day"><div class="bar-val">259</div><div class="bar" style="height:42px;background:#86EFAC"></div><div class="bar-lbl">16</div></div>
+          <div class="day"><div class="bar-val">343</div><div class="bar" style="height:55px;background:#86EFAC"></div><div class="bar-lbl">17</div></div>
+          <div class="day"><div class="bar-val">344</div><div class="bar" style="height:56px;background:#86EFAC"></div><div class="bar-lbl">18</div></div>
+          <div class="day"><div class="bar-val">231</div><div class="bar" style="height:37px;background:#86EFAC"></div><div class="bar-lbl">19</div></div>
+          <div class="day"><div class="bar-val">366</div><div class="bar" style="height:60px;background:#4ADE80"></div><div class="bar-lbl">20</div></div>
+          <div class="day"><div class="bar-val">291</div><div class="bar" style="height:48px;background:#86EFAC"></div><div class="bar-lbl">21</div></div>
+          <div class="day"><div class="bar-val">280</div><div class="bar" style="height:46px;background:#22C55E"></div><div class="bar-lbl">22</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Operations -->
+    <div class="section">
+      <div class="stitle">Vận hành</div>
+      <div class="info-grid">
+        <div class="info-card"><div class="ii">📦</div><div class="it">Hàng nhập</div><div class="iv">0 đơn</div><div class="is">Hôm qua: 0</div></div>
+        <div class="info-card" style="border-color:#FECACA"><div class="ii">⚠️</div><div class="it">Thiệt hại</div><div class="iv" style="color:#DC2626">0 SP</div><div class="is">0đ chờ xử lý</div></div>
+        <div class="info-card"><div class="ii">📋</div><div class="it">Việc hôm nay</div><div class="iv">0 việc</div><div class="is">0 deadline</div></div>
+        <div class="info-card"><div class="ii">📊</div><div class="it">Tiến độ tháng</div><div class="iv" style="color:#16A34A">97%</div><div class="is">4.3T / KH 4.4T</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- PAGE 2: THÁNG                                -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="page" id="page-month">
+    <div class="hdr-dark" style="padding-bottom:16px">
+      <div class="hdr-row"><div><div class="hdr-title">Tháng 04/2026</div><div class="hdr-sub">Ngày 22/30 · 73% thời gian</div></div><div class="nav-arrows"><button>‹</button><button>›</button></div></div>
+    </div>
+
+    <div class="hero-grid">
+      <div class="hero-card full" style="background:linear-gradient(135deg,#3B82F6,#1D4ED8)">
+        <div class="hl">DOANH THU THÁNG</div>
+        <div class="hv">6.5 tỷ</div>
+        <div class="hs">KH 8.9 tỷ · Còn 2.4 tỷ</div>
+        <div class="progress"><div class="progress-fill" style="width:73%"></div></div>
+        <div class="pt"><span>73% KH</span><span>TB 295M/ngày</span></div>
+      </div>
+      <div class="hero-card sm"><div class="sl">DT Dự kiến</div><div class="sv" style="color:#D97706">7.4 tỷ</div><div class="ss">tạo - hoàn hủy tháng</div></div>
+      <div class="hero-card sm"><div class="sl">Ads tháng</div><div class="sv" style="color:#DC2626">245M</div><div class="ss">3.7% DT · TB 11.2M/ngày</div></div>
+    </div>
+
+    <div class="section">
+      <div class="stitle">DT theo kênh vs KH</div>
+      <div class="ch-item">
+        <div class="ch-top"><div class="ch-icon" style="background:#1877F2">f</div><div class="ch-name">Facebook</div><div class="ch-val" style="color:#16A34A">4.3 tỷ</div></div>
+        <div class="ch-detail"><div><div class="dl">KH</div><div class="dv">4.4 tỷ</div></div><div><div class="dl">Đạt</div><div class="dv" style="color:#16A34A">97%</div></div><div><div class="dl">Ads</div><div class="dv" style="color:#DC2626">180M</div></div><div><div class="dl">%Ads</div><div class="dv" style="color:#16A34A">4.2%</div></div></div>
+      </div>
+      <div class="ch-item">
+        <div class="ch-top"><div class="ch-icon" style="background:#18181B">T</div><div class="ch-name">TikTok</div><div class="ch-val">1.2 tỷ</div></div>
+        <div class="ch-detail"><div><div class="dl">KH</div><div class="dv">2.2 tỷ</div></div><div><div class="dl">Đạt</div><div class="dv" style="color:#DC2626">55%</div></div><div><div class="dl">Ads</div><div class="dv" style="color:#DC2626">42M</div></div><div><div class="dl">%Ads</div><div class="dv" style="color:#16A34A">3.5%</div></div></div>
+      </div>
+      <div class="ch-item">
+        <div class="ch-top"><div class="ch-icon" style="background:#EE4D2D">S</div><div class="ch-name">Shopee</div><div class="ch-val" style="color:#16A34A">575M</div></div>
+        <div class="ch-detail"><div><div class="dl">KH</div><div class="dv">890M</div></div><div><div class="dl">Đạt</div><div class="dv" style="color:#D97706">65%</div></div><div><div class="dl">Ads</div><div class="dv" style="color:#DC2626">23M</div></div><div><div class="dl">%Ads</div><div class="dv" style="color:#16A34A">4.0%</div></div></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Monthly chart -->
+    <div class="section">
+      <div class="card">
+        <div style="font-size:11px;font-weight:700;color:#374151;margin-bottom:8px">Doanh thu theo ngày T4</div>
+        <div class="chart-bars" style="height:50px">
+          <div class="day"><div class="bar" style="height:30px;background:#93C5FD"></div><div class="bar-lbl">01</div></div>
+          <div class="day"><div class="bar" style="height:34px;background:#93C5FD"></div><div class="bar-lbl">04</div></div>
+          <div class="day"><div class="bar" style="height:50px;background:#60A5FA"></div><div class="bar-lbl">06</div></div>
+          <div class="day"><div class="bar" style="height:45px;background:#93C5FD"></div><div class="bar-lbl">08</div></div>
+          <div class="day"><div class="bar" style="height:48px;background:#60A5FA"></div><div class="bar-lbl">10</div></div>
+          <div class="day"><div class="bar" style="height:25px;background:#93C5FD"></div><div class="bar-lbl">12</div></div>
+          <div class="day"><div class="bar" style="height:38px;background:#93C5FD"></div><div class="bar-lbl">14</div></div>
+          <div class="day"><div class="bar" style="height:42px;background:#93C5FD"></div><div class="bar-lbl">17</div></div>
+          <div class="day"><div class="bar" style="height:28px;background:#93C5FD"></div><div class="bar-lbl">19</div></div>
+          <div class="day"><div class="bar" style="height:47px;background:#60A5FA"></div><div class="bar-lbl">20</div></div>
+          <div class="day"><div class="bar" style="height:36px;background:#3B82F6"></div><div class="bar-lbl">22</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- PAGE 3: NĂM                                  -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="page" id="page-year">
+    <div class="hdr-dark" style="padding-bottom:16px">
+      <div class="hdr-row"><div><div class="hdr-title">Năm 2026</div><div class="hdr-sub">KH 118.3 tỷ · 2025: 86.8 tỷ (+36%)</div></div></div>
+    </div>
+
+    <div class="hero-grid">
+      <div class="hero-card full" style="background:linear-gradient(135deg,#7C3AED,#4C1D95)">
+        <div class="hl">LŨY KẾ T1–T4</div>
+        <div class="hv">34.2 tỷ</div>
+        <div class="hs">KH năm 118.3 tỷ</div>
+        <div class="progress"><div class="progress-fill" style="width:29%"></div></div>
+        <div class="pt"><span>29% KH năm</span><span>Còn 84.1 tỷ</span></div>
+      </div>
+      <div class="hero-card sm"><div class="sl">Ads lũy kế</div><div class="sv" style="color:#DC2626">1.2 tỷ</div><div class="ss">3.5% / DT tổng</div></div>
+      <div class="hero-card sm"><div class="sl">Ngân sách nhập</div><div class="sv">65.1 tỷ</div><div class="ss">55% KH DT</div></div>
+    </div>
+
+    <div class="section">
+      <div class="stitle">DT từng tháng</div>
+      <div class="card">
+        <div class="chart-bars" style="height:70px">
+          <div class="day"><div class="bar-val" style="font-size:8px">9.8</div><div class="bar" style="height:65px;background:#C4B5FD"></div><div class="bar-lbl">T1</div></div>
+          <div class="day"><div class="bar-val" style="font-size:8px">7.3</div><div class="bar" style="height:48px;background:#C4B5FD"></div><div class="bar-lbl">T2</div></div>
+          <div class="day"><div class="bar-val" style="font-size:8px">10.4</div><div class="bar" style="height:70px;background:#A78BFA"></div><div class="bar-lbl">T3</div></div>
+          <div class="day"><div class="bar-val" style="font-size:8px;color:#D97706">6.5</div><div class="bar" style="height:43px;background:#8B5CF6"></div><div class="bar-lbl" style="color:#7C3AED;font-weight:700">T4*</div></div>
+          <div class="day"><div class="bar" style="height:15px;background:#E2E8F0;border:1px dashed #D1D5DB"></div><div class="bar-lbl">T5</div></div>
+          <div class="day"><div class="bar" style="height:15px;background:#E2E8F0;border:1px dashed #D1D5DB"></div><div class="bar-lbl">T6</div></div>
+          <div class="day"><div class="bar" style="height:15px;background:#E2E8F0;border:1px dashed #D1D5DB"></div><div class="bar-lbl">T7</div></div>
+        </div>
+        <div style="font-size:8px;color:#94A3B8;text-align:center;margin-top:4px">* T4 đang chạy (22/30 ngày)</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section">
+      <div class="stitle">Kênh bán lũy kế</div>
+      <div class="ch-item">
+        <div class="ch-top"><div class="ch-icon" style="background:#1877F2">f</div><div class="ch-name">Facebook</div><div class="ch-val" style="color:#1877F2">19.2 tỷ</div></div>
+        <div style="font-size:10px;color:#64748B;display:flex;justify-content:space-between"><span>KH năm: 65.1 tỷ</span><span style="font-weight:700;color:#D97706">29%</span></div>
+      </div>
+      <div class="ch-item">
+        <div class="ch-top"><div class="ch-icon" style="background:#18181B">T</div><div class="ch-name">TikTok</div><div class="ch-val">8.2 tỷ</div></div>
+        <div style="font-size:10px;color:#64748B;display:flex;justify-content:space-between"><span>KH năm: 29.6 tỷ</span><span style="font-weight:700;color:#D97706">28%</span></div>
+      </div>
+      <div class="ch-item">
+        <div class="ch-top"><div class="ch-icon" style="background:#EE4D2D">S</div><div class="ch-name">Shopee</div><div class="ch-val" style="color:#EE4D2D">3.2 tỷ</div></div>
+        <div style="font-size:10px;color:#64748B;display:flex;justify-content:space-between"><span>KH năm: 11.8 tỷ</span><span style="font-weight:700;color:#D97706">27%</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- PAGE 4: TỒN KHO                              -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="page" id="page-inv">
+    <div class="hdr-purple">
+      <div class="hdr-row"><div><div class="hdr-title">📦 Tồn kho</div><div class="hdr-sub">22/04/2026 · Sync 5ph trước</div></div><div style="font-size:10px;background:rgba(255,255,255,.15);padding:3px 10px;border-radius:10px">⟳ Sync</div></div>
+      <div style="display:flex;gap:4px"><button class="tab-btn active">Tổng quan</button><button class="tab-btn">Bán chạy</button><button class="tab-btn">Bán chậm</button><button class="tab-btn">Cần nhập</button></div>
+    </div>
+
+    <!-- Hero -->
+    <div class="hero-row" style="padding-top:12px;background:linear-gradient(135deg,#7C3AED,#4C1D95)">
+      <div class="hero-stat"><div class="hs-label">Tổng SKU</div><div class="hs-val">3,245</div><div class="hs-sub">đang KD</div></div>
+      <div class="hero-stat red"><div class="hs-label">Hết hàng</div><div class="hs-val">847</div><div class="hs-sub">26%</div></div>
+      <div class="hero-stat amber"><div class="hs-label">Sắp hết</div><div class="hs-val">312</div><div class="hs-sub">10%</div></div>
+    </div>
+
+    <div class="section" style="padding-bottom:4px">
+      <div class="card" style="margin-bottom:0"><div class="health-bar"><div style="width:64%;background:#22C55E"></div><div style="width:10%;background:#F59E0B"></div><div style="width:26%;background:#EF4444"></div></div><div class="health-legend"><span><span class="dot" style="background:#22C55E"></span>Đủ 64%</span><span><span class="dot" style="background:#F59E0B"></span>Sắp hết 10%</span><span><span class="dot" style="background:#EF4444"></span>Hết 26%</span></div></div>
+    </div>
+
+    <!-- Search & Filter -->
+    <div class="section" style="padding-top:4px">
+      <div class="search-bar"><span class="si">🔍</span><input placeholder="Tìm SKU, tên sản phẩm..." /></div>
+      <div class="filter-row">
+        <div class="filter-chip active">📦 Tồn kho ▼</div><div class="filter-chip">📁 Danh mục ▼</div><div class="filter-chip">📊 Vòng quay ▼</div><div class="filter-chip">⏱ Ngày tồn ▼</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Bán chạy -->
+    <div class="section">
+      <div class="stitle">Bán chạy nhất tháng <span class="badge" style="background:#F0FDF4;color:#16A34A">Top 8</span></div>
+      <div class="card" style="padding:6px 10px">
+        <div style="display:grid;grid-template-columns:24px 1fr 35px 35px 30px;gap:4px;font-size:8px;color:#94A3B8;text-transform:uppercase;padding:4px 0;border-bottom:1px solid #E2E8F0">
+          <span>#</span><span>Sản phẩm</span><span style="text-align:right">Tồn</span><span style="text-align:right">Bán</span><span style="text-align:right">Vòng</span>
+        </div>
+        <div style="display:grid;grid-template-columns:24px 1fr 35px 35px 30px;gap:4px;align-items:center;padding:6px 0;border-bottom:1px solid #F8FAFC">
+          <div class="prod-rank" style="background:#FEF3C7;color:#D97706">1</div><div class="prod-info"><div class="prod-name">Pin dự phòng Baseus 20K</div><div class="prod-sku">Phụ kiện</div></div><div class="prod-val" style="color:#DC2626">0</div><div class="prod-val" style="color:#16A34A">187</div><div class="prod-val" style="color:#DC2626;font-size:9px">∞</div>
+        </div>
+        <div style="display:grid;grid-template-columns:24px 1fr 35px 35px 30px;gap:4px;align-items:center;padding:6px 0;border-bottom:1px solid #F8FAFC">
+          <div class="prod-rank" style="background:#FEF3C7;color:#D97706">2</div><div class="prod-info"><div class="prod-name">Tai nghe Remax W22N</div><div class="prod-sku">Tai nghe</div></div><div class="prod-val" style="color:#DC2626">0</div><div class="prod-val" style="color:#16A34A">156</div><div class="prod-val" style="color:#DC2626;font-size:9px">∞</div>
+        </div>
+        <div style="display:grid;grid-template-columns:24px 1fr 35px 35px 30px;gap:4px;align-items:center;padding:6px 0;border-bottom:1px solid #F8FAFC">
+          <div class="prod-rank" style="background:#F1F5F9;color:#64748B">3</div><div class="prod-info"><div class="prod-name">Camera IMOU Ranger 2</div><div class="prod-sku">Camera</div></div><div class="prod-val" style="color:#D97706">3</div><div class="prod-val" style="color:#16A34A">134</div><div class="prod-val" style="color:#DC2626;font-size:9px">45x</div>
+        </div>
+        <div style="display:grid;grid-template-columns:24px 1fr 35px 35px 30px;gap:4px;align-items:center;padding:6px 0">
+          <div class="prod-rank" style="background:#F1F5F9;color:#64748B">4</div><div class="prod-info"><div class="prod-name">Sim Vina U1500</div><div class="prod-sku">Sim</div></div><div class="prod-val" style="color:#16A34A">45</div><div class="prod-val" style="color:#16A34A">98</div><div class="prod-val" style="color:#D97706;font-size:9px">2.2x</div>
+        </div>
+        <div class="summary-strip"><div class="si"><div class="sv" style="color:#16A34A">575</div><div class="sl">Bán Top 4</div></div><div class="si"><div class="sv">48</div><div class="sl">Tồn</div></div><div class="si"><div class="sv" style="color:#DC2626">2 hết</div><div class="sl">Cần nhập</div></div></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Không bán -->
+    <div class="section">
+      <div class="stitle">Không bán <span class="badge" style="background:#18181B;color:#fff">87 SKU</span></div>
+      <div class="card" style="padding:6px 10px">
+        <div style="display:grid;grid-template-columns:24px 1fr 35px 38px 30px;gap:4px;font-size:8px;color:#94A3B8;text-transform:uppercase;padding:4px 0;border-bottom:1px solid #E2E8F0">
+          <span>#</span><span>Sản phẩm</span><span style="text-align:right">Tồn</span><span style="text-align:right">Vốn</span><span style="text-align:right">Ngày</span>
+        </div>
+        <div style="display:grid;grid-template-columns:24px 1fr 35px 38px 30px;gap:4px;align-items:center;padding:6px 0;border-bottom:1px solid #F8FAFC">
+          <div class="prod-rank" style="background:#18181B;color:#fff">1</div><div class="prod-info"><div class="prod-name">Miếng dán CL Samsung A54</div><div class="prod-sku">Phụ kiện · 3K/sp</div></div><div class="prod-val" style="color:#991B1B">320</div><div class="prod-val" style="color:#64748B;font-size:10px">960K</div><div class="prod-val" style="color:#991B1B;font-size:10px">90d</div>
+        </div>
+        <div style="display:grid;grid-template-columns:24px 1fr 35px 38px 30px;gap:4px;align-items:center;padding:6px 0;border-bottom:1px solid #F8FAFC">
+          <div class="prod-rank" style="background:#18181B;color:#fff">2</div><div class="prod-info"><div class="prod-name">Ốp iPhone 13 Silicon trong</div><div class="prod-sku">Phụ kiện · 15K/sp</div></div><div class="prod-val" style="color:#991B1B">243</div><div class="prod-val" style="color:#64748B;font-size:10px">3.6M</div><div class="prod-val" style="color:#991B1B;font-size:10px">85d</div>
+        </div>
+        <div style="display:grid;grid-template-columns:24px 1fr 35px 38px 30px;gap:4px;align-items:center;padding:6px 0">
+          <div class="prod-rank" style="background:#18181B;color:#fff">3</div><div class="prod-info"><div class="prod-name">Loa JBL Clip 4 Fake</div><div class="prod-sku">Loa · 85K/sp</div></div><div class="prod-val" style="color:#991B1B">156</div><div class="prod-val" style="color:#DC2626;font-size:10px">13.3M</div><div class="prod-val" style="color:#991B1B;font-size:10px">92d</div>
+        </div>
+        <div style="padding:8px;background:#18181B;border-radius:8px;color:#fff;margin-top:6px;display:flex;justify-content:space-between;font-size:10px">
+          <div><div style="font-size:8px;opacity:.5">87 SKU · 0 bán</div><div style="font-weight:800">1,842 SP</div></div>
+          <div style="text-align:center"><div style="font-size:8px;opacity:.5">Vốn đọng</div><div style="font-weight:800;color:#FCA5A5">48.7M</div></div>
+          <div style="text-align:right"><div style="font-size:8px;opacity:.5">TB tồn</div><div style="font-weight:800;color:#FCA5A5">81 ngày</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Bán chậm -->
+    <div class="section">
+      <div class="stitle">Bán chậm <span class="badge" style="background:#FEF2F2;color:#DC2626">108 SKU</span></div>
+      <div class="card" style="padding:6px 10px">
+        <div style="font-size:9px;color:#94A3B8;margin-bottom:4px">%Bán = Bán T4 / Tồn đầu T4</div>
+        <div style="display:grid;grid-template-columns:24px 1fr 30px 30px 28px;gap:4px;font-size:8px;color:#94A3B8;text-transform:uppercase;padding:4px 0;border-bottom:1px solid #E2E8F0">
+          <span>#</span><span>Sản phẩm</span><span style="text-align:right">Tồn</span><span style="text-align:right">Bán</span><span style="text-align:right">%</span>
+        </div>
+        <div style="display:grid;grid-template-columns:24px 1fr 30px 30px 28px;gap:4px;align-items:center;padding:6px 0;border-bottom:1px solid #F8FAFC">
+          <div class="prod-rank" style="background:#FEF2F2;color:#DC2626">1</div><div class="prod-info"><div class="prod-name">Đèn bàn LED cảm ứng V2</div><div class="prod-sku">Gia dụng · 42K/sp</div></div><div class="prod-val" style="color:#DC2626">97</div><div class="prod-val">3</div><div class="prod-val" style="color:#991B1B;font-size:10px">3%</div>
+        </div>
+        <div style="display:grid;grid-template-columns:24px 1fr 30px 30px 28px;gap:4px;align-items:center;padding:6px 0;border-bottom:1px solid #F8FAFC">
+          <div class="prod-rank" style="background:#FEF2F2;color:#DC2626">2</div><div class="prod-info"><div class="prod-name">Quạt mini USB F01</div><div class="prod-sku">Gia dụng · 25K/sp</div></div><div class="prod-val" style="color:#DC2626">134</div><div class="prod-val">5</div><div class="prod-val" style="color:#991B1B;font-size:10px">4%</div>
+        </div>
+        <div style="display:grid;grid-template-columns:24px 1fr 30px 30px 28px;gap:4px;align-items:center;padding:6px 0">
+          <div class="prod-rank" style="background:#FFF7ED;color:#D97706">3</div><div class="prod-info"><div class="prod-name">Túi laptop 15.6" basic</div><div class="prod-sku">Phụ kiện · 35K/sp</div></div><div class="prod-val" style="color:#D97706">78</div><div class="prod-val">4</div><div class="prod-val" style="color:#991B1B;font-size:10px">5%</div>
+        </div>
+        <div style="padding:8px;background:#FEF2F2;border-radius:8px;margin-top:6px;display:flex;justify-content:space-between;font-size:10px">
+          <div><div style="font-size:8px;color:#991B1B">108 SKU</div><div style="font-weight:800;color:#DC2626">4,231 SP</div></div>
+          <div style="text-align:center"><div style="font-size:8px;color:#991B1B">Vốn đọng</div><div style="font-weight:800;color:#DC2626">238.7M</div></div>
+          <div style="text-align:right"><div style="font-size:8px;color:#991B1B">%Bán TB</div><div style="font-weight:800;color:#DC2626">9.2%</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Tiến độ bán/tồn tháng -->
+    <div class="section">
+      <div class="stitle">Tiến độ bán / tồn T4</div>
+      <div class="card">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-bottom:8px">
+          <div style="text-align:center;background:#F8FAFC;border-radius:8px;padding:6px"><div style="font-size:8px;color:#94A3B8">Đầu kỳ</div><div style="font-size:14px;font-weight:800">4,102</div></div>
+          <div style="text-align:center;background:#F0FDF4;border-radius:8px;padding:6px"><div style="font-size:8px;color:#16A34A">Đã bán</div><div style="font-size:14px;font-weight:800;color:#16A34A">1,921</div></div>
+          <div style="text-align:center;background:#EFF6FF;border-radius:8px;padding:6px"><div style="font-size:8px;color:#3B82F6">Nhập</div><div style="font-size:14px;font-weight:800;color:#3B82F6">+1,064</div></div>
+          <div style="text-align:center;background:#FFF7ED;border-radius:8px;padding:6px"><div style="font-size:8px;color:#D97706">Cuối</div><div style="font-size:14px;font-weight:800;color:#D97706">3,245</div></div>
+        </div>
+        <div style="text-align:center;margin:8px 0"><div style="font-size:28px;font-weight:900;color:#16A34A">46.8%</div><div style="font-size:9px;color:#64748B">đã bán / tồn đầu kỳ</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- PAGE 5: MENU                                  -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="page" id="page-menu">
+    <div class="hdr-dark" style="padding-bottom:16px">
+      <div class="hdr-row"><div><div class="hdr-title">Menu</div><div class="hdr-sub">Lê Vũ (Admin)</div></div><div style="font-size:10px;background:rgba(255,255,255,.15);padding:4px 12px;border-radius:8px">Đăng xuất</div></div>
+    </div>
+    <div class="section">
+      <div class="stitle">Kinh doanh</div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <div class="card" style="display:flex;align-items:center;gap:10px;padding:12px;margin:0;cursor:pointer"><span style="font-size:18px">🔵</span><div><div style="font-weight:700;font-size:13px">Facebook Pages</div><div style="font-size:10px;color:#94A3B8">16 pages · DT, Ads, Insights</div></div><span style="margin-left:auto;color:#94A3B8">›</span></div>
+        <div class="card" style="display:flex;align-items:center;gap:10px;padding:12px;margin:0;cursor:pointer"><span style="font-size:18px">⚫</span><div><div style="font-weight:700;font-size:13px">TikTok</div><div style="font-size:10px;color:#94A3B8">Ads, Shop, GMV Max</div></div><span style="margin-left:auto;color:#94A3B8">›</span></div>
+        <div class="card" style="display:flex;align-items:center;gap:10px;padding:12px;margin:0;cursor:pointer"><span style="font-size:18px">🟠</span><div><div style="font-weight:700;font-size:13px">Shopee</div><div style="font-size:10px;color:#94A3B8">Ads, Revenue</div></div><span style="margin-left:auto;color:#94A3B8">›</span></div>
+        <div class="card" style="display:flex;align-items:center;gap:10px;padding:12px;margin:0;cursor:pointer"><span style="font-size:18px">🟣</span><div><div style="font-weight:700;font-size:13px">Web/App B2B</div><div style="font-size:10px;color:#94A3B8">lovu.vn, velasboost.vn</div></div><span style="margin-left:auto;color:#94A3B8">›</span></div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="section">
+      <div class="stitle">Mua hàng</div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <div class="card" style="display:flex;align-items:center;gap:10px;padding:12px;margin:0;cursor:pointer"><span style="font-size:18px">📝</span><div><div style="font-weight:700;font-size:13px">Tạo / Sửa đơn</div></div><span style="margin-left:auto;color:#94A3B8">›</span></div>
+        <div class="card" style="display:flex;align-items:center;gap:10px;padding:12px;margin:0;cursor:pointer"><span style="font-size:18px">📋</span><div><div style="font-weight:700;font-size:13px">Danh sách đơn</div></div><span style="margin-left:auto;color:#94A3B8">›</span></div>
+        <div class="card" style="display:flex;align-items:center;gap:10px;padding:12px;margin:0;cursor:pointer"><span style="font-size:18px">🔬</span><div><div style="font-weight:700;font-size:13px">R&D · Hàng hồng</div></div><span style="margin-left:auto;color:#94A3B8">›</span></div>
+        <div class="card" style="display:flex;align-items:center;gap:10px;padding:12px;margin:0;cursor:pointer"><span style="font-size:18px">🚀</span><div><div style="font-weight:700;font-size:13px">Launch SP</div></div><span style="margin-left:auto;color:#94A3B8">›</span></div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="section">
+      <div class="stitle">Kỹ thuật & Quản trị</div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <div class="card" style="display:flex;align-items:center;gap:10px;padding:12px;margin:0;cursor:pointer"><span style="font-size:18px">✅</span><div style="font-weight:700;font-size:13px">QC & Lên kệ</div><span style="margin-left:auto;color:#94A3B8">›</span></div>
+        <div class="card" style="display:flex;align-items:center;gap:10px;padding:12px;margin:0;cursor:pointer"><span style="font-size:18px">↩️</span><div style="font-weight:700;font-size:13px">Hoàn & Thanh lý</div><span style="margin-left:auto;color:#94A3B8">›</span></div>
+        <div class="card" style="display:flex;align-items:center;gap:10px;padding:12px;margin:0;cursor:pointer"><span style="font-size:18px">👥</span><div style="font-weight:700;font-size:13px">Khách hàng · CSKH</div><span style="margin-left:auto;color:#94A3B8">›</span></div>
+        <div class="card" style="display:flex;align-items:center;gap:10px;padding:12px;margin:0;cursor:pointer"><span style="font-size:18px">💰</span><div style="font-weight:700;font-size:13px">Kế toán</div><span style="margin-left:auto;color:#94A3B8">›</span></div>
+        <div class="card" style="display:flex;align-items:center;gap:10px;padding:12px;margin:0;cursor:pointer"><span style="font-size:18px">⚙️</span><div style="font-weight:700;font-size:13px">Cấu hình</div><span style="margin-left:auto;color:#94A3B8">›</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom nav -->
+  <div class="bottom-nav">
+    <div class="nav-item active" onclick="switchPage('day')"><div class="nav-icon">📊</div><div class="nav-label">Ngày</div></div>
+    <div class="nav-item" onclick="switchPage('month')"><div class="nav-icon">📅</div><div class="nav-label">Tháng</div></div>
+    <div class="nav-item" onclick="switchPage('year')"><div class="nav-icon">📈</div><div class="nav-label">Năm</div></div>
+    <div class="nav-item" onclick="switchPage('inv')"><div class="nav-icon">📦</div><div class="nav-label">Tồn kho</div></div>
+    <div class="nav-item" onclick="switchPage('menu')"><div class="nav-icon">☰</div><div class="nav-label">Menu</div></div>
+  </div>
+</div>
+
+<script>
+function switchPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  window.scrollTo(0, 0);
+}
+</script>
+</body>
+</html>

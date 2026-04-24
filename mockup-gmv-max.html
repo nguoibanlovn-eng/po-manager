@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MOCKUP — TikTok GMV Max (v2)</title>
+<style>
+  :root {
+    --bg: #0a0a0a; --card: #141414; --border: #2a2a2a;
+    --text: #e5e5e5; --muted: #888; --subtle: #555;
+    --green: #22c55e; --red: #ef4444; --amber: #f59e0b;
+    --blue: #3b82f6; --tiktok: #FE2C55; --cyan: #25F4EE;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; padding: 20px; max-width: 1200px; margin: 0 auto; }
+
+  .mockup-badge { display: inline-block; background: var(--tiktok); color: #fff; font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 10px; margin-bottom: 8px; letter-spacing: 1px; }
+  .mockup-note { font-size: 11px; color: var(--muted); margin-bottom: 20px; }
+
+  .tabs { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .tab { padding: 8px 16px; font-size: 13px; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; }
+  .tab.active { color: var(--tiktok); border-bottom-color: var(--tiktok); font-weight: 600; }
+  .tab .new { background: var(--tiktok); color: #fff; font-size: 9px; padding: 1px 5px; border-radius: 8px; margin-left: 4px; font-weight: 700; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 16px; }
+  .kpi { background: var(--card); border-radius: 8px; padding: 14px; border-left: 4px solid var(--border); }
+  .kpi .label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+  .kpi .value { font-size: 22px; font-weight: 800; }
+  .kpi .sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  .section { background: var(--card); border-radius: 8px; margin-bottom: 14px; overflow: hidden; }
+  .section-hdr { padding: 12px 16px; font-weight: 700; font-size: 13px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .section-hdr .badge { font-size: 10px; color: var(--muted); font-weight: 400; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; padding: 8px 12px; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border); }
+  td { padding: 7px 12px; border-bottom: 1px solid var(--border); }
+  .text-right { text-align: right; }
+  .font-bold { font-weight: 700; }
+  tr.total { background: #1a1a1a; font-weight: 700; }
+  tr.total td { color: #fff; }
+  tr:hover { background: rgba(255,255,255,.03); }
+
+  .legend { display: flex; gap: 16px; padding: 10px 16px; font-size: 11px; color: var(--muted); }
+  .legend .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+
+  .chart-area { padding: 14px; }
+  .chart-placeholder { height: 160px; display: flex; align-items: flex-end; gap: 3px; }
+  .bar-group { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
+  .bar-group .val { font-size: 9px; color: var(--muted); white-space: nowrap; }
+  .bar-group .bars { display: flex; gap: 2px; width: 100%; justify-content: center; align-items: flex-end; }
+  .bar-group .bar { border-radius: 2px 2px 0 0; min-width: 8px; }
+  .bar-group .date { font-size: 9px; color: var(--subtle); }
+
+  .product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  .product-col { border-right: 1px solid var(--border); }
+  .product-col:last-child { border-right: none; }
+  .product-col-hdr { padding: 10px 14px; font-size: 12px; font-weight: 700; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 6px; }
+
+  .product-row { display: flex; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--border); gap: 10px; }
+  .product-row .rank { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .product-row .info { flex: 1; min-width: 0; }
+  .product-row .name { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .product-row .meta { font-size: 10px; color: var(--muted); }
+  .product-row .stats { text-align: right; flex-shrink: 0; }
+  .product-row .stats .rev { font-size: 14px; font-weight: 800; }
+  .product-row .stats .detail { font-size: 10px; color: var(--muted); }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+  .section-title { font-size: 16px; font-weight: 800; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .section-title .icon { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+
+  .store-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 14px; }
+  .store-card { border: 1px solid var(--border); border-radius: 8px; padding: 12px; position: relative; }
+  .store-card .sname { font-weight: 700; font-size: 13px; margin-bottom: 2px; }
+  .store-card .code { font-size: 10px; color: var(--muted); margin-bottom: 8px; }
+  .store-card .rev { font-size: 20px; font-weight: 800; color: var(--green); }
+  .store-card .smeta { font-size: 10px; color: var(--muted); margin-top: 4px; }
+  .store-card .status { position: absolute; top: 10px; right: 10px; font-size: 9px; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
+  .store-card .status.on { background: rgba(34,197,94,.15); color: var(--green); }
+  .store-card .status.off { background: rgba(136,136,136,.15); color: var(--muted); }
+
+  .sync-btn { font-size: 11px; padding: 4px 10px; background: rgba(254,44,85,.1); color: var(--tiktok); border: 1px solid rgba(254,44,85,.3); border-radius: 6px; cursor: pointer; }
+
+  .date-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; padding: 10px 14px; background: var(--card); border-radius: 8px; border: 1px solid var(--border); }
+  .date-btn { font-size: 11px; padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; white-space: nowrap; }
+  .date-btn:hover { background: rgba(255,255,255,.05); color: var(--text); }
+  .date-btn.active { background: var(--tiktok); color: #fff; border-color: var(--tiktok); font-weight: 600; }
+  .date-input { font-size: 11px; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); width: 120px; }
+  .date-sep { color: var(--subtle); font-size: 12px; }
+  .date-apply { font-size: 11px; padding: 5px 12px; border-radius: 6px; border: none; background: var(--blue); color: #fff; cursor: pointer; font-weight: 600; }
+  .date-divider { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+</style>
+</head>
+<body>
+
+<div class="mockup-badge">MOCKUP v2</div>
+<div class="mockup-note">GMV Max data tich hop vao Tong quan + tab rieng. Data mau tu API 22/04/2026.</div>
+
+<!-- ═══════════════════════════════════════════════════
+     PHAN 1: TONG QUAN — them GMV Max vao KPI cards
+     ═══════════════════════════════════════════════════ -->
+<div class="section-title">
+  <span class="icon" style="background:#000;color:#fff">&#9834;</span>
+  Tong quan — KPI Cards (da co, them GMV Max)
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi" style="border-left-color: var(--cyan)">
+    <div class="label">ROAS tong</div>
+    <div class="value" style="color: var(--green)">12.75x</div>
+    <div class="sub">GMV Max + BM Ads</div>
+  </div>
+  <div class="kpi" style="border-left-color: var(--tiktok)">
+    <div class="label">GMV TONG</div>
+    <div class="value" style="color: var(--green)">313tr</div>
+    <div class="sub">GMV Max API <span style="color:var(--tiktok);font-weight:700">NEW</span></div>
+  </div>
+  <div class="kpi" style="border-left-color: #000">
+    <div class="label">ADS SPEND</div>
+    <div class="value">25.9tr</div>
+    <div class="sub">GMV Max 24.6tr + BM 1.3tr</div>
+  </div>
+  <div class="kpi" style="border-left-color: var(--cyan)">
+    <div class="label">DON HANG</div>
+    <div class="value">3,124</div>
+    <div class="sub">GMV Max orders</div>
+  </div>
+  <div class="kpi" style="border-left-color: var(--tiktok)">
+    <div class="label">TB / DON</div>
+    <div class="value">100K</div>
+    <div class="sub">Revenue / Orders</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     PHAN 2: DOANH THU & ADS THEO NGAY (da co, them cot GMV Max)
+     ═══════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-hdr">
+    <span>Doanh thu &amp; Ads theo ngay — <span style="color:var(--tiktok)">them cot GMV Max</span></span>
+    <span class="badge">Tong quan tab</span>
+  </div>
+  <div style="overflow-x:auto">
+    <table>
+      <thead><tr>
+        <th>Ngay</th>
+        <th class="text-right">DT Nhanh</th>
+        <th class="text-right">Don</th>
+        <th class="text-right" style="border-left:2px solid var(--tiktok)">GMV Max Rev</th>
+        <th class="text-right">GMV Max Spend</th>
+        <th class="text-right">GMV Max ROI</th>
+        <th class="text-right" style="border-left:2px solid var(--border)">BM Spend</th>
+        <th class="text-right">ROAS tong</th>
+      </tr></thead>
+      <tbody>
+        <tr><td class="font-bold">04-21</td><td class="text-right" style="color:var(--green)">11.8tr</td><td class="text-right">104</td><td class="text-right font-bold" style="color:var(--green);border-left:2px solid var(--tiktok)">11.8tr</td><td class="text-right" style="color:var(--tiktok)">912K</td><td class="text-right" style="color:var(--green)">12.89</td><td class="text-right" style="color:var(--red);border-left:2px solid var(--border)">1.3tr</td><td class="text-right font-bold" style="color:var(--green)">5.31</td></tr>
+        <tr><td class="font-bold">04-20</td><td class="text-right" style="color:var(--green)">15.9tr</td><td class="text-right">132</td><td class="text-right font-bold" style="color:var(--green);border-left:2px solid var(--tiktok)">15.9tr</td><td class="text-right" style="color:var(--tiktok)">1.2tr</td><td class="text-right" style="color:var(--green)">12.91</td><td class="text-right" style="color:var(--red);border-left:2px solid var(--border)">1.3tr</td><td class="text-right font-bold" style="color:var(--green)">6.27</td></tr>
+        <tr><td class="font-bold">04-19</td><td class="text-right" style="color:var(--green)">22.4tr</td><td class="text-right">168</td><td class="text-right font-bold" style="color:var(--green);border-left:2px solid var(--tiktok)">22.4tr</td><td class="text-right" style="color:var(--tiktok)">1.4tr</td><td class="text-right" style="color:var(--green)">15.83</td><td class="text-right" style="color:var(--red);border-left:2px solid var(--border)">1.2tr</td><td class="text-right font-bold" style="color:var(--green)">8.62</td></tr>
+        <tr style="color:var(--subtle)"><td>...</td><td></td><td></td><td style="border-left:2px solid var(--tiktok)"></td><td></td><td></td><td style="border-left:2px solid var(--border)"></td><td></td></tr>
+        <tr class="total"><td>Tong T4</td><td class="text-right">313tr</td><td class="text-right">3,124</td><td class="text-right" style="border-left:2px solid var(--tiktok)">313tr</td><td class="text-right">24.6tr</td><td class="text-right">12.75</td><td class="text-right" style="border-left:2px solid var(--border)">1.3tr</td><td class="text-right">12.10</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════════════
+     PHAN 3: TAB GMV MAX RIENG
+     ═══════════════════════════════════════════════════ -->
+<div class="section-title">
+  <span class="icon" style="background:var(--tiktok);color:#fff">M</span>
+  Tab "GMV Max" (tab rieng, chi tiet)
+</div>
+
+<div class="tabs">
+  <div class="tab">Tong quan</div>
+  <div class="tab">Ads</div>
+  <div class="tab active">GMV Max <span class="new">NEW</span></div>
+  <div class="tab">Kenh</div>
+  <div class="tab">Shop</div>
+  <div class="tab">Hang hoa</div>
+</div>
+
+<!-- DATE FILTER -->
+<div class="date-bar">
+  <button class="date-btn">Hom nay</button>
+  <button class="date-btn">Hom qua</button>
+  <button class="date-btn">3 ngay</button>
+  <button class="date-btn">7 ngay</button>
+  <button class="date-btn">14 ngay</button>
+  <button class="date-btn">30 ngay</button>
+  <button class="date-btn active">Thang nay</button>
+  <button class="date-btn">Thang truoc</button>
+  <span class="date-divider"></span>
+  <input type="date" class="date-input" value="2026-04-01">
+  <span class="date-sep">&rarr;</span>
+  <input type="date" class="date-input" value="2026-04-21">
+  <button class="date-apply">Ap dung</button>
+  <span class="date-divider"></span>
+  <button class="sync-btn">Sync GMV Max</button>
+</div>
+
+<!-- KPI -->
+<div class="kpi-grid">
+  <div class="kpi" style="border-left-color: var(--tiktok)">
+    <div class="label">GMV Max Spend</div>
+    <div class="value" style="color: var(--tiktok)">24.6tr</div>
+    <div class="sub">T4 (1-21)</div>
+  </div>
+  <div class="kpi" style="border-left-color: var(--green)">
+    <div class="label">Doanh thu</div>
+    <div class="value" style="color: var(--green)">313tr</div>
+    <div class="sub">gross_revenue</div>
+  </div>
+  <div class="kpi" style="border-left-color: var(--cyan)">
+    <div class="label">Don hang</div>
+    <div class="value">3,124</div>
+    <div class="sub">SKU orders</div>
+  </div>
+  <div class="kpi" style="border-left-color: var(--amber)">
+    <div class="label">ROI</div>
+    <div class="value" style="color: var(--green)">12.75x</div>
+    <div class="sub">Revenue / Spend</div>
+  </div>
+  <div class="kpi" style="border-left-color: var(--border)">
+    <div class="label">CPA</div>
+    <div class="value">7.9K</div>
+    <div class="sub">Spend / Don</div>
+  </div>
+</div>
+
+<!-- ═══ STORES ═══ -->
+<div class="section">
+  <div class="section-hdr">
+    <span>Cua hang GMV Max</span>
+    <span class="badge">2 stores</span>
+  </div>
+  <div class="store-grid">
+    <div class="store-card">
+      <span class="status on">Active</span>
+      <div class="sname">Lo Vu I</div>
+      <div class="code">VNLCTTWY4U &middot; store 7495209...</div>
+      <div class="rev">313tr</div>
+      <div class="smeta">3,124 don &middot; ROI 12.75 &middot; 68 SP</div>
+      <div class="smeta">Spend: 24.6tr</div>
+    </div>
+    <div class="store-card">
+      <span class="status off">0 data</span>
+      <div class="sname">velasboost</div>
+      <div class="code">VNLCKEWLW2</div>
+      <div class="rev" style="color:var(--muted)">0</div>
+      <div class="smeta">GMV Max enabled nhung chua co data</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ CHART ═══ -->
+<div class="section">
+  <div class="section-hdr"><span>Spend &amp; Revenue theo ngay</span></div>
+  <div class="legend">
+    <span><span class="dot" style="background:var(--tiktok)"></span>Spend</span>
+    <span><span class="dot" style="background:var(--green)"></span>Revenue</span>
+    <span style="margin-left:auto; font-size:10px; color:var(--subtle)">Hover de xem chi tiet</span>
+  </div>
+  <div class="chart-area">
+    <div class="chart-placeholder">
+      <div class="bar-group"><div class="val">16.9tr</div><div class="bars"><div class="bar" style="width:45%;height:55px;background:var(--tiktok);opacity:.7"></div><div class="bar" style="width:45%;height:110px;background:var(--green);opacity:.7"></div></div><div class="date">04-01</div></div>
+      <div class="bar-group"><div class="val">10.7tr</div><div class="bars"><div class="bar" style="width:45%;height:52px;background:var(--tiktok);opacity:.7"></div><div class="bar" style="width:45%;height:70px;background:var(--green);opacity:.7"></div></div><div class="date">04-02</div></div>
+      <div class="bar-group"><div class="val">14.6tr</div><div class="bars"><div class="bar" style="width:45%;height:51px;background:var(--tiktok);opacity:.7"></div><div class="bar" style="width:45%;height:95px;background:var(--green);opacity:.7"></div></div><div class="date">04-03</div></div>
+      <div class="bar-group"><div class="val">11.8tr</div><div class="bars"><div class="bar" style="width:45%;height:53px;background:var(--tiktok);opacity:.7"></div><div class="bar" style="width:45%;height:77px;background:var(--green);opacity:.7"></div></div><div class="date">04-04</div></div>
+      <div class="bar-group"><div class="val">12.6tr</div><div class="bars"><div class="bar" style="width:45%;height:52px;background:var(--tiktok);opacity:.7"></div><div class="bar" style="width:45%;height:82px;background:var(--green);opacity:.7"></div></div><div class="date">04-05</div></div>
+      <div class="bar-group"><div class="val">14.0tr</div><div class="bars"><div class="bar" style="width:45%;height:54px;background:var(--tiktok);opacity:.7"></div><div class="bar" style="width:45%;height:91px;background:var(--green);opacity:.7"></div></div><div class="date">04-06</div></div>
+      <div class="bar-group"><div class="val">12.1tr</div><div class="bars"><div class="bar" style="width:45%;height:50px;background:var(--tiktok);opacity:.7"></div><div class="bar" style="width:45%;height:79px;background:var(--green);opacity:.7"></div></div><div class="date">04-07</div></div>
+      <div class="bar-group"><div class="val">16.8tr</div><div class="bars"><div class="bar" style="width:45%;height:55px;background:var(--tiktok);opacity:.7"></div><div class="bar" style="width:45%;height:110px;background:var(--green);opacity:.7"></div></div><div class="date">04-08</div></div>
+      <div class="bar-group"><div class="val">17.9tr</div><div class="bars"><div class="bar" style="width:45%;height:54px;background:var(--tiktok);opacity:.7"></div><div class="bar" style="width:45%;height:117px;background:var(--green);opacity:.7"></div></div><div class="date">04-09</div></div>
+      <div class="bar-group"><div class="val">17.4tr</div><div class="bars"><div class="bar" style="width:45%;height:53px;background:var(--tiktok);opacity:.7"></div><div class="bar" style="width:45%;height:114px;background:var(--green);opacity:.7"></div></div><div class="date">04-10</div></div>
+      <div class="bar-group"><div class="val">13.5tr</div><div class="bars"><div class="bar" style="width:45%;height:48px;background:var(--tiktok);opacity:.7"></div><div class="bar" style="width:45%;height:88px;background:var(--green);opacity:.7"></div></div><div class="date">04-11</div></div>
+      <div class="bar-group"><div class="val">12.5tr</div><div class="bars"><div class="bar" style="width:45%;height:48px;background:var(--tiktok);opacity:.7"></div><div class="bar" style="width:45%;height:81px;background:var(--green);opacity:.7"></div></div><div class="date">04-12</div></div>
+      <div class="bar-group"><div class="val">12.0tr</div><div class="bars"><div class="bar" style="width:45%;height:48px;background:var(--tiktok);opacity:.7"></div><div class="bar" style="width:45%;height:78px;background:var(--green);opacity:.7"></div></div><div class="date">04-13</div></div>
+      <div class="bar-group"><div class="val">14.9tr</div><div class="bars"><div class="bar" style="width:45%;height:52px;background:var(--tiktok);opacity:.7"></div><div class="bar" style="width:45%;height:97px;background:var(--green);opacity:.7"></div></div><div class="date">04-14</div></div>
+      <div class="bar-group"><div class="val">9.5tr</div><div class="bars"><div class="bar" style="width:45%;height:44px;background:var(--tiktok);opacity:.7"></div><div class="bar" style="width:45%;height:62px;background:var(--green);opacity:.7"></div></div><div class="date">04-15</div></div>
+      <div class="bar-group"><div class="val">17.6tr</div><div class="bars"><div class="bar" style="width:45%;height:52px;background:var(--tiktok);opacity:.7"></div><div class="bar" style="width:45%;height:115px;background:var(--green);opacity:.7"></div></div><div class="date">04-16</div></div>
+      <div class="bar-group"><div class="val">17.8tr</div><div class="bars"><div class="bar" style="width:45%;height:48px;background:var(--tiktok);opacity:.7"></div><div class="bar" style="width:45%;height:116px;background:var(--green);opacity:.7"></div></div><div class="date">04-17</div></div>
+      <div class="bar-group"><div class="val" style="color:var(--green)">20.6tr</div><div class="bars"><div class="bar" style="width:45%;height:55px;background:var(--tiktok);opacity:.7"></div><div class="bar" style="width:45%;height:135px;background:var(--green);opacity:.7"></div></div><div class="date">04-18</div></div>
+      <div class="bar-group"><div class="val" style="color:var(--green);font-weight:700">22.4tr</div><div class="bars"><div class="bar" style="width:45%;height:58px;background:var(--tiktok);opacity:.7"></div><div class="bar" style="width:45%;height:146px;background:var(--green);opacity:.7"></div></div><div class="date">04-19</div></div>
+      <div class="bar-group"><div class="val">15.9tr</div><div class="bars"><div class="bar" style="width:45%;height:53px;background:var(--tiktok);opacity:.7"></div><div class="bar" style="width:45%;height:104px;background:var(--green);opacity:.7"></div></div><div class="date">04-20</div></div>
+      <div class="bar-group"><div class="val">11.8tr</div><div class="bars"><div class="bar" style="width:45%;height:46px;background:var(--tiktok);opacity:.7"></div><div class="bar" style="width:45%;height:77px;background:var(--green);opacity:.7"></div></div><div class="date">04-21</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TOP & WORST PRODUCTS ═══ -->
+<div class="section">
+  <div class="section-hdr">
+    <span>San pham GMV Max</span>
+    <span class="badge">68 SP &middot; 7 ngay</span>
+  </div>
+  <div class="product-grid">
+    <!-- TOP -->
+    <div class="product-col">
+      <div class="product-col-hdr"><span style="color:var(--green)">&#9650;</span> Top ban chay (Revenue)</div>
+      <div class="product-row">
+        <div class="rank" style="background:var(--green);color:#fff">1</div>
+        <div class="info"><div class="name">SP 1729877... (Cap sac PD 20W)</div><div class="meta">61 don &middot; ROI 19.5</div></div>
+        <div class="stats"><div class="rev" style="color:var(--green)">24.0tr</div><div class="detail">CPA 20.2K</div></div>
+      </div>
+      <div class="product-row">
+        <div class="rank" style="background:var(--green);color:#fff">2</div>
+        <div class="info"><div class="name">SP 1732398... (Bo sac nhanh)</div><div class="meta">216 don &middot; ROI 12.5</div></div>
+        <div class="stats"><div class="rev" style="color:var(--green)">15.8tr</div><div class="detail">CPA 5.9K</div></div>
+      </div>
+      <div class="product-row">
+        <div class="rank" style="background:var(--green);color:#fff">3</div>
+        <div class="info"><div class="name">SP 1733307... (Cap Type-C)</div><div class="meta">249 don &middot; ROI 34.5</div></div>
+        <div class="stats"><div class="rev" style="color:var(--green)">12.1tr</div><div class="detail">CPA 1.4K</div></div>
+      </div>
+      <div class="product-row">
+        <div class="rank" style="background:rgba(34,197,94,.2);color:var(--green)">4</div>
+        <div class="info"><div class="name">SP 1730155... (Tai nghe TWS)</div><div class="meta">42 don &middot; ROI 10.5</div></div>
+        <div class="stats"><div class="rev" style="color:var(--green)">6.7tr</div><div class="detail">CPA 15.2K</div></div>
+      </div>
+      <div class="product-row">
+        <div class="rank" style="background:rgba(34,197,94,.2);color:var(--green)">5</div>
+        <div class="info"><div class="name">SP 1731357... (Sac du phong)</div><div class="meta">11 don &middot; ROI 10.6</div></div>
+        <div class="stats"><div class="rev" style="color:var(--green)">6.6tr</div><div class="detail">CPA 56.3K</div></div>
+      </div>
+    </div>
+
+    <!-- WORST -->
+    <div class="product-col">
+      <div class="product-col-hdr"><span style="color:var(--red)">&#9660;</span> ROI thap nhat (can toi uu)</div>
+      <div class="product-row">
+        <div class="rank" style="background:var(--red);color:#fff">!</div>
+        <div class="info"><div class="name">SP 1734791... (Kem chong nang)</div><div class="meta">1 don &middot; <span style="color:var(--red)">ROI 3.0</span></div></div>
+        <div class="stats"><div class="rev">109K</div><div class="detail" style="color:var(--red)">CPA 35.9K</div></div>
+      </div>
+      <div class="product-row">
+        <div class="rank" style="background:var(--red);color:#fff">!</div>
+        <div class="info"><div class="name">SP 1734693... (Gel rua mat)</div><div class="meta">2 don &middot; <span style="color:var(--red)">ROI 5.7</span></div></div>
+        <div class="stats"><div class="rev">538K</div><div class="detail" style="color:var(--red)">CPA 46.9K</div></div>
+      </div>
+      <div class="product-row">
+        <div class="rank" style="background:var(--amber);color:#fff">!</div>
+        <div class="info"><div class="name">SP 1734571... (Mieng dan kinh)</div><div class="meta">23 don &middot; <span style="color:var(--amber)">ROI 6.4</span></div></div>
+        <div class="stats"><div class="rev">1.8tr</div><div class="detail" style="color:var(--red)">CPA 12.1K</div></div>
+      </div>
+      <div class="product-row">
+        <div class="rank" style="background:var(--amber);color:#fff">!</div>
+        <div class="info"><div class="name">SP 1734242... (Op lung iP)</div><div class="meta">17 don &middot; <span style="color:var(--amber)">ROI 6.5</span></div></div>
+        <div class="stats"><div class="rev">1.8tr</div><div class="detail" style="color:var(--red)">CPA 16.6K</div></div>
+      </div>
+      <div class="product-row">
+        <div class="rank" style="background:var(--amber);color:#fff">!</div>
+        <div class="info"><div class="name">SP 1733683... (Day sac MagSafe)</div><div class="meta">30 don &middot; <span style="color:var(--amber)">ROI 6.7</span></div></div>
+        <div class="stats"><div class="rev">2.2tr</div><div class="detail" style="color:var(--red)">CPA 11.0K</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ DAILY TABLE ═══ -->
+<div class="section">
+  <div class="section-hdr">
+    <span>Chi tiet theo ngay</span>
+  </div>
+  <div style="overflow-x:auto">
+    <table>
+      <thead><tr>
+        <th>Ngay</th>
+        <th class="text-right">Spend</th>
+        <th class="text-right">Revenue</th>
+        <th class="text-right">Don</th>
+        <th class="text-right">TB/Don</th>
+        <th class="text-right">ROI</th>
+        <th class="text-right">CPA</th>
+      </tr></thead>
+      <tbody>
+        <tr><td class="font-bold">04-21</td><td class="text-right" style="color:var(--tiktok)">912K</td><td class="text-right" style="color:var(--green)">11.8tr</td><td class="text-right">104</td><td class="text-right" style="color:var(--muted)">113K</td><td class="text-right font-bold" style="color:var(--green)">12.89</td><td class="text-right" style="color:var(--muted)">8.8K</td></tr>
+        <tr><td class="font-bold">04-20</td><td class="text-right" style="color:var(--tiktok)">1.2tr</td><td class="text-right" style="color:var(--green)">15.9tr</td><td class="text-right">132</td><td class="text-right" style="color:var(--muted)">120K</td><td class="text-right font-bold" style="color:var(--green)">12.91</td><td class="text-right" style="color:var(--muted)">9.3K</td></tr>
+        <tr><td class="font-bold">04-19</td><td class="text-right" style="color:var(--tiktok)">1.4tr</td><td class="text-right" style="color:var(--green)">22.4tr</td><td class="text-right">168</td><td class="text-right" style="color:var(--muted)">133K</td><td class="text-right font-bold" style="color:var(--green)">15.83</td><td class="text-right" style="color:var(--muted)">8.4K</td></tr>
+        <tr><td class="font-bold">04-18</td><td class="text-right" style="color:var(--tiktok)">1.3tr</td><td class="text-right" style="color:var(--green)">20.6tr</td><td class="text-right">188</td><td class="text-right" style="color:var(--muted)">110K</td><td class="text-right font-bold" style="color:var(--green)">15.80</td><td class="text-right" style="color:var(--muted)">6.9K</td></tr>
+        <tr style="color:var(--subtle)"><td>...</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+        <tr class="total"><td>Tong T4</td><td class="text-right">24.6tr</td><td class="text-right">313tr</td><td class="text-right">3,124</td><td class="text-right">100K</td><td class="text-right">12.75</td><td class="text-right">7.9K</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══ MONTHLY ═══ -->
+<div class="section">
+  <div class="section-hdr">
+    <span>Tong hop theo thang (2026)</span>
+    <span class="badge">API /gmv_max/report/get/</span>
+  </div>
+  <div style="overflow-x:auto">
+    <table>
+      <thead><tr>
+        <th>Thang</th><th class="text-right">Spend</th><th class="text-right">Revenue</th><th class="text-right">Don</th><th class="text-right">ROI</th><th class="text-right">CPA</th>
+      </tr></thead>
+      <tbody>
+        <tr><td class="font-bold">T1</td><td class="text-right" style="color:var(--tiktok)">95.5tr</td><td class="text-right" style="color:var(--green)">1,677tr</td><td class="text-right">7,681</td><td class="text-right font-bold" style="color:var(--green)">17.57</td><td class="text-right" style="color:var(--muted)">12.4K</td></tr>
+        <tr><td class="font-bold">T2</td><td class="text-right" style="color:var(--tiktok)">46.3tr</td><td class="text-right" style="color:var(--green)">585tr</td><td class="text-right">4,120</td><td class="text-right font-bold" style="color:var(--green)">12.62</td><td class="text-right" style="color:var(--muted)">11.2K</td></tr>
+        <tr><td class="font-bold">T3</td><td class="text-right" style="color:var(--tiktok)">48.1tr</td><td class="text-right" style="color:var(--green)">574tr</td><td class="text-right">5,305</td><td class="text-right font-bold" style="color:var(--green)">11.94</td><td class="text-right" style="color:var(--muted)">9.1K</td></tr>
+        <tr><td class="font-bold">T4 <span style="font-size:10px;color:var(--muted)">(1-21)</span></td><td class="text-right" style="color:var(--tiktok)">24.6tr</td><td class="text-right" style="color:var(--green)">313tr</td><td class="text-right">3,124</td><td class="text-right font-bold" style="color:var(--green)">12.75</td><td class="text-right" style="color:var(--muted)">7.9K</td></tr>
+        <tr class="total"><td>Tong 2026</td><td class="text-right">214.5tr</td><td class="text-right">3,150tr</td><td class="text-right">20,230</td><td class="text-right">14.69</td><td class="text-right">10.6K</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div style="text-align:center; padding:20px; color:var(--muted); font-size:11px">
+  MOCKUP v2 &mdash; Data: TikTok Business API /gmv_max/report/get/ &middot; 22/04/2026
+</div>
+
+</body>
+</html>

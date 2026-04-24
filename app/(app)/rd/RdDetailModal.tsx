@@ -18,35 +18,55 @@ type FieldDef = {
 const VERDICT_OPTIONS = ["Duyệt", "Từ chối", "Cần chỉnh sửa"];
 
 const STEP_FORM_FIELDS: Record<string, FieldDef[]> = {
+  "Đề xuất": [
+    { key: "description",       label: "Mô tả sản phẩm", type: "textarea" },
+    { key: "reason",            label: "Lý do đề xuất", type: "textarea" },
+    { key: "ref_links",         label: "Link tham khảo (1688, Shopee...)", type: "url" },
+  ],
+  "Xác nhận": [
+    { key: "confirm_note",      label: "Ghi chú", type: "textarea" },
+  ],
   "Nghiên cứu": [
-    { key: "description",       label: "Brief / Mô tả sản phẩm", type: "textarea" },
-    { key: "competitors",       label: "Link đối thủ / SP cùng loại", type: "url" },
+    { key: "usp",               label: "Phân tích USP", type: "textarea" },
+    { key: "competitors",       label: "Đối thủ / SP cùng loại", type: "textarea" },
+    { key: "market_price",      label: "Giá thị trường" },
+    { key: "market_volume",     label: "Volume thị trường" },
+    { key: "supplier_name",     label: "NCC dự kiến" },
+    { key: "supplier_trust",    label: "Uy tín NCC" },
+    { key: "moq",               label: "MOQ" },
     { key: "price_buy",         label: "Giá nhập dự kiến", type: "number" },
     { key: "price_sell",        label: "Giá bán dự kiến", type: "number" },
+    { key: "evaluation",        label: "Đánh giá chung", type: "textarea" },
   ],
-  "Duyệt đề xuất": [
+  "Duyệt NC": [
     { key: "approve_verdict",   label: "Kết quả duyệt", type: "verdict" },
-    { key: "approve_note",      label: "Ghi chú leader", type: "textarea" },
+    { key: "approve_note",      label: "Nhận xét Leader", type: "textarea" },
   ],
   "Đặt mẫu": [
     { key: "sample_supplier",   label: "NCC đặt mẫu" },
-    { key: "sample_contact",    label: "Liên hệ NCC" },
+    { key: "sample_contact",    label: "Liên hệ NCC (WeChat, phone...)" },
+    { key: "sample_platform",   label: "Nền tảng (1688, Alibaba...)" },
     { key: "sample_qty",        label: "Số lượng mẫu", type: "number" },
     { key: "sample_price_usd",  label: "Giá mẫu (USD)", type: "number" },
     { key: "sample_order_link", label: "Link đơn mẫu", type: "url" },
     { key: "sample_eta",        label: "Dự kiến mẫu về", type: "date" },
   ],
-  "Kiểm tra": [
-    { key: "check_note",        label: "Ghi chú kiểm tra", type: "textarea" },
+  "Hàng về": [
+    { key: "qc_actual",         label: "Thông tin thực tế", type: "textarea" },
+    { key: "qc_score",          label: "Điểm QC (/10)" },
+    { key: "qc_evaluation",     label: "Đánh giá chung", type: "textarea" },
   ],
-  "Nhập?": [
-    { key: "bulk_decision",     label: "Quyết định nhập", type: "textarea" },
-    { key: "bulk_qty",          label: "Số lượng nhập", type: "number" },
+  "Duyệt mẫu": [
+    { key: "approve_verdict",   label: "Kết quả duyệt mẫu", type: "verdict" },
+    { key: "approve_note",      label: "Nhận xét Leader", type: "textarea" },
+    { key: "bulk_qty",          label: "SL nhập nếu pass", type: "number" },
     { key: "bulk_price",        label: "Giá nhập (đ)", type: "number" },
   ],
-  "Kết quả": [
+  "Nhập hàng": [
+    { key: "bulk_qty",          label: "Số lượng nhập", type: "number" },
+    { key: "bulk_price",        label: "Giá nhập (đ)", type: "number" },
     { key: "linked_bulk_po",    label: "Mã PO liên kết" },
-    { key: "lesson_note",       label: "Ghi chú rút kinh nghiệm", type: "textarea" },
+    { key: "lesson_note",       label: "Ghi chú", type: "textarea" },
   ],
   // Production
   "Tạo ticket": [
@@ -92,10 +112,6 @@ const STEP_FORM_FIELDS: Record<string, FieldDef[]> = {
   ],
   "QC & Nhận hàng": [
     { key: "check_note",        label: "Ghi chú kiểm tra", type: "textarea" },
-  ],
-  "Duyệt mẫu": [
-    { key: "approve_verdict",   label: "Kết quả duyệt mẫu", type: "verdict" },
-    { key: "approve_note",      label: "Ghi chú", type: "textarea" },
   ],
   "Đặt hàng": [
     { key: "bulk_qty",          label: "Số lượng đặt", type: "number" },
@@ -294,10 +310,14 @@ function ModalInner({
   }
 
   /* ── Checklist helpers ──────────────────────────────────── */
-  function addCheckItem() { if (!newCheckLabel.trim()) return; setChecklist([...checklist, { text: newCheckLabel.trim(), checked: false }]); setNewCheckLabel(""); setDirty(true); }
+  function addCheckItem() { if (!newCheckLabel.trim()) return; setChecklist([...checklist, { text: newCheckLabel.trim(), checked: false, verdict: null }]); setNewCheckLabel(""); setDirty(true); }
   function toggleCheck(i: number) { setChecklist(checklist.map((c, idx) => idx === i ? { ...c, checked: !c.checked } : c)); setDirty(true); }
+  function setVerdict(i: number, v: "pass" | "fail" | null) { setChecklist(checklist.map((c, idx) => idx === i ? { ...c, verdict: v, checked: v === "pass" } : c)); setDirty(true); }
   function removeCheck(i: number) { setChecklist(checklist.filter((_, idx) => idx !== i)); setDirty(true); }
   function updateCheckNote(i: number, note: string) { setChecklist(checklist.map((c, idx) => idx === i ? { ...c, note } : c)); setDirty(true); }
+  const isQcStep = step.label === "Hàng về" || step.label === "Kiểm tra" || step.label === "QC & Nhận hàng";
+  const passCount = checklist.filter(c => c.verdict === "pass").length;
+  const failCount = checklist.filter(c => c.verdict === "fail").length;
 
   /* ── Links helpers ──────────────────────────────────────── */
   function addLink() { if (!newLink.trim()) return; setLinks([...links, { tag: "", url: newLink.trim() }]); setNewLink(""); setDirty(true); }
@@ -515,7 +535,7 @@ function ModalInner({
             </div>
 
             {/* ── Create PO banner (for Nhập? / Đặt hàng steps) ── */}
-            {(step.label === "Nhập?" || step.label === "Đặt hàng") && (
+            {(step.label === "Nhập hàng" || step.label === "Nhập?" || step.label === "Đặt hàng") && (
               <div style={{ marginTop: 16, padding: "14px 16px", background: "linear-gradient(135deg, #EFF6FF 0%, #F0FDF4 100%)", border: "1px solid #86EFAC", borderRadius: 10 }}>
                 <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 6, color: "var(--green)" }}>📦 Tạo đơn nhập hàng</div>
                 <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 10 }}>
@@ -569,21 +589,40 @@ function ModalInner({
           <div style={{ width: 280, flexShrink: 0, display: "flex", flexDirection: "column", gap: 14 }}>
             {/* Checklist */}
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", marginBottom: 6 }}>Checklist ({checkedCount}/{checklist.length})</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", marginBottom: 6 }}>
+                {isQcStep ? `QC Checklist (${passCount}/${checklist.length} Pass${failCount > 0 ? ` · ${failCount} Fail` : ""})` : `Checklist (${checkedCount}/${checklist.length})`}
+              </div>
               {checklist.length > 0 && (
                 <div style={{ height: 3, borderRadius: 2, background: "#E5E7EB", marginBottom: 6, overflow: "hidden" }}>
-                  <div style={{ height: "100%", borderRadius: 2, width: checklist.length ? `${(checkedCount / checklist.length) * 100}%` : "0%", background: checkedCount === checklist.length ? "var(--green)" : "var(--blue)", transition: "width .2s" }} />
+                  <div style={{ height: "100%", borderRadius: 2, width: checklist.length ? `${((isQcStep ? passCount : checkedCount) / checklist.length) * 100}%` : "0%", background: failCount > 0 ? "var(--red)" : (isQcStep ? passCount : checkedCount) === checklist.length ? "var(--green)" : "var(--blue)", transition: "width .2s" }} />
                 </div>
               )}
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {checklist.map((c, i) => (
-                  <div key={i} style={{ padding: "6px 8px", background: c.checked ? "#F0FDF4" : "#FAFAFA", borderRadius: 4, fontSize: 12 }}>
+                  <div key={i} style={{ padding: "6px 8px", background: c.verdict === "pass" ? "#F0FDF4" : c.verdict === "fail" ? "#FEF2F2" : c.checked ? "#F0FDF4" : "#FAFAFA", borderRadius: 4, fontSize: 12 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <input type="checkbox" checked={c.checked} onChange={() => toggleCheck(i)} style={{ width: 14, height: 14 }} />
-                      <span style={{ flex: 1, textDecoration: c.checked ? "line-through" : "none", color: c.checked ? "var(--muted)" : "var(--text)" }}>{c.text}</span>
+                      <span style={{ flex: 1, color: c.verdict === "fail" ? "var(--red)" : c.verdict === "pass" || c.checked ? "var(--muted)" : "var(--text)" }}>{c.text}</span>
+                      {isQcStep ? (
+                        <div style={{ display: "flex", gap: 3 }}>
+                          <button type="button" onClick={() => setVerdict(i, c.verdict === "pass" ? null : "pass")} style={{
+                            padding: "2px 8px", borderRadius: 4, fontSize: 9, fontWeight: 600, cursor: "pointer",
+                            border: `1.5px solid ${c.verdict === "pass" ? "#16A34A" : "#E2E8F0"}`,
+                            background: c.verdict === "pass" ? "#F0FDF4" : "#fff",
+                            color: c.verdict === "pass" ? "#16A34A" : "#94A3B8",
+                          }}>Pass</button>
+                          <button type="button" onClick={() => setVerdict(i, c.verdict === "fail" ? null : "fail")} style={{
+                            padding: "2px 8px", borderRadius: 4, fontSize: 9, fontWeight: 600, cursor: "pointer",
+                            border: `1.5px solid ${c.verdict === "fail" ? "#DC2626" : "#E2E8F0"}`,
+                            background: c.verdict === "fail" ? "#FEF2F2" : "#fff",
+                            color: c.verdict === "fail" ? "#DC2626" : "#94A3B8",
+                          }}>Fail</button>
+                        </div>
+                      ) : (
+                        <input type="checkbox" checked={c.checked} onChange={() => toggleCheck(i)} style={{ width: 14, height: 14 }} />
+                      )}
                       <button type="button" onClick={() => removeCheck(i)} style={{ background: "none", border: "none", color: "var(--red)", cursor: "pointer", padding: 2, fontSize: 11 }}>✕</button>
                     </div>
-                    <input type="text" value={c.note || ""} onChange={(e) => updateCheckNote(i, e.target.value)} placeholder="Ghi chú..." style={{ marginTop: 3, fontSize: 11, width: "100%", border: "none", borderBottom: "1px dashed var(--border)", background: "transparent", padding: "2px 0", marginLeft: 20, color: "var(--muted)" }} />
+                    <input type="text" value={c.note || ""} onChange={(e) => updateCheckNote(i, e.target.value)} placeholder="Ghi chú..." style={{ marginTop: 3, fontSize: 11, width: "100%", border: "none", borderBottom: "1px dashed var(--border)", background: "transparent", padding: "2px 0", marginLeft: 4, color: "var(--muted)" }} />
                   </div>
                 ))}
               </div>

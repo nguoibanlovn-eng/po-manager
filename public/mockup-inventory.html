@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tồn kho — Mobile</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0F172A; }
+  .phone { max-width: 393px; margin: 20px auto; background: #F8FAFC; border-radius: 24px; overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,.25); padding-bottom: 70px; }
+  .statusbar { height: 44px; background: #0F172A; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; color: #fff; font-size: 12px; font-weight: 600; }
+
+  .header { background: linear-gradient(135deg, #7C3AED 0%, #4C1D95 100%); padding: 14px 16px 16px; color: #fff; }
+  .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .header-title { font-size: 17px; font-weight: 800; }
+  .header-sub { font-size: 11px; opacity: .6; }
+
+  .tab-row { display: flex; gap: 4px; }
+  .tab-btn { background: rgba(255,255,255,.12); border: none; color: rgba(255,255,255,.6); padding: 7px 14px; border-radius: 8px; font-size: 11px; font-weight: 600; cursor: pointer; }
+  .tab-btn.active { background: rgba(255,255,255,.25); color: #fff; }
+
+  /* Search & Filter bar */
+  .search-bar { position: relative; margin-bottom: 8px; }
+  .search-bar input { width: 100%; padding: 8px 12px 8px 32px; border: 1px solid #E2E8F0; border-radius: 10px; font-size: 12px; background: #fff; outline: none; }
+  .search-bar input:focus { border-color: #7C3AED; box-shadow: 0 0 0 2px rgba(124,58,237,.1); }
+  .search-bar .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 14px; color: #94A3B8; }
+  .filter-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+  .filter-row::-webkit-scrollbar { display: none; }
+  .filter-chip { flex-shrink: 0; display: flex; align-items: center; gap: 4px; padding: 5px 10px; border-radius: 8px; font-size: 10px; font-weight: 600; border: 1px solid #E2E8F0; background: #fff; cursor: pointer; white-space: nowrap; color: #64748B; }
+  .filter-chip.active { background: #7C3AED; color: #fff; border-color: #7C3AED; }
+  .filter-chip .arrow { font-size: 8px; margin-left: 2px; }
+  .filter-chip.has-value { background: #F3E8FF; color: #7C3AED; border-color: #C4B5FD; }
+
+  /* Sort dropdown */
+  .sort-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .sort-row .sort-label { font-size: 9px; color: #94A3B8; }
+  .sort-btn { display: flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 600; color: #7C3AED; background: #F3E8FF; border: none; padding: 3px 8px; border-radius: 6px; cursor: pointer; }
+  .result-count { font-size: 10px; color: #94A3B8; }
+
+  .section { padding: 12px; }
+  .stitle { font-size: 12px; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .badge { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 6px; text-transform: none; letter-spacing: 0; }
+  .divider { height: 6px; background: #F1F5F9; }
+  .card { background: #fff; border: 1px solid #E2E8F0; border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
+
+  /* Hero */
+  .hero-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; padding: 0 12px 12px; }
+  .hero-stat { background: rgba(255,255,255,.1); border-radius: 10px; padding: 10px; text-align: center; color: #fff; }
+  .hs-val { font-size: 22px; font-weight: 900; }
+  .hs-label { font-size: 8px; text-transform: uppercase; letter-spacing: .3px; opacity: .6; }
+  .hs-sub { font-size: 8px; opacity: .5; }
+  .hero-stat.red { background: rgba(239,68,68,.2); }
+  .hero-stat.red .hs-val { color: #FCA5A5; }
+  .hero-stat.amber { background: rgba(245,158,11,.2); }
+  .hero-stat.amber .hs-val { color: #FCD34D; }
+
+  /* Health */
+  .health-bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; margin-bottom: 4px; }
+  .health-legend { display: flex; gap: 8px; font-size: 9px; color: #64748B; }
+  .health-legend span { display: flex; align-items: center; gap: 3px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+  /* Product list */
+  .prod-header { display: grid; grid-template-columns: 24px 1fr 42px 42px 38px; gap: 4px; padding: 6px 0; font-size: 8px; color: #94A3B8; text-transform: uppercase; border-bottom: 1px solid #E2E8F0; }
+  .prod-header span:nth-child(n+3) { text-align: right; }
+  .prod-row { display: grid; grid-template-columns: 24px 1fr 42px 42px 38px; gap: 4px; align-items: center; padding: 7px 0; border-bottom: 1px solid #F8FAFC; }
+  .prod-row:last-child { border: none; }
+  .prod-rank { width: 20px; height: 20px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; }
+  .prod-info { min-width: 0; }
+  .prod-name { font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .prod-sku { font-size: 8px; color: #94A3B8; }
+  .prod-val { font-size: 11px; font-weight: 700; text-align: right; }
+  .prod-ratio { font-size: 10px; font-weight: 700; text-align: right; }
+
+  /* Ratio bar inside cell */
+  .ratio-cell { text-align: right; }
+  .ratio-bar { width: 100%; height: 3px; background: #F1F5F9; border-radius: 2px; margin-top: 2px; }
+  .ratio-fill { height: 100%; border-radius: 2px; }
+
+  /* Summary strip */
+  .summary-strip { display: flex; justify-content: space-between; padding: 8px; background: #F8FAFC; border-radius: 8px; margin-top: 8px; }
+  .summary-strip .ss-item { text-align: center; }
+  .summary-strip .ss-val { font-size: 14px; font-weight: 800; }
+  .summary-strip .ss-label { font-size: 8px; color: #94A3B8; }
+
+  /* Bottom nav */
+  .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 393px; background: #fff; border-top: 1px solid #E2E8F0; display: flex; padding: 4px 0 22px; z-index: 100; }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 4px 0; cursor: pointer; }
+  .nav-icon { font-size: 18px; height: 22px; display: flex; align-items: center; justify-content: center; }
+  .nav-label { font-size: 9px; font-weight: 600; color: #94A3B8; }
+  .nav-item.active .nav-label { color: #7C3AED; }
+
+  @media (min-width: 500px) {
+    body { padding: 20px; }
+    body::before { content: "📦 Tồn kho Mobile"; display: block; text-align: center; padding: 12px; font-size: 13px; color: #94A3B8; margin-bottom: 10px; }
+  }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar"><span>20:15</span><span>📶 🔋 88%</span></div>
+
+  <div class="header">
+    <div class="header-top">
+      <div><div class="header-title">📦 Tồn kho</div><div class="header-sub">22/04/2026 · Sync 5ph trước</div></div>
+      <div style="font-size:10px;background:rgba(255,255,255,.15);padding:3px 10px;border-radius:10px;cursor:pointer">⟳ Sync</div>
+    </div>
+    <div class="tab-row">
+      <button class="tab-btn active">Tổng quan</button>
+      <button class="tab-btn">Bán chạy</button>
+      <button class="tab-btn">Bán chậm</button>
+      <button class="tab-btn">Cần nhập</button>
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <div class="hero-row" style="padding-top:12px;background:linear-gradient(135deg,#7C3AED,#4C1D95)">
+    <div class="hero-stat"><div class="hs-label">Tổng SKU</div><div class="hs-val">3,245</div><div class="hs-sub">đang KD</div></div>
+    <div class="hero-stat red"><div class="hs-label">Hết hàng</div><div class="hs-val">847</div><div class="hs-sub">26%</div></div>
+    <div class="hero-stat amber"><div class="hs-label">Sắp hết</div><div class="hs-val">312</div><div class="hs-sub">10%</div></div>
+  </div>
+
+  <!-- Health -->
+  <div class="section" style="padding-bottom:4px">
+    <div class="card" style="margin-bottom:0">
+      <div class="health-bar">
+        <div style="width:64%;background:#22C55E"></div>
+        <div style="width:10%;background:#F59E0B"></div>
+        <div style="width:26%;background:#EF4444"></div>
+      </div>
+      <div class="health-legend">
+        <span><span class="dot" style="background:#22C55E"></span>Đủ 64%</span>
+        <span><span class="dot" style="background:#F59E0B"></span>Sắp hết 10%</span>
+        <span><span class="dot" style="background:#EF4444"></span>Hết 26%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search & Filters -->
+  <div class="section" style="padding-top:4px">
+    <div class="search-bar">
+      <span class="search-icon">🔍</span>
+      <input type="text" placeholder="Tìm SKU, tên sản phẩm..." />
+    </div>
+    <div class="filter-row">
+      <div class="filter-chip has-value">📦 Tồn kho <span class="arrow">▼</span></div>
+      <div class="filter-chip">📁 Danh mục <span class="arrow">▼</span></div>
+      <div class="filter-chip">📊 Vòng quay <span class="arrow">▼</span></div>
+      <div class="filter-chip">⏱ Ngày tồn <span class="arrow">▼</span></div>
+      <div class="filter-chip">💰 Giá vốn <span class="arrow">▼</span></div>
+    </div>
+
+    <!-- Active filters preview -->
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">
+      <div style="display:flex;align-items:center;gap:3px;background:#F3E8FF;color:#7C3AED;font-size:9px;font-weight:600;padding:2px 6px;border-radius:6px">
+        Tồn: Hết hàng <span style="cursor:pointer;opacity:.6">✕</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:3px;background:#FEF3C7;color:#D97706;font-size:9px;font-weight:600;padding:2px 6px;border-radius:6px">
+        Danh mục: Phụ kiện <span style="cursor:pointer;opacity:.6">✕</span>
+      </div>
+      <div style="font-size:9px;color:#7C3AED;font-weight:600;padding:2px 4px;cursor:pointer">Xoá tất cả</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- BÁN CHẠY -->
+  <div class="section">
+    <div class="stitle">Bán chạy nhất tháng <span class="badge" style="background:#F0FDF4;color:#16A34A">Top 10</span></div>
+    <div class="card" style="padding:6px 10px">
+      <div style="display:flex;gap:4px;margin-bottom:6px;align-items:center">
+        <button class="tab-btn active" style="background:#16A34A;color:#fff;font-size:10px;padding:3px 8px;border-radius:6px">T4/2026</button>
+        <button class="tab-btn" style="font-size:10px;padding:3px 8px;border-radius:6px;background:#F1F5F9;color:#64748B">T3</button>
+        <button class="tab-btn" style="font-size:10px;padding:3px 8px;border-radius:6px;background:#F1F5F9;color:#64748B">T2</button>
+        <div style="margin-left:auto">
+          <button class="sort-btn">Bán/T ↓</button>
+        </div>
+      </div>
+
+      <div class="prod-header">
+        <span>#</span><span>Sản phẩm</span><span style="text-align:right">Tồn</span><span style="text-align:right">Bán/T</span><span style="text-align:right">Vòng</span>
+      </div>
+
+      <div class="prod-row">
+        <div class="prod-rank" style="background:#FEF3C7;color:#D97706">1</div>
+        <div class="prod-info"><div class="prod-name">Pin dự phòng Baseus 20K 22.5W</div><div class="prod-sku">2000214325001 · Phụ kiện</div></div>
+        <div class="prod-val" style="color:#DC2626">0</div>
+        <div class="prod-val" style="color:#16A34A">187</div>
+        <div class="ratio-cell"><div class="prod-ratio" style="color:#DC2626">∞</div><div class="ratio-bar"><div class="ratio-fill" style="width:100%;background:#EF4444"></div></div></div>
+      </div>
+
+      <div class="prod-row">
+        <div class="prod-rank" style="background:#FEF3C7;color:#D97706">2</div>
+        <div class="prod-info"><div class="prod-name">Tai nghe Remax W22N</div><div class="prod-sku">2000214325098 · Tai nghe</div></div>
+        <div class="prod-val" style="color:#DC2626">0</div>
+        <div class="prod-val" style="color:#16A34A">156</div>
+        <div class="ratio-cell"><div class="prod-ratio" style="color:#DC2626">∞</div><div class="ratio-bar"><div class="ratio-fill" style="width:100%;background:#EF4444"></div></div></div>
+      </div>
+
+      <div class="prod-row">
+        <div class="prod-rank" style="background:#F1F5F9;color:#64748B">3</div>
+        <div class="prod-info"><div class="prod-name">Camera IMOU Ranger 2 3MP</div><div class="prod-sku">2000214325167 · Camera</div></div>
+        <div class="prod-val" style="color:#D97706">3</div>
+        <div class="prod-val" style="color:#16A34A">134</div>
+        <div class="ratio-cell"><div class="prod-ratio" style="color:#DC2626">45x</div><div class="ratio-bar"><div class="ratio-fill" style="width:95%;background:#EF4444"></div></div></div>
+      </div>
+
+      <div class="prod-row">
+        <div class="prod-rank" style="background:#F1F5F9;color:#64748B">4</div>
+        <div class="prod-info"><div class="prod-name">Kính thực tế ảo VRG PRO</div><div class="prod-sku">2000214325203 · Phụ kiện</div></div>
+        <div class="prod-val" style="color:#D97706">2</div>
+        <div class="prod-val" style="color:#16A34A">118</div>
+        <div class="ratio-cell"><div class="prod-ratio" style="color:#DC2626">59x</div><div class="ratio-bar"><div class="ratio-fill" style="width:90%;background:#EF4444"></div></div></div>
+      </div>
+
+      <div class="prod-row">
+        <div class="prod-rank" style="background:#F1F5F9;color:#64748B">5</div>
+        <div class="prod-info"><div class="prod-name">Đồng hồ TRUEFREE GT2</div><div class="prod-sku">2000214325850 · Watch</div></div>
+        <div class="prod-val" style="color:#D97706">5</div>
+        <div class="prod-val" style="color:#16A34A">103</div>
+        <div class="ratio-cell"><div class="prod-ratio" style="color:#DC2626">21x</div><div class="ratio-bar"><div class="ratio-fill" style="width:85%;background:#EF4444"></div></div></div>
+      </div>
+
+      <div class="prod-row">
+        <div class="prod-rank" style="background:#F1F5F9;color:#64748B">6</div>
+        <div class="prod-info"><div class="prod-name">Sim Vina U1500 500G/tháng</div><div class="prod-sku">SIM-U1500 · Sim</div></div>
+        <div class="prod-val" style="color:#16A34A">45</div>
+        <div class="prod-val" style="color:#16A34A">98</div>
+        <div class="ratio-cell"><div class="prod-ratio" style="color:#D97706">2.2x</div><div class="ratio-bar"><div class="ratio-fill" style="width:50%;background:#F59E0B"></div></div></div>
+      </div>
+
+      <div class="prod-row">
+        <div class="prod-rank" style="background:#F1F5F9;color:#64748B">7</div>
+        <div class="prod-info"><div class="prod-name">Máy hút bụi SuiTu ST6645 Pro</div><div class="prod-sku">2000214325044 · Gia dụng</div></div>
+        <div class="prod-val" style="color:#16A34A">32</div>
+        <div class="prod-val" style="color:#16A34A">89</div>
+        <div class="ratio-cell"><div class="prod-ratio" style="color:#D97706">2.8x</div><div class="ratio-bar"><div class="ratio-fill" style="width:55%;background:#F59E0B"></div></div></div>
+      </div>
+
+      <div class="prod-row">
+        <div class="prod-rank" style="background:#F1F5F9;color:#64748B">8</div>
+        <div class="prod-info"><div class="prod-name">Pin Magsafe Lanex 10K</div><div class="prod-sku">2000214325099 · Phụ kiện</div></div>
+        <div class="prod-val" style="color:#16A34A">120</div>
+        <div class="prod-val" style="color:#16A34A">82</div>
+        <div class="ratio-cell"><div class="prod-ratio" style="color:#16A34A">1.5x</div><div class="ratio-bar"><div class="ratio-fill" style="width:30%;background:#22C55E"></div></div></div>
+      </div>
+
+      <div class="summary-strip">
+        <div class="ss-item"><div class="ss-val" style="color:#16A34A">1,067</div><div class="ss-label">Tổng bán Top 8</div></div>
+        <div class="ss-item"><div class="ss-val">207</div><div class="ss-label">Tồn hiện tại</div></div>
+        <div class="ss-item"><div class="ss-val" style="color:#DC2626">5 hết</div><div class="ss-label">Cần nhập gấp</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- BÁN CHẬM -->
+  <div class="section">
+    <!-- KHÔNG BÁN — 0 đơn cả tháng -->
+    <div class="stitle">Không bán — 0 đơn cả tháng <span class="badge" style="background:#18181B;color:#fff">87 SKU</span></div>
+    <div class="card" style="padding:6px 10px">
+      <div style="display:flex;gap:4px;margin-bottom:6px;align-items:center">
+        <button class="tab-btn active" style="background:#18181B;color:#fff;font-size:10px;padding:3px 8px;border-radius:6px">T4 (0 bán)</button>
+        <button class="tab-btn" style="font-size:10px;padding:3px 8px;border-radius:6px;background:#F1F5F9;color:#64748B">2 tháng liên tiếp</button>
+        <button class="tab-btn" style="font-size:10px;padding:3px 8px;border-radius:6px;background:#F1F5F9;color:#64748B">3 tháng+</button>
+        <div style="margin-left:auto">
+          <button class="sort-btn" style="background:#F1F5F9;color:#64748B">Tồn ↓</button>
+        </div>
+      </div>
+
+      <div class="prod-header">
+        <span>#</span><span>Sản phẩm</span><span style="text-align:right">Tồn</span><span style="text-align:right">Vốn</span><span style="text-align:right">Ngày</span>
+      </div>
+
+      <div class="prod-row">
+        <div class="prod-rank" style="background:#18181B;color:#fff">1</div>
+        <div class="prod-info"><div class="prod-name">Miếng dán cường lực Samsung A54</div><div class="prod-sku">200412 · Phụ kiện · 3K/sp</div></div>
+        <div class="prod-val" style="color:#991B1B">320</div>
+        <div class="prod-val" style="color:#64748B">960K</div>
+        <div class="prod-val" style="color:#991B1B">90d</div>
+      </div>
+
+      <div class="prod-row">
+        <div class="prod-rank" style="background:#18181B;color:#fff">2</div>
+        <div class="prod-info"><div class="prod-name">Ốp lưng iPhone 13 Silicon trong</div><div class="prod-sku">200089 · Phụ kiện · 15K/sp</div></div>
+        <div class="prod-val" style="color:#991B1B">243</div>
+        <div class="prod-val" style="color:#64748B">3.6M</div>
+        <div class="prod-val" style="color:#991B1B">85d</div>
+      </div>
+
+      <div class="prod-row">
+        <div class="prod-rank" style="background:#18181B;color:#fff">3</div>
+        <div class="prod-info"><div class="prod-name">Dây sạc Type-C 2M no-brand</div><div class="prod-sku">200056 · Cáp sạc · 8K/sp</div></div>
+        <div class="prod-val" style="color:#991B1B">210</div>
+        <div class="prod-val" style="color:#64748B">1.7M</div>
+        <div class="prod-val" style="color:#991B1B">78d</div>
+      </div>
+
+      <div class="prod-row">
+        <div class="prod-rank" style="background:#18181B;color:#fff">4</div>
+        <div class="prod-info"><div class="prod-name">Cáp Lightning 1M trắng</div><div class="prod-sku">200112 · Cáp sạc · 6K/sp</div></div>
+        <div class="prod-val" style="color:#991B1B">189</div>
+        <div class="prod-val" style="color:#64748B">1.1M</div>
+        <div class="prod-val" style="color:#991B1B">78d</div>
+      </div>
+
+      <div class="prod-row">
+        <div class="prod-rank" style="background:#18181B;color:#fff">5</div>
+        <div class="prod-info"><div class="prod-name">Loa Bluetooth JBL Clip 4 Fake</div><div class="prod-sku">200045 · Loa · 85K/sp</div></div>
+        <div class="prod-val" style="color:#991B1B">156</div>
+        <div class="prod-val" style="color:#DC2626">13.3M</div>
+        <div class="prod-val" style="color:#991B1B">92d</div>
+      </div>
+
+      <!-- Summary -->
+      <div style="margin-top:8px;padding:8px;background:#18181B;border-radius:8px;color:#fff">
+        <div style="display:flex;justify-content:space-between">
+          <div><div style="font-size:8px;opacity:.6">87 SKU · 0 bán T4</div><div style="font-size:14px;font-weight:800">1,842 SP</div></div>
+          <div style="text-align:center"><div style="font-size:8px;opacity:.6">Vốn đọng</div><div style="font-size:14px;font-weight:800;color:#FCA5A5">48.7M</div></div>
+          <div style="text-align:right"><div style="font-size:8px;opacity:.6">TB ngày tồn</div><div style="font-size:14px;font-weight:800;color:#FCA5A5">81 ngày</div></div>
+        </div>
+        <div style="font-size:9px;opacity:.6;margin-top:4px">⚠️ Nên thanh lý hoặc tặng kèm combo cho SP >90 ngày không bán</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- BÁN CHẬM — có bán nhưng ít so với tồn -->
+  <div class="section">
+    <div class="stitle">Bán chậm — Tồn đọng <span class="badge" style="background:#FEF2F2;color:#DC2626">108 SKU</span></div>
+    <div class="card" style="padding:6px 10px">
+      <div style="display:flex;gap:4px;margin-bottom:6px;align-items:center">
+        <button class="tab-btn active" style="background:#DC2626;color:#fff;font-size:10px;padding:3px 8px;border-radius:6px">%Bán <20%</button>
+        <button class="tab-btn" style="font-size:10px;padding:3px 8px;border-radius:6px;background:#F1F5F9;color:#64748B">%Bán <50%</button>
+        <button class="tab-btn" style="font-size:10px;padding:3px 8px;border-radius:6px;background:#F1F5F9;color:#64748B">Tất cả</button>
+        <div style="margin-left:auto">
+          <button class="sort-btn" style="background:#FEF2F2;color:#DC2626">%Bán ↑</button>
+        </div>
+      </div>
+
+      <div style="font-size:9px;color:#94A3B8;margin-bottom:4px">%Bán = Bán T4 / Tồn đầu T4 · Càng thấp càng chậm</div>
+
+      <div class="prod-header" style="grid-template-columns:24px 1fr 35px 35px 30px 30px">
+        <span>#</span><span>Sản phẩm</span><span style="text-align:right">Tồn</span><span style="text-align:right">Bán</span><span style="text-align:right">%Bán</span><span style="text-align:right">Vòng</span>
+      </div>
+
+      <div class="prod-row" style="grid-template-columns:24px 1fr 35px 35px 30px 30px">
+        <div class="prod-rank" style="background:#FEF2F2;color:#DC2626">1</div>
+        <div class="prod-info"><div class="prod-name">Đèn bàn LED cảm ứng V2</div><div class="prod-sku">200234 · Gia dụng · 42K/sp</div></div>
+        <div class="prod-val" style="color:#DC2626">97</div>
+        <div class="prod-val">3</div>
+        <div class="prod-val" style="color:#991B1B;font-size:10px">3%</div>
+        <div class="prod-val" style="color:#991B1B;font-size:9px">32x</div>
+      </div>
+
+      <div class="prod-row" style="grid-template-columns:24px 1fr 35px 35px 30px 30px">
+        <div class="prod-rank" style="background:#FEF2F2;color:#DC2626">2</div>
+        <div class="prod-info"><div class="prod-name">Quạt mini USB cầm tay F01</div><div class="prod-sku">200301 · Gia dụng · 25K/sp</div></div>
+        <div class="prod-val" style="color:#DC2626">134</div>
+        <div class="prod-val">5</div>
+        <div class="prod-val" style="color:#991B1B;font-size:10px">4%</div>
+        <div class="prod-val" style="color:#991B1B;font-size:9px">27x</div>
+      </div>
+
+      <div class="prod-row" style="grid-template-columns:24px 1fr 35px 35px 30px 30px">
+        <div class="prod-rank" style="background:#FEF2F2;color:#DC2626">3</div>
+        <div class="prod-info"><div class="prod-name">Túi laptop 15.6" basic đen</div><div class="prod-sku">200187 · Phụ kiện · 35K/sp</div></div>
+        <div class="prod-val" style="color:#D97706">78</div>
+        <div class="prod-val">4</div>
+        <div class="prod-val" style="color:#991B1B;font-size:10px">5%</div>
+        <div class="prod-val" style="color:#991B1B;font-size:9px">20x</div>
+      </div>
+
+      <div class="prod-row" style="grid-template-columns:24px 1fr 35px 35px 30px 30px">
+        <div class="prod-rank" style="background:#FEF2F2;color:#DC2626">4</div>
+        <div class="prod-info"><div class="prod-name">Bình giữ nhiệt FlaskWay 500ml</div><div class="prod-sku">200567 · Bình nước · 65K/sp</div></div>
+        <div class="prod-val" style="color:#D97706">62</div>
+        <div class="prod-val">5</div>
+        <div class="prod-val" style="color:#DC2626;font-size:10px">8%</div>
+        <div class="prod-val" style="color:#DC2626;font-size:9px">12x</div>
+      </div>
+
+      <div class="prod-row" style="grid-template-columns:24px 1fr 35px 35px 30px 30px">
+        <div class="prod-rank" style="background:#FFF7ED;color:#D97706">5</div>
+        <div class="prod-info"><div class="prod-name">Dây sạc C-C LOGiiX 100W 3M</div><div class="prod-sku">200678 · Cáp sạc · 28K/sp</div></div>
+        <div class="prod-val">45</div>
+        <div class="prod-val">6</div>
+        <div class="prod-val" style="color:#DC2626;font-size:10px">13%</div>
+        <div class="prod-val" style="color:#DC2626;font-size:9px">8x</div>
+      </div>
+
+      <div class="prod-row" style="grid-template-columns:24px 1fr 35px 35px 30px 30px">
+        <div class="prod-rank" style="background:#FFF7ED;color:#D97706">6</div>
+        <div class="prod-info"><div class="prod-name">Đồng hồ ARMODD Squarz 12</div><div class="prod-sku">200789 · Watch · 120K/sp</div></div>
+        <div class="prod-val">38</div>
+        <div class="prod-val">7</div>
+        <div class="prod-val" style="color:#DC2626;font-size:10px">18%</div>
+        <div class="prod-val" style="color:#DC2626;font-size:9px">5x</div>
+      </div>
+
+      <!-- Visual: % bán distribution -->
+      <div style="margin-top:10px;padding:8px;background:#F8FAFC;border-radius:8px">
+        <div style="font-size:9px;font-weight:600;color:#64748B;margin-bottom:6px">Phân bổ %Bán/Tồn trong 108 SKU chậm</div>
+        <div style="display:flex;align-items:flex-end;gap:3px;height:30px;margin-bottom:2px">
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+            <div style="font-size:7px;font-weight:700;margin-bottom:1px">42</div>
+            <div style="width:100%;height:28px;background:#991B1B;border-radius:2px 2px 0 0"></div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+            <div style="font-size:7px;font-weight:700;margin-bottom:1px">28</div>
+            <div style="width:100%;height:19px;background:#DC2626;border-radius:2px 2px 0 0"></div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+            <div style="font-size:7px;font-weight:700;margin-bottom:1px">21</div>
+            <div style="width:100%;height:14px;background:#EF4444;border-radius:2px 2px 0 0"></div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+            <div style="font-size:7px;font-weight:700;margin-bottom:1px">17</div>
+            <div style="width:100%;height:11px;background:#F87171;border-radius:2px 2px 0 0"></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:3px;font-size:7px;color:#94A3B8;text-align:center">
+          <span style="flex:1">1-5%</span><span style="flex:1">5-10%</span><span style="flex:1">10-15%</span><span style="flex:1">15-20%</span>
+        </div>
+      </div>
+
+      <!-- Summary -->
+      <div style="margin-top:8px;padding:8px;background:#FEF2F2;border-radius:8px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <div><div style="font-size:8px;color:#991B1B">108 SKU bán chậm</div><div style="font-size:14px;font-weight:800;color:#DC2626">4,231 SP</div></div>
+          <div style="text-align:center"><div style="font-size:8px;color:#991B1B">Vốn đọng</div><div style="font-size:14px;font-weight:800;color:#DC2626">238.7M</div></div>
+          <div style="text-align:right"><div style="font-size:8px;color:#991B1B">%Bán trung bình</div><div style="font-size:14px;font-weight:800;color:#DC2626">9.2%</div></div>
+        </div>
+        <div style="font-size:9px;color:#991B1B">💡 Giảm giá, chạy ads riêng, hoặc combo với SP bán chạy</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- TỈ LỆ BÁN / TỒN THEO DANH MỤC -->
+  <div class="section">
+    <!-- Tiến độ bán / tồn theo tháng -->
+    <div class="stitle">Tiến độ bán / tồn theo tháng</div>
+    <div class="card" style="padding:8px 10px">
+      <div style="font-size:9px;color:#94A3B8;margin-bottom:8px">Tồn đầu kỳ → Bán trong tháng → Tồn cuối kỳ · % bán = đã bán / tồn đầu kỳ</div>
+
+      <!-- Month tabs -->
+      <div style="display:flex;gap:4px;margin-bottom:10px">
+        <button class="tab-btn active" style="background:#7C3AED;color:#fff;font-size:10px;padding:3px 8px;border-radius:6px">T4</button>
+        <button class="tab-btn" style="font-size:10px;padding:3px 8px;border-radius:6px;background:#F1F5F9;color:#64748B">T3</button>
+        <button class="tab-btn" style="font-size:10px;padding:3px 8px;border-radius:6px;background:#F1F5F9;color:#64748B">T2</button>
+        <button class="tab-btn" style="font-size:10px;padding:3px 8px;border-radius:6px;background:#F1F5F9;color:#64748B">T1</button>
+      </div>
+
+      <!-- Overview gauge -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-bottom:12px">
+        <div style="text-align:center;background:#F8FAFC;border-radius:8px;padding:6px">
+          <div style="font-size:8px;color:#94A3B8">Tồn đầu T4</div>
+          <div style="font-size:14px;font-weight:800">4,102</div>
+        </div>
+        <div style="text-align:center;background:#F0FDF4;border-radius:8px;padding:6px">
+          <div style="font-size:8px;color:#16A34A">Đã bán</div>
+          <div style="font-size:14px;font-weight:800;color:#16A34A">1,921</div>
+        </div>
+        <div style="text-align:center;background:#EFF6FF;border-radius:8px;padding:6px">
+          <div style="font-size:8px;color:#3B82F6">Nhập thêm</div>
+          <div style="font-size:14px;font-weight:800;color:#3B82F6">+1,064</div>
+        </div>
+        <div style="text-align:center;background:#FFF7ED;border-radius:8px;padding:6px">
+          <div style="font-size:8px;color:#D97706">Tồn cuối</div>
+          <div style="font-size:14px;font-weight:800;color:#D97706">3,245</div>
+        </div>
+      </div>
+
+      <!-- Waterfall visual -->
+      <div style="display:flex;align-items:flex-end;height:60px;gap:6px;margin-bottom:4px;padding:0 8px">
+        <!-- Tồn đầu -->
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+          <div style="font-size:8px;font-weight:700;margin-bottom:2px">4,102</div>
+          <div style="width:100%;height:50px;background:#E2E8F0;border-radius:4px 4px 0 0"></div>
+        </div>
+        <!-- Bán ra -->
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+          <div style="font-size:8px;font-weight:700;color:#DC2626;margin-bottom:2px">-1,921</div>
+          <div style="width:100%;background:#FEE2E2;border-radius:4px 4px 0 0;height:23px;margin-top:27px;border:1px dashed #FECACA"></div>
+        </div>
+        <!-- Nhập vào -->
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+          <div style="font-size:8px;font-weight:700;color:#16A34A;margin-bottom:2px">+1,064</div>
+          <div style="width:100%;height:40px;display:flex;flex-direction:column;justify-content:flex-end">
+            <div style="width:100%;background:#DCFCE7;border-radius:4px 4px 0 0;height:13px;border:1px dashed #BBF7D0"></div>
+            <div style="width:100%;background:#E2E8F0;height:27px"></div>
+          </div>
+        </div>
+        <!-- Tồn cuối -->
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+          <div style="font-size:8px;font-weight:700;color:#D97706;margin-bottom:2px">3,245</div>
+          <div style="width:100%;height:40px;background:#FEF3C7;border-radius:4px 4px 0 0"></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;padding:0 8px;font-size:8px;color:#94A3B8">
+        <span style="flex:1;text-align:center">Tồn đầu</span>
+        <span style="flex:1;text-align:center">Bán ra</span>
+        <span style="flex:1;text-align:center">Nhập vào</span>
+        <span style="flex:1;text-align:center">Tồn cuối</span>
+      </div>
+
+      <!-- % bán / tồn big gauge -->
+      <div style="text-align:center;margin:12px 0 8px">
+        <div style="font-size:9px;color:#64748B;margin-bottom:4px">TỈ LỆ ĐÃ BÁN / TỒN ĐẦU KỲ</div>
+        <div style="position:relative;width:120px;height:60px;margin:0 auto;overflow:hidden">
+          <div style="width:120px;height:120px;border-radius:50%;border:8px solid #F1F5F9;border-bottom-color:transparent;border-left-color:transparent;transform:rotate(225deg);position:absolute;top:0;left:0"></div>
+          <div style="width:120px;height:120px;border-radius:50%;border:8px solid #22C55E;border-bottom-color:transparent;border-left-color:transparent;border-right-color:transparent;transform:rotate(225deg);position:absolute;top:0;left:0;clip-path:polygon(0 0,70% 0,70% 100%,0 100%)"></div>
+        </div>
+        <div style="font-size:28px;font-weight:900;color:#16A34A;margin-top:-10px">46.8%</div>
+        <div style="font-size:9px;color:#64748B">1,921 bán / 4,102 tồn đầu kỳ</div>
+      </div>
+
+      <!-- Monthly trend -->
+      <div style="font-size:10px;font-weight:600;color:#64748B;margin-bottom:6px">Xu hướng % bán qua các tháng</div>
+      <div style="display:flex;align-items:flex-end;gap:8px;height:50px;margin-bottom:4px">
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end">
+          <div style="font-size:8px;font-weight:700;margin-bottom:2px">52%</div>
+          <div style="width:100%;height:42px;background:#86EFAC;border-radius:4px 4px 0 0"></div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end">
+          <div style="font-size:8px;font-weight:700;margin-bottom:2px">38%</div>
+          <div style="width:100%;height:30px;background:#86EFAC;border-radius:4px 4px 0 0"></div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end">
+          <div style="font-size:8px;font-weight:700;margin-bottom:2px">55%</div>
+          <div style="width:100%;height:44px;background:#4ADE80;border-radius:4px 4px 0 0"></div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end">
+          <div style="font-size:8px;font-weight:700;color:#D97706;margin-bottom:2px">47%</div>
+          <div style="width:100%;height:38px;background:#FCD34D;border-radius:4px 4px 0 0"></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;font-size:9px;color:#94A3B8;text-align:center">
+        <span style="flex:1">T1</span><span style="flex:1">T2</span><span style="flex:1">T3</span><span style="flex:1;color:#D97706;font-weight:600">T4*</span>
+      </div>
+      <div style="font-size:8px;color:#94A3B8;margin-top:4px;text-align:center">* T4 đang chạy (22/30 ngày) · Dự kiến cuối tháng: ~64%</div>
+    </div>
+
+    <div class="divider" style="margin:0 -12px"></div>
+
+    <!-- Tỉ lệ bán / tồn theo danh mục -->
+    <div style="margin-top:8px">
+    <div class="stitle">Tỉ lệ bán / tồn theo danh mục</div>
+    <div class="card" style="padding:6px 10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="font-size:9px;color:#94A3B8">% bán = Bán T4 / Tồn đầu T4 · Vòng quay = Bán / Tồn cuối</div>
+        <button class="sort-btn" style="font-size:9px">% bán ↓</button>
+      </div>
+
+      <!-- Header -->
+      <div style="display:grid;grid-template-columns:1fr 38px 38px 38px 32px 46px;gap:3px;font-size:7px;color:#94A3B8;text-transform:uppercase;padding:4px 0;border-bottom:1px solid #E2E8F0">
+        <span>Danh mục</span><span style="text-align:right">Đầu kỳ</span><span style="text-align:right">Bán</span><span style="text-align:right">Tồn</span><span style="text-align:right">%Bán</span><span style="text-align:right">Tình trạng</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 38px 38px 38px 32px 46px;gap:3px;align-items:center;padding:5px 0;border-bottom:1px solid #F8FAFC;font-size:10px">
+        <span style="font-weight:600">Sim / Gói cước</span>
+        <span style="text-align:right;color:#94A3B8">401</span>
+        <span style="text-align:right;font-weight:700;color:#16A34A">312</span>
+        <span style="text-align:right;color:#64748B">89</span>
+        <span style="text-align:right;font-weight:800;color:#16A34A">78%</span>
+        <span style="text-align:right;font-size:8px;font-weight:600;color:#16A34A;background:#F0FDF4;padding:1px 4px;border-radius:4px">Xuất sắc</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 38px 38px 38px 32px 46px;gap:3px;align-items:center;padding:5px 0;border-bottom:1px solid #F8FAFC;font-size:10px">
+        <span style="font-weight:600">Pin dự phòng</span>
+        <span style="text-align:right;color:#94A3B8">634</span>
+        <span style="text-align:right;font-weight:700;color:#16A34A">456</span>
+        <span style="text-align:right;color:#64748B">178</span>
+        <span style="text-align:right;font-weight:800;color:#16A34A">72%</span>
+        <span style="text-align:right;font-size:8px;font-weight:600;color:#16A34A;background:#F0FDF4;padding:1px 4px;border-radius:4px">Tốt</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 38px 38px 38px 32px 46px;gap:3px;align-items:center;padding:5px 0;border-bottom:1px solid #F8FAFC;font-size:10px">
+        <span style="font-weight:600">Tai nghe / Loa</span>
+        <span style="text-align:right;color:#94A3B8">634</span>
+        <span style="text-align:right;font-weight:700;color:#16A34A">389</span>
+        <span style="text-align:right;color:#64748B">245</span>
+        <span style="text-align:right;font-weight:800;color:#16A34A">61%</span>
+        <span style="text-align:right;font-size:8px;font-weight:600;color:#16A34A;background:#F0FDF4;padding:1px 4px;border-radius:4px">Tốt</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 38px 38px 38px 32px 46px;gap:3px;align-items:center;padding:5px 0;border-bottom:1px solid #F8FAFC;font-size:10px">
+        <span style="font-weight:600">Gia dụng</span>
+        <span style="text-align:right;color:#94A3B8">599</span>
+        <span style="text-align:right;font-weight:700">287</span>
+        <span style="text-align:right;color:#64748B">312</span>
+        <span style="text-align:right;font-weight:800;color:#D97706">48%</span>
+        <span style="text-align:right;font-size:8px;font-weight:600;color:#D97706;background:#FFF7ED;padding:1px 4px;border-radius:4px">TB</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 38px 38px 38px 32px 46px;gap:3px;align-items:center;padding:5px 0;border-bottom:1px solid #F8FAFC;font-size:10px">
+        <span style="font-weight:600">Camera</span>
+        <span style="text-align:right;color:#94A3B8">445</span>
+        <span style="text-align:right;font-weight:700">178</span>
+        <span style="text-align:right;color:#64748B">267</span>
+        <span style="text-align:right;font-weight:800;color:#D97706">40%</span>
+        <span style="text-align:right;font-size:8px;font-weight:600;color:#D97706;background:#FFF7ED;padding:1px 4px;border-radius:4px">TB</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 38px 38px 38px 32px 46px;gap:3px;align-items:center;padding:5px 0;border-bottom:1px solid #F8FAFC;font-size:10px">
+        <span style="font-weight:600">Đồng hồ</span>
+        <span style="text-align:right;color:#94A3B8">421</span>
+        <span style="text-align:right;font-weight:700">134</span>
+        <span style="text-align:right;color:#64748B">287</span>
+        <span style="text-align:right;font-weight:800;color:#DC2626">32%</span>
+        <span style="text-align:right;font-size:8px;font-weight:600;color:#DC2626;background:#FEF2F2;padding:1px 4px;border-radius:4px">Chậm</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 38px 38px 38px 32px 46px;gap:3px;align-items:center;padding:5px 0;border-bottom:1px solid #F8FAFC;font-size:10px">
+        <span style="font-weight:600">Phụ kiện ĐT</span>
+        <span style="text-align:right;color:#94A3B8">554</span>
+        <span style="text-align:right;font-weight:700">98</span>
+        <span style="text-align:right;color:#64748B">456</span>
+        <span style="text-align:right;font-weight:800;color:#DC2626">18%</span>
+        <span style="text-align:right;font-size:8px;font-weight:600;color:#991B1B;background:#FEF2F2;padding:1px 4px;border-radius:4px">Rất chậm</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 38px 38px 38px 32px 46px;gap:3px;align-items:center;padding:5px 0;font-size:10px">
+        <span style="font-weight:600">Bình giữ nhiệt</span>
+        <span style="text-align:right;color:#94A3B8">223</span>
+        <span style="text-align:right;font-weight:700">67</span>
+        <span style="text-align:right;color:#64748B">156</span>
+        <span style="text-align:right;font-weight:800;color:#DC2626">30%</span>
+        <span style="text-align:right;font-size:8px;font-weight:600;color:#DC2626;background:#FEF2F2;padding:1px 4px;border-radius:4px">Chậm</span>
+      </div>
+
+      <!-- Total -->
+      <div style="display:grid;grid-template-columns:1fr 38px 38px 38px 32px 46px;gap:3px;align-items:center;padding:6px 0;border-top:1px solid #E2E8F0;margin-top:2px;font-size:10px;font-weight:700">
+        <span>Tổng</span>
+        <span style="text-align:right;color:#94A3B8">4,102</span>
+        <span style="text-align:right;color:#16A34A">1,921</span>
+        <span style="text-align:right">3,245</span>
+        <span style="text-align:right;color:#D97706">47%</span>
+        <span></span>
+      </div>
+    </div>
+    </div>
+  </div>
+
+  <!-- Bottom nav -->
+  <div class="bottom-nav">
+    <div class="nav-item"><div class="nav-icon">📊</div><div class="nav-label">Ngày</div></div>
+    <div class="nav-item"><div class="nav-icon">📅</div><div class="nav-label">Tháng</div></div>
+    <div class="nav-item"><div class="nav-icon">📈</div><div class="nav-label">Năm</div></div>
+    <div class="nav-item active"><div class="nav-icon">📦</div><div class="nav-label">Tồn kho</div></div>
+    <div class="nav-item"><div class="nav-icon">☰</div><div class="nav-label">Menu</div></div>
+  </div>
+</div>
+</body>
+</html>

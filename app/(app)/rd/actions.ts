@@ -53,6 +53,7 @@ export async function createBlankRdItemAction(rdType: string = "research") {
     created_by: u.email,
     data: {
       rd_type: rdType,
+      created_by_role: u.role,
       [stepsKey]: steps,
     },
   });
@@ -74,7 +75,7 @@ export async function createPoFromRdAction(rdItemId: string) {
 
   // Extract info from steps
   const datMauStep = steps.find(s => s.label === "Đặt mẫu");
-  const nhapStep = steps.find(s => s.label === "Nhập?" || s.label === "Đặt hàng");
+  const nhapStep = steps.find(s => s.label === "Nhập hàng" || s.label === "Nhập?" || s.label === "Đặt hàng");
 
   const supplier = String(datMauStep?.sample_supplier || data.sample_supplier || "");
   const contact = String(datMauStep?.sample_contact || data.sample_contact || "");

@@ -1,6 +1,6 @@
 // Types + pipeline helpers cho R&D — không import "server-only" để client dùng được.
 
-export type RdCheckItem = { text: string; checked: boolean; done?: boolean; note?: string };
+export type RdCheckItem = { text: string; checked: boolean; done?: boolean; note?: string; verdict?: "pass" | "fail" | null };
 export type RdLink = string | { tag?: string; url: string };
 
 export type RdStep = {
@@ -87,6 +87,7 @@ function normalizeChecklist(raw: unknown): RdCheckItem[] {
       text: String(item.text || item.label || ""),
       checked: Boolean(item.checked ?? item.done ?? false),
       note: String(item.note || ""),
+      verdict: (item.verdict as "pass" | "fail" | null) || null,
     };
   });
 }
@@ -128,17 +129,20 @@ export function getLinkTag(link: RdLink): string {
   return link.tag || "";
 }
 
-export const RESEARCH_PIPELINE = [
-  { key: "giao_viec",     label: "Giao việc" },
-  { key: "nghien_cuu",    label: "Nghiên cứu" },
-  { key: "duyet_de_xuat", label: "Duyệt đề xuất" },
-  { key: "dat_mau",       label: "Đặt mẫu" },
-  { key: "kiem_tra",      label: "Kiểm tra" },
-  { key: "nhap",          label: "Nhập?" },
-  { key: "ket_qua",       label: "Kết quả" },
+type PipelineStep = { key: string; label: string; who?: string };
+
+export const RESEARCH_PIPELINE: PipelineStep[] = [
+  { key: "de_xuat",       label: "Đề xuất",      who: "proposer" },
+  { key: "xac_nhan",      label: "Xác nhận",      who: "reviewer" },  // NV nhận việc HOẶC Leader duyệt ĐX
+  { key: "nghien_cuu",    label: "Nghiên cứu",    who: "worker" },
+  { key: "duyet_nc",      label: "Duyệt NC",      who: "leader" },
+  { key: "dat_mau",       label: "Đặt mẫu",       who: "worker" },
+  { key: "hang_ve",       label: "Hàng về",        who: "worker" },    // QC mẫu + checklist pass/fail
+  { key: "duyet_mau",     label: "Duyệt mẫu",     who: "leader" },
+  { key: "nhap_hang",     label: "Nhập hàng",      who: "worker" },
 ];
 
-export const PRODUCTION_PIPELINE = [
+export const PRODUCTION_PIPELINE: PipelineStep[] = [
   { key: "tao_ticket",    label: "Tạo ticket" },
   { key: "nghien_cuu",    label: "Nghiên cứu" },
   { key: "duyet_b1",      label: "Duyệt B1" },
@@ -158,18 +162,28 @@ export function getPipeline(rdType: string | null | undefined) {
     : RESEARCH_PIPELINE;
 }
 
+/** Default QC checklist for "Hàng về" step */
+export const DEFAULT_QC_CHECKLIST: RdCheckItem[] = [
+  { text: "Đóng gói nguyên vẹn", checked: false, verdict: null },
+  { text: "Kích thước đúng mô tả", checked: false, verdict: null },
+  { text: "Chất lượng vật liệu", checked: false, verdict: null },
+  { text: "Chức năng hoạt động", checked: false, verdict: null },
+  { text: "Màu sắc / ngoại quan", checked: false, verdict: null },
+];
+
 /** Create blank pipeline steps JSON — step 1 active, rest locked */
 export function createBlankSteps(rdType: string): RdStep[] {
   const pipeline = getPipeline(rdType);
   return pipeline.map((p, i) => ({
     id: i,
     label: p.label,
+    who: p.who || "",
     status: i === 0 ? "active" as const : "locked" as const,
     assignee: "",
     assignee_name: "",
     deadline: "",
     result: "",
-    checklist: [],
+    checklist: p.key === "hang_ve" ? [...DEFAULT_QC_CHECKLIST] : [],
     links: [],
     photos: [],
     logs: [],

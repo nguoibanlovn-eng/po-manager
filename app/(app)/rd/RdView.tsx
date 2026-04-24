@@ -11,10 +11,14 @@ import RdDetailModal from "./RdDetailModal";
 // Stage badges theo GAS gốc
 const STAGE_STYLE: Record<string, { bg: string; color: string; border: string }> = {
   "Đề xuất":     { bg: "#EDE9FE", color: "#6D28D9", border: "#DDD6FE" },
+  "Xác nhận":    { bg: "#FEF3C7", color: "#92400E", border: "#FCD34D" },
   "Nghiên cứu":  { bg: "#EFF6FF", color: "#1D4ED8", border: "#BFDBFE" },
+  "Duyệt NC":    { bg: "#FEF3C7", color: "#92400E", border: "#FCD34D" },
   "Duyệt":       { bg: "#FEF3C7", color: "#92400E", border: "#FCD34D" },
   "Đặt mẫu":     { bg: "#DCFCE7", color: "#15803D", border: "#86EFAC" },
+  "Hàng về":     { bg: "#FFEDD5", color: "#C2410C", border: "#FED7AA" },
   "Kiểm tra":    { bg: "#FEF3C7", color: "#B45309", border: "#FCD34D" },
+  "Nhập hàng":   { bg: "#F0FDF4", color: "#166534", border: "#86EFAC" },
   "Nhập?":       { bg: "#E0F2FE", color: "#0369A1", border: "#7DD3FC" },
   "Kết quả":     { bg: "#F0FDF4", color: "#166534", border: "#86EFAC" },
   "Loại bỏ":     { bg: "#FEE2E2", color: "#B91C1C", border: "#FECACA" },
@@ -38,8 +42,8 @@ function stageStyleFor(stage: string | null | undefined) {
   return { bg: "#F4F4F5", color: "#52525B", border: "#D4D4D8" };
 }
 
-// Progress % theo stage — research workflow (6 bước)
-const RESEARCH_STEPS = ["Đề xuất", "Nghiên cứu", "Duyệt", "Đặt mẫu", "Kiểm tra", "Kết quả"];
+// Progress % theo stage — research workflow (8 bước)
+const RESEARCH_STEPS = ["Đề xuất", "Xác nhận", "Nghiên cứu", "Duyệt NC", "Đặt mẫu", "Hàng về", "Duyệt mẫu", "Nhập hàng"];
 const PRODUCTION_STEPS = [
   "Tạo ticket", "Nghiên cứu", "Duyệt B1", "Giao TK", "Thiết kế",
   "Duyệt 2A", "NCC+Tracking", "Chờ mẫu về", "Duyệt mẫu", "Đặt hàng",
@@ -48,11 +52,12 @@ const PRODUCTION_STEPS = [
 // Map stage tiếng Anh → tiếng Việt
 const STAGE_ALIAS: Record<string, string> = {
   idea: "Đề xuất", new: "Đề xuất", propose: "Đề xuất",
+  confirm: "Xác nhận", accept: "Xác nhận",
   research: "Nghiên cứu", researching: "Nghiên cứu",
-  review: "Duyệt", approval: "Duyệt", pending: "Duyệt",
+  review: "Duyệt NC", approval: "Duyệt NC", pending: "Duyệt NC",
   sample: "Đặt mẫu", ordering: "Đặt mẫu",
-  testing: "Kiểm tra", test: "Kiểm tra", qc: "Kiểm tra",
-  done: "Kết quả", result: "Kết quả", approved: "Kết quả",
+  testing: "Hàng về", test: "Hàng về", qc: "Hàng về",
+  done: "Nhập hàng", result: "Nhập hàng", approved: "Nhập hàng",
   rejected: "Loại bỏ", reject: "Loại bỏ", cancel: "Loại bỏ",
   design: "Thiết kế", supplier: "NCC+Tracking", ncc: "NCC+Tracking",
   production: "Đặt hàng",

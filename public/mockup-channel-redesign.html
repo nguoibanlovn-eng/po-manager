@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Channel Dashboard Redesign — Desktop</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F8FAFC; color: #18181B; padding: 20px 40px; }
+
+  .page { max-width: 1280px; margin: 0 auto; }
+  .page-title { font-size: 20px; font-weight: 800; }
+  .page-sub { font-size: 12px; color: #94A3B8; }
+
+  /* Header row */
+  .hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .hdr-left { display: flex; align-items: center; gap: 10px; }
+  .hdr-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; color: #fff; }
+  .hdr-right { display: flex; gap: 6px; align-items: center; }
+  .btn-sm { padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; border: 1px solid #E2E8F0; background: #fff; cursor: pointer; color: #64748B; }
+  .btn-sm.active { background: #1F2937; color: #fff; border-color: #1F2937; }
+  .btn-sync { background: #EFF6FF; border: 1px solid #93C5FD; color: #3B82F6; }
+  input[type="date"] { font-size: 11px; padding: 5px 8px; border: 1px solid #E2E8F0; border-radius: 6px; }
+
+  /* Progress bar */
+  .progress-strip { background: #fff; border: 1px solid #E2E8F0; border-radius: 8px; padding: 8px 14px; margin-bottom: 14px; display: flex; align-items: center; gap: 12px; }
+  .progress-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #64748B; letter-spacing: .3px; }
+  .progress-bar { flex: 1; height: 8px; background: #F3F4F6; border-radius: 4px; overflow: hidden; position: relative; }
+  .progress-fill { height: 100%; border-radius: 4px; }
+  .progress-marker { position: absolute; top: -2px; width: 1.5px; height: 12px; background: #DC2626; opacity: .5; }
+  .progress-vals { display: flex; gap: 8px; font-size: 10px; }
+  .progress-vals strong { font-weight: 800; }
+
+  /* KPI Strip — 6 cards */
+  .kpi-strip { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 14px; }
+  .kpi-card { padding: 10px 14px; border-radius: 8px; border: 1px solid; }
+  .kpi-card .kl { font-size: 9px; font-weight: 600; letter-spacing: .3px; }
+  .kpi-card .kv { font-size: 20px; font-weight: 800; margin: 2px 0; }
+  .kpi-card .ks { font-size: 9px; opacity: .7; }
+  .kpi-green { background: #F0FDF4; border-color: #BBF7D0; color: #166534; }
+  .kpi-amber { background: #FFFBEB; border-color: #FDE68A; color: #92400E; }
+  .kpi-red { background: #FEF2F2; border-color: #FECACA; color: #991B1B; }
+  .kpi-blue { background: #EFF6FF; border-color: #BFDBFE; color: #1E40AF; }
+  .kpi-neutral { background: #fff; border-color: #E5E7EB; color: #18181B; }
+
+  /* 3-column layout */
+  .layout-3 { display: grid; grid-template-columns: 5fr 4fr 3fr; gap: 10px; margin-bottom: 14px; }
+
+  /* Card */
+  .card { background: #fff; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px 14px; }
+  .card-title { font-size: 12px; font-weight: 700; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+  .card-title .badge { font-size: 10px; font-weight: 600; color: #94A3B8; }
+
+  /* Channel table */
+  .ch-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .ch-table th { text-align: left; font-size: 9px; color: #94A3B8; text-transform: uppercase; padding: 4px 6px; border-bottom: 1px solid #E2E8F0; }
+  .ch-table td { padding: 6px; border-bottom: 1px solid #F8FAFC; }
+  .ch-table .text-right { text-align: right; }
+  .ch-table .font-bold { font-weight: 700; }
+
+  /* Bar chart */
+  .bars { display: flex; align-items: flex-end; height: 80px; gap: 3px; }
+  .bars .bar { flex: 1; border-radius: 2px 2px 0 0; min-height: 2px; }
+  .bars .lbl { flex: 1; text-align: center; font-size: 7px; color: #94A3B8; }
+  .bar-labels { display: flex; gap: 3px; margin-top: 2px; }
+
+  /* Tabs for sections */
+  .section-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+  .section-tab { padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; border: 1px solid #E2E8F0; background: #fff; cursor: pointer; color: #64748B; }
+  .section-tab.active { background: #1F2937; color: #fff; border-color: #1F2937; }
+
+  /* Divider */
+  .divider { height: 1px; background: #E2E8F0; margin: 14px 0; }
+
+  h3 { font-size: 13px; font-weight: 700; color: #374151; margin-bottom: 8px; }
+
+  /* Channel tabs at top */
+  .channel-tabs { display: flex; gap: 6px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #E2E8F0; }
+  .channel-tab { padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 700; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+  .channel-tab.active { color: #fff; }
+  .channel-tab:not(.active) { background: #F1F5F9; color: #64748B; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Channel switcher -->
+  <div class="channel-tabs">
+    <button class="channel-tab active" style="background:#1877F2">
+      <span style="width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font-size:11px">f</span>
+      Facebook
+    </button>
+    <button class="channel-tab">
+      <span style="width:20px;height:20px;border-radius:50%;background:#18181B;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px">T</span>
+      TikTok
+    </button>
+    <button class="channel-tab">
+      <span style="width:20px;height:20px;border-radius:50%;background:#EE4D2D;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px">S</span>
+      Shopee
+    </button>
+    <button class="channel-tab">
+      <span style="width:20px;height:20px;border-radius:50%;background:#6366F1;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px">W</span>
+      Web/App
+    </button>
+  </div>
+
+  <!-- Header -->
+  <div class="hdr">
+    <div class="hdr-left">
+      <div class="hdr-icon" style="background:#1877F2">f</div>
+      <div>
+        <div class="page-title">Facebook</div>
+        <div class="page-sub">16 pages · 2026-04-23</div>
+      </div>
+    </div>
+    <div class="hdr-right">
+      <button class="btn-sm active">Hôm nay</button>
+      <button class="btn-sm">Hôm qua</button>
+      <button class="btn-sm">3N</button>
+      <button class="btn-sm">7N</button>
+      <button class="btn-sm">Tháng này</button>
+      <button class="btn-sm">Tháng trước</button>
+      <input type="date" value="2026-04-23">
+      <span style="color:#94A3B8">→</span>
+      <input type="date" value="2026-04-23">
+      <button class="btn-sm" style="background:#1877F2;color:#fff;border-color:#1877F2">Áp dụng</button>
+      <button class="btn-sm btn-sync">⟳ Sync Ads</button>
+      <button class="btn-sm btn-sync">⟳ Sync Insights</button>
+      <button class="btn-sm btn-sync">⟳ Sync Nhanh</button>
+    </div>
+  </div>
+
+  <!-- Progress strip -->
+  <div class="progress-strip">
+    <span class="progress-label">Facebook T04</span>
+    <span style="font-size:10px;font-weight:600;color:#D97706;background:#FEF3C7;padding:1px 6px;border-radius:4px">97%</span>
+    <div class="progress-bar">
+      <div class="progress-fill" style="width:97%;background:#22C55E"></div>
+      <div class="progress-marker" style="left:77%"></div>
+    </div>
+    <div class="progress-vals">
+      <span>Đạt <strong style="color:#16A34A">4.35T</strong></span>
+      <span>KH <strong>4.38T</strong></span>
+      <span>Còn <strong style="color:#D97706">30M</strong></span>
+      <span>TB <strong>189M/ngày</strong></span>
+    </div>
+  </div>
+
+  <!-- KPI Strip -->
+  <div class="kpi-strip">
+    <div class="kpi-card kpi-green">
+      <div class="kl">DT THÀNH CÔNG</div>
+      <div class="kv">109.1M</div>
+      <div class="ks">483 đơn · +12% vs hôm qua</div>
+    </div>
+    <div class="kpi-card kpi-amber">
+      <div class="kl">DT DỰ KIẾN</div>
+      <div class="kv">116.7M</div>
+      <div class="ks">tạo - hoàn hủy</div>
+    </div>
+    <div class="kpi-card kpi-red">
+      <div class="kl">CHI PHÍ ADS</div>
+      <div class="kv">7.1M</div>
+      <div class="ks">Hôm qua 9.0M · -21%</div>
+    </div>
+    <div class="kpi-card kpi-green">
+      <div class="kl">ADS / DOANH THU</div>
+      <div class="kv">4.9%</div>
+      <div class="ks">Hôm qua 5.1% · ROAS 20.5x</div>
+    </div>
+    <div class="kpi-card kpi-neutral">
+      <div class="kl">FOLLOWERS MỚI</div>
+      <div class="kv" style="color:#16A34A">+3,216</div>
+      <div class="ks">Unfollow -570 · Ròng +2,646</div>
+    </div>
+    <div class="kpi-card kpi-neutral">
+      <div class="kl">CTR TB</div>
+      <div class="kv">4.31%</div>
+      <div class="ks">Reach 1,221,436</div>
+    </div>
+  </div>
+
+  <!-- Main 3-column layout -->
+  <div class="layout-3">
+
+    <!-- LEFT: Sources / Pages -->
+    <div class="card">
+      <div class="card-title">
+        <span>Pages hôm nay</span>
+        <span class="badge">12 pages · TC · DK · Hôm qua</span>
+      </div>
+      <table class="ch-table">
+        <thead>
+          <tr><th>#</th><th>Page</th><th class="text-right">TC</th><th class="text-right">DK</th><th class="text-right">Hôm qua</th><th class="text-right">+/-%</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td><strong>Lỗ Vũ</strong></td><td class="text-right font-bold" style="color:#16A34A">42.5M</td><td class="text-right" style="color:#D97706">48.2M</td><td class="text-right" style="color:#94A3B8">38.1M</td><td class="text-right font-bold" style="color:#16A34A">+12%</td></tr>
+          <tr><td>2</td><td><strong>Lỗ Vũ 3</strong></td><td class="text-right font-bold" style="color:#16A34A">22.8M</td><td class="text-right" style="color:#D97706">26.1M</td><td class="text-right" style="color:#94A3B8">19.5M</td><td class="text-right font-bold" style="color:#16A34A">+17%</td></tr>
+          <tr><td>3</td><td><strong>Vua bán lỗ</strong></td><td class="text-right font-bold">12.4M</td><td class="text-right" style="color:#D97706">14.8M</td><td class="text-right" style="color:#94A3B8">11.2M</td><td class="text-right font-bold" style="color:#16A34A">+11%</td></tr>
+          <tr><td>4</td><td><strong>Lỗ Vũ (2)</strong></td><td class="text-right font-bold">9.8M</td><td class="text-right" style="color:#D97706">11.5M</td><td class="text-right" style="color:#94A3B8">12.3M</td><td class="text-right font-bold" style="color:#DC2626">-20%</td></tr>
+          <tr><td>5</td><td><strong>Lỗ Vũ Premium</strong></td><td class="text-right font-bold">8.2M</td><td class="text-right" style="color:#D97706">9.1M</td><td class="text-right" style="color:#94A3B8">7.8M</td><td class="text-right font-bold" style="color:#16A34A">+5%</td></tr>
+          <tr><td>6</td><td><strong>Lỗ Vũ Gia Dụng</strong></td><td class="text-right font-bold">5.3M</td><td class="text-right" style="color:#D97706">6.2M</td><td class="text-right" style="color:#94A3B8">5.9M</td><td class="text-right font-bold" style="color:#DC2626">-10%</td></tr>
+        </tbody>
+        <tfoot>
+          <tr style="border-top:1px solid #E2E8F0;font-weight:700">
+            <td></td><td>Tổng</td><td class="text-right" style="color:#16A34A">109.1M</td><td class="text-right" style="color:#D97706">116.7M</td><td class="text-right" style="color:#94A3B8">97.4M</td><td class="text-right" style="color:#16A34A">+12%</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <!-- MIDDLE: Ads breakdown -->
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="card">
+        <div class="card-title"><span>Chi phí Ads</span><span class="badge">7.1M · 4.9% DT</span></div>
+        <table class="ch-table">
+          <thead>
+            <tr><th>Tài khoản</th><th class="text-right">Spend</th><th class="text-right">%</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>VIA PHI BZ 6</td><td class="text-right font-bold" style="color:#DC2626">1.8M</td><td class="text-right">25%</td></tr>
+            <tr><td>PHI 10 BZ 3</td><td class="text-right font-bold" style="color:#DC2626">1.7M</td><td class="text-right">24%</td></tr>
+            <tr><td>PHI 10 BZ 5</td><td class="text-right font-bold" style="color:#DC2626">1.1M</td><td class="text-right">15%</td></tr>
+            <tr><td>VIA PHI BZ 7</td><td class="text-right font-bold" style="color:#DC2626">0.9M</td><td class="text-right">13%</td></tr>
+          </tbody>
+          <tfoot>
+            <tr style="border-top:1px solid #E2E8F0;font-weight:700">
+              <td>Tổng</td><td class="text-right" style="color:#DC2626">7.1M</td><td class="text-right">100%</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <!-- Ads chart -->
+      <div class="card">
+        <div class="card-title"><span>Chi phí Ads tháng</span><span class="badge">TB 11.2M/ngày</span></div>
+        <div class="bars">
+          <div class="bar" style="height:70%;background:#86EFAC"></div>
+          <div class="bar" style="height:80%;background:#86EFAC"></div>
+          <div class="bar" style="height:65%;background:#86EFAC"></div>
+          <div class="bar" style="height:90%;background:#86EFAC"></div>
+          <div class="bar" style="height:100%;background:#4ADE80"></div>
+          <div class="bar" style="height:55%;background:#86EFAC"></div>
+          <div class="bar" style="height:75%;background:#86EFAC"></div>
+          <div class="bar" style="height:60%;background:#86EFAC"></div>
+          <div class="bar" style="height:85%;background:#86EFAC"></div>
+          <div class="bar" style="height:95%;background:#4ADE80"></div>
+          <div class="bar" style="height:40%;background:#86EFAC"></div>
+          <div class="bar" style="height:70%;background:#86EFAC"></div>
+          <div class="bar" style="height:78%;background:#86EFAC"></div>
+          <div class="bar" style="height:82%;background:#86EFAC"></div>
+          <div class="bar" style="height:68%;background:#86EFAC"></div>
+          <div class="bar" style="height:90%;background:#86EFAC"></div>
+          <div class="bar" style="height:75%;background:#86EFAC"></div>
+          <div class="bar" style="height:62%;background:#86EFAC"></div>
+          <div class="bar" style="height:88%;background:#4ADE80"></div>
+          <div class="bar" style="height:72%;background:#86EFAC"></div>
+          <div class="bar" style="height:80%;background:#86EFAC"></div>
+          <div class="bar" style="height:55%;background:#86EFAC"></div>
+          <div class="bar" style="height:50%;background:#22C55E"></div>
+        </div>
+        <div class="bar-labels">
+          <span class="lbl">01</span><span class="lbl">02</span><span class="lbl">03</span><span class="lbl">04</span><span class="lbl">05</span>
+          <span class="lbl">06</span><span class="lbl">07</span><span class="lbl">08</span><span class="lbl">09</span><span class="lbl">10</span>
+          <span class="lbl">11</span><span class="lbl">12</span><span class="lbl">13</span><span class="lbl">14</span><span class="lbl">15</span>
+          <span class="lbl">16</span><span class="lbl">17</span><span class="lbl">18</span><span class="lbl">19</span><span class="lbl">20</span>
+          <span class="lbl">21</span><span class="lbl">22</span><span class="lbl">23</span>
+        </div>
+        <div style="display:flex;gap:16px;margin-top:8px;font-size:10px;color:#64748B">
+          <span>Tổng <strong style="color:#DC2626">245M</strong></span>
+          <span>Cao nhất <strong>13.1M</strong> (04-12)</span>
+          <span>Thấp nhất <strong>7.5M</strong> (04-22)</span>
+          <span>CK T trước <strong style="color:#3B82F6">11.1M</strong></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Insights + quick panels -->
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="card">
+        <div class="card-title"><span>Insights</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <div style="background:#F0FDF4;border-radius:6px;padding:6px 8px;text-align:center">
+            <div style="font-size:8px;color:#16A34A;text-transform:uppercase">Followers mới</div>
+            <div style="font-size:16px;font-weight:800;color:#16A34A">+3,216</div>
+          </div>
+          <div style="background:#FEF2F2;border-radius:6px;padding:6px 8px;text-align:center">
+            <div style="font-size:8px;color:#DC2626;text-transform:uppercase">Unfollow</div>
+            <div style="font-size:16px;font-weight:800;color:#DC2626">-570</div>
+          </div>
+          <div style="background:#EFF6FF;border-radius:6px;padding:6px 8px;text-align:center">
+            <div style="font-size:8px;color:#3B82F6;text-transform:uppercase">Tăng ròng</div>
+            <div style="font-size:16px;font-weight:800;color:#3B82F6">+2,646</div>
+          </div>
+          <div style="background:#F8FAFC;border-radius:6px;padding:6px 8px;text-align:center">
+            <div style="font-size:8px;color:#64748B;text-transform:uppercase">Reach</div>
+            <div style="font-size:16px;font-weight:800">1.22M</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span>Hiệu quả Ads theo Page</span></div>
+        <div style="display:flex;flex-direction:column;gap:4px;font-size:10px">
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #F8FAFC">
+            <span style="font-weight:600">Lỗ Vũ</span>
+            <span>DT <strong style="color:#16A34A">42.5M</strong></span>
+            <span>Ads <strong style="color:#DC2626">2.1M</strong></span>
+            <span style="font-weight:700;color:#16A34A">ROAS 20.2x</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #F8FAFC">
+            <span style="font-weight:600">Lỗ Vũ 3</span>
+            <span>DT <strong style="color:#16A34A">22.8M</strong></span>
+            <span>Ads <strong style="color:#DC2626">1.8M</strong></span>
+            <span style="font-weight:700;color:#16A34A">ROAS 12.7x</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0">
+            <span style="font-weight:600">Vua bán lỗ</span>
+            <span>DT <strong style="color:#16A34A">12.4M</strong></span>
+            <span>Ads <strong style="color:#DC2626">1.1M</strong></span>
+            <span style="font-weight:700;color:#16A34A">ROAS 11.3x</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span>KH ngày Facebook</span></div>
+        <div style="text-align:center;margin-bottom:6px">
+          <div style="font-size:24px;font-weight:800;color:#16A34A">146.1M</div>
+          <div style="font-size:10px;color:#94A3B8">= KH tháng 4.38T ÷ 30 ngày</div>
+        </div>
+        <div style="height:6px;background:#F3F4F6;border-radius:3px;overflow:hidden;margin-bottom:4px">
+          <div style="height:100%;width:75%;background:#22C55E;border-radius:3px"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:#94A3B8">
+          <span>Đạt 109.1M (75%)</span>
+          <span>Còn 37M</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Doanh thu chi tiết 30 ngày (same as current but cleaner) -->
+  <h3>Doanh thu chi tiết tháng</h3>
+  <div class="card" style="margin-bottom:14px">
+    <div class="section-tabs">
+      <button class="section-tab active">Tổng</button>
+      <button class="section-tab">Theo kênh</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+      <div style="background:#F8FAFC;border-radius:6px;padding:6px 10px">
+        <div style="font-size:9px;color:#94A3B8;text-transform:uppercase">Tổng doanh thu</div>
+        <div style="font-size:18px;font-weight:800;color:#16A34A">4.35T</div>
+        <div style="font-size:9px;color:#94A3B8">21 ngày</div>
+      </div>
+      <div style="background:#F8FAFC;border-radius:6px;padding:6px 10px">
+        <div style="font-size:9px;color:#94A3B8;text-transform:uppercase">Trung bình / ngày</div>
+        <div style="font-size:18px;font-weight:800">207M</div>
+      </div>
+      <div style="background:#F8FAFC;border-radius:6px;padding:6px 10px">
+        <div style="font-size:9px;color:#94A3B8;text-transform:uppercase">Ngày cao nhất</div>
+        <div style="font-size:18px;font-weight:800;color:#16A34A">297M</div>
+        <div style="font-size:9px;color:#94A3B8">04-06</div>
+      </div>
+    </div>
+    <!-- Chart placeholder -->
+    <div class="bars" style="height:100px">
+      <div class="bar" style="height:60%;background:#93C5FD"></div>
+      <div class="bar" style="height:75%;background:#93C5FD"></div>
+      <div class="bar" style="height:65%;background:#93C5FD"></div>
+      <div class="bar" style="height:90%;background:#60A5FA"></div>
+      <div class="bar" style="height:50%;background:#93C5FD"></div>
+      <div class="bar" style="height:100%;background:#3B82F6"></div>
+      <div class="bar" style="height:85%;background:#60A5FA"></div>
+      <div class="bar" style="height:80%;background:#93C5FD"></div>
+      <div class="bar" style="height:75%;background:#93C5FD"></div>
+      <div class="bar" style="height:92%;background:#60A5FA"></div>
+      <div class="bar" style="height:68%;background:#93C5FD"></div>
+      <div class="bar" style="height:45%;background:#93C5FD"></div>
+      <div class="bar" style="height:72%;background:#93C5FD"></div>
+      <div class="bar" style="height:66%;background:#93C5FD"></div>
+      <div class="bar" style="height:55%;background:#93C5FD"></div>
+      <div class="bar" style="height:60%;background:#93C5FD"></div>
+      <div class="bar" style="height:78%;background:#93C5FD"></div>
+      <div class="bar" style="height:82%;background:#60A5FA"></div>
+      <div class="bar" style="height:50%;background:#93C5FD"></div>
+      <div class="bar" style="height:88%;background:#60A5FA"></div>
+      <div class="bar" style="height:70%;background:#93C5FD"></div>
+      <div class="bar" style="height:76%;background:#93C5FD"></div>
+      <div class="bar" style="height:62%;background:#3B82F6"></div>
+    </div>
+  </div>
+
+  <!-- Note -->
+  <div style="text-align:center;padding:20px;color:#94A3B8;font-size:12px;border:2px dashed #E2E8F0;border-radius:10px">
+    <strong>Cùng layout áp dụng cho TikTok · Shopee · Web/App</strong><br>
+    Chỉ đổi: màu header, data sources (shops thay vì pages), ads accounts<br>
+    TikTok: thêm GMV Max section · Shopee: thêm shop performance · Web/App: ẩn ads
+  </div>
+
+</div>
+</body>
+</html>
