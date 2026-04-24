@@ -597,7 +597,7 @@ export default function BizOrdersView({
               const checked = selectedApprovers.includes(u.email);
               const isKeToan = u.role === "LEADER_KETOAN" || u.role === "NV_KETOAN";
               return (
-                <label key={u.email} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 8, cursor: "pointer", background: checked ? "var(--blue-lt)" : undefined, border: checked ? "1px solid var(--blue-bd)" : "1px solid transparent" }}>
+                <label key={u.email} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 8, cursor: "pointer", background: checked ? "var(--blue-lt)" : "var(--bg)", border: checked ? "1px solid var(--blue-bd)" : "1px solid var(--border)", justifyContent: "flex-start", textAlign: "left" }}>
                   <input
                     type="checkbox"
                     checked={checked}
@@ -790,7 +790,7 @@ export default function BizOrdersView({
                 const checked = selectedApprovers.includes(u.email);
                 const isKeToan = u.role === "LEADER_KETOAN" || u.role === "NV_KETOAN";
                 return (
-                  <label key={u.email} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 8, cursor: "pointer", background: checked ? "var(--blue-lt)" : undefined, border: checked ? "1px solid var(--blue-bd)" : "1px solid transparent" }}>
+                  <label key={u.email} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 8, cursor: "pointer", background: checked ? "var(--blue-lt)" : "var(--bg)", border: checked ? "1px solid var(--blue-bd)" : "1px solid var(--border)", justifyContent: "flex-start", textAlign: "left" }}>
                     <input type="checkbox" checked={checked} onChange={() => toggleApprover(u.email)} style={{ accentColor: "var(--blue)" }} />
                     <span style={{ fontSize: 13, fontWeight: checked ? 700 : 400 }}>{u.name || u.email}</span>
                     <span style={{ fontSize: 10, color: "var(--muted)" }}>({u.role})</span>
