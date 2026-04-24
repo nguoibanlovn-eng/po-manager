@@ -285,12 +285,15 @@ function ModalInner({
     return d;
   });
   const [dirty, setDirty] = useState(false);
+  const [editingCompleted, setEditingCompleted] = useState(false);
+  const isLocked = step.status === "approved" && !editingCompleted;
 
   /* ── Switch step ──────────────────────────────────────── */
   function switchStep(idx: number) {
     if (dirty && !confirm("Bạn có thay đổi chưa lưu. Vẫn chuyển bước?")) return;
     const s = initSteps[idx];
     setActiveIdx(idx);
+    setEditingCompleted(false);
     setAssignee(s.assignee || "");
     setAssigneeName(s.assignee_name || "");
     setDeadline(s.deadline || "");
@@ -351,8 +354,9 @@ function ModalInner({
         if (i === activeIdx + 1 && (s.status === "locked" || s.status === "skipped")) return { ...s, status: "active" as const };
         return s;
       });
+      const nextStepLabel = activeIdx + 1 < updated.length ? updated[activeIdx + 1].label : step.label;
       const newData = { ...clearRevision(data), ...formData, proposer_role: proposerRole, priority, market_fields: marketFields, supply_fields: supplyFields, [stepsKey]: JSON.stringify(updated) };
-      await saveRdItemAction(item.id, { name: itemName, data: newData });
+      await saveRdItemAction(item.id, { name: itemName, stage: nextStepLabel, data: newData });
       setDirty(false);
       onRefresh();
       if (activeIdx + 1 < initSteps.length) {
@@ -712,6 +716,7 @@ function ModalInner({
 
             {/* ══ NORMAL WORK STEPS — full form ══ */}
             {!isApprovalStep && (<>
+            <div style={isLocked ? { pointerEvents: "none", opacity: 0.55, userSelect: "none" } as const : undefined}>
 
             {/* Assignee + Deadline — only at Đề xuất step */}
             {step.label === "Đề xuất" && (
@@ -1143,13 +1148,22 @@ function ModalInner({
               </div>
             )}
 
+            </div>{/* end locked wrapper */}
+
             {/* ── Action buttons (normal steps only) ── */}
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", paddingTop: 10, borderTop: "1px solid #E2E8F0" }}>
               {step.status === "approved" ? (
                 <>
                   <span style={{ fontSize: 11, color: "#16A34A", fontWeight: 600, padding: "7px 0" }}>✓ Bước hoàn thành</span>
                   <div style={{ flex: 1 }} />
-                  <button type="button" onClick={save} disabled={pending || !dirty} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#F1F5F9", color: "#64748B", cursor: "pointer" }}>Cập nhật</button>
+                  {isLocked ? (
+                    <button type="button" onClick={() => setEditingCompleted(true)} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "1px solid #D97706", background: "#fff", color: "#D97706", cursor: "pointer" }}>✏️ Sửa</button>
+                  ) : (
+                    <>
+                      <button type="button" onClick={() => setEditingCompleted(false)} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#F1F5F9", color: "#64748B", cursor: "pointer" }}>Huỷ sửa</button>
+                      <button type="button" onClick={save} disabled={pending || !dirty} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#7C3AED", color: "#fff", cursor: "pointer" }}>Cập nhật</button>
+                    </>
+                  )}
                   {activeIdx < initSteps.length - 1 && (
                     <button type="button" onClick={() => switchStep(activeIdx + 1)} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#3B82F6", color: "#fff", cursor: "pointer" }}>Bước tiếp →</button>
                   )}
