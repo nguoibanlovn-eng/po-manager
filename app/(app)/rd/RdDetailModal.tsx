@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import {
   getSteps, getStepsKey, isProduction, getLinkUrl, getLinkTag,
   type RdItem, type RdStep, type RdCheckItem, type RdLink,
@@ -235,6 +235,15 @@ function ModalInner({
   const [itemName, setItemName] = useState(item.name || "");
   const [creatingPo, setCreatingPo] = useState(false);
   const [poPopupUrl, setPoPopupUrl] = useState<string | null>(null);
+
+  // Listen for close message from iframe
+  useEffect(() => {
+    function onMsg(e: MessageEvent) {
+      if (e.data?.type === "po-popup-close") { setPoPopupUrl(null); onRefresh(); }
+    }
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, [onRefresh]);
   // Auto-detect role: LEADER_* / ADMIN → leader, NV_* → staff
   const isAdmin = currentUserRole === "ADMIN";
   const autoRole = currentUserRole.startsWith("LEADER_") || currentUserRole === "ADMIN" ? "leader" : "staff";

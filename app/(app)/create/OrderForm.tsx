@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, useTransition, type FormEvent } from "react";
 import { toNum, formatVND, formatYmd } from "@/lib/format";
 import type { Item, Order, OrderStage } from "@/lib/types";
@@ -51,8 +51,14 @@ export default function OrderForm({
   users: UserRef[];
 }) {
   const router = useRouter();
+  const embedMode = useSearchParams().get("embed") === "1";
   const [pending, startTransition] = useTransition();
   const isEdit = !!order;
+
+  // In embed mode, notify parent to close popup instead of navigating
+  function closeEmbed() {
+    window.parent.postMessage({ type: "po-popup-close" }, "*");
+  }
 
   // Form state
   const [orderName, setOrderName] = useState(order?.order_name || "");
@@ -190,7 +196,10 @@ export default function OrderForm({
         alert("Lỗi lưu: " + r.error);
         return;
       }
-      if (isEdit) {
+      if (embedMode) {
+        alert("Đã lưu đơn " + r.order_id);
+        closeEmbed();
+      } else if (isEdit) {
         router.refresh();
         alert("Đã lưu đơn " + r.order_id);
       } else {
@@ -288,9 +297,11 @@ export default function OrderForm({
               → {nextTransition.label}
             </button>
           )}
-          <Link href="/list" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>
-            ← Danh sách
-          </Link>
+          {embedMode ? (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={closeEmbed}>✕ Đóng</button>
+          ) : (
+            <Link href="/list" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>← Danh sách</Link>
+          )}
           <button type="submit" className="btn btn-primary" disabled={pending}>
             {pending ? "Đang lưu..." : "💾 Lưu đơn"}
           </button>
@@ -585,7 +596,11 @@ export default function OrderForm({
               🗑 Xoá
             </button>
           )}
-          <Link href="/list" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Huỷ</Link>
+          {embedMode ? (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={closeEmbed}>Huỷ</button>
+          ) : (
+            <Link href="/list" className="btn btn-ghost btn-sm" style={{ textDecoration: "none" }}>Huỷ</Link>
+          )}
           <button type="submit" className="btn btn-primary" disabled={pending}>
             {pending ? "Đang lưu..." : "💾 Lưu đơn"}
           </button>
