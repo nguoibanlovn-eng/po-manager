@@ -27,12 +27,12 @@ export type InventoryStats = {
 export async function getInventoryStats(): Promise<InventoryStats> {
   const db = supabaseAdmin();
 
-  // Parallel queries
+  // Parallel queries — only active products
   const [totalRes, inStockRes, outStockRes, catRes] = await Promise.all([
-    db.from("products").select("*", { count: "exact", head: true }),
-    db.from("products").select("stock, cost_price").gt("stock", 0),
-    db.from("products").select("*", { count: "exact", head: true }).lte("stock", 0),
-    db.from("products").select("category").not("category", "is", null),
+    db.from("products").select("*", { count: "exact", head: true }).eq("is_active", true),
+    db.from("products").select("stock, cost_price").eq("is_active", true).gt("stock", 0),
+    db.from("products").select("*", { count: "exact", head: true }).eq("is_active", true).lte("stock", 0),
+    db.from("products").select("category").eq("is_active", true).not("category", "is", null),
   ]);
 
   let totalStock = 0, totalValue = 0;

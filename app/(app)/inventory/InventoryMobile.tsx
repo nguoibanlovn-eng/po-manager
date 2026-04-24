@@ -26,20 +26,20 @@ export default function InventoryMobile(p: InventoryMobileProps) {
       </div>
 
       {/* Hero stats — 3 cards 1 dòng */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, padding: "8px 10px 0", marginTop: -1, background: "linear-gradient(135deg,#7C3AED,#4C1D95)" }}>
-        <div style={{ background: "rgba(255,255,255,.1)", borderRadius: 10, padding: 10, textAlign: "center", color: "#fff" }}>
-          <div style={{ fontSize: 8, textTransform: "uppercase", opacity: .6 }}>Còn hàng</div>
-          <div style={{ fontSize: 22, fontWeight: 900 }}>{fmtNum(s.inStock)}</div>
-          <div style={{ fontSize: 8, opacity: .5 }}>/ {fmtNum(s.total)} SKU</div>
+      <div style={{ display: "flex", gap: 6, padding: "8px 10px 0", marginTop: -1, background: "linear-gradient(135deg,#7C3AED,#4C1D95)" }}>
+        <div style={{ flex: 1, background: "rgba(255,255,255,.1)", borderRadius: 10, padding: "8px 6px", textAlign: "center", color: "#fff" }}>
+          <div style={{ fontSize: 8, opacity: .6 }}>Còn hàng</div>
+          <div style={{ fontSize: 20, fontWeight: 900 }}>{fmtNum(s.inStock)}</div>
+          <div style={{ fontSize: 8, opacity: .5 }}>/ {fmtNum(s.total)}</div>
         </div>
-        <div style={{ background: "rgba(239,68,68,.2)", borderRadius: 10, padding: 10, textAlign: "center", color: "#fff" }}>
-          <div style={{ fontSize: 8, textTransform: "uppercase", opacity: .6 }}>Hết hàng</div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: "#FCA5A5" }}>{fmtNum(s.outOfStock)}</div>
+        <div style={{ flex: 1, background: "rgba(239,68,68,.2)", borderRadius: 10, padding: "8px 6px", textAlign: "center", color: "#fff" }}>
+          <div style={{ fontSize: 8, opacity: .6 }}>Hết hàng</div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: "#FCA5A5" }}>{fmtNum(s.outOfStock)}</div>
           <div style={{ fontSize: 8, opacity: .5 }}>{outPct}%</div>
         </div>
-        <div style={{ background: "rgba(245,158,11,.2)", borderRadius: 10, padding: 10, textAlign: "center", color: "#fff" }}>
-          <div style={{ fontSize: 8, textTransform: "uppercase", opacity: .6 }}>Sắp hết</div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: "#FCD34D" }}>{fmtNum(s.lowStock)}</div>
+        <div style={{ flex: 1, background: "rgba(245,158,11,.2)", borderRadius: 10, padding: "8px 6px", textAlign: "center", color: "#fff" }}>
+          <div style={{ fontSize: 8, opacity: .6 }}>Sắp hết</div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: "#FCD34D" }}>{fmtNum(s.lowStock)}</div>
           <div style={{ fontSize: 8, opacity: .5 }}>{lowPct}%</div>
         </div>
       </div>
