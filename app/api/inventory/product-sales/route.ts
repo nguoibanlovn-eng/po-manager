@@ -76,7 +76,7 @@ export async function GET(req: Request) {
     channels: Array.from(channels).filter(Boolean).sort(),
     from, to,
   });
-  // Cache 1 hour — data only changes via daily cron sync
-  res.headers.set("Cache-Control", "private, max-age=3600, stale-while-revalidate=7200");
+  // No cache — data changes after manual sync
+  res.headers.set("Cache-Control", "no-store");
   return res;
 }

@@ -70,6 +70,6 @@ export async function GET(req: Request) {
   });
 
   const res = NextResponse.json({ ok: true, total: allProducts.length, counts, items });
-  res.headers.set("Cache-Control", "private, max-age=3600, stale-while-revalidate=7200");
+  res.headers.set("Cache-Control", "no-store");
   return res;
 }

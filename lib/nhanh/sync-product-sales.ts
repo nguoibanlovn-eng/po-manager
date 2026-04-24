@@ -100,8 +100,8 @@ async function syncV3Day(date: string): Promise<{ orders: number; rows: Row[]; s
       const price = toNum(p.price || p.displaySalePrice);
       const discount = toNum(p.discount);
       if (!sku || qty <= 0) continue;
-      // Revenue = (price - discount) × qty — doanh thu thực sau giảm giá
-      const revenue = (price - discount) * qty;
+      // Revenue = (price - discount) × qty — doanh thu thực sau giảm giá, làm tròn VNĐ
+      const revenue = Math.round((price - discount) * qty);
       rows.push({
         date: orderDate, sku, product_name: String(p.name || ""), order_id: orderId,
         channel: chCode, channel_name: chName,
