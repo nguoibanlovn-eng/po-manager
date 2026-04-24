@@ -27,6 +27,8 @@ export type DashDayMobileProps = {
   adsTt: number;
   adsTtBm: number;
   adsTtGmv: number;
+  adsTtBmRev: number;
+  adsTtGmvRev: number;
   adsSp: number;
   adsPct: number;
   roas: number;
@@ -204,9 +206,10 @@ export default function DashDayMobile(p: DashDayMobileProps) {
           </div>
           <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12, padding: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#18181B" }} /><div style={{ fontSize: 11, fontWeight: 700 }}>TikTok</div></div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "#DC2626" }}>{formatVNDCompact(p.adsTt + p.adsTtGmv)}</div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginTop: 3 }}><span style={{ color: "#94A3B8" }}>BM</span><span style={{ fontWeight: 700 }}>{formatVNDCompact(p.adsTtBm)}</span></div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginTop: 2 }}><span style={{ color: "#94A3B8" }}>GMV Max</span><span style={{ fontWeight: 700 }}>{formatVNDCompact(p.adsTtGmv)}</span></div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#DC2626" }}>{formatVNDCompact(p.adsTtBm + p.adsTtGmv)}</div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginTop: 3 }}><span style={{ color: "#94A3B8" }}>BM</span><span style={{ fontWeight: 700 }}>{formatVNDCompact(p.adsTtBm)}</span><span style={{ fontWeight: 700, color: "#16A34A", marginLeft: 4 }}>{p.adsTtBmRev > 0 ? (p.adsTtBm / p.adsTtBmRev * 100).toFixed(1) : "0.0"}%</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginTop: 2 }}><span style={{ color: "#94A3B8" }}>GMV Max</span><span style={{ fontWeight: 700 }}>{formatVNDCompact(p.adsTtGmv)}</span><span style={{ fontWeight: 700, color: "#16A34A", marginLeft: 4 }}>{p.adsTtGmvRev > 0 ? (p.adsTtGmv / p.adsTtGmvRev * 100).toFixed(1) : "0.0"}%</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginTop: 3, borderTop: "1px solid #F1F5F9", paddingTop: 3 }}><span style={{ color: "#94A3B8" }}>% DT kênh</span><span style={{ fontWeight: 700, color: "#16A34A" }}>{(p.channels.find(c => c.name === "TikTok")?.rev || 0) > 0 ? ((p.adsTtBm + p.adsTtGmv) / (p.channels.find(c => c.name === "TikTok")?.rev || 1) * 100).toFixed(1) : "0.0"}%</span></div>
           </div>
           <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12, padding: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#EE4D2D" }} /><div style={{ fontSize: 11, fontWeight: 700 }}>Shopee</div></div>
