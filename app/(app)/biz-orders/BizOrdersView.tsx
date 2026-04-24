@@ -597,17 +597,11 @@ export default function BizOrdersView({
               const checked = selectedApprovers.includes(u.email);
               const isKeToan = u.role === "LEADER_KETOAN" || u.role === "NV_KETOAN";
               return (
-                <label key={u.email} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 8, cursor: "pointer", background: checked ? "var(--blue-lt)" : "var(--bg)", border: checked ? "1px solid var(--blue-bd)" : "1px solid var(--border)", justifyContent: "flex-start", textAlign: "left" }}>
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggleApprover(u.email)}
-                    style={{ accentColor: "var(--blue)" }}
-                  />
-                  <span style={{ fontSize: 13, fontWeight: checked ? 700 : 400 }}>{u.name || u.email}</span>
-                  <span style={{ fontSize: 10, color: "var(--muted)" }}>({u.role})</span>
-                  {isKeToan && <span style={{ fontSize: 9, color: "var(--teal)", fontWeight: 700, marginLeft: "auto" }}>Kế toán</span>}
-                </label>
+                <div key={u.email} onClick={() => toggleApprover(u.email)} style={{ display: "grid", gridTemplateColumns: "20px 1fr auto", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 8, cursor: "pointer", background: checked ? "var(--blue-lt)" : "var(--bg)", border: checked ? "1px solid var(--blue-bd)" : "1px solid var(--border)" }}>
+                  <input type="checkbox" checked={checked} readOnly style={{ accentColor: "var(--blue)", margin: 0 }} />
+                  <span style={{ fontSize: 13, fontWeight: checked ? 700 : 400 }}>{u.name || u.email} <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 400 }}>({u.role})</span></span>
+                  {isKeToan ? <span style={{ fontSize: 9, color: "var(--teal)", fontWeight: 700 }}>Kế toán</span> : <span />}
+                </div>
               );
             })}
           </div>
