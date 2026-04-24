@@ -517,34 +517,107 @@ function ModalInner({
               </>
             )}
 
-            {/* Xác nhận step — dynamic label based on proposer role */}
-            {step.label === "Xác nhận" && (
-              <div style={{ marginBottom: 14, padding: 14, background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10 }}>
-                <div style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600, marginBottom: 10, background: "#FFF7ED", color: "#D97706" }}>
-                  {proposerRole === "leader" ? "NV xác nhận nhận việc" : "Leader duyệt đề xuất"}
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                  <div style={{ width: 30, height: 30, borderRadius: "50%", background: proposerRole === "leader" ? "#DBEAFE" : "#F3E8FF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: proposerRole === "leader" ? "#2563EB" : "#7C3AED" }}>
-                    {proposerRole === "leader" ? "NV" : "LĐ"}
+            {/* ══ APPROVAL / CONFIRMATION STEPS — dedicated UI ══ */}
+            {isApprovalStep && (() => {
+              const isXacNhan = step.label === "Xác nhận";
+              const isDuyetNC = step.label === "Duyệt NC";
+              const isDuyetMau = step.label === "Duyệt mẫu";
+              const leaderFlow = proposerRole === "leader";
+              // Title
+              const title = isXacNhan
+                ? (leaderFlow ? "NV xác nhận nhận việc" : "Leader duyệt đề xuất")
+                : isDuyetNC ? "Leader duyệt nghiên cứu"
+                : isDuyetMau ? "Leader duyệt mẫu" : step.label;
+              // Avatar
+              const avatarBg = (isXacNhan && leaderFlow) ? "#DBEAFE" : "#F3E8FF";
+              const avatarColor = (isXacNhan && leaderFlow) ? "#2563EB" : "#7C3AED";
+              const avatarText = (isXacNhan && leaderFlow) ? "NV" : "LĐ";
+              const personName = (isXacNhan && leaderFlow) ? (assigneeName || "Nhân viên được giao") : "Leader";
+              const personTag = (isXacNhan && leaderFlow) ? "Nhân viên" : "Leader";
+              const personTagBg = (isXacNhan && leaderFlow) ? "#EFF6FF" : "#F5F3FF";
+              const personTagColor = (isXacNhan && leaderFlow) ? "#3B82F6" : "#7C3AED";
+              // Summary
+              const summary = isXacNhan
+                ? `${leaderFlow ? "Leader" : "NV"} đề xuất:\n${itemName || "SP mới"}\n${String(data.description || data.reason || "")}`
+                : isDuyetNC
+                ? `USP: ${String(data.usp || "—")}\nNCC: ${String(data.supplier_name || "—")}, Giá: ${String(data.price_buy || "—")} → ${String(data.price_sell || "—")}\nĐánh giá: ${String(data.evaluation || "—")}`
+                : isDuyetMau
+                ? `QC: ${String(data.qc_score || "—")}/10\n${String(data.qc_evaluation || "Chưa có đánh giá")}`
+                : "";
+              // Action buttons
+              const greenLabel = isXacNhan && leaderFlow ? "✓ Nhận việc — Bắt đầu NC"
+                : isXacNhan ? "✓ Duyệt — Cho nghiên cứu"
+                : isDuyetNC ? "✓ Duyệt — Cho đặt mẫu"
+                : isDuyetMau ? "✓ PASS — Cho nhập hàng"
+                : "✓ Duyệt";
+              const amberLabel = isXacNhan && leaderFlow ? "↺ Hỏi lại Leader"
+                : isXacNhan ? "↺ Yêu cầu sửa ĐX"
+                : isDuyetNC ? "↺ Yêu cầu NC lại"
+                : isDuyetMau ? "↺ Yêu cầu QC lại"
+                : "↺ Yêu cầu sửa";
+
+              return (
+                <div style={{ padding: 14, background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10 }}>
+                  {/* Badge */}
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600, marginBottom: 10, background: "#FFF7ED", color: "#D97706" }}>
+                    {title}
                   </div>
-                  <div>
-                    <div style={{ fontSize: 12, fontWeight: 600 }}>
-                      {proposerRole === "leader" ? (assigneeName || "Nhân viên được giao") : "Leader"}
-                      <span style={{ fontSize: 9, marginLeft: 4, padding: "1px 5px", borderRadius: 4, background: proposerRole === "leader" ? "#EFF6FF" : "#F5F3FF", color: proposerRole === "leader" ? "#3B82F6" : "#7C3AED" }}>
-                        {proposerRole === "leader" ? "Nhân viên" : "Leader"}
-                      </span>
+                  {/* Avatar + Person */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                    <div style={{ width: 30, height: 30, borderRadius: "50%", background: avatarBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: avatarColor }}>
+                      {avatarText}
                     </div>
-                    <div style={{ fontSize: 9, color: "#94A3B8" }}>
-                      {proposerRole === "leader" ? "Xác nhận nhận việc từ Leader" : "Duyệt đề xuất từ nhân viên"}
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 600 }}>
+                        {personName}
+                        <span style={{ fontSize: 9, marginLeft: 4, padding: "1px 5px", borderRadius: 4, background: personTagBg, color: personTagColor }}>{personTag}</span>
+                      </div>
+                      <div style={{ fontSize: 9, color: "#94A3B8" }}>
+                        {isXacNhan && leaderFlow ? `Được giao bởi Leader · Deadline ${deadline || "—"}` : isXacNhan ? "Duyệt đề xuất từ nhân viên" : isDuyetNC ? "Duyệt nghiên cứu từ NV" : "Duyệt mẫu từ NV"}
+                      </div>
                     </div>
                   </div>
+                  {/* Summary */}
+                  <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 7, padding: 8, marginBottom: 10, fontSize: 11, color: "#64748B", whiteSpace: "pre-line" }}>
+                    {summary}
+                  </div>
+                  {/* Note */}
+                  <div style={S.section}>
+                    <div style={S.label}>Ghi chú</div>
+                    <textarea value={result} onChange={(e) => { setResult(e.target.value); setDirty(true); }} placeholder={isXacNhan && leaderFlow ? "Ghi chú khi nhận việc hoặc lý do từ chối..." : "Nhận xét, góp ý..."} style={S.textarea} />
+                  </div>
+                  {/* Verdict select for Duyệt NC / Duyệt mẫu */}
+                  {(isDuyetNC || isDuyetMau) && formFields.length > 0 && (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+                      {formFields.map((f) => renderField(f))}
+                    </div>
+                  )}
+                  {/* 3 Action buttons */}
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button type="button" onClick={markComplete} disabled={pending} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#16A34A", color: "#fff", cursor: "pointer" }}>
+                      {greenLabel}
+                    </button>
+                    <button type="button" onClick={() => { if (activeIdx > 0) { switchStep(activeIdx - 1); } }} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#D97706", color: "#fff", cursor: "pointer" }}>
+                      {amberLabel}
+                    </button>
+                    <button type="button" style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#DC2626", color: "#fff", cursor: "pointer" }}
+                      onClick={() => {
+                        startTransition(async () => {
+                          const updated = initSteps.map((s, i) => i === activeIdx ? { ...s, status: "rejected" as const, result } : s);
+                          const newData = { ...data, proposer_role: proposerRole, priority, [stepsKey]: JSON.stringify(updated) };
+                          await saveRdItemAction(item.id, { name: itemName, stage: "Loại bỏ", data: newData });
+                          onRefresh(); onClose();
+                        });
+                      }}>
+                      ✕ Từ chối
+                    </button>
+                  </div>
                 </div>
-                <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 7, padding: 8, marginBottom: 10, fontSize: 11, color: "#64748B" }}>
-                  <strong>{itemName || "SP mới"}</strong><br />
-                  {String(data.description || data.reason || "Chưa có mô tả")}
-                </div>
-              </div>
-            )}
+              );
+            })()}
+
+            {/* ══ NORMAL WORK STEPS — full form ══ */}
+            {!isApprovalStep && (<>
 
             {/* Assignee row — dynamic label based on step + role */}
             <div style={S.section}>
@@ -706,7 +779,7 @@ function ModalInner({
               </div>
             )}
 
-            {/* ── Action buttons ── */}
+            {/* ── Action buttons (normal steps only) ── */}
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", paddingTop: 10, borderTop: "1px solid #E2E8F0" }}>
               {step.status === "approved" ? (
                 <>
@@ -720,12 +793,14 @@ function ModalInner({
               ) : (
                 <>
                   <button type="button" onClick={save} disabled={pending || !dirty} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#F1F5F9", color: "#64748B", cursor: "pointer" }}>Lưu nháp</button>
-                  <button type="button" onClick={markComplete} disabled={pending} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: isApprovalStep ? "#16A34A" : "#7C3AED", color: "#fff", cursor: "pointer" }}>
-                    {isApprovalStep ? "✓ Duyệt & Chuyển bước →" : "Hoàn thành & Chuyển bước →"}
+                  <button type="button" onClick={markComplete} disabled={pending} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#7C3AED", color: "#fff", cursor: "pointer" }}>
+                    Hoàn thành & Chuyển bước →
                   </button>
                 </>
               )}
             </div>
+
+            </>)}  {/* end !isApprovalStep */}
           </div>
         </div>
       </div>
