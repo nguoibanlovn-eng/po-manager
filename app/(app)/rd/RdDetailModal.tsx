@@ -534,6 +534,28 @@ function ModalInner({
           {/* ── RIGHT FORM AREA ── */}
           <div style={{ flex: 1, padding: 18, overflowY: "auto" }}>
 
+            {/* ── Revision banner — hiện khi leader yêu cầu chỉnh sửa ── */}
+            {!!data.revision_note && (
+              <div style={{ padding: "8px 12px", background: "#FEF3C7", border: "1px solid #FCD34D", borderRadius: 8, marginBottom: 14, fontSize: 11 }}>
+                <div style={{ fontWeight: 700, color: "#92400E", marginBottom: 3 }}>
+                  ↺ Yêu cầu chỉnh sửa — Bước: {String(data.revision_step || "")}
+                </div>
+                <div style={{ color: "#78350F", whiteSpace: "pre-line" }}>{String(data.revision_note || "")}</div>
+                <div style={{ fontSize: 9, color: "#A16207", marginTop: 4 }}>
+                  Từ: {String(data.revision_by || "")} · {String(data.revision_date || "")}
+                </div>
+                <button type="button" onClick={() => {
+                  startTransition(async () => {
+                    const { revision_note: _a, revision_by: _b, revision_step: _c, revision_date: _d, ...rest } = data;
+                    await saveRdItemAction(item.id, { data: { ...rest, [stepsKey]: JSON.stringify(initSteps) } });
+                    onRefresh();
+                  });
+                }} style={{ marginTop: 6, padding: "3px 10px", borderRadius: 5, fontSize: 9, fontWeight: 600, border: "1px solid #D97706", background: "#fff", color: "#D97706", cursor: "pointer" }}>
+                  Đã xử lý — Xoá thông báo
+                </button>
+              </div>
+            )}
+
             {/* Role selector — only at Đề xuất step */}
             {step.label === "Đề xuất" && (
               <>
@@ -642,7 +664,21 @@ function ModalInner({
                     <button type="button" onClick={markComplete} disabled={pending} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#16A34A", color: "#fff", cursor: "pointer" }}>
                       {greenLabel}
                     </button>
-                    <button type="button" onClick={() => { if (activeIdx > 0) { switchStep(activeIdx - 1); } }} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#D97706", color: "#fff", cursor: "pointer" }}>
+                    <button type="button" disabled={pending} onClick={() => {
+                      if (!result.trim()) { alert("Vui lòng nhập nhận xét / lý do yêu cầu sửa."); return; }
+                      startTransition(async () => {
+                        const now = new Date().toLocaleDateString("vi-VN");
+                        const byName = users.find((u) => u.email === currentUserEmail)?.name || currentUserEmail;
+                        const newData = {
+                          ...data, ...formData, proposer_role: proposerRole, priority,
+                          revision_note: result, revision_by: byName, revision_step: step.label, revision_date: now,
+                          [stepsKey]: JSON.stringify(initSteps),
+                        };
+                        await saveRdItemAction(item.id, { name: itemName, data: newData });
+                        setDirty(false);
+                        onRefresh();
+                      });
+                    }} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#D97706", color: "#fff", cursor: "pointer" }}>
                       {amberLabel}
                     </button>
                     <button type="button" style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#DC2626", color: "#fff", cursor: "pointer" }}
