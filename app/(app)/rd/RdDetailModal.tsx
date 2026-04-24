@@ -333,26 +333,35 @@ function ModalInner({
   const stepStatus = STATUS_STYLE[step.status] || STATUS_STYLE.locked;
   const deadlineOverdue = step.status !== "approved" && isOverdue(deadline);
 
+  /* ── Mockup-matching styles ───────────────────────────────── */
+  const S = {
+    section: { marginBottom: 14 } as const,
+    label: { fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase" as const, letterSpacing: ".3px", marginBottom: 5 },
+    input: { width: "100%", padding: "7px 11px", border: "1px solid #E2E8F0", borderRadius: 7, fontSize: 12, outline: "none", fontFamily: "inherit" } as React.CSSProperties,
+    textarea: { width: "100%", padding: "7px 11px", border: "1px solid #E2E8F0", borderRadius: 7, fontSize: 12, minHeight: 70, resize: "vertical" as const, outline: "none", fontFamily: "inherit" } as React.CSSProperties,
+    select: { width: "100%", padding: "7px 11px", border: "1px solid #E2E8F0", borderRadius: 7, fontSize: 12, outline: "none", fontFamily: "inherit" } as React.CSSProperties,
+  };
+
   /* ── render form field ──────────────────────────────────── */
   function renderField(f: FieldDef) {
     const val = formData[f.key] || "";
     switch (f.type) {
       case "url":
         return (
-          <div className="form-group" key={f.key} style={{ gridColumn: "span 2" }}>
-            <label>{f.label}</label>
+          <div key={f.key} style={{ ...S.section, gridColumn: "span 2" }}>
+            <div style={S.label}>{f.label}</div>
             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              <input type="text" value={val} onChange={(e) => setField(f.key, e.target.value)} placeholder="https://..." style={{ flex: 1 }} />
-              {val && <a href={val} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: "var(--blue)", fontWeight: 600, whiteSpace: "nowrap", padding: "4px 8px", border: "1px solid var(--blue)", borderRadius: 4, textDecoration: "none" }}>Mở ↗</a>}
+              <input type="text" value={val} onChange={(e) => setField(f.key, e.target.value)} placeholder="https://..." style={{ ...S.input, flex: 1 }} />
+              {val && <a href={val} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: "#7C3AED", fontWeight: 600, whiteSpace: "nowrap", padding: "4px 8px", border: "1px solid #7C3AED", borderRadius: 5, textDecoration: "none" }}>Mở ↗</a>}
             </div>
           </div>
         );
       case "verdict": {
         const vs = val ? verdictStyle(val) : null;
         return (
-          <div className="form-group" key={f.key}>
-            <label>{f.label}</label>
-            <select value={val} onChange={(e) => setField(f.key, e.target.value)} style={vs ? { background: vs.bg, color: vs.color, fontWeight: 700 } : undefined}>
+          <div key={f.key} style={S.section}>
+            <div style={S.label}>{f.label}</div>
+            <select value={val} onChange={(e) => setField(f.key, e.target.value)} style={{ ...S.select, ...(vs ? { background: vs.bg, color: vs.color, fontWeight: 700 } : {}) }}>
               <option value="">— Chọn —</option>
               {VERDICT_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
@@ -362,31 +371,31 @@ function ModalInner({
       case "date": {
         const ov = val && isOverdue(val) && step.status !== "approved";
         return (
-          <div className="form-group" key={f.key}>
-            <label>{f.label}{ov && <span style={{ color: "var(--red)", fontWeight: 700, marginLeft: 6, fontSize: 10 }}>QUÁ HẠN</span>}</label>
-            <input type="date" value={deadlineToISO(val)} onChange={(e) => setField(f.key, e.target.value)} style={ov ? { borderColor: "var(--red)", color: "var(--red)" } : undefined} />
+          <div key={f.key} style={S.section}>
+            <div style={S.label}>{f.label}{ov && <span style={{ color: "#DC2626", fontWeight: 700, marginLeft: 6, fontSize: 10 }}>QUÁ HẠN</span>}</div>
+            <input type="date" value={deadlineToISO(val)} onChange={(e) => setField(f.key, e.target.value)} style={{ ...S.input, ...(ov ? { borderColor: "#DC2626", color: "#DC2626" } : {}) }} />
           </div>
         );
       }
       case "textarea":
         return (
-          <div className="form-group" key={f.key} style={{ gridColumn: "span 2" }}>
-            <label>{f.label}</label>
-            <textarea rows={3} value={val} onChange={(e) => setField(f.key, e.target.value)} />
+          <div key={f.key} style={{ ...S.section, gridColumn: "span 2" }}>
+            <div style={S.label}>{f.label}</div>
+            <textarea value={val} onChange={(e) => setField(f.key, e.target.value)} style={S.textarea} />
           </div>
         );
       case "number":
         return (
-          <div className="form-group" key={f.key}>
-            <label>{f.label}</label>
-            <input type="text" inputMode="numeric" value={val} onChange={(e) => setField(f.key, e.target.value)} />
+          <div key={f.key} style={S.section}>
+            <div style={S.label}>{f.label}</div>
+            <input type="text" inputMode="numeric" value={val} onChange={(e) => setField(f.key, e.target.value)} style={S.input} />
           </div>
         );
       default:
         return (
-          <div className="form-group" key={f.key}>
-            <label>{f.label}</label>
-            <input type="text" value={val} onChange={(e) => setField(f.key, e.target.value)} />
+          <div key={f.key} style={S.section}>
+            <div style={S.label}>{f.label}</div>
+            <input type="text" value={val} onChange={(e) => setField(f.key, e.target.value)} style={S.input} />
           </div>
         );
     }
@@ -468,29 +477,24 @@ function ModalInner({
           <div style={{ flex: 1, padding: 18, overflowY: "auto" }}>
 
             {/* Assignee + Deadline row */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: ".3px", marginBottom: 5 }}>Người phụ trách</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+              <div style={S.section}>
+                <div style={S.label}>Giao cho</div>
                 <select value={assignee} onChange={(e) => {
                   const email = e.target.value;
                   const u = users.find((u) => u.email === email);
                   setAssignee(email); setAssigneeName(u ? (u.name || email) : ""); setDirty(true);
-                }} style={{ width: "100%", padding: "7px 11px", border: "1px solid #E2E8F0", borderRadius: 7, fontSize: 12, outline: "none" }}>
+                }} style={S.select}>
                   <option value="">— Chọn —</option>
                   {users.map((u) => <option key={u.email} value={u.email}>{u.name || u.email}</option>)}
                 </select>
               </div>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: ".3px", marginBottom: 5 }}>
+              <div style={S.section}>
+                <div style={S.label}>
                   Deadline{deadlineOverdue && <span style={{ color: "#DC2626", fontWeight: 700, marginLeft: 4, fontSize: 10 }}>QUÁ HẠN</span>}
                 </div>
                 <input type="date" value={deadlineToISO(deadline)} onChange={(e) => { setDeadline(e.target.value); setDirty(true); }}
-                  style={{ width: "100%", padding: "7px 11px", border: `1px solid ${deadlineOverdue ? "#DC2626" : "#E2E8F0"}`, borderRadius: 7, fontSize: 12, outline: "none", color: deadlineOverdue ? "#DC2626" : undefined }} />
-              </div>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: ".3px", marginBottom: 5 }}>Ghi chú bước</div>
-                <input type="text" value={result} onChange={(e) => { setResult(e.target.value); setDirty(true); }} placeholder="Kết quả / ghi chú..."
-                  style={{ width: "100%", padding: "7px 11px", border: "1px solid #E2E8F0", borderRadius: 7, fontSize: 12, outline: "none" }} />
+                  style={{ ...S.input, ...(deadlineOverdue ? { borderColor: "#DC2626", color: "#DC2626" } : {}) }} />
               </div>
             </div>
 
