@@ -953,8 +953,8 @@ function ModalInner({
               </div>
             ) : null}
 
-            {/* ── QC Checklist (for Hàng về step) ── */}
-            {(checklist.length > 0 || isQcStep) && (
+            {/* ── QC Checklist (for Hàng về step) — skip if custom rendered ── */}
+            {step.label !== "Hàng về" && step.label !== "QC & Nhận hàng" && (checklist.length > 0 || isQcStep) && (
               <div style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: ".3px", marginBottom: 5 }}>
                   {isQcStep ? `QC Checklist (${passCount}/${checklist.length} Pass${failCount > 0 ? ` · ${failCount} Fail` : ""})` : `Checklist (${checkedCount}/${checklist.length})`}
@@ -999,7 +999,7 @@ function ModalInner({
             )}
 
             {/* ── Links ── */}
-            {(links.length > 0 || true) && (
+            {step.label !== "Hàng về" && step.label !== "QC & Nhận hàng" && (links.length > 0 || true) && (
               <div style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: ".3px", marginBottom: 5 }}>Tài liệu ({links.length})</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 6 }}>
@@ -1025,7 +1025,7 @@ function ModalInner({
             )}
 
             {/* ── Photos ── */}
-            {(photos.length > 0 || true) && (
+            {step.label !== "Hàng về" && step.label !== "QC & Nhận hàng" && (photos.length > 0 || true) && (
               <div style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: ".3px", marginBottom: 5 }}>Hình ảnh ({photos.length})</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 6 }}>
