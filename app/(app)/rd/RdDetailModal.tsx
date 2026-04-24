@@ -329,9 +329,15 @@ function ModalInner({
     });
   }
 
+  // Strip revision fields when NV saves/completes
+  function clearRevision(d: Record<string, unknown>) {
+    const { revision_note: _, revision_by: _b, revision_step: _c, revision_date: _d, ...rest } = d;
+    return rest;
+  }
+
   function save() {
     startTransition(async () => {
-      const newData = { ...data, ...formData, proposer_role: proposerRole, priority, market_fields: marketFields, supply_fields: supplyFields, [stepsKey]: JSON.stringify(buildUpdatedSteps()) };
+      const newData = { ...clearRevision(data), ...formData, proposer_role: proposerRole, priority, market_fields: marketFields, supply_fields: supplyFields, [stepsKey]: JSON.stringify(buildUpdatedSteps()) };
       await saveRdItemAction(item.id, { name: itemName, data: newData });
       setDirty(false);
       onRefresh();
@@ -345,7 +351,7 @@ function ModalInner({
         if (i === activeIdx + 1 && (s.status === "locked" || s.status === "skipped")) return { ...s, status: "active" as const };
         return s;
       });
-      const newData = { ...data, ...formData, proposer_role: proposerRole, priority, market_fields: marketFields, supply_fields: supplyFields, [stepsKey]: JSON.stringify(updated) };
+      const newData = { ...clearRevision(data), ...formData, proposer_role: proposerRole, priority, market_fields: marketFields, supply_fields: supplyFields, [stepsKey]: JSON.stringify(updated) };
       await saveRdItemAction(item.id, { name: itemName, data: newData });
       setDirty(false);
       onRefresh();
@@ -544,15 +550,6 @@ function ModalInner({
                 <div style={{ fontSize: 9, color: "#A16207", marginTop: 4 }}>
                   Từ: {String(data.revision_by || "")} · {String(data.revision_date || "")}
                 </div>
-                <button type="button" onClick={() => {
-                  startTransition(async () => {
-                    const { revision_note: _a, revision_by: _b, revision_step: _c, revision_date: _d, ...rest } = data;
-                    await saveRdItemAction(item.id, { data: { ...rest, [stepsKey]: JSON.stringify(initSteps) } });
-                    onRefresh();
-                  });
-                }} style={{ marginTop: 6, padding: "3px 10px", borderRadius: 5, fontSize: 9, fontWeight: 600, border: "1px solid #D97706", background: "#fff", color: "#D97706", cursor: "pointer" }}>
-                  Đã xử lý — Xoá thông báo
-                </button>
               </div>
             )}
 
