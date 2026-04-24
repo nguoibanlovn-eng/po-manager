@@ -58,19 +58,27 @@ export async function getInventoryStats(): Promise<InventoryStats> {
 
 /** Mobile inventory summary: top sellers, slow movers, no sales */
 export async function getInventoryMobileSummary(): Promise<{
-  topSellers: { sku: string; name: string; category: string; stock: number; sold: number }[];
-  noSales: { sku: string; name: string; category: string; stock: number; costValue: number }[];
+  topSellers: { sku: string; name: string; category: string; stock: number; stockKhoTru: number; stockSsc: number; sold: number }[];
+  noSales: { sku: string; name: string; category: string; stock: number; stockKhoTru: number; stockSsc: number; costValue: number }[];
   slowMovers: { sku: string; name: string; category: string; stock: number; sold: number; pctSold: number }[];
-  stats: { total: number; inStock: number; outOfStock: number; lowStock: number };
+  stats: { total: number; inStock: number; outOfStock: number; lowStock: number; totalStock: number; totalKhoTru: number; totalSsc: number };
 }> {
   const db = supabaseAdmin();
 
-  // 1. Get all products with stock info
-  const { data: products } = await db
-    .from("products")
-    .select("id, sku, product_name, category, stock, cost_price, is_active")
-    .eq("is_active", true)
-    .limit(10000);
+  // 1. Get all active products (paginate past 1000 limit)
+  const products: Array<Record<string, unknown>> = [];
+  let prodOff = 0;
+  while (true) {
+    const { data } = await db
+      .from("products")
+      .select("id, sku, product_name, category, stock, stock_kho_tru, stock_ssc, cost_price")
+      .eq("is_active", true)
+      .range(prodOff, prodOff + 999);
+    if (!data?.length) break;
+    products.push(...data);
+    if (data.length < 1000) break;
+    prodOff += 1000;
+  }
 
   // 2. Get 30-day sales from product_sales (aggregate qty by sku)
   const d30 = new Date();
@@ -103,6 +111,8 @@ export async function getInventoryMobileSummary(): Promise<{
       name: String(r.product_name || ""),
       category: String(r.category || ""),
       stock: Number(r.stock || 0),
+      stockKhoTru: Number(r.stock_kho_tru || 0),
+      stockSsc: Number(r.stock_ssc || 0),
       sold: salesBysku.get(sku) || 0,
       cost: Number(r.cost_price || 0),
     };
@@ -112,20 +122,22 @@ export async function getInventoryMobileSummary(): Promise<{
   const inStock = rows.filter(r => r.stock > 0).length;
   const outOfStock = rows.filter(r => r.stock <= 0).length;
   const lowStock = rows.filter(r => r.stock > 0 && r.stock <= 5).length;
+  let totalStock = 0, totalKhoTru = 0, totalSsc = 0;
+  for (const r of rows) { totalStock += r.stock; totalKhoTru += r.stockKhoTru; totalSsc += r.stockSsc; }
 
   // Top sellers: sold > 0, sort by sold desc
   const topSellers = rows
     .filter(r => r.sold > 0)
     .sort((a, b) => b.sold - a.sold)
     .slice(0, 20)
-    .map(r => ({ sku: r.sku, name: r.name, category: r.category, stock: r.stock, sold: r.sold }));
+    .map(r => ({ sku: r.sku, name: r.name, category: r.category, stock: r.stock, stockKhoTru: r.stockKhoTru, stockSsc: r.stockSsc, sold: r.sold }));
 
   // No sales: stock > 0 but sold = 0 in 30 days
   const noSales = rows
     .filter(r => r.stock > 0 && r.sold <= 0)
     .sort((a, b) => (b.stock * b.cost) - (a.stock * a.cost))
     .slice(0, 20)
-    .map(r => ({ sku: r.sku, name: r.name, category: r.category, stock: r.stock, costValue: r.stock * r.cost }));
+    .map(r => ({ sku: r.sku, name: r.name, category: r.category, stock: r.stock, stockKhoTru: r.stockKhoTru, stockSsc: r.stockSsc, costValue: r.stock * r.cost }));
 
   // Slow movers: sold > 0 but low ratio, stock > 5
   const slowMovers = rows
@@ -140,7 +152,7 @@ export async function getInventoryMobileSummary(): Promise<{
     topSellers,
     noSales,
     slowMovers,
-    stats: { total, inStock, outOfStock, lowStock },
+    stats: { total, inStock, outOfStock, lowStock, totalStock, totalKhoTru, totalSsc },
   };
 }
 
