@@ -125,68 +125,98 @@ export default function Shell({
 }
 
 function PullToRefresh() {
-  const [pulling, setPulling] = useState(false);
   const [pullY, setPullY] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
-  const startY = useRef(0);
-  const threshold = 80;
-
-  const onTouchStart = useCallback((e: TouchEvent) => {
-    if (window.scrollY > 5) return;
-    startY.current = e.touches[0].clientY;
-    setPulling(true);
-  }, []);
-
-  const onTouchMove = useCallback((e: TouchEvent) => {
-    if (!startY.current || window.scrollY > 5) return;
-    const dy = e.touches[0].clientY - startY.current;
-    if (dy > 0) {
-      setPullY(Math.min(dy * 0.4, 120));
-      if (dy > 20) e.preventDefault();
-    }
-  }, []);
-
-  const onTouchEnd = useCallback(() => {
-    if (pullY >= threshold) {
-      setRefreshing(true);
-      setTimeout(() => window.location.reload(), 300);
-    }
-    setPulling(false);
-    setPullY(0);
-    startY.current = 0;
-  }, [pullY]);
+  const startYRef = useRef(0);
+  const pullYRef = useRef(0);
+  const activeRef = useRef(false);
+  const threshold = 70;
 
   useEffect(() => {
-    if (window.innerWidth > 900) return;
-    const opts: AddEventListenerOptions = { passive: false };
+    if (typeof window === "undefined" || window.innerWidth > 900) return;
+
+    function getScrollTop() {
+      // Check multiple scroll sources — iOS PWA can use different containers
+      const main = document.getElementById("main");
+      return Math.min(
+        window.scrollY || window.pageYOffset || 0,
+        document.documentElement.scrollTop || 0,
+        main?.scrollTop || 0,
+      );
+    }
+
+    function onTouchStart(e: TouchEvent) {
+      if (getScrollTop() > 5) {
+        activeRef.current = false;
+        return;
+      }
+      startYRef.current = e.touches[0].clientY;
+      activeRef.current = true;
+    }
+
+    function onTouchMove(e: TouchEvent) {
+      if (!activeRef.current || !startYRef.current) return;
+      // Re-check scroll — user might have scrolled during the gesture
+      if (getScrollTop() > 5) {
+        activeRef.current = false;
+        setPullY(0);
+        pullYRef.current = 0;
+        return;
+      }
+      const dy = e.touches[0].clientY - startYRef.current;
+      if (dy > 0) {
+        const val = Math.min(dy * 0.4, 120);
+        pullYRef.current = val;
+        setPullY(val);
+        if (dy > 15) e.preventDefault();
+      } else {
+        pullYRef.current = 0;
+        setPullY(0);
+      }
+    }
+
+    function onTouchEnd() {
+      if (pullYRef.current >= threshold) {
+        setRefreshing(true);
+        setPullY(threshold);
+        setTimeout(() => window.location.reload(), 200);
+      } else {
+        setPullY(0);
+      }
+      pullYRef.current = 0;
+      startYRef.current = 0;
+      activeRef.current = false;
+    }
+
     document.addEventListener("touchstart", onTouchStart, { passive: true });
-    document.addEventListener("touchmove", onTouchMove, opts);
+    document.addEventListener("touchmove", onTouchMove, { passive: false });
     document.addEventListener("touchend", onTouchEnd, { passive: true });
     return () => {
       document.removeEventListener("touchstart", onTouchStart);
       document.removeEventListener("touchmove", onTouchMove);
       document.removeEventListener("touchend", onTouchEnd);
     };
-  }, [onTouchStart, onTouchMove, onTouchEnd]);
+  }, []);
 
-  if (!pulling && !refreshing && pullY === 0) return null;
+  if (pullY === 0 && !refreshing) return null;
 
   return (
     <div style={{
       position: "fixed", top: 0, left: 0, right: 0, zIndex: 999,
       display: "flex", justifyContent: "center", alignItems: "center",
       height: pullY, overflow: "hidden",
-      background: "linear-gradient(180deg, #F1F5F9, transparent)",
-      transition: pulling ? "none" : "height .3s ease",
+      background: "linear-gradient(180deg, rgba(241,245,249,0.95), transparent)",
+      transition: pullY > 0 && !refreshing ? "none" : "height .25s ease",
     }}>
       <div style={{
-        fontSize: 20,
+        fontSize: 18,
         opacity: Math.min(pullY / threshold, 1),
-        transform: `rotate(${pullY >= threshold ? 180 : (pullY / threshold) * 180}deg)`,
-        transition: pulling ? "none" : "transform .3s ease",
+        transform: refreshing ? "none" : `rotate(${(pullY / threshold) * 180}deg)`,
+        animation: refreshing ? "spin .6s linear infinite" : "none",
       }}>
-        {refreshing ? "⟳" : "↓"}
+        {refreshing ? "↻" : "↓"}
       </div>
+      {refreshing && <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>}
     </div>
   );
 }
