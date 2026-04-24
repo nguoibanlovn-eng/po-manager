@@ -61,7 +61,7 @@ export async function getInventoryMobileSummary(): Promise<{
   topSellers: { sku: string; name: string; category: string; stock: number; stockKhoTru: number; stockSsc: number; sold: number }[];
   noSales: { sku: string; name: string; category: string; stock: number; stockKhoTru: number; stockSsc: number; costValue: number }[];
   slowMovers: { sku: string; name: string; category: string; stock: number; sold: number; pctSold: number }[];
-  stats: { total: number; inStock: number; outOfStock: number; lowStock: number; totalStock: number; totalKhoTru: number; totalSsc: number };
+  stats: { total: number; inStock: number; outOfStock: number; lowStock: number; totalStock: number; totalKhoTru: number; totalSsc: number; totalValue: number; valueKhoTru: number; valueSsc: number };
 }> {
   const db = supabaseAdmin();
 
@@ -122,8 +122,11 @@ export async function getInventoryMobileSummary(): Promise<{
   const inStock = rows.filter(r => r.stock > 0).length;
   const outOfStock = rows.filter(r => r.stock <= 0).length;
   const lowStock = rows.filter(r => r.stock > 0 && r.stock <= 5).length;
-  let totalStock = 0, totalKhoTru = 0, totalSsc = 0;
-  for (const r of rows) { totalStock += r.stock; totalKhoTru += r.stockKhoTru; totalSsc += r.stockSsc; }
+  let totalStock = 0, totalKhoTru = 0, totalSsc = 0, totalValue = 0, valueKhoTru = 0, valueSsc = 0;
+  for (const r of rows) {
+    totalStock += r.stock; totalKhoTru += r.stockKhoTru; totalSsc += r.stockSsc;
+    totalValue += r.stock * r.cost; valueKhoTru += r.stockKhoTru * r.cost; valueSsc += r.stockSsc * r.cost;
+  }
 
   // Top sellers: sold > 0, sort by sold desc
   const topSellers = rows
@@ -152,7 +155,7 @@ export async function getInventoryMobileSummary(): Promise<{
     topSellers,
     noSales,
     slowMovers,
-    stats: { total, inStock, outOfStock, lowStock, totalStock, totalKhoTru, totalSsc },
+    stats: { total, inStock, outOfStock, lowStock, totalStock, totalKhoTru, totalSsc, totalValue, valueKhoTru, valueSsc },
   };
 }
 
