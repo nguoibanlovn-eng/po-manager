@@ -211,6 +211,7 @@ function ModalInner({
   // Item name (editable)
   const [itemName, setItemName] = useState(item.name || "");
   const [creatingPo, setCreatingPo] = useState(false);
+  const [proposerRole, setProposerRole] = useState<"leader" | "staff">(String(data.proposer_role || "leader") as "leader" | "staff");
 
   // Step-level state
   const [assignee, setAssignee] = useState(step.assignee || "");
@@ -273,7 +274,7 @@ function ModalInner({
 
   function save() {
     startTransition(async () => {
-      const newData = { ...data, ...formData, [stepsKey]: JSON.stringify(buildUpdatedSteps()) };
+      const newData = { ...data, ...formData, proposer_role: proposerRole, [stepsKey]: JSON.stringify(buildUpdatedSteps()) };
       await saveRdItemAction(item.id, { name: itemName, data: newData });
       setDirty(false);
       onRefresh();
@@ -287,7 +288,7 @@ function ModalInner({
         if (i === activeIdx + 1 && (s.status === "locked" || s.status === "skipped")) return { ...s, status: "active" as const };
         return s;
       });
-      const newData = { ...data, ...formData, [stepsKey]: JSON.stringify(updated) };
+      const newData = { ...data, ...formData, proposer_role: proposerRole, [stepsKey]: JSON.stringify(updated) };
       await saveRdItemAction(item.id, { name: itemName, data: newData });
       setDirty(false);
       onRefresh();
@@ -462,7 +463,7 @@ function ModalInner({
                       {isDone ? "✓" : idx + 1}
                     </div>
                     <div>
-                      <div style={{ fontSize: 11, fontWeight: 600 }}>{s.label}</div>
+                      <div style={{ fontSize: 11, fontWeight: 600 }}>{s.label === "Xác nhận" ? (proposerRole === "leader" ? "NV nhận việc" : "Duyệt ĐX") : s.label}</div>
                       <div style={{ fontSize: 9, color: "#94A3B8" }}>{statusText}</div>
                       {s.assignee_name && <div style={{ fontSize: 9, color: "#94A3B8" }}>→ {s.assignee_name.split("(")[0].trim()}</div>}
                     </div>
@@ -475,6 +476,59 @@ function ModalInner({
 
           {/* ── RIGHT FORM AREA ── */}
           <div style={{ flex: 1, padding: 18, overflowY: "auto" }}>
+
+            {/* Role selector — only at Đề xuất step */}
+            {step.label === "Đề xuất" && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={S.label}>Bạn đang ở vị trí nào?</div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {([
+                    { key: "leader" as const, icon: "👔", name: "Leader", desc: "Giao nhân viên làm" },
+                    { key: "staff" as const, icon: "💡", name: "Nhân viên", desc: "Gửi sếp duyệt" },
+                  ]).map((r) => (
+                    <div key={r.key} onClick={() => { setProposerRole(r.key); setDirty(true); }}
+                      style={{
+                        flex: 1, padding: 10, border: `2px solid ${proposerRole === r.key ? "#7C3AED" : "#E2E8F0"}`,
+                        borderRadius: 10, cursor: "pointer", textAlign: "center",
+                        background: proposerRole === r.key ? "#F5F3FF" : "#fff",
+                      }}>
+                      <div style={{ fontSize: 22 }}>{r.icon}</div>
+                      <div style={{ fontSize: 11, fontWeight: 700 }}>{r.name}</div>
+                      <div style={{ fontSize: 9, color: "#94A3B8" }}>{r.desc}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Xác nhận step — dynamic label based on proposer role */}
+            {step.label === "Xác nhận" && (
+              <div style={{ marginBottom: 14, padding: 14, background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10 }}>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600, marginBottom: 10, background: "#FFF7ED", color: "#D97706" }}>
+                  {proposerRole === "leader" ? "NV xác nhận nhận việc" : "Leader duyệt đề xuất"}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                  <div style={{ width: 30, height: 30, borderRadius: "50%", background: proposerRole === "leader" ? "#DBEAFE" : "#F3E8FF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: proposerRole === "leader" ? "#2563EB" : "#7C3AED" }}>
+                    {proposerRole === "leader" ? "NV" : "LĐ"}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 600 }}>
+                      {proposerRole === "leader" ? (assigneeName || "Nhân viên được giao") : "Leader"}
+                      <span style={{ fontSize: 9, marginLeft: 4, padding: "1px 5px", borderRadius: 4, background: proposerRole === "leader" ? "#EFF6FF" : "#F5F3FF", color: proposerRole === "leader" ? "#3B82F6" : "#7C3AED" }}>
+                        {proposerRole === "leader" ? "Nhân viên" : "Leader"}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 9, color: "#94A3B8" }}>
+                      {proposerRole === "leader" ? "Xác nhận nhận việc từ Leader" : "Duyệt đề xuất từ nhân viên"}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 7, padding: 8, marginBottom: 10, fontSize: 11, color: "#64748B" }}>
+                  <strong>{itemName || "SP mới"}</strong><br />
+                  {String(data.description || data.reason || "Chưa có mô tả")}
+                </div>
+              </div>
+            )}
 
             {/* Assignee + Deadline row */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
