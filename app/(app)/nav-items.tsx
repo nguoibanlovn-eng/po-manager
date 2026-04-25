@@ -59,7 +59,7 @@ export const NAV_SECTIONS: NavSection[] = [
     title: "QUẢN TRỊ",
     items: [
       { href: "/finance",         label: "Kế toán",      icon: i("$"), perm: "finance" },
-      { href: "/admin-users",     label: "Người dùng",   icon: i("⊙"), perm: "admin_users" },
+      { href: "/admin-users",     label: "Nhân sự",      icon: i("⊙"), perm: "admin_users" },
       { href: "/admin-settings",  label: "Cấu hình",     icon: i("⊛"), perm: "admin_settings" },
     ],
   },
