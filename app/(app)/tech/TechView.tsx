@@ -15,17 +15,26 @@ type Tab = "active" | "done";
 
 type EditableItem = Item & { _dirty?: boolean };
 
+const PAGE_SIZE = 10;
+
 export default function TechView({
   orders,
   itemsByOrder,
   activeTab,
+  activeCount,
+  doneCount,
 }: {
   orders: OrderListItem[];
   itemsByOrder: Record<string, Item[]>;
   activeTab: Tab;
+  activeCount: number;
+  doneCount: number;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [page, setPage] = useState(1);
+  const totalPages = Math.ceil(orders.length / PAGE_SIZE);
+  const pagedOrders = orders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   // Stats
   const allItems = Object.values(itemsByOrder).flat();
@@ -80,19 +89,11 @@ export default function TechView({
 
       {/* Tabs */}
       <div className="mini-tabs">
-        <Link
-          href="/tech?tab=active"
-          className={"mini-tab" + (activeTab === "active" ? " active" : "")}
-          style={{ textDecoration: "none" }}
-        >
-          Đang xử lý
+        <Link href="/tech?tab=active" className={"mini-tab" + (activeTab === "active" ? " active" : "")} style={{ textDecoration: "none" }}>
+          Đang xử lý <span className="cnt" style={activeCount > 0 ? { background: "#DC2626", color: "#fff" } : undefined}>{activeCount}</span>
         </Link>
-        <Link
-          href="/tech?tab=done"
-          className={"mini-tab" + (activeTab === "done" ? " active" : "")}
-          style={{ textDecoration: "none" }}
-        >
-          Đã hoàn thành
+        <Link href="/tech?tab=done" className={"mini-tab" + (activeTab === "done" ? " active" : "")} style={{ textDecoration: "none" }}>
+          Đã hoàn thành <span className="cnt">{doneCount}</span>
         </Link>
       </div>
 
@@ -101,8 +102,8 @@ export default function TechView({
           {activeTab === "active" ? "Không có đơn nào đang chờ QC." : "Chưa có đơn hoàn thành."}
         </div>
       ) : (
-        <Collapsible title={`Danh sách đơn (${orders.length})`} defaultOpen>
-          {orders.map((o) => (
+        <>
+          {pagedOrders.map((o) => (
             <OrderQcCard
               key={o.order_id}
               order={o}
@@ -112,7 +113,16 @@ export default function TechView({
               startTransition={startTransition}
             />
           ))}
-        </Collapsible>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6, marginTop: 12 }}>
+              <button className="btn btn-ghost btn-sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>← Trước</button>
+              <span style={{ fontSize: 12, color: "var(--muted)" }}>Trang {page}/{totalPages} · {orders.length} đơn</span>
+              <button className="btn btn-ghost btn-sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Sau →</button>
+            </div>
+          )}
+        </>
       )}
     </section>
   );

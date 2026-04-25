@@ -10,9 +10,13 @@ export default async function TechPage({
 }) {
   const { tab = "active" } = await searchParams;
   const done = tab === "done";
-  const orders = await listTechTasks(done);
+  const [orders, activeOrders, doneOrders] = await Promise.all([
+    listTechTasks(done),
+    listTechTasks(false),
+    listTechTasks(true),
+  ]);
 
-  // Preload items for first 20 orders; rest load on demand (kept simple: preload all)
+  // Preload items
   const itemsByOrder: Record<string, Awaited<ReturnType<typeof listOrderItemsForQc>>> = {};
   await Promise.all(
     orders.map(async (o) => {
@@ -20,5 +24,5 @@ export default async function TechPage({
     }),
   );
 
-  return <TechView orders={orders} itemsByOrder={itemsByOrder} activeTab={done ? "done" : "active"} />;
+  return <TechView orders={orders} itemsByOrder={itemsByOrder} activeTab={done ? "done" : "active"} activeCount={activeOrders.length} doneCount={doneOrders.length} />;
 }
