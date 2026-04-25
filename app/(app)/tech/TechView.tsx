@@ -59,32 +59,20 @@ export default function TechView({
       </div>
 
       {/* Dashboard strip */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", background: "var(--card)", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden", marginBottom: 12 }}>
-        <div style={{ padding: "12px 14px", borderRight: "1px solid var(--border)" }}>
-          <div style={{ fontSize: 10, fontWeight: 800, color: "var(--blue)", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>Chờ QC</div>
-          <div style={{ fontSize: 20, fontWeight: 900, color: "var(--blue)" }}>{waitingQc}</div>
-          <div style={{ fontSize: 10, color: "var(--subtle)" }}>{orders.length} đơn tổng</div>
-        </div>
-        <div style={{ padding: "12px 14px", borderRight: "1px solid var(--border)" }}>
-          <div style={{ fontSize: 10, fontWeight: 800, color: "#0D9488", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>QC xong</div>
-          <div style={{ fontSize: 20, fontWeight: 900, color: "#0D9488" }}>{qcDone}/{totalItems}</div>
-          <div style={{ fontSize: 10, color: "var(--subtle)" }}>{totalItems > 0 ? Math.round(qcDone / totalItems * 100) : 0}%</div>
-        </div>
-        <div style={{ padding: "12px 14px", borderRight: "1px solid var(--border)" }}>
-          <div style={{ fontSize: 10, fontWeight: 800, color: "var(--green)", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>Lên kệ</div>
-          <div style={{ fontSize: 20, fontWeight: 900, color: "var(--green)" }}>{shelfDone}/{totalItems}</div>
-          <div style={{ fontSize: 10, color: "var(--subtle)" }}>{totalItems > 0 ? Math.round(shelfDone / totalItems * 100) : 0}%</div>
-        </div>
-        <div style={{ padding: "12px 14px", borderRight: "1px solid var(--border)" }}>
-          <div style={{ fontSize: 10, fontWeight: 800, color: "var(--red)", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>Hàng lỗi</div>
-          <div style={{ fontSize: 20, fontWeight: 900, color: "var(--red)" }}>{damaged}</div>
-          <div style={{ fontSize: 10, color: "var(--subtle)" }}>{damaged} SP lỗi</div>
-        </div>
-        <div style={{ padding: "12px 14px" }}>
-          <div style={{ fontSize: 10, fontWeight: 800, color: "#7C3AED", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>Thiệt hại</div>
-          <div style={{ fontSize: 20, fontWeight: 900, color: "#7C3AED" }}>{formatVND(damageCost)}</div>
-          <div style={{ fontSize: 10, color: "var(--subtle)" }}>giá trị lỗi</div>
-        </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", background: "#FFFFFF", border: "1px solid #E4E4E7", borderRadius: 10, overflow: "hidden", marginBottom: 12 }}>
+        {[
+          { label: "Đang xử lý", value: String(activeCount), sub: `${activeCount} đơn`, color: "#D97706" },
+          { label: "Đã hoàn thành", value: String(doneCount), sub: `${doneCount} đơn`, color: "#16A34A" },
+          { label: "QC xong", value: `${qcDone}/${totalItems}`, sub: `${totalItems > 0 ? Math.round(qcDone / totalItems * 100) : 0}%`, color: "#0D9488" },
+          { label: "Hàng lỗi", value: String(damaged), sub: `${damaged} SP lỗi`, color: "#DC2626" },
+          { label: "Thiệt hại", value: formatVND(damageCost), sub: "giá trị lỗi", color: "#7C3AED" },
+        ].map((c, i) => (
+          <div key={i} style={{ padding: "12px 14px", borderRight: i < 4 ? "1px solid #E4E4E7" : undefined }}>
+            <div style={{ fontSize: 10, fontWeight: 800, color: c.color, textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>{c.label}</div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: c.color }}>{c.value}</div>
+            <div style={{ fontSize: 10, color: "#A1A1AA" }}>{c.sub}</div>
+          </div>
+        ))}
       </div>
 
       {/* Tabs */}
