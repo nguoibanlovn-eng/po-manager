@@ -66,11 +66,15 @@
   .demo-bar button.off { background:#374151; color:#9CA3AF; }
   .view { display:none; }
   .view.show { display:block; }
+  .relaunch-hidden { display:none !important; }
+  .relaunch-show { display:block !important; }
 
   .progress-mini { height:4px; background:#E5E7EB; border-radius:2px; overflow:hidden; margin-top:4px; }
   .progress-mini div { height:100%; border-radius:2px; }
 
   .lock-badge { font-size:9px; padding:1px 6px; border-radius:4px; background:#F3F4F6; color:#6B7280; font-weight:700; }
+  .assign-row { display:flex; align-items:center; gap:8px; padding:8px 10px; margin-top:10px; border-top:1px solid var(--border); font-size:11px; }
+  .assign-row select { padding:4px 8px; font-size:11px; border:1px solid var(--border); border-radius:6px; width:auto; }
 </style>
 </head>
 <body>
@@ -93,12 +97,21 @@
       <button class="btn btn-ghost btn-sm">✕</button>
     </div>
 
+    <!-- Relaunch banner (hien khi mo tu relaunch) -->
+    <div id="relaunch-banner" style="display:none; background:var(--blue-lt); border:1px solid #BFDBFE; border-radius:10px; padding:10px 14px; margin-bottom:10px; display:flex; align-items:center; gap:8px">
+      <span style="font-size:16px">🔄</span>
+      <div style="flex:1">
+        <div style="font-size:12px; font-weight:700; color:#1E40AF">Relaunch v2 — Dang dieu chinh tu ban v1</div>
+        <div style="font-size:10px; color:#1E40AF">Du lieu ke thua. Sua bat ky muc nao ben duoi roi bam "Launch lai".</div>
+      </div>
+    </div>
+
     <!-- SP header -->
     <div style="padding:10px 14px; background:#F0FDF4; border-radius:10px; margin-bottom:14px; display:flex; align-items:center; gap:12px; border:1px solid #BBF7D0">
       <div style="width:40px; height:40px; border-radius:8px; background:#DCFCE7; display:flex; align-items:center; justify-content:center; font-size:18px">📦</div>
       <div style="flex:1">
         <div style="font-weight:700; font-size:14px">May loc khong khi Whirlpool WA-1902FK</div>
-        <div style="font-size:10px; color:#6B7280">SKU: 2000214304329 · Von: 990.000d · Ton: 45 · PO nhap: 200 (PO-051)</div>
+        <div style="font-size:10px; color:#6B7280">SKU: 2000214304329 · Von: 990.000d · Ton: 207 (con lai) · v1 da ban 38</div>
       </div>
     </div>
 
@@ -266,6 +279,29 @@
         <input type="text" placeholder="Binh luan..." style="flex:1; padding:5px 10px; border:1px solid var(--border); border-radius:6px; font-size:11px" />
         <button class="btn btn-ghost btn-sm">Gui</button>
       </div>
+
+      <!-- Ban giao + deadline + nut xac nhan -->
+      <div style="margin-top:12px; padding-top:12px; border-top:1px solid #FCD34D">
+        <div style="padding:10px 12px; background:var(--purple-lt); border:1px solid #DDD6FE; border-radius:8px; margin-bottom:10px">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px">
+            <span style="font-size:12px; font-weight:700; color:var(--purple)">👤 Ban giao Phan II cho:</span>
+            <select style="padding:4px 8px; font-size:11px; border:1px solid #DDD6FE; border-radius:6px; font-weight:600">
+              <option>— Chon nguoi nhan —</option>
+              <option selected>Hoa (NV_KD)</option>
+              <option>Phat (SALES_LEADER)</option>
+              <option>Linh (NV_KD)</option>
+            </select>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px">
+            <span style="font-size:11px; color:var(--purple); font-weight:600">Deadline phan bo viec:</span>
+            <input type="date" value="2026-05-05" style="padding:4px 8px; font-size:11px; border:1px solid #DDD6FE; border-radius:6px" />
+            <span style="font-size:9px; color:var(--muted)">Nguoi nhan phai phan bo + Launch truoc ngay nay</span>
+          </div>
+        </div>
+        <div style="display:flex; justify-content:flex-end">
+          <button class="btn btn-brand" style="padding:10px 24px; font-size:13px" onclick="alert('✓ Ke hoach da xac nhan!\n🔒 Phan I da khoa\n\n📋 Ban giao cho Hoa (NV_KD)\n⏰ Deadline: 05/05/2026\n→ Noti gui vao Viec cua toi\n\nHoa can phan bo viec + bam Launch truoc 05/05')">Xac nhan & Ban giao →</button>
+        </div>
+      </div>
     </div>
 
     <!-- ╔══════════════════════════════════╗ -->
@@ -279,6 +315,22 @@
     <!-- ═══ B4: Noi dung & Listing ═══ -->
     <div class="sec">
       <div class="sec-title"><span class="n" style="background:var(--purple)">4</span> Noi dung & Listing <span id="b4-status" style="margin-left:auto; font-size:10px; font-weight:600; color:var(--muted)"></span></div>
+      <div style="background:var(--bg); border-radius:6px; padding:6px 10px; margin-bottom:10px; font-size:10px; color:var(--muted); line-height:1.5">
+        👤 Gan nhan su + deadline cho tung muc. Khi Launch, noti gui vao <strong>"Viec cua toi"</strong>. Moi nguoi chi xem/sua <strong>dung muc duoc giao</strong>. Ban hoan thanh deadline khi da phan bo + Launch xong.
+      </div>
+
+      <!-- Relaunch notice (chi hien khi relaunch) -->
+      <div id="relaunch-kpi" class="relaunch-hidden" style="background:var(--amber-lt); border:1px solid #FCD34D; border-radius:8px; padding:8px 12px; margin-bottom:10px; font-size:11px; color:#92400E">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px">
+          <span style="font-size:14px">⚠️</span>
+          <strong>Relaunch v2 — Can bo sung noi dung</strong>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px">
+          <span style="color:#92400E">So luong video bo sung:</span>
+          <input type="text" value="7" style="width:50px; text-align:center; padding:4px 6px; border:1px solid #FCD34D; border-radius:6px; font-size:13px; font-weight:800; color:#92400E; background:#fff" />
+          <span style="color:var(--muted)">video</span>
+        </div>
+      </div>
 
       <div class="fg">
         <b>Kho tai lieu chung</b>
@@ -306,7 +358,6 @@
             <option value="Problem">Problem</option><option value="Demo">Demo</option><option value="CTA">CTA</option><option value="Unbox">Unbox</option><option value="Review">Review</option>
           </select>
           <input id="aired-title" type="text" placeholder="Tieu de video..." style="flex:1; padding:4px 8px; border:1px solid var(--border); border-radius:6px; font-size:11px" />
-          <input id="aired-views" type="text" placeholder="Views" style="width:60px; padding:4px 8px; border:1px solid var(--border); border-radius:6px; font-size:11px; text-align:right" />
           <button class="btn btn-ghost btn-sm" onclick="addAired()">+</button>
         </div>
       </div>
@@ -320,19 +371,19 @@
         <button class="btn btn-ghost btn-sm" onclick="addListing()">+ Them kenh</button>
       </div>
 
-      <div class="fg" style="margin-top:10px">
-        <b>Giao cho</b>
-        <select><option selected>Hoa (NV_KD)</option></select>
-      </div>
     </div>
 
     <!-- Footer -->
-    <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 0">
-      <span style="font-size:11px; color:var(--muted)">4/4 buoc da dien</span>
-      <div style="display:flex; gap:8px">
-        <button class="btn btn-ghost">Huy</button>
-        <button class="btn btn-ghost">Luu nhap</button>
-        <button class="btn btn-brand" style="padding:8px 20px">Bat dau Launch →</button>
+    <div style="background:#fff; border:1px solid var(--border); border-radius:10px; padding:14px; margin-top:4px">
+      <div style="font-size:10px; color:var(--muted); margin-bottom:8px; line-height:1.5">
+        Nguoi nhan Phan II phan bo viec xong → bam <strong>Launch</strong>. Noti gui cho tat ca nhan su duoc gan.
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center">
+        <span style="font-size:11px; color:var(--muted)">B4: checklist + listing da gan nhan su</span>
+        <div style="display:flex; gap:8px">
+          <button class="btn btn-ghost">Luu nhap</button>
+          <button class="btn btn-brand" style="padding:8px 20px" onclick="alert('Da Launch!\n\nNoti gui cho:\n• Hoa — Video Problem ×3\n• Phat — Anh SP ×12\n• Linh — Listing Shopee + TikTok\n• Duc — Video Demo ×2\n\nMoi nguoi vao Viec cua toi de lam.')">Bat dau Launch →</button>
+        </div>
       </div>
     </div>
   </div>
@@ -443,54 +494,68 @@
       </div>
     </div>
 
-    <!-- Relaunch options -->
+    <!-- Relaunch action -->
     <div class="sec" style="border:2px solid var(--blue); border-radius:10px">
-      <div style="font-size:14px; font-weight:800; color:#1E40AF; margin-bottom:10px">Dieu chinh Relaunch</div>
+      <div style="font-size:14px; font-weight:800; color:#1E40AF; margin-bottom:10px">Relaunch — Dieu chinh ke hoach</div>
 
-      <div style="font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; margin-bottom:6px">Ke thua tu ban launch truoc</div>
-      <div style="background:var(--bg); border-radius:8px; padding:8px 10px; margin-bottom:10px; font-size:11px; color:var(--muted); line-height:1.6">
-        Phan loai: <strong style="color:var(--text)">Trung han · T5-T9/2026</strong><br>
-        Gia: <strong style="color:var(--text)">A=1.040K → B1=1.990K</strong> · Gross: +950K (47.7%)<br>
-        Con lai: <strong style="color:var(--text)">207 SP</strong> chua ban
-      </div>
-
-      <div style="font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; margin-bottom:6px">Dieu chinh</div>
-
-      <div class="row-item" style="background:var(--amber-lt); border-color:#FCD34D">
-        <input type="checkbox" checked style="accent-color:var(--amber)" />
-        <span style="font-size:12px; font-weight:600; flex:1">Giam gia ban</span>
-        <span style="font-size:11px; color:var(--muted)">B1: 1.990K →</span>
-        <input type="text" value="1.690.000" style="width:90px; text-align:right; padding:3px 6px; border:1px solid #FCD34D; border-radius:4px; font-size:11px; font-weight:700; color:var(--amber)" />
-      </div>
-      <div class="row-item">
-        <input type="checkbox" checked style="accent-color:var(--green)" />
-        <span style="font-size:12px; font-weight:600; flex:1">Tang noi dung TikTok</span>
-        <span style="font-size:11px; color:var(--muted)">+5 video moi</span>
-      </div>
-      <div class="row-item">
-        <input type="checkbox" checked style="accent-color:var(--green)" />
-        <span style="font-size:12px; font-weight:600; flex:1">Phan bo lai kenh</span>
-        <span style="font-size:11px; color:var(--muted)">Tang TikTok 25→40%</span>
-      </div>
-      <div class="row-item">
-        <input type="checkbox" style="accent-color:var(--green)" />
-        <span style="font-size:12px; font-weight:600; flex:1">Doi CTKM</span>
-        <span style="font-size:11px; color:var(--muted)">Tang kem → Combo</span>
-      </div>
-      <div class="row-item">
-        <input type="checkbox" style="accent-color:var(--green)" />
-        <span style="font-size:12px; font-weight:600; flex:1">Gia han thoi gian</span>
-        <span style="font-size:11px; color:var(--muted)">T9 → T12/2026</span>
+      <!-- Ke thua -->
+      <div style="background:var(--bg); border-radius:8px; padding:10px 12px; margin-bottom:12px; font-size:11px; color:var(--muted); line-height:1.6">
+        <strong style="color:var(--text)">Ke thua tu v1:</strong><br>
+        • Phan loai: Trung han · T5-T9/2026<br>
+        • Gia: A=1.040K → B1=1.990K · CTKM: Tang kem qua<br>
+        • Phan bo: FB 135 · TT 61 · SP 25 · Web 24<br>
+        • <strong style="color:var(--red)">Con lai: 207 SP chua ban</strong>
       </div>
 
-      <div class="fg" style="margin-top:10px">
+      <!-- Noi dung da lam -->
+      <div style="margin-bottom:12px">
+        <div style="font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; margin-bottom:6px">Noi dung da lam (ke thua, khong mat)</div>
+        <div style="display:flex; flex-direction:column; gap:3px">
+          <div style="display:flex; align-items:center; gap:6px; padding:5px 8px; background:var(--green-lt); border-radius:6px; font-size:11px">
+            <span style="color:var(--green); font-weight:700">✓</span>
+            <span style="flex:1">Video Problem ×2 da air</span>
+            <span style="color:var(--green); font-size:10px">15K + 8K views</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px; padding:5px 8px; background:var(--green-lt); border-radius:6px; font-size:11px">
+            <span style="color:var(--green); font-weight:700">✓</span>
+            <span style="flex:1">Anh san pham ×10</span>
+            <span style="color:var(--green); font-size:10px">Done</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px; padding:5px 8px; background:var(--amber-lt); border-radius:6px; font-size:11px">
+            <span style="color:var(--amber); font-weight:700">⏳</span>
+            <span style="flex:1">Video Demo ×2</span>
+            <span style="color:var(--amber); font-size:10px">0/2 dang lam</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px; padding:5px 8px; border:1px solid var(--border); border-radius:6px; font-size:11px">
+            <span style="color:var(--muted); font-weight:700">✓</span>
+            <span style="flex:1">Listing: Shopee ✓ · TikTok ✓</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bo sung video -->
+      <div style="background:var(--amber-lt); border:1px solid #FCD34D; border-radius:8px; padding:10px 12px; margin-bottom:12px">
+        <div style="display:flex; align-items:center; gap:8px; font-size:12px; color:#92400E">
+          <span style="font-size:14px">⚠️</span>
+          <span style="flex:1"><strong>Can bo sung noi dung</strong> — them video vao checklist Phan II sau khi dieu chinh.</span>
+          <span style="color:#92400E; font-size:11px">SL:</span>
+          <input type="text" value="7" style="width:40px; text-align:center; padding:4px; border:1px solid #FCD34D; border-radius:6px; font-size:13px; font-weight:800; color:#92400E; background:#fff" />
+          <span style="font-size:11px; color:#92400E">video</span>
+        </div>
+      </div>
+
+      <div class="fg">
         <b>Ly do relaunch</b>
         <textarea rows="2" placeholder="Ghi chu ly do dieu chinh...">TikTok ban kem do thieu noi dung. Can them video demo + giam gia de canh tranh.</textarea>
       </div>
 
-      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px">
+      <div style="font-size:11px; color:var(--muted); margin:8px 0; line-height:1.5">
+        Bam <strong>"Mo form dieu chinh"</strong> de sua lai gia, CTKM, phan bo kenh (Phan I). Noi dung cu giu nguyen + KPI moi o tren se duoc gan vao Phan II.
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:6px">
         <button class="btn btn-ghost">Huy</button>
-        <button class="btn btn-brand" style="padding:8px 20px">Tao Relaunch →</button>
+        <button class="btn btn-brand" style="padding:10px 24px; font-size:13px" onclick="showRelaunchForm()">Mo form dieu chinh →</button>
       </div>
     </div>
 
@@ -660,14 +725,15 @@ const SUGGEST = {
 };
 
 let currentHorizon = 'medium';
-let checkItems = SUGGEST.medium.items.map(i => ({...i, done: i.name.includes('Problem') ? 2 : i.name.includes('Anh') ? parseInt(i.qty) : 0, total: parseInt(i.qty)||1, checked: i.name.includes('Problem') || i.name.includes('Anh')}));
+const STAFF = ['— Chua gan —','Hoa','Phat','Linh','Duc','Mai Thu'];
+let checkItems = SUGGEST.medium.items.map(i => ({...i, done: i.name.includes('Problem') ? 2 : i.name.includes('Anh') ? parseInt(i.qty) : 0, total: parseInt(i.qty)||1, checked: i.name.includes('Problem') || i.name.includes('Anh'), assignee: i.name.includes('Problem') ? 'Hoa' : i.name.includes('Anh') ? 'Phat' : ''}));
 
 // Horizon pills click
 document.querySelectorAll('.pill[data-hz]')?.forEach(p => p.addEventListener('click', () => switchHorizon(p.dataset.hz)));
 function switchHorizon(hz) {
   currentHorizon = hz;
   const s = SUGGEST[hz];
-  checkItems = s.items.map(i => ({...i, done:0, total:parseInt(i.qty)||1, checked:false}));
+  checkItems = s.items.map(i => ({...i, done:0, total:parseInt(i.qty)||1, checked:false, assignee:''}));
   document.getElementById('suggest-badge').textContent = 'Goi y: ' + s.label;
   renderChecklist();
 }
@@ -694,11 +760,14 @@ function renderChecklist() {
       : item.checked && item.done > 0
       ? '<span class="status-tag st-pending">' + item.done + '/' + item.total + '</span>'
       : '<span class="status-tag st-missing">Chua lam</span>';
-    return '<div class="row-item" style="' + (item.checked ? '' : 'opacity:.6') + '">'
+    const staffOpts = STAFF.map(s => '<option' + (s === item.assignee ? ' selected' : '') + '>' + s + '</option>').join('');
+    return '<div class="row-item" style="' + (item.checked ? '' : 'opacity:.6') + '; flex-wrap:wrap">'
       + '<input type="checkbox" ' + (item.checked ? 'checked' : '') + ' style="accent-color:#16A34A" onchange="toggleCheck(' + idx + ')" />'
-      + '<span style="font-size:12px; flex:1; font-weight:' + (item.checked ? '600' : '400') + '">' + item.name + '</span>'
+      + '<span style="font-size:12px; flex:1; font-weight:' + (item.checked ? '600' : '400') + '; min-width:120px">' + item.name + '</span>'
       + (item.qty ? '<span style="font-size:10px; color:#71717A">' + item.qty + '</span>' : '')
       + statusTag
+      + '<select onchange="checkItems[' + idx + '].assignee=this.value" style="width:auto; padding:2px 6px; font-size:10px; border:1px solid #E4E4E7; border-radius:4px; color:' + (item.assignee ? '#4F46E5' : '#A1A1AA') + '">' + staffOpts + '</select>'
+      + '<span style="font-size:9px; color:#A1A1AA">DL:</span><input type="date" style="padding:2px 4px; font-size:9px; border:1px solid #E4E4E7; border-radius:4px; width:auto" />'
       + '<button onclick="removeCheck(' + idx + ')" style="background:none; border:none; color:#DC2626; cursor:pointer; font-size:13px; padding:0 4px">×</button>'
       + '</div>';
   }).join('');
@@ -724,7 +793,7 @@ function renderAired() {
     return '<div style="display:flex; align-items:center; gap:6px">'
       + '<span class="chip" style="background:' + c + '20; color:' + c + '">' + v.type + '</span>'
       + '<span style="flex:1">' + v.title + '</span>'
-      + '<span style="color:#A1A1AA; font-size:10px">' + v.views + ' views</span>'
+      + ''
       + '<button onclick="airedVideos.splice(' + i + ',1); renderAired()" style="background:none; border:none; color:#DC2626; cursor:pointer; font-size:12px">×</button>'
       + '</div>';
   }).join('');
@@ -749,6 +818,8 @@ function renderListings() {
       + '<span class="dot" style="background:' + ch.color + '"></span>'
       + '<span style="font-size:12px; font-weight:600; min-width:80px">' + ch.name + '</span>'
       + '<input type="text" value="' + ch.link + '" placeholder="Link ' + ch.name + '..." oninput="listingChannels[' + i + '].link=this.value" style="flex:1; padding:4px 8px; border:1px solid #E4E4E7; border-radius:6px; font-size:11px" />'
+      + '<select onchange="listingChannels[' + i + '].assignee=this.value" style="width:auto; padding:2px 6px; font-size:10px; border:1px solid #E4E4E7; border-radius:4px">' + STAFF.map(s => '<option' + (s === (ch.assignee||'') ? ' selected' : '') + '>' + s + '</option>').join('') + '</select>'
+      + '<span style="font-size:9px; color:#A1A1AA">DL:</span><input type="date" style="padding:2px 4px; font-size:9px; border:1px solid #E4E4E7; border-radius:4px; width:auto" />'
       + '<button onclick="listingChannels.splice(' + i + ',1); renderListings()" style="background:none; border:none; color:#DC2626; cursor:pointer; font-size:13px; padding:0 4px">×</button>'
       + '</div>';
   }).join('');
@@ -768,14 +839,25 @@ renderChecklist();
 renderAired();
 renderListings();
 
-function show(id) {
+let relaunchMode = false;
+function show(id, opts) {
+  if (id === 'v-relaunch') relaunchMode = true;
   document.querySelectorAll('.view').forEach(v => v.classList.remove('show'));
   document.getElementById(id).classList.add('show');
   document.querySelectorAll('.demo-bar button').forEach(b => b.className = 'off');
   const map = {'v-form':0,'v-ticket':1,'v-relaunch':2,'v-signoff':3,'v-flow':4};
   document.querySelectorAll('.demo-bar button')[map[id]].className = 'on';
+  // Show relaunch banner + KPI in form
+  const banner = document.getElementById('relaunch-banner');
+  const kpi = document.getElementById('relaunch-kpi');
+  const isRL = id === 'v-form' && relaunchMode;
+  if (banner) banner.style.display = isRL ? 'flex' : 'none';
+  if (kpi) { kpi.className = isRL ? 'relaunch-show' : 'relaunch-hidden'; }
+  // Reset relaunch mode when navigating away from form to non-relaunch tabs
+  if (id !== 'v-form' && id !== 'v-relaunch') relaunchMode = false;
   window.scrollTo(0,0);
 }
+function showRelaunchForm() { relaunchMode = true; show('v-form'); }
 </script>
 
 </body>

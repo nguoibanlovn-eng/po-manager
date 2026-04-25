@@ -68,7 +68,7 @@ function getPhaseChecks(m: Metrics): boolean[] {
 export default function LaunchPlanView({ plans }: { plans: LaunchPlanRow[] }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [tab, setTab] = useState<Tab>("ready");
+  const [tab, setTab] = useState<Tab>("launching");
   const [search, setSearch] = useState("");
   const [filterHorizon, setFilterHorizon] = useState("");
   const [filterProgress, setFilterProgress] = useState("");
@@ -155,76 +155,60 @@ export default function LaunchPlanView({ plans }: { plans: LaunchPlanRow[] }) {
       {/* ═══ HEADER ═══ */}
       <div className="page-hdr">
         <div>
-          <div className="page-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, borderRadius: "50%", background: BRAND, color: "#fff", fontSize: 13 }}>🚀</span>
-            Launch sản phẩm
-          </div>
+          <div className="page-title">Launch SP</div>
           <div className="page-sub">{plans.length} SP · {launching.length} đang launch · {done.length} hoàn tất</div>
+        </div>
+        <div style={{ display: "flex", gap: 6 }}>
+          <input placeholder="Tên SP, SKU..." value={invSearch} onChange={(e) => setInvSearch(e.target.value)} style={{ padding: "5px 10px", border: `1.5px solid ${BRAND2}`, borderRadius: 6, fontSize: 12, width: 180 }} />
+          <button className="btn btn-sm" style={{ background: BRAND2, color: "#fff" }} onClick={() => searchInventory(invSearch)}>Tìm trong kho</button>
         </div>
       </div>
 
-      {/* ═══ KPIs + Channel Progress (only for launching tab) ═══ */}
-      {tab === "launching" && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr) 1fr", gap: 10, marginBottom: 12, alignItems: "start" }}>
-          <div className="stat-card" style={{ borderLeft: `4px solid ${BRAND}` }}>
-            <div className="sl">SẴN SÀNG</div><div className="sv">{ready.length}</div>
+      {/* ═══ Dashboard strip ═══ */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", background: "#fff", border: "1px solid #E4E4E7", borderRadius: 10, overflow: "hidden", marginBottom: 12 }}>
+        {[
+          { label: "Đang launch", value: String(launchKpis.count), sub: `${launchKpis.needAttention > 0 ? launchKpis.needAttention + " cảnh báo" : "—"}`, color: "#D97706" },
+          { label: "Chờ launching", value: String(ready.length), sub: `${ready.length} SP`, color: BRAND },
+          { label: "Đã bán / Target", value: `${launchKpis.totalActual}/${launchKpis.totalTarget}`, sub: `${launchKpis.pct}%`, color: "#2563EB" },
+          { label: "Hoàn tất", value: String(done.length), sub: `${done.length} SP`, color: "#16A34A" },
+          { label: "Cần chú ý", value: String(launchKpis.needAttention), sub: launchKpis.needAttention > 0 ? "Dưới 40%" : "OK", color: "#DC2626" },
+        ].map((c, i) => (
+          <div key={i} style={{ padding: "12px 14px", borderRight: i < 4 ? "1px solid #E4E4E7" : undefined }}>
+            <div style={{ fontSize: 10, fontWeight: 800, color: c.color, textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>{c.label}</div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: c.color }}>{c.value}</div>
+            <div style={{ fontSize: 10, color: "#A1A1AA" }}>{c.sub}</div>
           </div>
-          <div className="stat-card" style={{ borderLeft: "4px solid #D97706" }}>
-            <div className="sl">ĐANG LAUNCH</div><div className="sv">{launchKpis.count}</div>
-          </div>
-          <div className="stat-card" style={{ borderLeft: "4px solid #3B82F6" }}>
-            <div className="sl">ĐÃ BÁN / TARGET</div>
-            <div className="sv">{launchKpis.totalActual} / {launchKpis.totalTarget}</div>
-            <div className="ss">{launchKpis.pct}% hoàn thành</div>
-          </div>
-          <div className="stat-card" style={{ borderLeft: "4px solid #DC2626" }}>
-            <div className="sl">CẦN CHÚ Ý</div>
-            <div className="sv" style={{ color: launchKpis.needAttention > 0 ? "#DC2626" : "#16A34A" }}>{launchKpis.needAttention} SP</div>
-          </div>
-          {/* Channel progress */}
-          <div className="card" style={{ padding: "10px 14px" }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: "#6B7280", marginBottom: 6 }}>TIẾN ĐỘ THEO KÊNH</div>
-            {channelProgress.map((ch) => (
-              <div key={ch.name} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, fontSize: 10 }}>
-                <span style={{ width: 55, color: CH_COLORS[ch.name], fontWeight: 600 }}>{ch.name}</span>
-                <div style={{ flex: 1, height: 6, background: "#F3F4F6", borderRadius: 3, overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${Math.min(ch.pct, 100)}%`, background: CH_COLORS[ch.name], borderRadius: 3 }} />
-                </div>
-                <span style={{ width: 30, textAlign: "right", fontWeight: 600 }}>{ch.pct}%</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+        ))}
+      </div>
 
-      {/* ═══ TABS + FILTERS inline ═══ */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-        <div className="mini-tabs" style={{ marginBottom: 0 }}>
-          {([["ready", `Sẵn sàng launch ${ready.length}`], ["launching", `Đang launch ${launching.length}`], ["done", "Hoàn tất"]] as const).map(([k, label]) => (
-            <button key={k} className={"mini-tab" + (tab === k ? " active" : "")} onClick={() => setTab(k)}>{label}</button>
-          ))}
-        </div>
-        <select value={filterHorizon} onChange={(e) => setFilterHorizon(e.target.value)} style={{ fontSize: 11 }}>
-          <option value="">Tất cả loại hàng</option>
+      {/* ═══ TABS + FILTERS ═══ */}
+      <div className="mini-tabs">
+        {([
+          ["launching", "Đang launch", launching.length],
+          ["ready", "Chờ launching", ready.length],
+          ["done", "Hoàn tất", done.length],
+        ] as const).map(([k, label, count]) => (
+          <button key={k} className={"mini-tab" + (tab === k ? " active" : "")} onClick={() => setTab(k)}>
+            {label} <span className="cnt" style={k === "launching" && (count as number) > 0 ? { background: "#D97706", color: "#fff" } : undefined}>{count}</span>
+          </button>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", gap: 6, marginBottom: 10, alignItems: "center" }}>
+        <select value={filterHorizon} onChange={(e) => setFilterHorizon(e.target.value)} style={{ fontSize: 11, padding: "5px 8px" }}>
+          <option value="">Loại hàng</option>
           {HORIZONS.map((h) => <option key={h.k} value={h.k}>{h.label}</option>)}
         </select>
         {tab === "launching" && (
-          <select value={filterProgress} onChange={(e) => setFilterProgress(e.target.value)} style={{ fontSize: 11 }}>
-            <option value="">Tất cả tiến độ</option>
+          <select value={filterProgress} onChange={(e) => setFilterProgress(e.target.value)} style={{ fontSize: 11, padding: "5px 8px" }}>
+            <option value="">Tiến độ</option>
             <option value="Vượt target">Vượt target</option>
             <option value="Đúng tiến độ">Đúng tiến độ</option>
             <option value="Chậm">Chậm</option>
             <option value="Cảnh báo">Cảnh báo</option>
           </select>
         )}
-        <input placeholder="Tìm SP, SKU..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: 160, fontSize: 12 }} />
-        {/* Inventory search */}
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: BRAND2, whiteSpace: "nowrap" }}>TÌM SP TRONG KHO:</span>
-          <input placeholder="Tên SP, SKU..." value={invSearch} onChange={(e) => setInvSearch(e.target.value)}
-            style={{ padding: "5px 10px", border: `1.5px solid ${BRAND2}`, borderRadius: 6, fontSize: 12, width: 200 }} />
-          <button className="btn btn-sm" style={{ background: BRAND2, color: "#fff" }} onClick={() => searchInventory(invSearch)}>Tìm</button>
-        </div>
+        <input placeholder="Tìm SP, SKU..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "5px 9px", fontSize: 12, border: "1px solid #E4E4E7", borderRadius: 6, flex: 1, minWidth: 120 }} />
       </div>
 
       {/* Inventory results dropdown */}
