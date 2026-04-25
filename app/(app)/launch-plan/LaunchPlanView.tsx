@@ -619,8 +619,8 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
   );
 
   return (
-    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.45)", zIndex: 100, display: "flex", justifyContent: "center", alignItems: "center", padding: 16 }}>
-      <div style={{ background: "#F5F5F7", width: "100%", maxWidth: 760, maxHeight: "calc(100vh - 32px)", borderRadius: 16, boxShadow: "0 25px 50px rgba(0,0,0,.25)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 100, display: "flex", justifyContent: "center", alignItems: "stretch", padding: "40px 16px 16px" }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: "#F5F5F7", width: "100%", maxWidth: 760, borderRadius: 16, boxShadow: "0 25px 50px rgba(0,0,0,.25)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
         {/* Fixed header */}
         <div style={{ background: "#fff", borderBottom: "1px solid #E4E4E7", padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
