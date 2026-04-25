@@ -1046,51 +1046,50 @@ function AdsRevenueChart({ ads, gmvMax, nhanhRevenue }: {
   const totalBm = daily.reduce((s, [, d]) => s + d.bm, 0);
   const totalGmv = daily.reduce((s, [, d]) => s + d.gmvSpend, 0);
   const totalRev = daily.reduce((s, [, d]) => s + d.rev, 0);
-  const barH = 130;
+  const barH = 200;
 
-  // Revenue line points (SVG)
+  // Revenue line: scale to top 40% of chart (bars take bottom 60%)
   const revPoints = daily.map(([, d], i) => {
     const x = ((i + 0.5) / daily.length) * 100;
-    const y = maxRev > 0 ? 100 - (d.rev / maxRev) * 85 : 100;
+    const y = maxRev > 0 ? 15 + (1 - d.rev / maxRev) * 50 : 65;
     return `${x},${y}`;
   });
 
   return (
     <>
       {/* Chart 1: Stacked Ads + Revenue Line */}
-      <div className="muted" style={{ fontSize: 11, marginBottom: 6 }}>Chi tiêu Ads + Doanh thu theo ngày</div>
-      <div style={{ position: "relative", height: barH + 40, marginBottom: 4 }}>
-        {/* Bars */}
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: barH, position: "relative", zIndex: 2, borderBottom: "1px solid #E2E8F0" }}>
+      <div style={{ position: "relative", height: barH + 30, marginBottom: 8 }}>
+        {/* Bars — scale to bottom 55% */}
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: barH, position: "relative", zIndex: 2, borderBottom: "1px solid #E2E8F0", paddingTop: 20 }}>
           {daily.map(([date, d]) => {
             const total = d.bm + d.gmvSpend;
-            const bmH = maxSpend > 0 ? (d.bm / maxSpend) * barH * 0.65 : 0;
-            const gmvH = maxSpend > 0 ? (d.gmvSpend / maxSpend) * barH * 0.65 : 0;
+            const bmH = maxSpend > 0 ? (d.bm / maxSpend) * barH * 0.5 : 0;
+            const gmvH = maxSpend > 0 ? (d.gmvSpend / maxSpend) * barH * 0.5 : 0;
             return (
-              <div key={date} style={{ flex: 1, minWidth: 16, display: "flex", flexDirection: "column", alignItems: "center" }} title={`${date}: BM ${formatVNDCompact(d.bm)} + GMV ${formatVNDCompact(d.gmvSpend)} = ${formatVNDCompact(total)}`}>
-                <div style={{ fontSize: 7, fontWeight: 700, color: "#374151", marginBottom: 1, whiteSpace: "nowrap" }}>{formatVNDCompact(total)}</div>
+              <div key={date} style={{ flex: 1, minWidth: 20, display: "flex", flexDirection: "column", alignItems: "center" }} title={`${date}: BM ${formatVNDCompact(d.bm)} + GMV ${formatVNDCompact(d.gmvSpend)} = ${formatVNDCompact(total)}`}>
+                <div style={{ fontSize: 8, fontWeight: 700, color: "#374151", marginBottom: 2, whiteSpace: "nowrap" }}>{formatVNDCompact(total)}</div>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
-                  <div style={{ width: "65%", height: gmvH, background: "#FF9500", borderRadius: "2px 2px 0 0", minWidth: 10 }} />
-                  <div style={{ width: "65%", height: bmH, background: "#FE2C55", borderRadius: "0 0 2px 2px", minWidth: 10 }} />
+                  <div style={{ width: "60%", height: gmvH, background: "#FF9500", borderRadius: "3px 3px 0 0", minWidth: 14 }} />
+                  <div style={{ width: "60%", height: bmH, background: "#FE2C55", borderRadius: "0 0 3px 3px", minWidth: 14 }} />
                 </div>
               </div>
             );
           })}
         </div>
-        {/* Revenue Line Overlay */}
+        {/* Revenue Line Overlay — in top portion */}
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: barH, zIndex: 3, pointerEvents: "none" }}>
-          <polygon points={`0,100 ${revPoints.join(" ")} 100,100`} fill="rgba(22,163,74,0.06)" />
-          <polyline points={revPoints.join(" ")} fill="none" stroke="#16A34A" strokeWidth="0.8" />
+          <polygon points={`0,65 ${revPoints.join(" ")} 100,65`} fill="rgba(22,163,74,0.08)" />
+          <polyline points={revPoints.join(" ")} fill="none" stroke="#16A34A" strokeWidth="0.6" />
           {daily.map(([, d], i) => {
             const x = ((i + 0.5) / daily.length) * 100;
-            const y = maxRev > 0 ? 100 - (d.rev / maxRev) * 85 : 100;
-            return <circle key={i} cx={x} cy={y} r="0.8" fill="#16A34A" />;
+            const y = maxRev > 0 ? 15 + (1 - d.rev / maxRev) * 50 : 65;
+            return <circle key={i} cx={x} cy={y} r="0.6" fill="#16A34A" />;
           })}
         </svg>
         {/* Date labels */}
-        <div style={{ display: "flex", gap: 2, marginTop: 4 }}>
+        <div style={{ display: "flex", gap: 3, marginTop: 6 }}>
           {daily.map(([date]) => (
-            <div key={date} style={{ flex: 1, textAlign: "center", fontSize: 7, color: "#94A3B8" }}>{date.substring(5)}</div>
+            <div key={date} style={{ flex: 1, textAlign: "center", fontSize: 9, color: "#94A3B8" }}>{date.substring(5)}</div>
           ))}
         </div>
       </div>
@@ -1119,50 +1118,51 @@ function AdsRevenueChart({ ads, gmvMax, nhanhRevenue }: {
 function GmvMaxMiniChart({ daily }: { daily: [string, { bm: number; gmvSpend: number; gmvRev: number; rev: number }][] }) {
   const maxGmvSpend = Math.max(...daily.map(([, d]) => d.gmvSpend));
   const maxGmvRev = Math.max(...daily.map(([, d]) => d.gmvRev));
-  const miniH = 80;
+  const miniH = 130;
 
+  // Revenue line in top portion
   const revPoints = daily.map(([, d], i) => {
     const x = ((i + 0.5) / daily.length) * 100;
-    const y = maxGmvRev > 0 ? 100 - (d.gmvRev / maxGmvRev) * 85 : 100;
+    const y = maxGmvRev > 0 ? 10 + (1 - d.gmvRev / maxGmvRev) * 50 : 60;
     return `${x},${y}`;
   });
 
   return (
     <>
       <div style={{ position: "relative", height: miniH + 30 }}>
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: miniH, borderBottom: "1px solid #E2E8F0", position: "relative", zIndex: 2 }}>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: miniH, borderBottom: "1px solid #E2E8F0", position: "relative", zIndex: 2, paddingTop: 16 }}>
           {daily.map(([date, d]) => {
-            const h = maxGmvSpend > 0 ? (d.gmvSpend / maxGmvSpend) * miniH * 0.75 : 0;
+            const h = maxGmvSpend > 0 ? (d.gmvSpend / maxGmvSpend) * miniH * 0.45 : 0;
             const roi = d.gmvSpend > 0 ? d.gmvRev / d.gmvSpend : 0;
             const barColor = roi >= 10 ? "#16A34A" : "#DC2626";
             return (
-              <div key={date} style={{ flex: 1, minWidth: 14, display: "flex", flexDirection: "column", alignItems: "center" }} title={`${date}: Spend ${formatVNDCompact(d.gmvSpend)} · Rev ${formatVNDCompact(d.gmvRev)} · ROI ${roi.toFixed(1)}`}>
-                <div style={{ fontSize: 7, fontWeight: 700, color: barColor, marginBottom: 1 }}>{d.gmvSpend > 0 ? roi.toFixed(1) + "x" : ""}</div>
-                <div style={{ width: "55%", height: h, background: barColor, borderRadius: "2px 2px 0 0", minWidth: 8 }} />
+              <div key={date} style={{ flex: 1, minWidth: 18, display: "flex", flexDirection: "column", alignItems: "center" }} title={`${date}: Spend ${formatVNDCompact(d.gmvSpend)} · Rev ${formatVNDCompact(d.gmvRev)} · ROI ${roi.toFixed(1)}`}>
+                <div style={{ fontSize: 8, fontWeight: 700, color: barColor, marginBottom: 2 }}>{d.gmvSpend > 0 ? roi.toFixed(1) + "x" : ""}</div>
+                <div style={{ width: "55%", height: h, background: barColor, borderRadius: "3px 3px 0 0", minWidth: 12 }} />
               </div>
             );
           })}
         </div>
         {/* Revenue line */}
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: miniH, zIndex: 3, pointerEvents: "none" }}>
-          <polygon points={`0,100 ${revPoints.join(" ")} 100,100`} fill="rgba(22,163,74,0.06)" />
-          <polyline points={revPoints.join(" ")} fill="none" stroke="#16A34A" strokeWidth="1" />
+          <polygon points={`0,60 ${revPoints.join(" ")} 100,60`} fill="rgba(22,163,74,0.06)" />
+          <polyline points={revPoints.join(" ")} fill="none" stroke="#16A34A" strokeWidth="0.8" />
           {daily.map(([, d], i) => {
             const x = ((i + 0.5) / daily.length) * 100;
-            const y = maxGmvRev > 0 ? 100 - (d.gmvRev / maxGmvRev) * 85 : 100;
-            return <circle key={i} cx={x} cy={y} r="0.8" fill="#16A34A" />;
+            const y = maxGmvRev > 0 ? 10 + (1 - d.gmvRev / maxGmvRev) * 50 : 60;
+            return <circle key={i} cx={x} cy={y} r="0.7" fill="#16A34A" />;
           })}
         </svg>
-        <div style={{ display: "flex", gap: 2, marginTop: 4 }}>
+        <div style={{ display: "flex", gap: 3, marginTop: 6 }}>
           {daily.map(([date]) => (
-            <div key={date} style={{ flex: 1, textAlign: "center", fontSize: 6.5, color: "#94A3B8" }}>{date.substring(8)}</div>
+            <div key={date} style={{ flex: 1, textAlign: "center", fontSize: 9, color: "#94A3B8" }}>{date.substring(8)}</div>
           ))}
         </div>
       </div>
-      <div style={{ display: "flex", gap: 14, alignItems: "center", paddingTop: 6, fontSize: 10, color: "#64748B" }}>
-        <span><span style={{ display: "inline-block", width: 9, height: 9, borderRadius: 2, background: "#16A34A", verticalAlign: "middle", marginRight: 4 }} />ROI &ge; 10</span>
-        <span><span style={{ display: "inline-block", width: 9, height: 9, borderRadius: 2, background: "#DC2626", verticalAlign: "middle", marginRight: 4 }} />ROI &lt; 10</span>
-        <span><span style={{ display: "inline-block", width: 14, height: 2, borderRadius: 1, background: "#16A34A", verticalAlign: "middle", marginRight: 4 }} />DT GMV Max</span>
+      <div style={{ display: "flex", gap: 16, alignItems: "center", paddingTop: 8, fontSize: 10, color: "#64748B" }}>
+        <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "#16A34A", verticalAlign: "middle", marginRight: 5 }} />ROI &ge; 10</span>
+        <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "#DC2626", verticalAlign: "middle", marginRight: 5 }} />ROI &lt; 10</span>
+        <span><span style={{ display: "inline-block", width: 16, height: 2, borderRadius: 1, background: "#16A34A", verticalAlign: "middle", marginRight: 5 }} />DT GMV Max</span>
       </div>
     </>
   );
