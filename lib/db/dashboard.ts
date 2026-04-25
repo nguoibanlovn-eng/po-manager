@@ -3,6 +3,9 @@ import { unstable_cache } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { dateVN } from "@/lib/helpers";
 
+// Normalize channel name: DB stores "TikTok Shop" (Nhanh API), dashboard displays "TikTok"
+const _normalizeChannel = (ch: string) => ch === "TikTok Shop" ? "TikTok" : ch;
+
 // Cache duration: 30 seconds — data acceptable to be 30s stale
 const CACHE_TTL = 30;
 
@@ -174,8 +177,10 @@ async function _getRevenueByChannel(from: string, to: string) {
   // By source within channel: {channel → {source → {revenue, orders, expected}}}
   const byChannelSource = new Map<string, Map<string, { revenue: number; orders: number; expected: number }>>();
 
+  const normalizeChannel = _normalizeChannel;
+
   for (const r of allData) {
-    const ch = String(r.channel || "Khác");
+    const ch = normalizeChannel(String(r.channel || "Khác"));
     const src = String(r.source || ch);
     const rev = Number(r.revenue_net || 0);
     const cur = byChannel.get(ch) || { revenue: 0, orders: 0, expected: 0 };
@@ -289,7 +294,7 @@ async function _getYearlySummary(year: number) {
     const entry = revByMonth.get(m) || { total: 0, byChannel: new Map() };
     const rev = Number(r.revenue_net || 0);
     entry.total += rev;
-    const ch = String(r.channel || "Khác");
+    const ch = _normalizeChannel(String(r.channel || "Khác"));
     entry.byChannel.set(ch, (entry.byChannel.get(ch) || 0) + rev);
     revByMonth.set(m, entry);
   }

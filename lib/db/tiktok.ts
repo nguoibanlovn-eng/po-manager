@@ -108,7 +108,7 @@ export async function listTiktokNhanhRevenue(from: string, to: string): Promise<
   const { data } = await db
     .from("sales_sync")
     .select("period_from, source, revenue_net, order_net")
-    .eq("channel", "TikTok")
+    .eq("channel", "TikTok Shop")
     .gte("period_from", from)
     .lte("period_from", to)
     .order("period_from", { ascending: true })
