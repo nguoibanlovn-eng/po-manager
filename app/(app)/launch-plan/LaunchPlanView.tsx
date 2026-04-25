@@ -426,9 +426,11 @@ const SCENARIOS_OFF = [
   { label: "Ads + CTV", fees: "+CTV 10%", calc: (B: number) => B * 0.015 + B * 0.10 + B * 0.10 + B * 0.10 },
 ];
 const VIDEO_TYPES = [
-  { type: "problem", label: "Vấn đề", color: "#DC2626", default: 3 },
-  { type: "demo", label: "Chứng minh", color: "#D97706", default: 2 },
-  { type: "cta", label: "Chốt đơn", color: "#16A34A", default: 2 },
+  { type: "problem", label: "Vấn đề", desc: "Khai thác pain point", color: "#DC2626", short: 2, medium: 3, long: 4 },
+  { type: "demo", label: "Chứng minh", desc: "Demo SP hiệu quả", color: "#D97706", short: 2, medium: 2, long: 3 },
+  { type: "cta", label: "Chốt đơn", desc: "Tạo urgency, thúc mua", color: "#16A34A", short: 1, medium: 2, long: 3 },
+  { type: "review", label: "Review/Unbox", desc: "Trải nghiệm thật", color: "#2563EB", short: 1, medium: 1, long: 2 },
+  { type: "lifestyle", label: "Lifestyle", desc: "Bối cảnh sử dụng", color: "#7C3AED", short: 1, medium: 2, long: 3 },
 ];
 
 function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClose, onSaved, pending, startTransition }: {
@@ -482,11 +484,12 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
   // Step 6 — Nội dung
   const [driveLink, setDriveLink] = useState(m.phase2?.drive_link || m.content?.drive_link || "");
   const [assignees, setAssignees] = useState(m.phase2?.assignees || m.content?.assignees || "");
+  const hzKey = (horizon === "short" ? "short" : horizon === "long" ? "long" : "medium") as "short" | "medium" | "long";
   const [videos, setVideos] = useState(VIDEO_TYPES.map((vt) => {
     const existing = (m.content as Record<string, unknown>)?.targets;
     const arr = Array.isArray(existing) ? existing : [];
     const found = arr.find((t: Record<string, unknown>) => t.type === vt.type);
-    return { type: vt.type, count: (found as Record<string, number>)?.videos ?? vt.default };
+    return { type: vt.type, count: (found as Record<string, number>)?.videos ?? vt[hzKey] };
   }));
   // Step 7 — Target
   const [chTargets, setChTargets] = useState<Record<string, number>>(m.phase4?.channels || m.sales_target?.channel_split || {});
@@ -647,7 +650,7 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
             <label>CHU KỲ BÁN</label>
             <div style={{ display: "flex", gap: 6 }}>
               {HORIZONS.map((h) => (
-                <button key={h.k} onClick={() => setHorizon(h.k)} style={{ padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", background: horizon === h.k ? h.color : "#F3F4F6", color: horizon === h.k ? "#fff" : "#374151", border: "none", flex: 1 }}>{h.label} {h.sub}</button>
+                <button key={h.k} onClick={() => { setHorizon(h.k); const k = h.k as "short" | "medium" | "long"; setVideos(VIDEO_TYPES.map((vt) => ({ type: vt.type, count: vt[k] }))); }} style={{ padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", background: horizon === h.k ? h.color : "#F3F4F6", color: horizon === h.k ? "#fff" : "#374151", border: "none", flex: 1 }}>{h.label} {h.sub}</button>
               ))}
             </div>
           </div>
@@ -792,10 +795,11 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
 
           {/* Video targets */}
           <div style={{ fontSize: 10, fontWeight: 700, color: "#6B7280", textTransform: "uppercase", marginBottom: 6 }}>Video cần sản xuất</div>
+          <div style={{ fontSize: 10, color: "#9CA3AF", marginBottom: 4 }}>Gợi ý: {horizon === "short" ? "Ngắn hạn 7" : horizon === "long" ? "Dài hạn 15" : "Trung hạn 10"} video</div>
           {VIDEO_TYPES.map((vt, vi) => (
             <div key={vt.type} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", border: "1px solid #E5E7EB", borderRadius: 8, marginBottom: 4 }}>
               <span style={{ width: 10, height: 10, borderRadius: "50%", background: vt.color, flexShrink: 0 }} />
-              <span style={{ fontSize: 12, fontWeight: 600, flex: 1 }}>{vt.label} <span style={{ fontSize: 10, color: "#9CA3AF", fontWeight: 400 }}>— {vt.type === "problem" ? "Đặt vấn đề" : vt.type === "demo" ? "Chứng minh" : "Chốt đơn"}</span></span>
+              <span style={{ fontSize: 12, fontWeight: 600, flex: 1 }}>{vt.label} <span style={{ fontSize: 10, color: "#9CA3AF", fontWeight: 400 }}>— {vt.desc}</span></span>
               <input type="number" value={videos[vi].count} min={0} style={{ width: 50, textAlign: "center", fontSize: 12, padding: "3px 6px", border: "1px solid #E5E7EB", borderRadius: 6 }} onChange={(e) => { const arr = [...videos]; arr[vi] = { ...arr[vi], count: Number(e.target.value) }; setVideos(arr); }} />
             </div>
           ))}
