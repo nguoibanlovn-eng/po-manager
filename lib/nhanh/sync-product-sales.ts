@@ -67,16 +67,28 @@ function addDays(dateStr: string, days: number): string {
   return d.toISOString().substring(0, 10);
 }
 
-// ─── V3: 1 ngày (đơn tạo ngày này + đã thành công) ──
+// ─── V3: 1 ngày (2 pass: deliveryAt + createdAt để bắt đủ) ──
 async function syncV3Day(date: string): Promise<{ orders: number; rows: Row[]; skipped: number; log: string }> {
   const fromTs = Math.floor(new Date(date + "T00:00:00+07:00").getTime() / 1000);
   const toTs = Math.floor(new Date(date + "T23:59:59+07:00").getTime() / 1000);
 
-  // createdAt + status=60 → đơn TẠO ngày này + đã THÀNH CÔNG
-  // Bao gồm cả đơn sàn tự giao, khớp cách Nhanh report đếm
-  const orders = await nhanhV3FetchAll<V3Order>("order/list", {
+  // Pass 1: deliveryAt → đơn GIAO THÀNH CÔNG ngày này (bắt đơn tạo tháng trước)
+  const byDelivery = await nhanhV3FetchAll<V3Order>("order/list", {
+    filters: { deliveryAtFrom: fromTs, deliveryAtTo: toTs, statuses: [60] },
+  }, { maxPages: 200 });
+
+  // Pass 2: createdAt + status=60 → đơn TẠO ngày này + đã thành công (bắt đơn sàn không có deliveryAt)
+  const byCreated = await nhanhV3FetchAll<V3Order>("order/list", {
     filters: { createdAtFrom: fromTs, createdAtTo: toTs, statuses: [60] },
   }, { maxPages: 200 });
+
+  // Merge + dedup by order ID
+  const seen = new Set<string>();
+  const orders: V3Order[] = [];
+  for (const o of [...byDelivery, ...byCreated]) {
+    const id = String(o.info?.id || "");
+    if (id && !seen.has(id)) { seen.add(id); orders.push(o); }
+  }
 
   const now = nowVN();
   const rows: Row[] = [];
@@ -91,9 +103,12 @@ async function syncV3Day(date: string): Promise<{ orders: number; rows: Row[]; s
     const chCode = String(o.channel?.saleChannel || "0");
     const chName = CHANNEL_MAP[chCode] || `Kênh ${chCode}`;
     const customerId = String(o.customer?.customerId || o.customerId || o.customerMobile || "");
-    // Ngày bán = ngày tạo đơn (createdAt)
+    // Ngày bán: ưu tiên deliveryAt (ngày giao thực) > createdAt > date param
     let orderDate = date;
-    if (info.createdAt) {
+    if (o.carrier?.deliveryAt) {
+      const dAt = String(o.carrier.deliveryAt).substring(0, 10);
+      if (dAt.match(/^\d{4}-\d{2}-\d{2}$/)) orderDate = dAt;
+    } else if (info.createdAt) {
       try {
         const ts = Number(info.createdAt);
         if (ts > 1e9) orderDate = new Date(ts * 1000).toLocaleDateString("sv-SE", { timeZone: "Asia/Ho_Chi_Minh" });
@@ -119,7 +134,7 @@ async function syncV3Day(date: string): Promise<{ orders: number; rows: Row[]; s
   }
 
   const chStr = Object.entries(channels).map(([k, v]) => `${k}:${v}`).join(", ");
-  const log = `V3 ${date}: ${orders.length} orders → ${rows.length} rows (skip ${skipped}) [${chStr}]`;
+  const log = `V3 ${date}: ${byDelivery.length}+${byCreated.length}→${orders.length} orders → ${rows.length} rows (skip ${skipped}) [${chStr}]`;
   return { orders: orders.length, rows, skipped, log };
 }
 
