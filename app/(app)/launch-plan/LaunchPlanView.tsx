@@ -619,16 +619,17 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
   );
 
   return (
-    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.45)", zIndex: 100, display: "flex", justifyContent: "center", alignItems: "flex-start", overflowY: "auto", padding: "24px 0" }}>
-      <div style={{ background: "#F5F5F7", width: "100%", maxWidth: 760, borderRadius: 16, boxShadow: "0 25px 50px rgba(0,0,0,.25)", overflow: "hidden", margin: "0 10px" }}>
+    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.45)", zIndex: 100, display: "flex", justifyContent: "center", alignItems: "center", padding: 16 }}>
+      <div style={{ background: "#F5F5F7", width: "100%", maxWidth: 760, maxHeight: "calc(100vh - 32px)", borderRadius: 16, boxShadow: "0 25px 50px rgba(0,0,0,.25)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
-        {/* Sticky header */}
-        <div style={{ position: "sticky", top: 0, zIndex: 10, background: "#fff", borderBottom: "1px solid #E4E4E7", padding: "12px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        {/* Fixed header */}
+        <div style={{ background: "#fff", borderBottom: "1px solid #E4E4E7", padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
           <div style={{ fontWeight: 800, fontSize: 16 }}>{initial ? "Sửa Launch Plan" : "Tạo Launch Plan"}</div>
-          <button onClick={onClose} style={{ background: "#F4F4F5", border: "none", fontSize: 16, cursor: "pointer", color: "#6B7280", width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+          <button onClick={onClose} style={{ background: "#F4F4F5", border: "none", fontSize: 16, cursor: "pointer", color: "#52525B", width: 34, height: 34, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>✕</button>
         </div>
 
-        <div style={{ padding: "16px 20px 80px" }}>
+        {/* Scrollable content */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px 16px" }}>
 
         {/* SP header */}
         <div style={{ padding: "10px 14px", background: "#F0FDF4", borderRadius: 10, marginBottom: 14, display: "flex", alignItems: "center", gap: 12, border: "1px solid #BBF7D0" }}>
@@ -825,10 +826,10 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
           </div>
         </div>
 
-        </div>{/* end content padding */}
+        </div>{/* end scrollable content */}
 
-        {/* Sticky footer */}
-        <div style={{ position: "sticky", bottom: 0, background: "#fff", borderTop: "1px solid #E4E4E7", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 20px", zIndex: 5 }}>
+        {/* Fixed footer */}
+        <div style={{ background: "#fff", borderTop: "1px solid #E4E4E7", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 20px", flexShrink: 0 }}>
           <div style={{ fontSize: 11, color: "#6B7280" }}>{stepDone.filter(Boolean).length}/{stepDone.length} mục đã điền</div>
           <div style={{ display: "flex", gap: 8 }}>
             <button className="btn btn-ghost btn-sm" onClick={onClose}>Huỷ</button>
