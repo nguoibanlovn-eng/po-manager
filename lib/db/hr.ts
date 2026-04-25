@@ -74,7 +74,7 @@ export async function getTaskStats(from: string, to: string): Promise<
   const db = supabaseAdmin();
   const { data: tasks } = await db
     .from("tasks")
-    .select("assignee, status, deadline")
+    .select("assignee_email, status, deadline, done_at")
     .gte("created_at", from + "T00:00:00")
     .lte("created_at", to + "T23:59:59");
 
@@ -82,13 +82,16 @@ export async function getTaskStats(from: string, to: string): Promise<
   const today = new Date().toISOString().substring(0, 10);
 
   for (const t of tasks || []) {
-    const email = t.assignee || "";
+    const email = t.assignee_email || "";
     if (!email) continue;
     const cur = map.get(email) || { total: 0, done: 0, in_progress: 0, overdue: 0 };
     cur.total++;
-    if (t.status === "done" || t.status === "completed") cur.done++;
+    const isDone = t.status === "done" || t.status === "completed" || !!t.done_at;
+    if (isDone) cur.done++;
     else if (t.status === "in_progress") cur.in_progress++;
-    if (t.deadline && t.deadline < today && t.status !== "done" && t.status !== "completed") cur.overdue++;
+    else cur.in_progress++; // null status = in progress
+    const dl = t.deadline ? String(t.deadline).substring(0, 10) : "";
+    if (dl && dl < today && !isDone) cur.overdue++;
     map.set(email, cur);
   }
 
@@ -99,14 +102,20 @@ export async function getTaskStats(from: string, to: string): Promise<
 export async function getOverdueTasks(limit = 10): Promise<
   Array<{ id: string; title: string; assignee: string; deadline: string; status: string }>
 > {
-  const today = new Date().toISOString().substring(0, 10);
+  const today = new Date().toISOString();
   const db = supabaseAdmin();
   const { data } = await db
     .from("tasks")
-    .select("id, title, assignee, deadline, status")
+    .select("task_id, title, assignee_email, deadline, status, done_at")
     .lt("deadline", today)
-    .not("status", "in", '("done","completed")')
+    .is("done_at", null)
     .order("deadline", { ascending: true })
     .limit(limit);
-  return (data as any[]) || [];
+  return (data || []).map((t) => ({
+    id: t.task_id,
+    title: t.title || "",
+    assignee: t.assignee_email || "",
+    deadline: t.deadline ? String(t.deadline).substring(0, 10) : "",
+    status: t.status || "pending",
+  }));
 }
