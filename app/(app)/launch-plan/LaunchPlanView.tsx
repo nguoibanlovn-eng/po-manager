@@ -65,7 +65,7 @@ function getPhaseChecks(m: Metrics): boolean[] {
 /* ═══════════════════════════════════════════════════════════
    MAIN VIEW
    ═══════════════════════════════════════════════════════════ */
-export default function LaunchPlanView({ plans }: { plans: LaunchPlanRow[] }) {
+export default function LaunchPlanView({ plans, autoAdd }: { plans: LaunchPlanRow[]; autoAdd?: { sku: string; name: string; cost: number } }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [tab, setTab] = useState<Tab>("launching");
@@ -75,7 +75,7 @@ export default function LaunchPlanView({ plans }: { plans: LaunchPlanRow[] }) {
   const [invSearch, setInvSearch] = useState("");
   const [invResults, setInvResults] = useState<InvItem[]>([]);
   const [invLoading, setInvLoading] = useState(false);
-  const [formOpen, setFormOpen] = useState<{ sku?: string; name?: string; cost?: number } | null>(null);
+  const [formOpen, setFormOpen] = useState<{ sku?: string; name?: string; cost?: number } | null>(autoAdd || null);
   const [editPlan, setEditPlan] = useState<LaunchPlanRow | null>(null);
 
   const ready = useMemo(() => plans.filter((p) => p.stage === "DRAFT" || p.stage === "READY"), [plans]);

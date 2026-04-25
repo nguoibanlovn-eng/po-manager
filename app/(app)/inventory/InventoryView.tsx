@@ -606,6 +606,7 @@ export default function InventoryView({
               <th style={{ width: 140 }}>% Bán/Tồn</th>
               <th className="text-right" style={{ width: 75 }}>Giá vốn</th>
               <th className="text-right" style={{ width: 105 }}>Giá trị tồn</th>
+              <th style={{ width: 50 }}></th>
             </tr></thead>
             <tbody>
               {analysisPaginated.map((a, idx) => {
@@ -634,6 +635,7 @@ export default function InventoryView({
                     </td>
                     <td className="text-right" style={{ fontSize: 11, color: "#9CA3AF" }}>{a.cost_price > 0 ? formatVND(a.cost_price) : "—"}</td>
                     <td className="text-right" style={{ fontWeight: 700, color: "#16A34A" }}>{a.stockValue > 0 ? formatVND(a.stockValue) : "—"}</td>
+                    <td><a href={`/launch-plan?add=${encodeURIComponent(a.sku)}&name=${encodeURIComponent(a.product_name || "")}&cost=${a.cost_price || 0}`} style={{ fontSize: 9, padding: "2px 6px", borderRadius: 4, background: "#1D9E75", color: "#fff", fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap" }}>▶ Launch</a></td>
                   </tr>
                 );
               })}
