@@ -143,16 +143,13 @@ export const RESEARCH_PIPELINE: PipelineStep[] = [
 ];
 
 export const PRODUCTION_PIPELINE: PipelineStep[] = [
-  { key: "tao_ticket",    label: "Tạo ticket" },
-  { key: "nghien_cuu",    label: "Nghiên cứu" },
-  { key: "duyet_b1",      label: "Duyệt B1" },
-  { key: "giao_tk",       label: "Giao TK" },
-  { key: "thiet_ke",      label: "Thiết kế" },
-  { key: "duyet_2a",      label: "Duyệt 2A" },
-  { key: "ncc_tracking",  label: "NCC+Tracking" },
-  { key: "cho_mau_ve",    label: "Chờ mẫu về" },
-  { key: "duyet_mau",     label: "Duyệt mẫu" },
-  { key: "dat_hang",      label: "Đặt hàng" },
+  { key: "tao_yc",        label: "Tạo yêu cầu",     who: "proposer" },
+  { key: "nghien_cuu",    label: "Nghiên cứu",       who: "worker" },
+  { key: "duyet_nc",      label: "Duyệt NC",         who: "leader" },
+  { key: "trien_khai",    label: "Triển khai SP",     who: "worker" },   // SX mẫu + TK bao bì
+  { key: "duyet_tk",      label: "Duyệt triển khai", who: "leader" },   // Duyệt SX mẫu + TK bao bì riêng
+  { key: "nhan_mau",      label: "Nhận mẫu & QC",    who: "worker" },   // QC checklist, pass/fail/huỷ
+  { key: "dat_hang",      label: "Đặt hàng",         who: "worker" },   // Tạo PO nhập
 ];
 
 export function getPipeline(rdType: string | null | undefined) {
@@ -183,7 +180,7 @@ export function createBlankSteps(rdType: string): RdStep[] {
     assignee_name: "",
     deadline: "",
     result: "",
-    checklist: p.key === "hang_ve" ? [...DEFAULT_QC_CHECKLIST] : [],
+    checklist: (p.key === "hang_ve" || p.key === "nhan_mau") ? [...DEFAULT_QC_CHECKLIST] : [],
     links: [],
     photos: [],
     logs: [],

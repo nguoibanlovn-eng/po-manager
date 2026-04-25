@@ -74,59 +74,43 @@ const STEP_FORM_FIELDS: Record<string, FieldDef[]> = {
     { key: "bulk_eta",          label: "Dự kiến hàng về", type: "date" },
     { key: "lesson_note",       label: "Ghi chú", type: "textarea" },
   ],
-  // Production
-  "Tạo ticket": [
-    { key: "base_sku",          label: "SP gốc (SKU)" },
-    { key: "base_product",      label: "Tên SP gốc" },
-    { key: "improvement_type",  label: "Loại cải tiến" },
+  // ─── Production pipeline ───
+  "Tạo yêu cầu": [
+    { key: "description",       label: "Yêu cầu chi tiết", type: "textarea", required: true },
+    { key: "reason",            label: "Mục đích / lý do", type: "textarea", required: true },
+    { key: "ref_links",         label: "Link tham khảo", type: "url" },
   ],
-  "Lên ý tưởng": [
-    { key: "base_sku",          label: "SP gốc (SKU)" },
-    { key: "improvement_type",  label: "Loại cải tiến" },
-  ],
-  "Duyệt B1": [
-    { key: "approve_verdict",   label: "Kết quả duyệt B1", type: "verdict" },
-    { key: "approve_note",      label: "Ghi chú", type: "textarea" },
-  ],
-  "Thiết kế": [
-    { key: "design_desc",       label: "Mô tả thiết kế", type: "textarea" },
-    { key: "mfg_file_links",    label: "Link file thiết kế", type: "url" },
-  ],
-  "Thiết kế mẫu": [
-    { key: "design_desc",       label: "Mô tả thiết kế", type: "textarea" },
-    { key: "mfg_file_links",    label: "Link file thiết kế", type: "url" },
-  ],
-  "Duyệt 2A": [
-    { key: "approve_verdict",   label: "Kết quả duyệt 2A", type: "verdict" },
-    { key: "approve_note",      label: "Ghi chú", type: "textarea" },
-  ],
-  "NCC+Tracking": [
-    { key: "mfg_supplier",      label: "NCC gia công" },
+  "Triển khai SP": [
+    // Đặt sản xuất mẫu
+    { key: "mfg_what",          label: "Đặt sản xuất gì", type: "textarea", required: true },
+    { key: "mfg_supplier",      label: "NCC / Nơi sản xuất", required: true },
     { key: "mfg_contact",       label: "Liên hệ NCC" },
-    { key: "mfg_moq",           label: "MOQ", type: "number" },
-    { key: "mfg_lead_time",     label: "Lead time (ngày)" },
-    { key: "mfg_price_unit",    label: "Giá gia công (đ)", type: "number" },
-    { key: "mfg_setup_fee",     label: "Phí khuôn (đ)", type: "number" },
-    { key: "mfg_ref_links",     label: "Link NCC / hợp đồng", type: "url" },
+    { key: "mfg_qty",           label: "Số lượng mẫu", type: "number" },
+    { key: "mfg_price",         label: "Giá sản xuất", type: "number" },
+    { key: "mfg_order_date",    label: "Ngày đặt", type: "date" },
+    { key: "mfg_eta",           label: "Dự kiến hàng về", type: "date" },
+    { key: "mfg_assignee",      label: "Ai phụ trách" },
+    // Thiết kế bao bì
+    { key: "design_link",       label: "Link thiết kế bao bì", type: "url" },
+    { key: "design_note",       label: "Ghi chú thiết kế", type: "textarea" },
   ],
-  "Đặt cọc sản xuất": [
-    { key: "mfg_supplier",      label: "NCC gia công" },
-    { key: "mfg_price_unit",    label: "Giá gia công (đ)", type: "number" },
+  "Duyệt triển khai": [
+    { key: "approve_mfg_verdict",    label: "Duyệt sản xuất mẫu", type: "verdict" },
+    { key: "approve_mfg_note",       label: "Nhận xét SX mẫu", type: "textarea" },
+    { key: "approve_design_verdict", label: "Duyệt thiết kế bao bì", type: "verdict" },
+    { key: "approve_design_note",    label: "Nhận xét thiết kế", type: "textarea" },
   ],
-  "Chờ mẫu về": [
-    { key: "sample_eta",        label: "Dự kiến mẫu về", type: "date" },
-  ],
-  "QC & Nhận hàng": [
-    { key: "check_note",        label: "Ghi chú kiểm tra", type: "textarea" },
+  "Nhận mẫu & QC": [
+    { key: "qc_actual",         label: "Mô tả mẫu thực tế", type: "textarea", required: true },
+    { key: "qc_score",          label: "Điểm QC (/10)" },
+    { key: "qc_evaluation",     label: "Đánh giá chung", type: "textarea", required: true },
   ],
   "Đặt hàng": [
-    { key: "bulk_qty",          label: "Số lượng đặt", type: "number" },
-    { key: "bulk_price",        label: "Giá (đ)", type: "number" },
-    { key: "target_launch_date", label: "Ngày launch dự kiến", type: "date" },
-    { key: "linked_bulk_po",    label: "Mã PO" },
-  ],
-  "Ra mắt": [
-    { key: "target_launch_date", label: "Ngày launch", type: "date" },
+    { key: "bulk_supplier",     label: "NCC nhập hàng" },
+    { key: "bulk_contact",      label: "Liên hệ NCC" },
+    { key: "bulk_qty",          label: "Số lượng nhập", type: "number" },
+    { key: "bulk_price",        label: "Giá nhập (đ)", type: "number" },
+    { key: "bulk_eta",          label: "Dự kiến hàng về", type: "date" },
     { key: "lesson_note",       label: "Ghi chú", type: "textarea" },
   ],
 };
@@ -380,12 +364,12 @@ function ModalInner({
     const fd = formData;
     const d = data;
 
-    if (sl === "Đề xuất") {
+    if (sl === "Đề xuất" || sl === "Tạo yêu cầu") {
       if (!itemName.trim()) missing.push("Tên sản phẩm");
       if (!assignee) missing.push("Giao cho ai");
       if (!deadline) missing.push("Deadline");
-      if (!String(fd.description || d.description || "").trim()) missing.push("Mô tả sản phẩm");
-      if (!String(fd.reason || d.reason || "").trim()) missing.push("Lý do đề xuất");
+      if (!String(fd.description || d.description || "").trim()) missing.push(sl === "Tạo yêu cầu" ? "Yêu cầu chi tiết" : "Mô tả sản phẩm");
+      if (!String(fd.reason || d.reason || "").trim()) missing.push(sl === "Tạo yêu cầu" ? "Mục đích / lý do" : "Lý do đề xuất");
     } else if (sl === "Nghiên cứu") {
       if (!String(fd.usp || d.usp || "").trim()) missing.push("Phân tích USP");
       if (!Number(fd.price_buy || d.price_buy || 0)) missing.push("Giá nhập dự kiến");
@@ -396,8 +380,14 @@ function ModalInner({
       if (!String(fd.deadline_dat_mau || d.deadline_dat_mau || "")) missing.push("Deadline đặt mẫu");
     } else if (sl === "Đặt mẫu") {
       if (!String(d.linked_sample_po || "")) missing.push("Tạo đơn PO mẫu");
-    } else if (sl === "Hàng về" || sl === "QC & Nhận hàng") {
-      if (!String(fd.qc_actual || d.qc_actual || "").trim()) missing.push("Thông tin thực tế");
+    } else if (sl === "Triển khai SP") {
+      if (!String(fd.mfg_what || d.mfg_what || "").trim()) missing.push("Đặt sản xuất gì");
+      if (!String(fd.mfg_supplier || d.mfg_supplier || "").trim()) missing.push("NCC / Nơi sản xuất");
+    } else if (sl === "Duyệt triển khai") {
+      if (!String(fd.approve_mfg_verdict || d.approve_mfg_verdict || "").trim()) missing.push("Duyệt sản xuất mẫu");
+      if (!String(fd.approve_design_verdict || d.approve_design_verdict || "").trim()) missing.push("Duyệt thiết kế bao bì");
+    } else if (sl === "Hàng về" || sl === "QC & Nhận hàng" || sl === "Nhận mẫu & QC") {
+      if (!String(fd.qc_actual || d.qc_actual || "").trim()) missing.push("Mô tả mẫu thực tế");
       const evaluated = checklist.filter(c => c.verdict === "pass" || c.verdict === "fail");
       if (checklist.length < 3) missing.push("Tối thiểu 3 mục checklist");
       else if (evaluated.length < checklist.length) missing.push("Đánh giá hết checklist (pass/fail)");
@@ -421,12 +411,18 @@ function ModalInner({
     startTransition(async () => {
       const now = new Date().toISOString();
       const logEntry = { action: "complete", by: currentUserEmail, at: now, step: step.label };
-      // Khi Duyệt NC / Duyệt mẫu → giao NV + deadline cho bước tiếp
-      const isApprovalWithAssign = step.label === "Duyệt NC" || step.label === "Duyệt mẫu";
-      const nextAssignKey = step.label === "Duyệt NC" ? "assign_dat_mau" : "assign_nhap_hang";
+      // Khi Duyệt NC / Duyệt mẫu / Duyệt triển khai → giao NV + deadline cho bước tiếp
+      const APPROVAL_STEPS: Record<string, { assignKey: string; dlKey: string }> = {
+        "Duyệt NC": { assignKey: "assign_dat_mau", dlKey: "deadline_dat_mau" },
+        "Duyệt mẫu": { assignKey: "assign_nhap_hang", dlKey: "deadline_nhap_hang" },
+        "Duyệt triển khai": { assignKey: "assign_nhan_mau", dlKey: "deadline_nhan_mau" },
+      };
+      const approvalCfg = APPROVAL_STEPS[step.label];
+      const isApprovalWithAssign = !!approvalCfg;
+      const nextAssignKey = approvalCfg?.assignKey || "";
       const nextAssignEmail = isApprovalWithAssign ? String(formData[nextAssignKey] || data[nextAssignKey] || "") : "";
       const nextAssignName = nextAssignEmail ? (users.find((u) => u.email === nextAssignEmail)?.name || nextAssignEmail) : "";
-      const nextDlKey = step.label === "Duyệt NC" ? "deadline_dat_mau" : "deadline_nhap_hang";
+      const nextDlKey = approvalCfg?.dlKey || "";
       const nextDl = isApprovalWithAssign ? String(formData[nextDlKey] || data[nextDlKey] || "") : "";
 
       const updated = initSteps.map((s, i) => {
@@ -498,7 +494,7 @@ function ModalInner({
   function setVerdict(i: number, v: "pass" | "fail" | null) { setChecklist(checklist.map((c, idx) => idx === i ? { ...c, verdict: v, checked: v === "pass" } : c)); setDirty(true); }
   function removeCheck(i: number) { setChecklist(checklist.filter((_, idx) => idx !== i)); setDirty(true); }
   function updateCheckNote(i: number, note: string) { setChecklist(checklist.map((c, idx) => idx === i ? { ...c, note } : c)); setDirty(true); }
-  const isQcStep = step.label === "Hàng về" || step.label === "Kiểm tra" || step.label === "QC & Nhận hàng";
+  const isQcStep = step.label === "Hàng về" || step.label === "Kiểm tra" || step.label === "QC & Nhận hàng" || step.label === "Nhận mẫu & QC";
   const passCount = checklist.filter(c => c.verdict === "pass").length;
   const failCount = checklist.filter(c => c.verdict === "fail").length;
 
@@ -922,11 +918,18 @@ function ModalInner({
                       startTransition(async () => {
                         const now = new Date().toLocaleDateString("vi-VN");
                         const byName = users.find((u) => u.email === currentUserEmail)?.name || currentUserEmail;
-                        // Reopen previous work step, lock this approval step
+                        // Reopen previous work step, lock this + intermediate approval steps
+                        // "Nhận mẫu & QC" not pass → quay về "Triển khai SP" (skip "Duyệt triển khai")
                         const revLog = { action: "revision", by: currentUserEmail, at: now, step: step.label, note: result };
+                        const reopenIdx = (step.label === "Nhận mẫu & QC")
+                          ? initSteps.findIndex(s => s.label === "Triển khai SP")
+                          : activeIdx - 1;
+                        const targetIdx = reopenIdx >= 0 ? reopenIdx : activeIdx - 1;
                         const updatedSteps = initSteps.map((s, i) => {
                           if (i === activeIdx) return { ...s, status: "locked" as const, logs: [...(s.logs || []), revLog] };
-                          if (i === activeIdx - 1) return { ...s, status: "active" as const, logs: [...(s.logs || []), { action: "reopened", by: currentUserEmail, at: now, from: step.label }] };
+                          // Lock intermediate steps between target and current
+                          if (i > targetIdx && i < activeIdx) return { ...s, status: "locked" as const, logs: [...(s.logs || []), { action: "revision_reset", by: currentUserEmail, at: now, from: step.label }] };
+                          if (i === targetIdx) return { ...s, status: "active" as const, logs: [...(s.logs || []), { action: "reopened", by: currentUserEmail, at: now, from: step.label }] };
                           return s;
                         });
                         const newData = {
