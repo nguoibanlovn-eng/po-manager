@@ -27,6 +27,7 @@ const QUICK_RANGES = [
   { key: "7d", label: "7 ngày", from: daysAgo(-7), to: daysAgo(0) },
   { key: "this_month", label: "Tháng này", ...monthRange(0) },
   { key: "last_month", label: "Tháng trước", ...monthRange(-1) },
+  { key: "this_year", label: "Năm nay", from: `${new Date().getFullYear()}-01-01`, to: daysAgo(0) },
 ];
 
 export default function FbPagesView({
