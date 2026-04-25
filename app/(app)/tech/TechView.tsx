@@ -27,32 +27,72 @@ export default function TechView({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
+  // Stats
+  const allItems = Object.values(itemsByOrder).flat();
+  const totalItems = allItems.length;
+  const qcDone = allItems.filter((it) => it.qc_status === "Đã QC xong").length;
+  const shelfDone = allItems.filter((it) => it.shelf_done).length;
+  const damaged = allItems.filter((it) => toNum(it.damage_qty) > 0).length;
+  const damageCost = allItems.reduce((s, it) => s + toNum(it.damage_amount), 0);
+  const waitingQc = orders.filter((o) => {
+    const its = itemsByOrder[o.order_id] || [];
+    return its.some((it) => it.qc_status !== "Đã QC xong");
+  }).length;
+
   return (
     <section className="section">
       <div className="page-hdr">
         <div>
-          <div className="page-title">⚙️ QC &amp; Lên kệ</div>
-          <div className="page-sub">{orders.length} đơn</div>
+          <div className="page-title">QC & Lên kệ</div>
+          <div className="page-sub">{orders.length} đơn · {totalItems} SP</div>
         </div>
         <button className="btn btn-ghost btn-sm" onClick={() => router.refresh()}>🔄</button>
       </div>
 
-      {null}
+      {/* Dashboard strip */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", background: "var(--card)", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden", marginBottom: 12 }}>
+        <div style={{ padding: "12px 14px", borderRight: "1px solid var(--border)" }}>
+          <div style={{ fontSize: 10, fontWeight: 800, color: "var(--blue)", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>Chờ QC</div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: "var(--blue)" }}>{waitingQc}</div>
+          <div style={{ fontSize: 10, color: "var(--subtle)" }}>{orders.length} đơn tổng</div>
+        </div>
+        <div style={{ padding: "12px 14px", borderRight: "1px solid var(--border)" }}>
+          <div style={{ fontSize: 10, fontWeight: 800, color: "#0D9488", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>QC xong</div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: "#0D9488" }}>{qcDone}/{totalItems}</div>
+          <div style={{ fontSize: 10, color: "var(--subtle)" }}>{totalItems > 0 ? Math.round(qcDone / totalItems * 100) : 0}%</div>
+        </div>
+        <div style={{ padding: "12px 14px", borderRight: "1px solid var(--border)" }}>
+          <div style={{ fontSize: 10, fontWeight: 800, color: "var(--green)", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>Lên kệ</div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: "var(--green)" }}>{shelfDone}/{totalItems}</div>
+          <div style={{ fontSize: 10, color: "var(--subtle)" }}>{totalItems > 0 ? Math.round(shelfDone / totalItems * 100) : 0}%</div>
+        </div>
+        <div style={{ padding: "12px 14px", borderRight: "1px solid var(--border)" }}>
+          <div style={{ fontSize: 10, fontWeight: 800, color: "var(--red)", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>Hàng lỗi</div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: "var(--red)" }}>{damaged}</div>
+          <div style={{ fontSize: 10, color: "var(--subtle)" }}>{damaged} SP lỗi</div>
+        </div>
+        <div style={{ padding: "12px 14px" }}>
+          <div style={{ fontSize: 10, fontWeight: 800, color: "#7C3AED", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>Thiệt hại</div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: "#7C3AED" }}>{formatVND(damageCost)}</div>
+          <div style={{ fontSize: 10, color: "var(--subtle)" }}>giá trị lỗi</div>
+        </div>
+      </div>
 
+      {/* Tabs */}
       <div className="mini-tabs">
         <Link
           href="/tech?tab=active"
           className={"mini-tab" + (activeTab === "active" ? " active" : "")}
           style={{ textDecoration: "none" }}
         >
-          ⏳ Đang xử lý
+          Đang xử lý
         </Link>
         <Link
           href="/tech?tab=done"
           className={"mini-tab" + (activeTab === "done" ? " active" : "")}
           style={{ textDecoration: "none" }}
         >
-          ✅ Đã hoàn thành
+          Đã hoàn thành
         </Link>
       </div>
 
