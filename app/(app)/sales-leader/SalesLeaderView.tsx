@@ -91,7 +91,8 @@ export default function SalesLeaderView({
   ), [gmvMax]);
 
   const totalSpend = adsTotals.spend + gmvTotals.spend;
-  const roas = totalSpend > 0 ? (nhanhTotals.revenue + gmvTotals.revenue) / totalSpend : 0;
+  // Nhanh revenue đã bao gồm GMV Max → không cộng thêm
+  const roas = totalSpend > 0 ? nhanhTotals.revenue / totalSpend : 0;
 
   return (
     <section className="section">
@@ -141,9 +142,9 @@ export default function SalesLeaderView({
           );
         })()}
         <div style={{ padding: "10px 14px", borderRadius: 8, background: "#F0FDF4", border: "1px solid #BBF7D0" }}>
-          <div style={{ fontSize: 9, fontWeight: 600, color: "#166534", letterSpacing: ".3px" }}>GMV TỔNG</div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: "#166534", margin: "2px 0" }}>{formatVNDCompact(nhanhTotals.revenue + gmvTotals.revenue)}</div>
-          <div style={{ fontSize: 9, color: "#166534", opacity: 0.7 }}>Nhanh {formatVNDCompact(nhanhTotals.revenue)} + Max {formatVNDCompact(gmvTotals.revenue)}</div>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "#166534", letterSpacing: ".3px" }}>DOANH THU</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: "#166534", margin: "2px 0" }}>{formatVNDCompact(nhanhTotals.revenue)}</div>
+          <div style={{ fontSize: 9, color: "#166534", opacity: 0.7 }}>Từ Nhanh (đã gồm GMV Max)</div>
         </div>
         <div style={{ padding: "10px 14px", borderRadius: 8, background: "#FEF2F2", border: "1px solid #FECACA" }}>
           <div style={{ fontSize: 9, fontWeight: 600, color: "#991B1B", letterSpacing: ".3px" }}>ADS SPEND</div>
@@ -157,8 +158,8 @@ export default function SalesLeaderView({
         </div>
         <div style={{ padding: "10px 14px", borderRadius: 8, background: "#fff", border: "1px solid #E5E7EB" }}>
           <div style={{ fontSize: 9, fontWeight: 600, color: "#374151", letterSpacing: ".3px" }}>DON THANH CONG</div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: "#374151", margin: "2px 0" }}>{(nhanhTotals.orders + gmvTotals.orders).toLocaleString("vi-VN")}</div>
-          <div style={{ fontSize: 9, color: "#6B7280" }}>Nhanh {nhanhTotals.orders} + Max {gmvTotals.orders}</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: "#374151", margin: "2px 0" }}>{nhanhTotals.orders.toLocaleString("vi-VN")}</div>
+          <div style={{ fontSize: 9, color: "#6B7280" }}>Nhanh {nhanhTotals.orders} (gồm GMV Max)</div>
         </div>
         <div style={{ padding: "10px 14px", borderRadius: 8, background: "#fff", border: "1px solid #E5E7EB" }}>
           <div style={{ fontSize: 9, fontWeight: 600, color: "#374151", letterSpacing: ".3px" }}>CTR / CONVERSION</div>
