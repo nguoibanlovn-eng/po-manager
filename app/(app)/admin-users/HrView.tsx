@@ -33,12 +33,14 @@ function stars(n: number) {
 }
 
 export default function HrView({
-  users, evaluations, taskStats, overdueTasks, currentPeriod, currentUserEmail,
+  users, evaluations, taskStats, overdueTasks, autoKpi, workStats, currentPeriod, currentUserEmail,
 }: {
   users: AdminUserRow[];
   evaluations: HrEvaluation[];
   taskStats: Array<{ email: string; total: number; done: number; in_progress: number; overdue: number }>;
   overdueTasks: Array<{ id: string; title: string; assignee: string; deadline: string; status: string }>;
+  autoKpi: Record<string, { kpi: number; revenue: number; target: number; channels: string }>;
+  workStats: Record<string, { tasks: number; tasksDone: number; rdSteps: number; rdDone: number }>;
   currentPeriod: string;
   currentUserEmail: string;
 }) {
@@ -150,6 +152,7 @@ export default function HrView({
                 <thead><tr>
                   <th></th><th>Nhân viên</th><th>Team</th>
                   <th style={{ textAlign: "center" }}>KPI %</th>
+                  <th style={{ textAlign: "center" }}>Công việc</th>
                   <th style={{ textAlign: "center" }}>Chất lượng</th>
                   <th style={{ textAlign: "center" }}>Thái độ</th>
                   <th style={{ textAlign: "center" }}>Tổng điểm</th>
@@ -159,7 +162,7 @@ export default function HrView({
                 </tr></thead>
                 <tbody>
                   {userEvals.map((u) => (
-                    <EvalRow key={u.email} user={u} ev={u.eval} period={currentPeriod} currentUserEmail={currentUserEmail} pending={pending} start={start} onDone={() => router.refresh()} />
+                    <EvalRow key={u.email} user={u} ev={u.eval} period={currentPeriod} currentUserEmail={currentUserEmail} pending={pending} start={start} onDone={() => router.refresh()} autoKpi={autoKpi[u.email]} workStat={workStats[u.email]} />
                   ))}
                 </tbody>
               </table>
@@ -321,12 +324,15 @@ function FilterSelect({ label, value, onChange, options }: { label: string; valu
   );
 }
 
-function EvalRow({ user, ev, period, currentUserEmail, pending, start, onDone }: {
+function EvalRow({ user, ev, period, currentUserEmail, pending, start, onDone, autoKpi, workStat }: {
   user: AdminUserRow; ev: HrEvaluation | null; period: string;
   currentUserEmail: string; pending: boolean; start: ReturnType<typeof useTransition>[1]; onDone: () => void;
+  autoKpi?: { kpi: number; revenue: number; target: number; channels: string };
+  workStat?: { tasks: number; tasksDone: number; rdSteps: number; rdDone: number };
 }) {
   const [editing, setEditing] = useState(false);
-  const [kpi, setKpi] = useState(String(ev?.kpi_percent || ""));
+  const displayKpi = ev?.kpi_percent || autoKpi?.kpi || 0;
+  const [kpi, setKpi] = useState(String(displayKpi || ""));
   const [quality, setQuality] = useState(ev?.quality || 0);
   const [attitude, setAttitude] = useState(ev?.attitude || 0);
   const [note, setNote] = useState(ev?.note || "");
@@ -335,7 +341,7 @@ function EvalRow({ user, ev, period, currentUserEmail, pending, start, onDone }:
 
   if (editing) {
     return (
-      <tr><td colSpan={10}>
+      <tr><td colSpan={11}>
         <div style={{ padding: 14, background: "#F8FAFC", border: "1px solid #7C3AED", borderRadius: 8 }}>
           <div style={{ fontWeight: 700, marginBottom: 10 }}>Đánh giá: {user.name || user.email}</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 2fr", gap: 10, marginBottom: 10 }}>
@@ -380,8 +386,24 @@ function EvalRow({ user, ev, period, currentUserEmail, pending, start, onDone }:
         <td><div style={{ width: 32, height: 32, borderRadius: "50%", background: avatarColor(user.email), display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11, fontWeight: 700 }}>{initials(user.name || user.email)}</div></td>
         <td style={{ fontWeight: 700, color: "#94A3B8" }}>{user.name || user.email}</td>
         <td><span className="chip chip-gray" style={{ fontSize: 10 }}>{user.team || "—"}</span></td>
-        <td colSpan={6} style={{ textAlign: "center", color: "#D97706", fontStyle: "italic" }}>
-          ⚠ Chưa đánh giá — <button onClick={() => setEditing(true)} style={{ color: "#7C3AED", fontWeight: 600, background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Đánh giá ngay</button>
+        <td style={{ textAlign: "center" }}>
+          {autoKpi ? (
+            <div title={`DT: ${Math.round(autoKpi.revenue / 1e6)}M / Target: ${Math.round(autoKpi.target / 1e6)}M`}>
+              <div style={{ fontWeight: 700, color: autoKpi.kpi >= 100 ? "#16A34A" : autoKpi.kpi >= 70 ? "#D97706" : "#DC2626" }}>{autoKpi.kpi}%</div>
+              <div style={{ fontSize: 8, color: "#94A3B8" }}>auto</div>
+            </div>
+          ) : <span style={{ color: "#94A3B8" }}>—</span>}
+        </td>
+        <td style={{ textAlign: "center", fontSize: 10 }}>
+          {workStat ? (
+            <div title={`Tasks: ${workStat.tasksDone}/${workStat.tasks} · R&D: ${workStat.rdDone}/${workStat.rdSteps}`}>
+              <div style={{ fontWeight: 600 }}>{workStat.tasksDone + workStat.rdDone}/{workStat.tasks + workStat.rdSteps}</div>
+              <div style={{ fontSize: 8, color: "#94A3B8" }}>việc xong</div>
+            </div>
+          ) : <span style={{ color: "#94A3B8" }}>—</span>}
+        </td>
+        <td colSpan={4} style={{ textAlign: "center", color: "#D97706", fontStyle: "italic" }}>
+          Chưa đánh giá — <button onClick={() => setEditing(true)} style={{ color: "#7C3AED", fontWeight: 600, background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Đánh giá ngay</button>
         </td>
         <td></td>
       </tr>
@@ -399,6 +421,14 @@ function EvalRow({ user, ev, period, currentUserEmail, pending, start, onDone }:
         <div style={{ width: 80, height: 4, borderRadius: 2, background: "#E2E8F0", margin: "3px auto 0", overflow: "hidden" }}>
           <div style={{ height: "100%", width: Math.min(ev.kpi_percent, 100) + "%", background: kpiColor, borderRadius: 2 }} />
         </div>
+      </td>
+      <td style={{ textAlign: "center", fontSize: 10 }}>
+        {workStat ? (
+          <div title={`Tasks: ${workStat.tasksDone}/${workStat.tasks} · R&D: ${workStat.rdDone}/${workStat.rdSteps}`}>
+            <div style={{ fontWeight: 600 }}>{workStat.tasksDone + workStat.rdDone}/{workStat.tasks + workStat.rdSteps}</div>
+            <div style={{ fontSize: 8, color: "#94A3B8" }}>việc xong</div>
+          </div>
+        ) : <span style={{ color: "#94A3B8" }}>—</span>}
       </td>
       <td style={{ textAlign: "center", color: "#F59E0B", letterSpacing: 2 }}>{stars(ev.quality)}</td>
       <td style={{ textAlign: "center", color: "#F59E0B", letterSpacing: 2 }}>{stars(ev.attitude)}</td>
