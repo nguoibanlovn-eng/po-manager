@@ -117,7 +117,7 @@ const CHANNEL_NAMES: Record<number, string> = {
   10: "API",    // Nhanh dùng cả ID 5 và 10 cho API/Web orders
   20: "Facebook",
   42: "Shopee",
-  48: "TikTok",
+  48: "TikTok Shop",
 };
 
 /** Sync revenue from Nhanh report for a single date */
