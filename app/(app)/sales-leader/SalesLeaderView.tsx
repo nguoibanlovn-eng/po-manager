@@ -275,9 +275,8 @@ function OverviewTab({ ads, nhanhRevenue, gmvMax, adsTotals, nhanhTotals, gmvTot
   return (
     <>
       {/* TÀI KHOẢN ADS */}
-      <Collapsible title="TÀI KHOẢN ADS" defaultOpen badge={<span className="muted" style={{ fontSize: 11 }}>{adsByAdv.length} tài khoản · {formatVND(adsTotals.spend)}</span>}>
-        <div className="muted" style={{ fontSize: 11, marginBottom: 6 }}>Chi tiêu theo ngày</div>
-        <SimpleBar data={adsByDate.map(([d, v]) => [d, v.spend] as [string, number])} color="#FF6B8A" />
+      <Collapsible title="TÀI KHOẢN ADS" defaultOpen badge={<span className="muted" style={{ fontSize: 11 }}>{adsByAdv.length} tài khoản · BM {formatVNDCompact(adsTotals.spend)} + GMV Max {formatVNDCompact(gmvTotals.spend)}</span>}>
+        <AdsRevenueChart ads={ads} gmvMax={gmvMax} nhanhRevenue={nhanhRevenue} />
 
         {/* Advertiser table */}
         <div className="tbl-wrap" style={{ marginTop: 10 }}>
@@ -1008,6 +1007,164 @@ function CsvUploadButton({ onDone }: { onDone?: () => void }) {
       )}
       <input type="file" accept=".csv,.tsv,.txt" onChange={handleFile} style={{ display: "none" }} disabled={uploading} />
     </label>
+  );
+}
+
+/* ═══ STACKED ADS + REVENUE CHART ═══ */
+function AdsRevenueChart({ ads, gmvMax, nhanhRevenue }: {
+  ads: TiktokAdsRow[]; gmvMax: GmvMaxRow[]; nhanhRevenue: TiktokNhanhRow[];
+}) {
+  // Build daily data
+  const daily = useMemo(() => {
+    const map = new Map<string, { bm: number; gmvSpend: number; gmvRev: number; rev: number }>();
+    for (const a of ads) {
+      const d = String(a.date).substring(0, 10);
+      const cur = map.get(d) || { bm: 0, gmvSpend: 0, gmvRev: 0, rev: 0 };
+      cur.bm += toNum(a.spend);
+      map.set(d, cur);
+    }
+    for (const g of gmvMax) {
+      const d = String(g.date).substring(0, 10);
+      const cur = map.get(d) || { bm: 0, gmvSpend: 0, gmvRev: 0, rev: 0 };
+      cur.gmvSpend += Number(g.spend || 0);
+      cur.gmvRev += Number(g.gross_revenue || 0);
+      map.set(d, cur);
+    }
+    for (const r of nhanhRevenue) {
+      const d = String(r.date).substring(0, 10);
+      const cur = map.get(d) || { bm: 0, gmvSpend: 0, gmvRev: 0, rev: 0 };
+      cur.rev += r.revenue;
+      map.set(d, cur);
+    }
+    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [ads, gmvMax, nhanhRevenue]);
+
+  if (daily.length === 0) return <div className="muted" style={{ padding: 24, textAlign: "center" }}>Không có data.</div>;
+
+  const maxSpend = Math.max(...daily.map(([, d]) => d.bm + d.gmvSpend));
+  const maxRev = Math.max(...daily.map(([, d]) => d.rev));
+  const totalBm = daily.reduce((s, [, d]) => s + d.bm, 0);
+  const totalGmv = daily.reduce((s, [, d]) => s + d.gmvSpend, 0);
+  const totalRev = daily.reduce((s, [, d]) => s + d.rev, 0);
+  const barH = 130;
+
+  // Revenue line points (SVG)
+  const revPoints = daily.map(([, d], i) => {
+    const x = ((i + 0.5) / daily.length) * 100;
+    const y = maxRev > 0 ? 100 - (d.rev / maxRev) * 85 : 100;
+    return `${x},${y}`;
+  });
+
+  return (
+    <>
+      {/* Chart 1: Stacked Ads + Revenue Line */}
+      <div className="muted" style={{ fontSize: 11, marginBottom: 6 }}>Chi tiêu Ads + Doanh thu theo ngày</div>
+      <div style={{ position: "relative", height: barH + 40, marginBottom: 4 }}>
+        {/* Bars */}
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: barH, position: "relative", zIndex: 2, borderBottom: "1px solid #E2E8F0" }}>
+          {daily.map(([date, d]) => {
+            const total = d.bm + d.gmvSpend;
+            const bmH = maxSpend > 0 ? (d.bm / maxSpend) * barH * 0.65 : 0;
+            const gmvH = maxSpend > 0 ? (d.gmvSpend / maxSpend) * barH * 0.65 : 0;
+            return (
+              <div key={date} style={{ flex: 1, minWidth: 16, display: "flex", flexDirection: "column", alignItems: "center" }} title={`${date}: BM ${formatVNDCompact(d.bm)} + GMV ${formatVNDCompact(d.gmvSpend)} = ${formatVNDCompact(total)}`}>
+                <div style={{ fontSize: 7, fontWeight: 700, color: "#374151", marginBottom: 1, whiteSpace: "nowrap" }}>{formatVNDCompact(total)}</div>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
+                  <div style={{ width: "65%", height: gmvH, background: "#FF9500", borderRadius: "2px 2px 0 0", minWidth: 10 }} />
+                  <div style={{ width: "65%", height: bmH, background: "#FE2C55", borderRadius: "0 0 2px 2px", minWidth: 10 }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {/* Revenue Line Overlay */}
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: barH, zIndex: 3, pointerEvents: "none" }}>
+          <polygon points={`0,100 ${revPoints.join(" ")} 100,100`} fill="rgba(22,163,74,0.06)" />
+          <polyline points={revPoints.join(" ")} fill="none" stroke="#16A34A" strokeWidth="0.8" />
+          {daily.map(([, d], i) => {
+            const x = ((i + 0.5) / daily.length) * 100;
+            const y = maxRev > 0 ? 100 - (d.rev / maxRev) * 85 : 100;
+            return <circle key={i} cx={x} cy={y} r="0.8" fill="#16A34A" />;
+          })}
+        </svg>
+        {/* Date labels */}
+        <div style={{ display: "flex", gap: 2, marginTop: 4 }}>
+          {daily.map(([date]) => (
+            <div key={date} style={{ flex: 1, textAlign: "center", fontSize: 7, color: "#94A3B8" }}>{date.substring(5)}</div>
+          ))}
+        </div>
+      </div>
+      {/* Legend */}
+      <div style={{ display: "flex", gap: 14, alignItems: "center", paddingTop: 8, borderTop: "1px solid #F1F5F9", fontSize: 10, color: "#64748B", flexWrap: "wrap" }}>
+        <span><span style={{ display: "inline-block", width: 9, height: 9, borderRadius: 2, background: "#FE2C55", verticalAlign: "middle", marginRight: 4 }} />BM {formatVNDCompact(totalBm)}</span>
+        <span><span style={{ display: "inline-block", width: 9, height: 9, borderRadius: 2, background: "#FF9500", verticalAlign: "middle", marginRight: 4 }} />GMV Max {formatVNDCompact(totalGmv)}</span>
+        <span><span style={{ display: "inline-block", width: 14, height: 2, borderRadius: 1, background: "#16A34A", verticalAlign: "middle", marginRight: 4 }} />Doanh thu</span>
+        <span style={{ marginLeft: "auto", fontWeight: 700, color: "#18181B" }}>Tổng Ads: {formatVNDCompact(totalBm + totalGmv)} · ROAS: {(totalBm + totalGmv) > 0 ? (totalRev / (totalBm + totalGmv)).toFixed(1) + "x" : "—"}</span>
+      </div>
+
+      {/* Chart 2: GMV Max Detail */}
+      <div style={{ marginTop: 20, paddingTop: 14, borderTop: "1px solid #E2E8F0" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#92400E" }}>GMV MAX CHI TIẾT</div>
+          <div style={{ fontSize: 9, padding: "2px 8px", borderRadius: 4, background: "#FFF7ED", color: "#92400E", fontWeight: 600 }}>
+            {formatVNDCompact(daily.reduce((s, [, d]) => s + d.gmvRev, 0))} DT · {formatVNDCompact(totalGmv)} Ads · ROI {totalGmv > 0 ? (daily.reduce((s, [, d]) => s + d.gmvRev, 0) / totalGmv).toFixed(1) : "—"}
+          </div>
+        </div>
+        <GmvMaxMiniChart daily={daily} />
+      </div>
+    </>
+  );
+}
+
+function GmvMaxMiniChart({ daily }: { daily: [string, { bm: number; gmvSpend: number; gmvRev: number; rev: number }][] }) {
+  const maxGmvSpend = Math.max(...daily.map(([, d]) => d.gmvSpend));
+  const maxGmvRev = Math.max(...daily.map(([, d]) => d.gmvRev));
+  const miniH = 80;
+
+  const revPoints = daily.map(([, d], i) => {
+    const x = ((i + 0.5) / daily.length) * 100;
+    const y = maxGmvRev > 0 ? 100 - (d.gmvRev / maxGmvRev) * 85 : 100;
+    return `${x},${y}`;
+  });
+
+  return (
+    <>
+      <div style={{ position: "relative", height: miniH + 30 }}>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: miniH, borderBottom: "1px solid #E2E8F0", position: "relative", zIndex: 2 }}>
+          {daily.map(([date, d]) => {
+            const h = maxGmvSpend > 0 ? (d.gmvSpend / maxGmvSpend) * miniH * 0.75 : 0;
+            const roi = d.gmvSpend > 0 ? d.gmvRev / d.gmvSpend : 0;
+            const barColor = roi >= 10 ? "#16A34A" : "#DC2626";
+            return (
+              <div key={date} style={{ flex: 1, minWidth: 14, display: "flex", flexDirection: "column", alignItems: "center" }} title={`${date}: Spend ${formatVNDCompact(d.gmvSpend)} · Rev ${formatVNDCompact(d.gmvRev)} · ROI ${roi.toFixed(1)}`}>
+                <div style={{ fontSize: 7, fontWeight: 700, color: barColor, marginBottom: 1 }}>{d.gmvSpend > 0 ? roi.toFixed(1) + "x" : ""}</div>
+                <div style={{ width: "55%", height: h, background: barColor, borderRadius: "2px 2px 0 0", minWidth: 8 }} />
+              </div>
+            );
+          })}
+        </div>
+        {/* Revenue line */}
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: miniH, zIndex: 3, pointerEvents: "none" }}>
+          <polygon points={`0,100 ${revPoints.join(" ")} 100,100`} fill="rgba(22,163,74,0.06)" />
+          <polyline points={revPoints.join(" ")} fill="none" stroke="#16A34A" strokeWidth="1" />
+          {daily.map(([, d], i) => {
+            const x = ((i + 0.5) / daily.length) * 100;
+            const y = maxGmvRev > 0 ? 100 - (d.gmvRev / maxGmvRev) * 85 : 100;
+            return <circle key={i} cx={x} cy={y} r="0.8" fill="#16A34A" />;
+          })}
+        </svg>
+        <div style={{ display: "flex", gap: 2, marginTop: 4 }}>
+          {daily.map(([date]) => (
+            <div key={date} style={{ flex: 1, textAlign: "center", fontSize: 6.5, color: "#94A3B8" }}>{date.substring(8)}</div>
+          ))}
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 14, alignItems: "center", paddingTop: 6, fontSize: 10, color: "#64748B" }}>
+        <span><span style={{ display: "inline-block", width: 9, height: 9, borderRadius: 2, background: "#16A34A", verticalAlign: "middle", marginRight: 4 }} />ROI &ge; 10</span>
+        <span><span style={{ display: "inline-block", width: 9, height: 9, borderRadius: 2, background: "#DC2626", verticalAlign: "middle", marginRight: 4 }} />ROI &lt; 10</span>
+        <span><span style={{ display: "inline-block", width: 14, height: 2, borderRadius: 1, background: "#16A34A", verticalAlign: "middle", marginRight: 4 }} />DT GMV Max</span>
+      </div>
+    </>
   );
 }
 
