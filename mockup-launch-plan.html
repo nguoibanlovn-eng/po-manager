@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MOCKUP — Launch Plan Redesign</title>
+<style>
+  :root {
+    --bg:#F5F5F7;--card:#FFFFFF;--border:#E4E4E7;--text:#18181B;--muted:#71717A;--subtle:#A1A1AA;
+    --blue:#2563EB;--blue-lt:#EFF6FF;--blue-bd:#BFDBFE;
+    --green:#16A34A;--green-lt:#F0FDF4;
+    --amber:#D97706;--amber-lt:#FFFBEB;
+    --red:#DC2626;--red-lt:#FEF2F2;
+    --purple:#7C3AED;--purple-lt:#F5F3FF;
+    --teal:#0D9488;--teal-lt:#F0FDFA;
+    --brand:#1D9E75;--brand-lt:#ECFDF5;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); font-family:'Inter',system-ui,sans-serif; font-size:14px; color:var(--text); }
+  .wrapper { max-width:720px; margin:0 auto; padding:20px; }
+  .page-title { font-size:17px; font-weight:800; }
+  .page-sub { font-size:13px; color:var(--muted); margin-top:2px; }
+  .btn { display:inline-flex; align-items:center; gap:5px; border:0; border-radius:7px; padding:7px 12px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .btn-primary { background:var(--brand); color:#fff; }
+  .btn-ghost { background:transparent; color:var(--muted); border:1px solid var(--border); }
+  .btn-sm { padding:5px 10px; font-size:11px; }
+  .chip { display:inline-flex; align-items:center; gap:3px; padding:2px 7px; border-radius:999px; font-size:10px; font-weight:700; border:1px solid; white-space:nowrap; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:12px; }
+  .card-title { font-size:13px; font-weight:800; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+  .card-title .num { width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; color:#fff; flex-shrink:0; }
+
+  .form-group { display:flex; flex-direction:column; gap:4px; margin-bottom:10px; }
+  .form-group b { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; }
+  .form-group input, .form-group select, .form-group textarea { width:100%; padding:6px 10px; border:1px solid var(--border); border-radius:7px; font-size:12px; font-family:inherit; outline:none; }
+  .fg-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .fg-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+  .fg-4 { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:10px; }
+
+  /* Toggle pills */
+  .pills { display:flex; gap:6px; flex-wrap:wrap; }
+  .pill { padding:6px 14px; border-radius:8px; font-size:12px; font-weight:600; border:1px solid var(--border); cursor:pointer; background:#fff; color:var(--muted); }
+  .pill.active { background:var(--brand); color:#fff; border-color:var(--brand); }
+  .pill.ch-fb { background:var(--blue-lt); color:#1E40AF; border-color:var(--blue-bd); }
+  .pill.ch-fb.active { background:#1877F2; color:#fff; border-color:#1877F2; }
+  .pill.ch-tt.active { background:#18181B; color:#fff; border-color:#18181B; }
+  .pill.ch-sp.active { background:#EE4D2D; color:#fff; border-color:#EE4D2D; }
+  .pill.ch-web.active { background:#6366F1; color:#fff; border-color:#6366F1; }
+  .pill.ch-live.active { background:var(--red); color:#fff; border-color:var(--red); }
+
+  /* Scenario table */
+  .sc-table { width:100%; border-collapse:collapse; font-size:11px; margin-top:8px; }
+  .sc-table th { background:#FAFAFA; padding:5px 8px; text-align:left; font-size:9px; font-weight:700; color:var(--muted); text-transform:uppercase; border-bottom:1px solid var(--border); }
+  .sc-table td { padding:5px 8px; border-bottom:1px solid var(--border); }
+  .sc-table .profit { font-weight:700; }
+  .sc-table .profit.pos { color:var(--green); }
+  .sc-table .profit.neg { color:var(--red); }
+
+  /* Section collapse */
+  .section-hdr { display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding:10px 14px; margin:-14px -14px 10px; border-bottom:1px solid var(--border); background:#FAFAFA; border-radius:10px 10px 0 0; }
+  .section-hdr .toggle { font-size:10px; color:var(--subtle); }
+
+  /* Video targets */
+  .vid-row { display:flex; align-items:center; gap:8px; padding:6px 10px; border:1px solid var(--border); border-radius:8px; margin-bottom:6px; }
+  .vid-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .vid-label { flex:1; font-size:12px; font-weight:600; }
+  .vid-sub { font-size:10px; color:var(--muted); }
+  .vid-input { width:50px; padding:4px 8px; border:1px solid var(--border); border-radius:6px; font-size:12px; text-align:center; }
+
+  /* Channel target grid */
+  .ch-target { display:flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; margin-bottom:6px; }
+  .ch-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .ch-name { flex:1; font-size:12px; font-weight:600; }
+  .ch-input { width:70px; padding:4px 8px; border:1px solid var(--border); border-radius:6px; font-size:12px; text-align:right; }
+
+  .demo-bar { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); z-index:9999; display:flex; gap:4px; background:#1F2937; padding:8px 12px; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.3); }
+  .demo-bar button { padding:6px 12px; border-radius:8px; border:none; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .demo-bar button.on { background:var(--brand); color:#fff; }
+  .demo-bar button.off { background:#374151; color:#9CA3AF; }
+  .view { display:none; }
+  .view.show { display:block; }
+
+  .sticky-footer { position:sticky; bottom:0; background:#fff; border-top:1px solid var(--border); padding:12px 0; display:flex; justify-content:space-between; align-items:center; z-index:5; margin:0 -20px; padding:12px 20px; }
+</style>
+</head>
+<body>
+
+<div class="demo-bar">
+  <button class="on" onclick="show('v1')">Form gon</button>
+  <button class="off" onclick="show('v2')">So sanh cu vs moi</button>
+</div>
+
+<!-- ═══════════════════════════════════════
+     VIEW 1: FORM GON — All sections visible, collapsible
+     ═══════════════════════════════════════ -->
+<div id="v1" class="view show">
+  <div class="wrapper">
+    <!-- Product header -->
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px; padding:12px 14px; background:var(--card); border:1px solid var(--border); border-radius:10px">
+      <div style="width:48px; height:48px; border-radius:10px; background:var(--brand-lt); display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0">📦</div>
+      <div style="flex:1">
+        <div style="font-size:15px; font-weight:800">May loc khong khi Whirlpool WA-1902FK</div>
+        <div style="font-size:11px; color:var(--muted)">SKU: 2000214304329 · Von: 990.000d · Ton: 45</div>
+      </div>
+      <span class="chip" style="background:var(--brand-lt); color:var(--brand); border-color:var(--brand); font-size:10px">Lien ket</span>
+    </div>
+
+    <!-- ═══ Section 1: Phan loai & Khach hang ═══ -->
+    <div class="card">
+      <div class="card-title"><span class="num" style="background:var(--brand)">1</span> Phan loai & Khach hang</div>
+
+      <div class="form-group">
+        <b>Chu ky ban</b>
+        <div class="pills">
+          <div class="pill">Ngan han &lt;3T</div>
+          <div class="pill active">Trung han 3-6T</div>
+          <div class="pill">Dai han &gt;6T</div>
+        </div>
+      </div>
+
+      <div class="fg-2">
+        <div class="form-group">
+          <b>Nhom khach hang</b>
+          <textarea rows="2" placeholder="VD: Gia dinh co tre nho, phong ngu 20-30m2...">Gia dinh co tre nho, nguoi lon bi di ung. Phong 20-30m2.</textarea>
+        </div>
+        <div class="form-group">
+          <b>Nhu cau / Pain point</b>
+          <textarea rows="2" placeholder="Van de khach hang can giai quyet...">Lo lang chat luong khong khi, bui min PM2.5, mui am moc.</textarea>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <b>Doi thu & Gia tham khao</b>
+        <input type="text" value="Xiaomi 4 Lite: 2.5M, Sharp FP-J30: 3.2M, Daikin MC30: 4.5M" />
+      </div>
+    </div>
+
+    <!-- ═══ Section 2: Kenh ban ═══ -->
+    <div class="card">
+      <div class="card-title"><span class="num" style="background:#1877F2">2</span> Kenh ban</div>
+
+      <div class="form-group">
+        <b>Chon kenh</b>
+        <div class="pills">
+          <div class="pill ch-fb active">Facebook</div>
+          <div class="pill ch-tt active">TikTok Shop</div>
+          <div class="pill ch-sp active">Shopee</div>
+          <div class="pill ch-web">Web/B2B</div>
+          <div class="pill ch-live">Live stream</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <b>Ghi chu kenh</b>
+        <input type="text" placeholder="Uu tien kenh nao, ly do..." value="Uu tien FB + TikTok, Shopee lam gia neo" />
+      </div>
+    </div>
+
+    <!-- ═══ Section 3: Dinh gia & CTKM ═══ -->
+    <div class="card">
+      <div class="card-title"><span class="num" style="background:var(--amber)">3</span> Dinh gia & CTKM</div>
+
+      <div class="fg-2" style="margin-bottom:10px">
+        <div class="form-group">
+          <b>Chuong trinh KM</b>
+          <select>
+            <option>Khong co KM</option>
+            <option selected>Tang qua</option>
+            <option>Combo</option>
+            <option>Flash sale</option>
+            <option>Giam gia</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <b>Qua tang</b>
+          <input type="text" value="Mang loc HEPA thay the (50.000d)" />
+        </div>
+      </div>
+
+      <div class="fg-3" style="margin-bottom:10px">
+        <div class="form-group">
+          <b>Gia von (A)</b>
+          <input type="text" value="1.040.000" style="font-weight:700" />
+        </div>
+        <div class="form-group">
+          <b>Gia ban tu (B1)</b>
+          <input type="text" value="1.990.000" style="font-weight:700; color:var(--green)" />
+        </div>
+        <div class="form-group">
+          <b>Gia ban den (B2)</b>
+          <input type="text" value="2.490.000" style="font-weight:700; color:var(--green)" />
+        </div>
+      </div>
+
+      <!-- Scenario mini tables -->
+      <div class="fg-2">
+        <div>
+          <div style="font-size:10px; font-weight:800; color:var(--muted); text-transform:uppercase; margin-bottom:4px">San TMDT (Shopee/TikTok)</div>
+          <table class="sc-table">
+            <thead><tr><th>Kich ban</th><th style="text-align:right">Loi B1</th><th style="text-align:right">Loi B2</th></tr></thead>
+            <tbody>
+              <tr><td>Xa hang</td><td class="profit pos" style="text-align:right">354K</td><td class="profit pos" style="text-align:right">704K</td></tr>
+              <tr><td>Ban thuong</td><td class="profit pos" style="text-align:right">354K</td><td class="profit pos" style="text-align:right">704K</td></tr>
+              <tr><td>Co ads 15%</td><td class="profit pos" style="text-align:right">55K</td><td class="profit pos" style="text-align:right">331K</td></tr>
+              <tr><td>Ads+Aff 20%</td><td class="profit neg" style="text-align:right">-45K</td><td class="profit pos" style="text-align:right">181K</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <div style="font-size:10px; font-weight:800; color:var(--muted); text-transform:uppercase; margin-bottom:4px">Off-san (FB/Web)</div>
+          <table class="sc-table">
+            <thead><tr><th>Kich ban</th><th style="text-align:right">Loi B1</th><th style="text-align:right">Loi B2</th></tr></thead>
+            <tbody>
+              <tr><td>Xa hang</td><td class="profit pos" style="text-align:right">920K</td><td class="profit pos" style="text-align:right">1.420K</td></tr>
+              <tr><td>Ban thuong</td><td class="profit pos" style="text-align:right">920K</td><td class="profit pos" style="text-align:right">1.420K</td></tr>
+              <tr><td>Co ads 15%</td><td class="profit pos" style="text-align:right">621K</td><td class="profit pos" style="text-align:right">1.047K</td></tr>
+              <tr><td>Ads+CTV 20%</td><td class="profit pos" style="text-align:right">521K</td><td class="profit pos" style="text-align:right">897K</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Section 4: Listing ═══ -->
+    <div class="card">
+      <div class="card-title"><span class="num" style="background:#EE4D2D">4</span> Listing</div>
+
+      <div style="display:flex; flex-direction:column; gap:6px">
+        <div style="display:flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--border); border-radius:8px">
+          <input type="checkbox" checked style="accent-color:var(--green)" />
+          <span style="width:10px; height:10px; border-radius:50%; background:#1877F2; flex-shrink:0"></span>
+          <span style="font-size:12px; font-weight:600; flex:1">Facebook</span>
+          <input type="text" placeholder="Link listing..." value="https://fb.com/marketplace/..." style="flex:2; padding:4px 8px; border:1px solid var(--border); border-radius:6px; font-size:11px" />
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--border); border-radius:8px">
+          <input type="checkbox" checked style="accent-color:var(--green)" />
+          <span style="width:10px; height:10px; border-radius:50%; background:#18181B; flex-shrink:0"></span>
+          <span style="font-size:12px; font-weight:600; flex:1">TikTok Shop</span>
+          <input type="text" placeholder="Link listing..." value="https://tiktok.com/shop/..." style="flex:2; padding:4px 8px; border:1px solid var(--border); border-radius:6px; font-size:11px" />
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; opacity:.5">
+          <input type="checkbox" style="accent-color:var(--green)" />
+          <span style="width:10px; height:10px; border-radius:50%; background:#EE4D2D; flex-shrink:0"></span>
+          <span style="font-size:12px; font-weight:600; flex:1">Shopee</span>
+          <input type="text" placeholder="Link listing..." value="" style="flex:2; padding:4px 8px; border:1px solid var(--border); border-radius:6px; font-size:11px" />
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Section 5: Noi dung & Target ═══ -->
+    <div class="card">
+      <div class="card-title"><span class="num" style="background:var(--purple)">5</span> Noi dung & Muc tieu</div>
+
+      <div class="fg-2" style="margin-bottom:10px">
+        <div class="form-group">
+          <b>Link Drive tai lieu</b>
+          <input type="text" value="https://drive.google.com/drive/folders/abc123" />
+        </div>
+        <div class="form-group">
+          <b>Nguoi phu trach</b>
+          <input type="text" value="Phat, Hoa" />
+        </div>
+      </div>
+
+      <!-- Video targets -->
+      <div style="margin-bottom:12px">
+        <div style="font-size:10px; font-weight:800; color:var(--muted); text-transform:uppercase; margin-bottom:6px">Video can san xuat</div>
+        <div class="vid-row">
+          <span class="vid-dot" style="background:var(--red)"></span>
+          <span class="vid-label">Problem <span class="vid-sub">— Dat van de</span></span>
+          <input class="vid-input" type="text" value="3" />
+        </div>
+        <div class="vid-row">
+          <span class="vid-dot" style="background:var(--amber)"></span>
+          <span class="vid-label">Demo <span class="vid-sub">— Chung minh</span></span>
+          <input class="vid-input" type="text" value="2" />
+        </div>
+        <div class="vid-row">
+          <span class="vid-dot" style="background:var(--green)"></span>
+          <span class="vid-label">CTA <span class="vid-sub">— Chot don</span></span>
+          <input class="vid-input" type="text" value="2" />
+        </div>
+      </div>
+
+      <!-- Channel targets -->
+      <div>
+        <div style="font-size:10px; font-weight:800; color:var(--muted); text-transform:uppercase; margin-bottom:6px">Muc tieu ban theo kenh (don vi)</div>
+        <div class="ch-target">
+          <span class="ch-dot" style="background:#1877F2"></span>
+          <span class="ch-name">Facebook</span>
+          <input class="ch-input" type="text" value="20" />
+        </div>
+        <div class="ch-target">
+          <span class="ch-dot" style="background:#18181B"></span>
+          <span class="ch-name">TikTok Shop</span>
+          <input class="ch-input" type="text" value="15" />
+        </div>
+        <div class="ch-target">
+          <span class="ch-dot" style="background:#EE4D2D"></span>
+          <span class="ch-name">Shopee</span>
+          <input class="ch-input" type="text" value="10" />
+        </div>
+        <div style="display:flex; justify-content:flex-end; font-size:12px; font-weight:800; color:var(--brand); margin-top:6px">
+          Tong: 45 don vi
+        </div>
+      </div>
+
+      <div style="height:1px; background:var(--border); margin:12px 0"></div>
+
+      <div class="fg-3">
+        <div class="form-group">
+          <b>Ton kho ban</b>
+          <input type="text" value="45" />
+        </div>
+        <div class="form-group">
+          <b>Thoi gian (thang)</b>
+          <input type="text" value="3" />
+        </div>
+        <div class="form-group">
+          <b>Deadline</b>
+          <input type="date" value="2026-07-25" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Sticky footer -->
+    <div class="sticky-footer">
+      <div style="font-size:12px; color:var(--muted)">5/5 muc da dien</div>
+      <div style="display:flex; gap:8px">
+        <button class="btn btn-ghost">Luu nhap</button>
+        <button class="btn btn-primary" style="padding:10px 20px; font-size:13px">Bat dau launch →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     VIEW 2: SO SANH CU vs MOI
+     ═══════════════════════════════════════ -->
+<div id="v2" class="view">
+  <div class="wrapper">
+    <div class="page-title" style="margin-bottom:16px">So sanh: Popup cu vs Form moi</div>
+
+    <div class="fg-2" style="gap:16px">
+      <!-- Cu -->
+      <div>
+        <div style="font-size:13px; font-weight:800; color:var(--red); margin-bottom:8px">❌ Popup cu (7 buoc)</div>
+        <div class="card" style="border-color:var(--red); font-size:12px; color:var(--muted); line-height:1.8">
+          • 7 tabs nho trong popup<br>
+          • Phai bam Tiep/Quay lai lien tuc<br>
+          • Khong thay toan canh<br>
+          • Kho so sanh cac buoc<br>
+          • Popup che mat danh sach phia sau<br>
+          • Mobile rat kho dung
+        </div>
+      </div>
+
+      <!-- Moi -->
+      <div>
+        <div style="font-size:13px; font-weight:800; color:var(--green); margin-bottom:8px">✓ Form moi (1 trang)</div>
+        <div class="card" style="border-color:var(--green); font-size:12px; color:var(--muted); line-height:1.8">
+          • 5 section scroll 1 trang (gop tu 7 buoc)<br>
+          • Thay toan bo thong tin cung luc<br>
+          • Moi section co so thu tu + mau<br>
+          • Co the nhay den bat ky section nao<br>
+          • Sticky footer voi nut Luu/Launch<br>
+          • Mobile friendly — tu nhien scroll
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px; margin-bottom:60px">
+      <div style="font-size:13px; font-weight:800; margin-bottom:8px">Gop buoc</div>
+      <div style="font-size:12px; color:var(--muted); line-height:1.8">
+        <strong>Cu 7 buoc → Moi 5 section:</strong><br>
+        1. <strong>Phan loai & KH</strong> = Loai hang + Khach hang (gop)<br>
+        2. <strong>Kenh ban</strong> = giu nguyen<br>
+        3. <strong>Dinh gia & CTKM</strong> = giu nguyen<br>
+        4. <strong>Listing</strong> = giu nguyen, compact hon<br>
+        5. <strong>Noi dung & Muc tieu</strong> = Noi dung + Target DS (gop)<br>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function show(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('show'));
+  document.getElementById(id).classList.add('show');
+  document.querySelectorAll('.demo-bar button').forEach(b => b.className = 'off');
+  const map = {'v1':0,'v2':1};
+  document.querySelectorAll('.demo-bar button')[map[id]].className = 'on';
+  window.scrollTo(0,0);
+}
+</script>
+
+</body>
+</html>

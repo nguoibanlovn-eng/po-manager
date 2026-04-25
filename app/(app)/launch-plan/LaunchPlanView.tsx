@@ -610,69 +610,72 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
     );
   }
 
+  const sectionStyle = { background: "#fff", border: "1px solid #E4E4E7", borderRadius: 10, padding: 14, marginBottom: 12 };
+  const secTitle = (num: number, label: string, color: string) => (
+    <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+      <span style={{ width: 22, height: 22, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "#fff", flexShrink: 0 }}>{num}</span>
+      {label}
+    </div>
+  );
+
   return (
-    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", justifyContent: "center", alignItems: "flex-start", paddingTop: 30, overflowY: "auto" }}>
-      <div style={{ background: "#fff", borderRadius: 12, width: "92%", maxWidth: 850, maxHeight: "88vh", overflowY: "auto", padding: "20px 24px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>Tạo Launch Plan</div>
+    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", justifyContent: "center", alignItems: "flex-start", overflowY: "auto" }}>
+      <div style={{ background: "var(--bg)", width: "100%", maxWidth: 760, minHeight: "100vh", padding: "16px 20px 80px" }}>
+
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <div style={{ fontWeight: 800, fontSize: 16 }}>{initial ? "Sửa Launch Plan" : "Tạo Launch Plan"}</div>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#6B7280" }}>✕</button>
         </div>
 
-        {/* Step nav — numbers green when done */}
-        <div style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "2px solid #E5E7EB" }}>
-          {STEPS.map((s) => (
-            <button key={s.n} onClick={() => setStep(s.n)} style={{
-              flex: 1, padding: "6px 0", fontSize: 11, fontWeight: step === s.n ? 700 : 400,
-              color: step === s.n ? BRAND : stepDone[s.n - 1] ? "#16A34A" : "#9CA3AF",
-              background: "none", border: "none", borderBottom: step === s.n ? `3px solid ${BRAND}` : "3px solid transparent",
-              cursor: "pointer", marginBottom: -2,
-            }}>
-              <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 16, height: 16, borderRadius: "50%", background: stepDone[s.n - 1] ? "#16A34A" : step === s.n ? BRAND : "#E5E7EB", color: "#fff", fontSize: 9, fontWeight: 700, marginRight: 3 }}>{s.n}</span>
-              {s.label}
-            </button>
-          ))}
-        </div>
-
         {/* SP header */}
-        <div style={{ padding: "8px 14px", background: "#F0FDF4", borderRadius: 8, marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 13 }}>{name} {m.deploy_id && <span style={{ fontSize: 9, background: BRAND, color: "#fff", borderRadius: 3, padding: "1px 5px", fontWeight: 600, marginLeft: 4 }}>✓ Liên kết</span>}</div>
-            <div style={{ fontSize: 10, color: "#6B7280" }}>SKU: {sku} {cost > 0 && `· Vốn: ${formatVND(cost)}`}</div>
+        <div style={{ padding: "10px 14px", background: "#F0FDF4", borderRadius: 10, marginBottom: 14, display: "flex", alignItems: "center", gap: 12, border: "1px solid #BBF7D0" }}>
+          <div style={{ width: 40, height: 40, borderRadius: 8, background: "#DCFCE7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>📦</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>{name} {m.deploy_id && <span style={{ fontSize: 9, background: BRAND, color: "#fff", borderRadius: 3, padding: "1px 5px", fontWeight: 600, marginLeft: 4 }}>✓ Liên kết</span>}</div>
+            <div style={{ fontSize: 10, color: "#6B7280" }}>SKU: {sku} {cost > 0 && `· Vốn: ${formatVND(cost)}`} {stockQty > 0 && `· Tồn: ${stockQty}`}</div>
           </div>
         </div>
 
-        {/* ─── STEP 1: Loại hàng ─── */}
-        {step === 1 && (<div>
-          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-            {HORIZONS.map((h) => (
-              <button key={h.k} onClick={() => setHorizon(h.k)} style={{ padding: "8px 16px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", background: horizon === h.k ? h.color : "#F3F4F6", color: horizon === h.k ? "#fff" : "#374151", border: "none" }}>{h.label} {h.sub}</button>
-            ))}
+        {/* ═══ Section 1: Phân loại & Khách hàng ═══ */}
+        <div style={sectionStyle}>
+          {secTitle(1, "Phân loại & Khách hàng", BRAND)}
+          <div className="form-group" style={{ marginBottom: 10 }}>
+            <label>CHU KỲ BÁN</label>
+            <div style={{ display: "flex", gap: 6 }}>
+              {HORIZONS.map((h) => (
+                <button key={h.k} onClick={() => setHorizon(h.k)} style={{ padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", background: horizon === h.k ? h.color : "#F3F4F6", color: horizon === h.k ? "#fff" : "#374151", border: "none", flex: 1 }}>{h.label} {h.sub}</button>
+              ))}
+            </div>
           </div>
-          <div className="form-group"><label>GHI CHÚ</label><textarea rows={3} value={horizonNote} onChange={(e) => setHorizonNote(e.target.value)} placeholder="Lý do phân loại, đặc điểm hàng hóa..." /></div>
-        </div>)}
-
-        {/* ─── STEP 2: Khách hàng ─── */}
-        {step === 2 && (<div className="form-grid fg-3">
-          <div className="form-group"><label>NHÓM KHÁCH HÀNG</label><textarea rows={3} value={custGroup} onChange={(e) => setCustGroup(e.target.value)} placeholder="Hộ gia đình, tuổi, đặc điểm..." /></div>
-          <div className="form-group"><label>NHU CẦU / PAIN POINT</label><textarea rows={3} value={custPain} onChange={(e) => setCustPain(e.target.value)} placeholder="Lo ngại, vấn đề cần giải quyết..." /></div>
-          <div className="form-group"><label>ĐỐI THỦ + GIÁ THAM CHIẾU</label><textarea rows={3} value={custComp} onChange={(e) => setCustComp(e.target.value)} placeholder="Xiaomi 1.2tr · Sharp 2.5tr..." /></div>
-        </div>)}
-
-        {/* ─── STEP 3: Kênh bán ─── */}
-        {step === 3 && (<div>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
-            {ALL_CHANNELS.map((ch) => {
-              const on = selChannels.includes(ch);
-              return (<button key={ch} onClick={() => setSelChannels(on ? selChannels.filter((c) => c !== ch) : [...selChannels, ch])} style={{ padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", background: on ? CH_CHIP_COLORS[ch] || "#3B82F6" : "#F3F4F6", color: on ? "#fff" : "#374151", border: "none" }}>{ch}</button>);
-            })}
+          <div className="form-grid fg-2" style={{ marginBottom: 10 }}>
+            <div className="form-group"><label>NHÓM KHÁCH HÀNG</label><textarea rows={2} value={custGroup} onChange={(e) => setCustGroup(e.target.value)} placeholder="Hộ gia đình, tuổi, đặc điểm..." /></div>
+            <div className="form-group"><label>NHU CẦU / PAIN POINT</label><textarea rows={2} value={custPain} onChange={(e) => setCustPain(e.target.value)} placeholder="Vấn đề cần giải quyết..." /></div>
           </div>
-          <div className="form-group"><label>GHI CHÚ KÊNH</label><textarea rows={2} value={channelNote} onChange={(e) => setChannelNote(e.target.value)} placeholder="Ưu tiên kênh nào, lý do..." /></div>
-        </div>)}
+          <div className="form-group"><label>ĐỐI THỦ + GIÁ THAM CHIẾU</label><input value={custComp} onChange={(e) => setCustComp(e.target.value)} placeholder="Xiaomi 1.2tr · Sharp 2.5tr..." /></div>
+          <div className="form-group"><label>GHI CHÚ</label><textarea rows={2} value={horizonNote} onChange={(e) => setHorizonNote(e.target.value)} placeholder="Lý do phân loại, đặc điểm hàng hóa..." /></div>
+        </div>
 
-        {/* ─── STEP 4: Định giá & chương trình bán ─── */}
-        {/* ─── STEP 4: Định giá & chương trình bán ─── */}
-        {step === 4 && (<div>
-          {/* Block 1 — Chương trình bán */}
+        {/* ═══ Section 2: Kênh bán ═══ */}
+        <div style={sectionStyle}>
+          {secTitle(2, "Kênh bán", "#1877F2")}
+          <div className="form-group" style={{ marginBottom: 8 }}>
+            <label>CHỌN KÊNH</label>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {ALL_CHANNELS.map((ch) => {
+                const on = selChannels.includes(ch);
+                return (<button key={ch} onClick={() => setSelChannels(on ? selChannels.filter((c) => c !== ch) : [...selChannels, ch])} style={{ padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", background: on ? CH_CHIP_COLORS[ch] || "#3B82F6" : "#F3F4F6", color: on ? "#fff" : "#374151", border: "none" }}>{ch}</button>);
+              })}
+            </div>
+          </div>
+          <div className="form-group"><label>GHI CHÚ KÊNH</label><input value={channelNote} onChange={(e) => setChannelNote(e.target.value)} placeholder="Ưu tiên kênh nào, lý do..." /></div>
+        </div>
+
+        {/* ═══ Section 3: Định giá & CTKM ═══ */}
+        <div style={sectionStyle}>
+          {secTitle(3, "Định giá & CTKM", "#D97706")}
+
+          {/* Chương trình bán */}
           <div style={{ background: "var(--bg)", border: "0.5px solid #E5E7EB", borderRadius: 8, padding: "10px 12px", marginBottom: 10 }}>
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280", marginBottom: 6 }}>CHƯƠNG TRÌNH BÁN <span style={{ fontWeight: 400, fontSize: 9, color: "#9CA3AF" }}>— giá vốn quà cộng vào A</span></div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
@@ -681,68 +684,38 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
               </select>
               {promoType === "gift" && (<>
                 <span style={{ fontSize: 11, color: "#6B7280" }}>Quà tặng:</span>
-                {gift ? (
-                  <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: "#EAF3DE", color: "#3B6D11", fontWeight: 600 }}>{gift.name} ({formatVND(gift.cost)})</span>
-                ) : (
-                  <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: "#F3F4F6", color: "#9CA3AF" }}>Chưa chọn</span>
-                )}
-                <button type="button" className="btn btn-ghost btn-xs" style={{ fontSize: 10 }} onClick={() => setShowGiftSearch(!showGiftSearch)}>
-                  {gift ? "Đổi" : "Chọn"}
-                </button>
+                {gift ? <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: "#EAF3DE", color: "#3B6D11", fontWeight: 600 }}>{gift.name} ({formatVND(gift.cost)})</span> : <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: "#F3F4F6", color: "#9CA3AF" }}>Chưa chọn</span>}
+                <button type="button" className="btn btn-ghost btn-xs" style={{ fontSize: 10 }} onClick={() => setShowGiftSearch(!showGiftSearch)}>{gift ? "Đổi" : "Chọn"}</button>
+                {gift && (<><span style={{ fontSize: 11, color: "#6B7280" }}>SL:</span><input type="number" value={giftQty} min={1} onChange={(e) => setGiftQty(Math.max(1, Number(e.target.value)))} style={{ width: 50, textAlign: "center", fontSize: 11 }} /></>)}
               </>)}
               {promoType === "combo" && (<>
                 <span style={{ fontSize: 11, color: "#6B7280" }}>SL SP chính:</span>
                 <input type="number" value={comboQty} min={1} onChange={(e) => setComboQty(Math.max(1, Number(e.target.value)))} style={{ width: 50, textAlign: "center", fontSize: 11 }} />
-                <button type="button" className="btn btn-ghost btn-xs" style={{ fontSize: 10, color: "#185FA5" }} onClick={() => setShowComboSearch(!showComboSearch)}>
-                  + Thêm SP combo
-                </button>
+                <button type="button" className="btn btn-ghost btn-xs" style={{ fontSize: 10, color: BRAND2 }} onClick={() => setShowComboSearch(!showComboSearch)}>+ Thêm SP combo</button>
               </>)}
             </div>
+            {/* Gift search */}
             {promoType === "gift" && showGiftSearch && (
-              <div style={{ marginBottom: 8, padding: "8px 10px", background: "#fff", border: "1.5px solid #185FA5", borderRadius: 8 }}>
-                <input placeholder="Tìm SP quà tặng trong kho..." value={giftSearch}
-                  onChange={(e) => {
-                    setGiftSearch(e.target.value);
-                    const q = e.target.value;
-                    if (q.trim().length > 1) {
-                      setGiftSearching(true);
-                      fetch(`/api/inventory/search?q=${encodeURIComponent(q)}&limit=10`).then((r) => r.json()).then((j) => setGiftResults(j.items || [])).finally(() => setGiftSearching(false));
-                    } else { setGiftResults([]); }
-                  }}
-                  style={{ width: "100%", fontSize: 11, border: "1px solid #E5E7EB", borderRadius: 4, padding: "4px 8px", marginBottom: 4 }} />
+              <div style={{ marginBottom: 8, padding: "8px 10px", background: "#fff", border: `1.5px solid ${BRAND2}`, borderRadius: 8 }}>
+                <input placeholder="Tìm SP quà tặng trong kho..." value={giftSearch} onChange={(e) => { setGiftSearch(e.target.value); const q = e.target.value; if (q.trim().length > 1) { setGiftSearching(true); fetch(`/api/inventory/search?q=${encodeURIComponent(q)}&limit=10`).then((r) => r.json()).then((j) => setGiftResults(j.items || [])).finally(() => setGiftSearching(false)); } else { setGiftResults([]); } }} style={{ width: "100%", fontSize: 11, border: "1px solid #E5E7EB", borderRadius: 4, padding: "4px 8px", marginBottom: 4 }} />
                 {giftSearching && <div style={{ fontSize: 10, color: "#6B7280" }}>Đang tìm...</div>}
                 {giftResults.map((item) => (
                   <div key={item.sku} style={{ padding: "4px 0", borderBottom: "1px solid #F3F4F6", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11 }}>
                     <span><strong>{item.product_name}</strong> <span style={{ color: "#6B7280" }}>Vốn: {item.cost_price ? formatVND(item.cost_price) : "—"}</span></span>
-                    <button type="button" className="btn btn-ghost btn-xs" style={{ color: "#185FA5" }} onClick={() => {
-                      setGift({ name: item.product_name, sku: item.sku, cost: item.cost_price || 0 });
-                      setShowGiftSearch(false); setGiftSearch(""); setGiftResults([]);
-                    }}>Chọn</button>
+                    <button type="button" className="btn btn-ghost btn-xs" style={{ color: BRAND2 }} onClick={() => { setGift({ name: item.product_name, sku: item.sku, cost: item.cost_price || 0 }); setShowGiftSearch(false); setGiftSearch(""); setGiftResults([]); }}>Chọn</button>
                   </div>
                 ))}
               </div>
             )}
             {/* Combo search */}
             {promoType === "combo" && showComboSearch && (
-              <div style={{ marginBottom: 8, padding: "8px 10px", background: "#fff", border: "1.5px solid #185FA5", borderRadius: 8 }}>
-                <input placeholder="Tìm SP thêm vào combo..." value={comboSearch}
-                  onChange={(e) => {
-                    setComboSearch(e.target.value);
-                    const q = e.target.value;
-                    if (q.trim().length > 1) {
-                      setComboSearching(true);
-                      fetch(`/api/inventory/search?q=${encodeURIComponent(q)}&limit=10`).then((r) => r.json()).then((j) => setComboResults(j.items || [])).finally(() => setComboSearching(false));
-                    } else { setComboResults([]); }
-                  }}
-                  style={{ width: "100%", fontSize: 11, border: "1px solid #E5E7EB", borderRadius: 4, padding: "4px 8px", marginBottom: 4 }} />
+              <div style={{ marginBottom: 8, padding: "8px 10px", background: "#fff", border: `1.5px solid ${BRAND2}`, borderRadius: 8 }}>
+                <input placeholder="Tìm SP thêm vào combo..." value={comboSearch} onChange={(e) => { setComboSearch(e.target.value); const q = e.target.value; if (q.trim().length > 1) { setComboSearching(true); fetch(`/api/inventory/search?q=${encodeURIComponent(q)}&limit=10`).then((r) => r.json()).then((j) => setComboResults(j.items || [])).finally(() => setComboSearching(false)); } else { setComboResults([]); } }} style={{ width: "100%", fontSize: 11, border: "1px solid #E5E7EB", borderRadius: 4, padding: "4px 8px", marginBottom: 4 }} />
                 {comboSearching && <div style={{ fontSize: 10, color: "#6B7280" }}>Đang tìm...</div>}
                 {comboResults.map((item) => (
                   <div key={item.sku} style={{ padding: "4px 0", borderBottom: "1px solid #F3F4F6", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11 }}>
                     <span><strong>{item.product_name}</strong> <span style={{ color: "#6B7280" }}>Vốn: {item.cost_price ? formatVND(item.cost_price) : "—"}</span></span>
-                    <button type="button" className="btn btn-ghost btn-xs" style={{ color: "#185FA5" }} onClick={() => {
-                      setComboItems((prev) => [...prev, { name: item.product_name, sku: item.sku, cost: item.cost_price || 0, qty: 1 }]);
-                      setShowComboSearch(false); setComboSearch(""); setComboResults([]);
-                    }}>Thêm</button>
+                    <button type="button" className="btn btn-ghost btn-xs" style={{ color: BRAND2 }} onClick={() => { setComboItems((prev) => [...prev, { name: item.product_name, sku: item.sku, cost: item.cost_price || 0, qty: 1 }]); setShowComboSearch(false); setComboSearch(""); setComboResults([]); }}>Thêm</button>
                   </div>
                 ))}
               </div>
@@ -753,152 +726,110 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
                 {comboItems.map((ci, idx) => (
                   <div key={ci.sku + idx} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 0", borderBottom: idx < comboItems.length - 1 ? "1px solid #E5E7EB" : "none" }}>
                     <span style={{ flex: 1, fontWeight: 600 }}>{ci.name}</span>
-                    <span style={{ color: "#6B7280", fontSize: 10 }}>Vốn: {formatVND(ci.cost)}</span>
-                    <span style={{ color: "#6B7280" }}>×</span>
+                    <span style={{ color: "#6B7280", fontSize: 10 }}>Vốn: {formatVND(ci.cost)}</span><span style={{ color: "#6B7280" }}>×</span>
                     <input type="number" value={ci.qty} min={1} onChange={(e) => setComboItems((prev) => prev.map((p, i) => i === idx ? { ...p, qty: Math.max(1, Number(e.target.value)) } : p))} style={{ width: 42, textAlign: "center", fontSize: 11 }} />
-                    <span style={{ fontWeight: 700, color: "#185FA5", minWidth: 70, textAlign: "right" }}>{formatVND(ci.cost * ci.qty)}</span>
+                    <span style={{ fontWeight: 700, color: BRAND2, minWidth: 70, textAlign: "right" }}>{formatVND(ci.cost * ci.qty)}</span>
                     <button type="button" onClick={() => setComboItems((prev) => prev.filter((_, i) => i !== idx))} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 13, padding: 0 }}>×</button>
                   </div>
                 ))}
               </div>
             )}
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, flexWrap: "wrap" }}>
-              {promoType === "gift" && gift && (<>
-                <span style={{ color: "#6B7280" }}>Số lượng:</span>
-                <input type="number" value={giftQty} min={1} onChange={(e) => setGiftQty(Math.max(1, Number(e.target.value)))} style={{ width: 54, textAlign: "center", fontSize: 11 }} />
-              </>)}
               <span style={{ color: "#6B7280" }}>Vốn gốc</span><strong>{formatVND(cost)}{promoType === "combo" && comboQty > 1 ? ` × ${comboQty}` : ""}</strong>
               {gift && promoType === "gift" && <span style={{ color: "#6B7280" }}>+ Quà {formatVND(gift.cost)} × {giftQty} = {formatVND(giftCostTotal)}</span>}
               {promoType === "combo" && comboItems.length > 0 && <span style={{ color: "#6B7280" }}>+ Combo {formatVND(comboCostTotal)}</span>}
               <span style={{ color: "#6B7280" }}>→</span>
-              <strong style={{ color: "#185FA5", fontSize: 13 }}>A = {formatVND(A)}</strong>
+              <strong style={{ color: BRAND2, fontSize: 13 }}>A = {formatVND(A)}</strong>
             </div>
           </div>
 
-          {/* Block 2 — Giá bán */}
+          {/* Giá bán */}
           <div style={{ background: "var(--bg)", border: "0.5px solid #E5E7EB", borderRadius: 8, padding: "9px 12px", marginBottom: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-              <div>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280" }}>GIÁ VỐN A {gift ? "(+quà)" : ""}</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: "#185FA5" }}>{formatVND(A)}</div>
-              </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
+              <div><div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280" }}>GIÁ VỐN A</div><div style={{ fontSize: 18, fontWeight: 800, color: BRAND2 }}>{formatVND(A)}</div></div>
               <span style={{ fontSize: 16, color: "#D1D5DB" }}>→</span>
-              <div>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280" }}>GIÁ BÁN TỪ (B1)</div>
-                <input type="text" inputMode="numeric" value={sellB1 ? sellB1.toLocaleString("vi-VN") : ""} onChange={(e) => setSellB1(Number(e.target.value.replace(/\D/g, "")))} placeholder="Giá thấp..."
-                  style={{ fontSize: 17, fontWeight: 800, width: 130, border: "none", background: "transparent", borderBottom: "1.5px solid #E5E7EB" }} />
-              </div>
+              <div><div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280" }}>GIÁ BÁN TỪ (B1)</div><input type="text" inputMode="numeric" value={sellB1 ? sellB1.toLocaleString("vi-VN") : ""} onChange={(e) => setSellB1(Number(e.target.value.replace(/\D/g, "")))} placeholder="Giá thấp..." style={{ fontSize: 17, fontWeight: 800, width: 120, border: "none", background: "transparent", borderBottom: "1.5px solid #E5E7EB" }} /></div>
               <span style={{ fontSize: 14, color: "#D1D5DB" }}>—</span>
-              <div>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280" }}>ĐẾN (B2)</div>
-                <input type="text" inputMode="numeric" value={sellB2 ? sellB2.toLocaleString("vi-VN") : ""} onChange={(e) => setSellB2(Number(e.target.value.replace(/\D/g, "")))} placeholder="Giá cao..."
-                  style={{ fontSize: 17, fontWeight: 800, width: 130, border: "none", background: "transparent", borderBottom: "1.5px solid #E5E7EB" }} />
-              </div>
-              <div style={{ width: 0.5, height: 28, background: "#E5E7EB", margin: "0 6px" }} />
-              <div>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280" }}>GROSS (B−A)</div>
-                {sellB1 > 0 ? (
-                  <div style={{ fontSize: 18, fontWeight: 800, color: gross >= 0 ? "#16A34A" : "#DC2626" }}>
-                    {gross >= 0 ? "+" : ""}{formatVND(gross)} <span style={{ fontSize: 11, fontWeight: 600 }}>({grossPct}%)</span>
-                  </div>
-                ) : (
-                  <div style={{ fontSize: 16, fontWeight: 600, color: "#D1D5DB" }}>Nhập B1...</div>
-                )}
-              </div>
+              <div><div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280" }}>ĐẾN (B2)</div><input type="text" inputMode="numeric" value={sellB2 ? sellB2.toLocaleString("vi-VN") : ""} onChange={(e) => setSellB2(Number(e.target.value.replace(/\D/g, "")))} placeholder="Giá cao..." style={{ fontSize: 17, fontWeight: 800, width: 120, border: "none", background: "transparent", borderBottom: "1.5px solid #E5E7EB" }} /></div>
+              {sellB1 > 0 && (<><div style={{ width: 0.5, height: 28, background: "#E5E7EB", margin: "0 4px" }} /><div><div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: "#6B7280" }}>GROSS (B−A)</div><div style={{ fontSize: 18, fontWeight: 800, color: gross >= 0 ? "#16A34A" : "#DC2626" }}>{gross >= 0 ? "+" : ""}{formatVND(gross)} <span style={{ fontSize: 11, fontWeight: 600 }}>({grossPct}%)</span></div></div></>)}
             </div>
-            {sellB1 > 0 && (
-              <div style={{ fontSize: 11, color: "#6B7280", display: "flex", gap: 0, flexWrap: "wrap" }}>
-                <span>Phí sàn <strong style={{ color: "#993C1D" }}>{formatVNDCompact(sellB1 * 0.20)} (20%)</strong></span><span style={{ margin: "0 4px" }}>·</span>
-                <span>Thuế <strong style={{ color: "#3C3489" }}>{formatVNDCompact(sellB1 * 0.015)} (1.5%)</strong></span><span style={{ margin: "0 4px" }}>·</span>
-                <span>HT sàn <strong style={{ color: "#0C447C" }}>7.000đ</strong></span><span style={{ margin: "0 4px" }}>·</span>
-                <span>Vận hành <strong style={{ color: "#633806" }}>{formatVNDCompact(sellB1 * 0.10)} (10%)</strong></span><span style={{ margin: "0 4px" }}>·</span>
-                <span>Ads <strong style={{ color: "#444441" }}>{formatVNDCompact(sellB1 * 0.10)} (10%)</strong></span><span style={{ margin: "0 4px" }}>·</span>
-                <span>Aff/CTV <strong style={{ color: "#27500A" }}>{formatVNDCompact(sellB1 * 0.10)} (10%)</strong></span>
-              </div>
-            )}
           </div>
 
-          {/* Block 3 — 2 bảng kịch bản */}
+          {/* 2 bảng kịch bản */}
           {sellB1 > 0 && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              <ScenarioTable chips={[{ label: "Shopee", bg: "#FAECE7", color: "#993C1D" }, { label: "TikTok", bg: "#FBEAF0", color: "#993556" }]}
-                subtitle="Sàn 20%+Thuế+HT 7k" scenarios={SCENARIOS_SAN} A={A} B1={sellB1} B2={sellB2} />
-              <ScenarioTable chips={[{ label: "Facebook", bg: "#E6F1FB", color: "#185FA5" }, { label: "Web/B2B", bg: "#EEEDFE", color: "#3C3489" }]}
-                subtitle="Thuế 1.5%, không phí sàn" scenarios={SCENARIOS_OFF} A={A} B1={sellB1} B2={sellB2} />
+              <ScenarioTable chips={[{ label: "Shopee", bg: "#FAECE7", color: "#993C1D" }, { label: "TikTok", bg: "#FBEAF0", color: "#993556" }]} subtitle="Sàn 20%+Thuế+HT 7k" scenarios={SCENARIOS_SAN} A={A} B1={sellB1} B2={sellB2} />
+              <ScenarioTable chips={[{ label: "Facebook", bg: "#E6F1FB", color: "#185FA5" }, { label: "Web/B2B", bg: "#EEEDFE", color: "#3C3489" }]} subtitle="Thuế 1.5%, không phí sàn" scenarios={SCENARIOS_OFF} A={A} B1={sellB1} B2={sellB2} />
             </div>
           )}
-        </div>)}
+        </div>
 
-        {/* ─── STEP 5: Listing ─── */}
-        {step === 5 && (<div>
+        {/* ═══ Section 4: Listing ═══ */}
+        <div style={sectionStyle}>
+          {secTitle(4, "Listing", "#EE4D2D")}
           {selChannels.map((ch) => (
-            <div key={ch} style={{ marginBottom: 10, padding: "10px 14px", border: "1px solid #E5E7EB", borderRadius: 8 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <span style={{ fontWeight: 700, fontSize: 12, color: CH_CHIP_COLORS[ch] }}>{ch}</span>
-                <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, cursor: "pointer" }}>
-                  <input type="checkbox" checked={listings[ch]?.done || false} onChange={(e) => setListings({ ...listings, [ch]: { ...listings[ch], done: e.target.checked } })} />ĐÃ ĐĂNG
-                </label>
-              </div>
-              <textarea rows={2} placeholder={`Link ${ch} (mỗi link 1 dòng)...`} value={listings[ch]?.links || ""} onChange={(e) => setListings({ ...listings, [ch]: { ...listings[ch], links: e.target.value } })} style={{ width: "100%", fontSize: 11 }} />
+            <div key={ch} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", border: "1px solid #E5E7EB", borderRadius: 8, marginBottom: 6 }}>
+              <input type="checkbox" checked={listings[ch]?.done || false} onChange={(e) => setListings({ ...listings, [ch]: { ...listings[ch], done: e.target.checked } })} style={{ accentColor: "#16A34A" }} />
+              <span style={{ width: 10, height: 10, borderRadius: "50%", background: CH_CHIP_COLORS[ch], flexShrink: 0 }} />
+              <span style={{ fontSize: 12, fontWeight: 600, minWidth: 80 }}>{ch}</span>
+              <input type="text" placeholder={`Link ${ch}...`} value={(listings[ch]?.links || "").split("\n")[0]} onChange={(e) => setListings({ ...listings, [ch]: { ...listings[ch], links: e.target.value } })} style={{ flex: 1, padding: "4px 8px", border: "1px solid #E5E7EB", borderRadius: 6, fontSize: 11 }} />
             </div>
           ))}
-        </div>)}
+          {selChannels.length === 0 && <div style={{ color: "#9CA3AF", fontSize: 12, textAlign: "center", padding: 16 }}>Chọn kênh bán ở section 2 trước</div>}
+        </div>
 
-        {/* ─── STEP 6: Nội dung ─── */}
-        {step === 6 && (<div>
-          <div className="form-grid fg-2" style={{ marginBottom: 12 }}>
-            <div className="form-group"><label>LINK THƯ MỤC DRIVE (ẢNH/VIDEO GỐC)</label><input value={driveLink} onChange={(e) => setDriveLink(e.target.value)} placeholder="https://drive.google.com/..." /></div>
-            <div className="form-group"><label>NGƯỜI PHỤ TRÁCH (NHIỀU NGƯỜI)</label><input value={assignees} onChange={(e) => setAssignees(e.target.value)} placeholder="+ Thêm nhân viên..." /></div>
+        {/* ═══ Section 5: Nội dung & Mục tiêu ═══ */}
+        <div style={sectionStyle}>
+          {secTitle(5, "Nội dung & Mục tiêu", "#7C3AED")}
+
+          <div className="form-grid fg-2" style={{ marginBottom: 10 }}>
+            <div className="form-group"><label>LINK DRIVE TÀI LIỆU</label><input value={driveLink} onChange={(e) => setDriveLink(e.target.value)} placeholder="https://drive.google.com/..." /></div>
+            <div className="form-group"><label>NGƯỜI PHỤ TRÁCH</label><input value={assignees} onChange={(e) => setAssignees(e.target.value)} placeholder="Tên nhân sự..." /></div>
           </div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", marginBottom: 8 }}>TARGET NỘI DUNG SẢN XUẤT</div>
+
+          {/* Video targets */}
+          <div style={{ fontSize: 10, fontWeight: 700, color: "#6B7280", textTransform: "uppercase", marginBottom: 6 }}>Video cần sản xuất</div>
           {VIDEO_TYPES.map((vt, vi) => (
-            <div key={vt.type} style={{ marginBottom: 8, padding: "10px 14px", border: "1px solid #E5E7EB", borderRadius: 8 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 10, background: vt.color, color: "#fff", borderRadius: 4, padding: "2px 8px", fontWeight: 700 }}>{vt.label}</span>
-                <span style={{ flex: 1, fontSize: 11, fontWeight: 600 }}>{vt.type === "problem" ? "Đặt vấn đề — khai thác pain point" : vt.type === "demo" ? "Demo SP — chứng minh hiệu quả" : "CTA — tạo urgency, thúc đẩy mua"}</span>
-                <label style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 4 }}>
-                  Số video: <input type="number" value={videos[vi].count} min={0} style={{ width: 50 }} onChange={(e) => { const arr = [...videos]; arr[vi] = { ...arr[vi], count: Number(e.target.value) }; setVideos(arr); }} />
-                </label>
-              </div>
+            <div key={vt.type} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", border: "1px solid #E5E7EB", borderRadius: 8, marginBottom: 4 }}>
+              <span style={{ width: 10, height: 10, borderRadius: "50%", background: vt.color, flexShrink: 0 }} />
+              <span style={{ fontSize: 12, fontWeight: 600, flex: 1 }}>{vt.label} <span style={{ fontSize: 10, color: "#9CA3AF", fontWeight: 400 }}>— {vt.type === "problem" ? "Đặt vấn đề" : vt.type === "demo" ? "Chứng minh" : "Chốt đơn"}</span></span>
+              <input type="number" value={videos[vi].count} min={0} style={{ width: 50, textAlign: "center", fontSize: 12, padding: "3px 6px", border: "1px solid #E5E7EB", borderRadius: 6 }} onChange={(e) => { const arr = [...videos]; arr[vi] = { ...arr[vi], count: Number(e.target.value) }; setVideos(arr); }} />
             </div>
           ))}
-        </div>)}
 
-        {/* ─── STEP 7: Target DS ─── */}
-        {step === 7 && (<div>
-          <div style={{ display: "grid", gridTemplateColumns: `repeat(${selChannels.length}, 1fr)`, gap: 8, marginBottom: 12 }}>
-            {selChannels.map((ch) => (
-              <div key={ch} style={{ border: "1px solid #E5E7EB", borderRadius: 8, padding: "8px 10px", textAlign: "center" }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: CH_CHIP_COLORS[ch] || "#374151" }}>{ch}</div>
-                <input type="number" value={chTargets[ch] || ""} min={0} style={{ width: "100%", textAlign: "center", fontSize: 18, fontWeight: 800, border: "none", background: "transparent" }}
-                  onChange={(e) => setChTargets({ ...chTargets, [ch]: Number(e.target.value) })} />
-                <div style={{ fontSize: 9, color: "#6B7280" }}>SP target</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 12 }}>Tổng target: <strong>{totalTarget} SP</strong></div>
-          <div className="form-grid fg-3" style={{ marginBottom: 10 }}>
+          <div style={{ height: 1, background: "#E5E7EB", margin: "12px 0" }} />
+
+          {/* Channel targets */}
+          <div style={{ fontSize: 10, fontWeight: 700, color: "#6B7280", textTransform: "uppercase", marginBottom: 6 }}>Mục tiêu bán theo kênh (đơn vị SP)</div>
+          {selChannels.map((ch) => (
+            <div key={ch} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", border: "1px solid #E5E7EB", borderRadius: 8, marginBottom: 4 }}>
+              <span style={{ width: 10, height: 10, borderRadius: "50%", background: CH_CHIP_COLORS[ch], flexShrink: 0 }} />
+              <span style={{ fontSize: 12, fontWeight: 600, flex: 1 }}>{ch}</span>
+              <input type="number" value={chTargets[ch] || ""} min={0} style={{ width: 70, textAlign: "right", fontSize: 12, padding: "3px 6px", border: "1px solid #E5E7EB", borderRadius: 6 }} onChange={(e) => setChTargets({ ...chTargets, [ch]: Number(e.target.value) })} />
+            </div>
+          ))}
+          {totalTarget > 0 && <div style={{ textAlign: "right", fontSize: 12, fontWeight: 800, color: BRAND, marginTop: 4 }}>Tổng: {totalTarget} SP</div>}
+
+          <div style={{ height: 1, background: "#E5E7EB", margin: "12px 0" }} />
+
+          <div className="form-grid fg-3">
             <div className="form-group"><label>Tồn kho cần bán</label><input type="number" value={stockQty || ""} onChange={(e) => setStockQty(Number(e.target.value))} /></div>
-            <div className="form-group"><label>Số tháng tồn</label><input type="number" value={months || ""} onChange={(e) => setMonths(Number(e.target.value))} /></div>
+            <div className="form-group"><label>Số tháng</label><input type="number" value={months || ""} onChange={(e) => setMonths(Number(e.target.value))} /></div>
             <div className="form-group"><label>Deadline</label><input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} /></div>
           </div>
           <div className="form-grid fg-2">
             <div className="form-group"><label>Giá thị trường từ</label><input type="text" inputMode="numeric" value={priceFrom ? priceFrom.toLocaleString("vi-VN") : ""} onChange={(e) => setPriceFrom(Number(e.target.value.replace(/\D/g, "")))} /></div>
             <div className="form-group"><label>đến</label><input type="text" inputMode="numeric" value={priceTo ? priceTo.toLocaleString("vi-VN") : ""} onChange={(e) => setPriceTo(Number(e.target.value.replace(/\D/g, "")))} /></div>
           </div>
-        </div>)}
+        </div>
 
-        {/* Footer */}
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 20, paddingTop: 16, borderTop: "1px solid #E5E7EB" }}>
-          <div>{step > 1 && <button className="btn btn-ghost btn-sm" onClick={() => setStep(step - 1)}>← Trước</button>}</div>
+        {/* Sticky footer */}
+        <div style={{ position: "sticky", bottom: 0, background: "#fff", borderTop: "1px solid #E5E7EB", display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0 -20px", padding: "12px 20px", zIndex: 5 }}>
+          <div style={{ fontSize: 11, color: "#6B7280" }}>{stepDone.filter(Boolean).length}/{stepDone.length} mục đã điền</div>
           <div style={{ display: "flex", gap: 8 }}>
             <button className="btn btn-ghost btn-sm" onClick={onClose}>Huỷ</button>
             <button className="btn btn-ghost btn-sm" onClick={() => save("READY")} disabled={pending}>Lưu nháp</button>
-            {step < 7 ? (
-              <button className="btn btn-sm" style={{ background: BRAND, color: "#fff" }} onClick={() => setStep(step + 1)}>Tiếp →</button>
-            ) : (
-              <button className="btn btn-sm" style={{ background: BRAND, color: "#fff" }} onClick={() => save("LAUNCHED")} disabled={pending}>✓ Bắt đầu launch</button>
-            )}
+            <button className="btn btn-sm" style={{ background: BRAND, color: "#fff", padding: "8px 20px" }} onClick={() => save("LAUNCHED")} disabled={pending}>Bắt đầu launch →</button>
           </div>
         </div>
       </div>
