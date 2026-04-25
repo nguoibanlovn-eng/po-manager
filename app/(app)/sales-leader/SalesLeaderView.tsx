@@ -1079,12 +1079,8 @@ function AdsRevenueChart({ ads, gmvMax, nhanhRevenue }: {
         {/* Revenue Line Overlay — in top portion */}
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: barH, zIndex: 3, pointerEvents: "none" }}>
           <polygon points={`0,65 ${revPoints.join(" ")} 100,65`} fill="rgba(22,163,74,0.08)" />
-          <polyline points={revPoints.join(" ")} fill="none" stroke="#16A34A" strokeWidth="0.6" />
-          {daily.map(([, d], i) => {
-            const x = ((i + 0.5) / daily.length) * 100;
-            const y = maxRev > 0 ? 15 + (1 - d.rev / maxRev) * 50 : 65;
-            return <circle key={i} cx={x} cy={y} r="0.6" fill="#16A34A" />;
-          })}
+          <polyline points={revPoints.join(" ")} fill="none" stroke="#16A34A" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+          {/* circles removed — non-scaling-stroke không fix circle stretch */}
         </svg>
         {/* Date labels */}
         <div style={{ display: "flex", gap: 3, marginTop: 6 }}>
@@ -1146,12 +1142,8 @@ function GmvMaxMiniChart({ daily }: { daily: [string, { bm: number; gmvSpend: nu
         {/* Revenue line */}
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: miniH, zIndex: 3, pointerEvents: "none" }}>
           <polygon points={`0,60 ${revPoints.join(" ")} 100,60`} fill="rgba(22,163,74,0.06)" />
-          <polyline points={revPoints.join(" ")} fill="none" stroke="#16A34A" strokeWidth="0.8" />
-          {daily.map(([, d], i) => {
-            const x = ((i + 0.5) / daily.length) * 100;
-            const y = maxGmvRev > 0 ? 10 + (1 - d.gmvRev / maxGmvRev) * 50 : 60;
-            return <circle key={i} cx={x} cy={y} r="0.7" fill="#16A34A" />;
-          })}
+          <polyline points={revPoints.join(" ")} fill="none" stroke="#16A34A" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+          {/* circles removed */}
         </svg>
         <div style={{ display: "flex", gap: 3, marginTop: 6 }}>
           {daily.map(([date]) => (
