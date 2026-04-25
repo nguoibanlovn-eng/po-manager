@@ -1115,7 +1115,7 @@ function AdsRevenueChart({ ads, gmvMax, nhanhRevenue }: {
 function GmvMaxMiniChart({ daily }: { daily: [string, { bm: number; gmvSpend: number; gmvRev: number; rev: number }][] }) {
   const maxGmvSpend = Math.max(...daily.map(([, d]) => d.gmvSpend));
   const maxGmvRev = Math.max(...daily.map(([, d]) => d.gmvRev));
-  const miniH = 130;
+  const miniH = 160;
 
   // Revenue line in top portion
   const revPoints = daily.map(([, d], i) => {
@@ -1129,12 +1129,14 @@ function GmvMaxMiniChart({ daily }: { daily: [string, { bm: number; gmvSpend: nu
       <div style={{ position: "relative", height: miniH + 30 }}>
         <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: miniH, borderBottom: "1px solid #E2E8F0", position: "relative", zIndex: 2, paddingTop: 16 }}>
           {daily.map(([date, d]) => {
-            const h = maxGmvSpend > 0 ? (d.gmvSpend / maxGmvSpend) * miniH * 0.45 : 0;
+            const h = maxGmvSpend > 0 ? (d.gmvSpend / maxGmvSpend) * miniH * 0.35 : 0;
             const roi = d.gmvSpend > 0 ? d.gmvRev / d.gmvSpend : 0;
             const barColor = roi >= 10 ? "#16A34A" : "#DC2626";
             return (
-              <div key={date} style={{ flex: 1, minWidth: 18, display: "flex", flexDirection: "column", alignItems: "center" }} title={`${date}: Spend ${formatVNDCompact(d.gmvSpend)} · Rev ${formatVNDCompact(d.gmvRev)} · ROI ${roi.toFixed(1)}`}>
-                <div style={{ fontSize: 8, fontWeight: 700, color: barColor, marginBottom: 2 }}>{d.gmvSpend > 0 ? roi.toFixed(1) + "x" : ""}</div>
+              <div key={date} style={{ flex: 1, minWidth: 22, display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }} title={`${date}: Spend ${formatVNDCompact(d.gmvSpend)} · Rev ${formatVNDCompact(d.gmvRev)} · ROI ${roi.toFixed(1)}`}>
+                {d.gmvSpend > 0 && <div style={{ fontSize: 7, color: "#16A34A", fontWeight: 600, whiteSpace: "nowrap" }}>{formatVNDCompact(d.gmvRev)}</div>}
+                {d.gmvSpend > 0 && <div style={{ fontSize: 7, color: "#DC2626", fontWeight: 600, whiteSpace: "nowrap" }}>{formatVNDCompact(d.gmvSpend)}</div>}
+                <div style={{ fontSize: 8, fontWeight: 800, color: barColor }}>{d.gmvSpend > 0 ? roi.toFixed(1) + "x" : ""}</div>
                 <div style={{ width: "55%", height: h, background: barColor, borderRadius: "3px 3px 0 0", minWidth: 12 }} />
               </div>
             );
