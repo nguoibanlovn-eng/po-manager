@@ -619,14 +619,16 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
   );
 
   return (
-    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", justifyContent: "center", alignItems: "flex-start", overflowY: "auto" }}>
-      <div style={{ background: "var(--bg)", width: "100%", maxWidth: 760, minHeight: "100vh", padding: "16px 20px 80px" }}>
+    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.45)", zIndex: 100, display: "flex", justifyContent: "center", alignItems: "flex-start", overflowY: "auto", padding: "24px 0" }}>
+      <div style={{ background: "#F5F5F7", width: "100%", maxWidth: 760, borderRadius: 16, boxShadow: "0 25px 50px rgba(0,0,0,.25)", overflow: "hidden", margin: "0 10px" }}>
 
-        {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        {/* Sticky header */}
+        <div style={{ position: "sticky", top: 0, zIndex: 10, background: "#fff", borderBottom: "1px solid #E4E4E7", padding: "12px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ fontWeight: 800, fontSize: 16 }}>{initial ? "Sửa Launch Plan" : "Tạo Launch Plan"}</div>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#6B7280" }}>✕</button>
+          <button onClick={onClose} style={{ background: "#F4F4F5", border: "none", fontSize: 16, cursor: "pointer", color: "#6B7280", width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
         </div>
+
+        <div style={{ padding: "16px 20px 80px" }}>
 
         {/* SP header */}
         <div style={{ padding: "10px 14px", background: "#F0FDF4", borderRadius: 10, marginBottom: 14, display: "flex", alignItems: "center", gap: 12, border: "1px solid #BBF7D0" }}>
@@ -823,8 +825,10 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
           </div>
         </div>
 
+        </div>{/* end content padding */}
+
         {/* Sticky footer */}
-        <div style={{ position: "sticky", bottom: 0, background: "#fff", borderTop: "1px solid #E5E7EB", display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0 -20px", padding: "12px 20px", zIndex: 5 }}>
+        <div style={{ position: "sticky", bottom: 0, background: "#fff", borderTop: "1px solid #E4E4E7", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 20px", zIndex: 5 }}>
           <div style={{ fontSize: 11, color: "#6B7280" }}>{stepDone.filter(Boolean).length}/{stepDone.length} mục đã điền</div>
           <div style={{ display: "flex", gap: 8 }}>
             <button className="btn btn-ghost btn-sm" onClick={onClose}>Huỷ</button>
