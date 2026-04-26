@@ -1370,9 +1370,12 @@ function ModalInner({
               const qcDeadlineVal = String(data.qc_deadline || deadline || "");
               return (
               <>
-                {/* Thông tin tiếp nhận */}
+                {/* Thông tin tiếp nhận — luôn cho sửa */}
                 <div style={{ padding: "10px 14px", background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, marginBottom: 14, fontSize: 11 }}>
-                  <div style={{ fontWeight: 700, color: "#475569", marginBottom: 6 }}>Tiếp nhận mẫu</div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <span style={{ fontWeight: 700, color: "#475569" }}>Tiếp nhận mẫu</span>
+                    {qcConfirmed && <span style={{ fontSize: 9, color: "#16A34A", fontWeight: 600 }}>Đã xác nhận</span>}
+                  </div>
                   <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "3px 10px" }}>
                     <span style={{ color: "#94A3B8" }}>Người tiếp nhận:</span>
                     <span style={{ fontWeight: 600 }}>{assigneeName || assignee || "Leader KT"}</span>
@@ -1384,27 +1387,30 @@ function ModalInner({
                   </div>
                 </div>
 
+                {/* Tình trạng nhận + Deadline — luôn sửa được */}
+                <div style={S.section}>
+                  <div style={S.label}>Tình trạng nhận hàng</div>
+                  <textarea value={formData.qc_receive_note || ""} onChange={(e) => setField("qc_receive_note", e.target.value)} placeholder="Mô tả nhanh tình trạng đóng gói, ngoại quan khi nhận..." style={{ ...S.textarea, minHeight: 40 }} />
+                </div>
+                <div style={S.section}>
+                  <div style={S.label}>Deadline hoàn thành QC<span style={{ color: "#DC2626", marginLeft: 2 }}>*</span> <span style={{ color: "#94A3B8", fontWeight: 400 }}>(tối đa 7 ngày)</span></div>
+                  <input type="date" value={formData.qc_deadline || qcDeadlineVal} onChange={(e) => {
+                    const picked = e.target.value;
+                    const max = new Date(); max.setDate(max.getDate() + 7);
+                    if (picked > max.toISOString().split("T")[0]) { alert("Tối đa 7 ngày!"); return; }
+                    setField("qc_deadline", picked); setDeadline(picked); setDirty(true);
+                  }} max={(() => { const d = new Date(); d.setDate(d.getDate() + 7); return d.toISOString().split("T")[0]; })()} style={S.input} />
+                </div>
+
                 {!qcConfirmed ? (
                   <>
-                    {/* Giai đoạn 1: Xác nhận tiếp nhận + chọn deadline */}
-                    <div style={S.section}>
-                      <div style={S.label}>Tình trạng nhận hàng</div>
-                      <textarea value={formData.qc_receive_note || ""} onChange={(e) => setField("qc_receive_note", e.target.value)} placeholder="Mô tả nhanh tình trạng đóng gói, ngoại quan khi nhận..." style={{ ...S.textarea, minHeight: 40 }} />
-                    </div>
-                    <div style={S.section}>
-                      <div style={S.label}>Deadline hoàn thành QC<span style={{ color: "#DC2626", marginLeft: 2 }}>*</span> <span style={{ color: "#94A3B8", fontWeight: 400 }}>(tối đa 7 ngày)</span></div>
-                      <input type="date" value={qcDeadlineVal} onChange={(e) => {
-                        const picked = e.target.value;
-                        const max = new Date(); max.setDate(max.getDate() + 7);
-                        if (picked > max.toISOString().split("T")[0]) { alert("Tối đa 7 ngày!"); return; }
-                        setField("qc_deadline", picked); setDeadline(picked); setDirty(true);
-                      }} max={(() => { const d = new Date(); d.setDate(d.getDate() + 7); return d.toISOString().split("T")[0]; })()} style={S.input} />
-                    </div>
-                    <button type="button" disabled={pending || !qcDeadlineVal} onClick={() => {
+                    <button type="button" disabled={pending || !(formData.qc_deadline || qcDeadlineVal)} onClick={() => {
                       startTransition(async () => {
-                        const dl = qcDeadlineVal || formData.qc_deadline || "";
+                        const dl = formData.qc_deadline || qcDeadlineVal || "";
                         if (!dl) { alert("Chọn deadline QC trước"); return; }
-                        const newData = { ...data, ...formData, qc_confirmed: true, qc_deadline: dl, [stepsKey]: JSON.stringify(buildUpdatedSteps()) };
+                        const logEntry = { action: "qc_confirmed", by: currentUserEmail, at: new Date().toISOString(), deadline: dl, note: formData.qc_receive_note || "" };
+                        const updSteps = buildUpdatedSteps().map((s, i) => i === activeIdx ? { ...s, logs: [...(s.logs || []), logEntry] } : s);
+                        const newData = { ...data, ...formData, qc_confirmed: true, qc_deadline: dl, [stepsKey]: JSON.stringify(updSteps) };
                         const isNew = item.id === "__NEW__";
                         await saveRdItemAction(isNew ? null : item.id, { name: itemName, data: newData });
                         (data as Record<string, unknown>).qc_confirmed = true;
@@ -1413,7 +1419,7 @@ function ModalInner({
                         setDirty(false);
                         onRefresh();
                       });
-                    }} style={{ padding: "8px 16px", borderRadius: 7, fontSize: 12, fontWeight: 700, border: "none", background: qcDeadlineVal ? "#7C3AED" : "#E2E8F0", color: qcDeadlineVal ? "#fff" : "#94A3B8", cursor: qcDeadlineVal ? "pointer" : "not-allowed", marginBottom: 14, width: "100%" }}>
+                    }} style={{ padding: "8px 16px", borderRadius: 7, fontSize: 12, fontWeight: 700, border: "none", background: (formData.qc_deadline || qcDeadlineVal) ? "#7C3AED" : "#E2E8F0", color: (formData.qc_deadline || qcDeadlineVal) ? "#fff" : "#94A3B8", cursor: (formData.qc_deadline || qcDeadlineVal) ? "pointer" : "not-allowed", marginBottom: 14, width: "100%" }}>
                       Xác nhận tiếp nhận — Bắt đầu QC
                     </button>
                   </>
