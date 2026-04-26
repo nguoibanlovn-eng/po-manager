@@ -1364,6 +1364,25 @@ function ModalInner({
               );
             })() : step.label === "Nhận mẫu & QC" ? (() => {
               /* ── Production: Nhận mẫu & QC — 2 giai đoạn ── */
+              if (isLocked) {
+                // Step đã hoàn thành — hiện summary
+                return (
+                  <div style={{ padding: "12px 14px", background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 8, fontSize: 11 }}>
+                    <div style={{ fontWeight: 700, color: "#15803D", marginBottom: 6 }}>QC hoàn thành</div>
+                    <div style={{ color: "#64748B", marginBottom: 4 }}>
+                      {passCount}/{checklist.length} Pass{failCount > 0 ? ` · ${failCount} Fail` : ""}
+                    </div>
+                    {checklist.map((c, i) => (
+                      <div key={i} style={{ fontSize: 10, color: c.verdict === "fail" ? "#DC2626" : "#16A34A", marginBottom: 1 }}>
+                        {c.verdict === "pass" ? "✓" : c.verdict === "fail" ? "✗" : "○"} {c.text}
+                      </div>
+                    ))}
+                    {String(data.qc_evaluation || "") && (
+                      <div style={{ marginTop: 6, color: "#475569" }}>Đánh giá: {String(data.qc_evaluation)}</div>
+                    )}
+                  </div>
+                );
+              }
               const qcConfirmed = !!data.qc_confirmed;
               const eta = String(data.sample_eta || "");
               const linkedPo = String(data.linked_sample_po || "");
