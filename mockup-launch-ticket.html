@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MOCKUP — Launch Ticket Detail</title>
+<style>
+  :root { --bg:#F5F5F7;--card:#fff;--border:#E4E4E7;--text:#18181B;--muted:#71717A;--subtle:#A1A1AA;--blue:#2563EB;--blue-lt:#EFF6FF;--green:#16A34A;--green-lt:#F0FDF4;--amber:#D97706;--amber-lt:#FFFBEB;--red:#DC2626;--red-lt:#FEF2F2;--purple:#7C3AED;--teal:#0D9488;--brand:#1D9E75;--brand2:#185FA5; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); font-family:'Inter',system-ui,sans-serif; font-size:14px; color:var(--text); }
+  .wrap { max-width:720px; margin:0 auto; padding:20px 16px 80px; }
+  .chip { display:inline-flex; padding:2px 6px; border-radius:4px; font-size:9px; font-weight:700; }
+  .dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .btn { display:inline-flex; align-items:center; gap:4px; border:0; border-radius:7px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .btn-brand { background:var(--brand); color:#fff; }
+  .btn-ghost { background:transparent; color:var(--muted); border:1px solid var(--border); }
+  .progress-mini { height:4px; background:#E5E7EB; border-radius:2px; overflow:hidden; margin-top:4px; }
+  .progress-mini div { height:100%; border-radius:2px; }
+
+  .demo-bar { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); z-index:9999; display:flex; gap:4px; background:#1F2937; padding:8px 12px; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.3); flex-wrap:wrap; justify-content:center; max-width:95vw; }
+  .demo-bar button { padding:6px 12px; border-radius:8px; border:none; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .demo-bar button.on { background:var(--brand); color:#fff; }
+  .demo-bar button.off { background:#374151; color:#9CA3AF; }
+  .view { display:none; }
+  .view.show { display:block; }
+</style>
+</head>
+<body>
+
+<div class="demo-bar">
+  <button class="on" onclick="show('v-list')">Danh sach ticket</button>
+  <button class="off" onclick="show('v-detail')">Chi tiet ticket</button>
+  <button class="off" onclick="show('v-detail-warning')">Ticket canh bao</button>
+</div>
+
+<!-- ═══════════════════════════════════════
+     DANH SACH TICKET (compact)
+     ═══════════════════════════════════════ -->
+<div id="v-list" class="view show">
+  <div class="wrap">
+    <div style="font-size:17px; font-weight:800; margin-bottom:14px">Launch SP — Dang launch</div>
+
+    <!-- Ticket 1: OK -->
+    <div style="border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:8px; background:#fff; cursor:pointer" onclick="show('v-detail')">
+      <div style="padding:10px 14px; display:flex; align-items:center; gap:10px; border-bottom:1px solid #F3F4F6">
+        <div style="flex:1; min-width:0">
+          <div style="font-weight:800; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">May hut bui cam tay V12 Pro</div>
+          <div style="font-size:10px; color:var(--muted)">MHB-301 · 2026-03-15</div>
+        </div>
+        <div style="display:flex; gap:4px; align-items:center; flex-shrink:0">
+          <span class="chip" style="background:#DBEAFE; color:#1E40AF">Dai han</span>
+          <span class="chip" style="background:var(--blue-lt); color:var(--blue)">T3-T9/2026</span>
+          <span class="chip" style="background:var(--green-lt); color:var(--green)">OK</span>
+        </div>
+      </div>
+      <div style="padding:8px 14px; display:flex; gap:8px; align-items:center">
+        <!-- Phan I + II -->
+        <div style="display:flex; gap:4px; flex:0 0 auto">
+          <div style="padding:4px 8px; border-left:3px solid var(--green); background:#FAFAFA; border-radius:0 4px 4px 0">
+            <div style="font-size:8px; font-weight:700; color:var(--green)">I · KH</div>
+            <div style="font-size:10px; font-weight:700; color:var(--green)">🔒 3/3</div>
+          </div>
+          <div style="padding:4px 8px; border-left:3px solid var(--purple); background:#FAFAFA; border-radius:0 4px 4px 0">
+            <div style="font-size:8px; font-weight:700; color:var(--purple)">II · TK</div>
+            <div style="font-size:10px; font-weight:700; color:var(--green)">4/4</div>
+          </div>
+        </div>
+        <!-- KPI -->
+        <div style="display:flex; gap:2px; flex:0 0 auto">
+          <div style="text-align:center; padding:3px 6px; background:#F5F5F7; border-radius:4px; min-width:52px">
+            <div style="font-size:7px; color:var(--subtle)">Ban</div>
+            <div style="font-size:12px; font-weight:800; color:var(--green)">520/700</div>
+          </div>
+          <div style="text-align:center; padding:3px 6px; background:#F5F5F7; border-radius:4px; min-width:52px">
+            <div style="font-size:7px; color:var(--subtle)">DT</div>
+            <div style="font-size:12px; font-weight:800; color:var(--brand2)">982.8M</div>
+          </div>
+          <div style="text-align:center; padding:3px 6px; background:#F5F5F7; border-radius:4px; min-width:40px">
+            <div style="font-size:7px; color:var(--subtle)">%</div>
+            <div style="font-size:12px; font-weight:800; color:var(--green)">74%</div>
+          </div>
+          <div style="text-align:center; padding:3px 6px; background:#F5F5F7; border-radius:4px; min-width:40px">
+            <div style="font-size:7px; color:var(--subtle)">Con</div>
+            <div style="font-size:12px; font-weight:800">180</div>
+          </div>
+        </div>
+        <!-- Channel bars -->
+        <div style="flex:1; display:flex; flex-direction:column; gap:2px; min-width:0">
+          <div style="display:flex; align-items:center; gap:4px">
+            <span style="font-size:8px; font-weight:700; width:20px; color:#1877F2; text-align:right">FB</span>
+            <div style="flex:1; height:5px; background:#F3F4F6; border-radius:3px; overflow:hidden"><div style="height:100%; width:73%; background:#1877F2; border-radius:3px"></div></div>
+            <span style="font-size:8px; color:var(--subtle); width:40px; text-align:right">145/200</span>
+            <span style="font-size:8px; font-weight:700; width:24px; text-align:right; color:var(--blue)">73%</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:4px">
+            <span style="font-size:8px; font-weight:700; width:20px; color:#18181B; text-align:right">TT</span>
+            <div style="flex:1; height:5px; background:#F3F4F6; border-radius:3px; overflow:hidden"><div style="height:100%; width:80%; background:#18181B; border-radius:3px"></div></div>
+            <span style="font-size:8px; color:var(--subtle); width:40px; text-align:right">280/350</span>
+            <span style="font-size:8px; font-weight:700; width:24px; text-align:right; color:var(--blue)">80%</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:4px">
+            <span style="font-size:8px; font-weight:700; width:20px; color:#EE4D2D; text-align:right">SP</span>
+            <div style="flex:1; height:5px; background:#F3F4F6; border-radius:3px; overflow:hidden"><div style="height:100%; width:63%; background:#EE4D2D; border-radius:3px"></div></div>
+            <span style="font-size:8px; color:var(--subtle); width:40px; text-align:right">95/150</span>
+            <span style="font-size:8px; font-weight:700; width:24px; text-align:right; color:var(--blue)">63%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ticket 2: Canh bao -->
+    <div style="border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:8px; background:#fff; cursor:pointer" onclick="show('v-detail-warning')">
+      <div style="padding:10px 14px; display:flex; align-items:center; gap:10px; border-bottom:1px solid #F3F4F6">
+        <div style="flex:1; min-width:0">
+          <div style="font-weight:800; font-size:13px">Quat dieu hoa mini Arctic 2026</div>
+          <div style="font-size:10px; color:var(--muted)">QAK-205 · 2026-04-01</div>
+        </div>
+        <div style="display:flex; gap:4px; align-items:center; flex-shrink:0">
+          <span class="chip" style="background:#FEF3C7; color:#92400E">Ngan han</span>
+          <span class="chip" style="background:var(--blue-lt); color:var(--blue)">T4-T7/2026</span>
+          <span class="chip" style="background:var(--red-lt); color:var(--red)">Cham</span>
+          <button style="padding:3px 10px; border-radius:5px; font-size:10px; font-weight:700; background:#92400E; color:#fff; border:none; cursor:pointer">Relaunch</button>
+        </div>
+      </div>
+      <div style="padding:8px 14px; display:flex; gap:8px; align-items:center">
+        <div style="display:flex; gap:4px; flex:0 0 auto">
+          <div style="padding:4px 8px; border-left:3px solid var(--green); background:#FAFAFA; border-radius:0 4px 4px 0">
+            <div style="font-size:8px; font-weight:700; color:var(--green)">I · KH</div>
+            <div style="font-size:10px; font-weight:700; color:var(--green)">🔒 3/3</div>
+          </div>
+          <div style="padding:4px 8px; border-left:3px solid var(--purple); background:#FAFAFA; border-radius:0 4px 4px 0">
+            <div style="font-size:8px; font-weight:700; color:var(--purple)">II · TK</div>
+            <div style="font-size:10px; font-weight:700; color:var(--amber)">4/5</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:2px; flex:0 0 auto">
+          <div style="text-align:center; padding:3px 6px; background:#F5F5F7; border-radius:4px; min-width:52px">
+            <div style="font-size:7px; color:var(--subtle)">Ban</div>
+            <div style="font-size:12px; font-weight:800; color:var(--red)">130/1100</div>
+          </div>
+          <div style="text-align:center; padding:3px 6px; background:#F5F5F7; border-radius:4px; min-width:52px">
+            <div style="font-size:7px; color:var(--subtle)">DT</div>
+            <div style="font-size:12px; font-weight:800; color:var(--brand2)">89.7M</div>
+          </div>
+          <div style="text-align:center; padding:3px 6px; background:#F5F5F7; border-radius:4px; min-width:40px">
+            <div style="font-size:7px; color:var(--subtle)">%</div>
+            <div style="font-size:12px; font-weight:800; color:var(--red)">12%</div>
+          </div>
+          <div style="text-align:center; padding:3px 6px; background:#F5F5F7; border-radius:4px; min-width:40px">
+            <div style="font-size:7px; color:var(--subtle)">Con</div>
+            <div style="font-size:12px; font-weight:800">970</div>
+          </div>
+        </div>
+        <div style="flex:1; display:flex; flex-direction:column; gap:2px; min-width:0">
+          <div style="display:flex; align-items:center; gap:4px">
+            <span style="font-size:8px; font-weight:700; width:20px; color:#1877F2; text-align:right">FB</span>
+            <div style="flex:1; height:5px; background:#F3F4F6; border-radius:3px; overflow:hidden"><div style="height:100%; width:14%; background:#1877F2; border-radius:3px"></div></div>
+            <span style="font-size:8px; color:var(--subtle); width:40px; text-align:right">42/300</span>
+            <span style="font-size:8px; font-weight:700; width:24px; text-align:right; color:var(--red)">14%</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:4px">
+            <span style="font-size:8px; font-weight:700; width:20px; color:#18181B; text-align:right">TT</span>
+            <div style="flex:1; height:5px; background:#F3F4F6; border-radius:3px; overflow:hidden"><div style="height:100%; width:13%; background:#18181B; border-radius:3px"></div></div>
+            <span style="font-size:8px; color:var(--subtle); width:40px; text-align:right">65/500</span>
+            <span style="font-size:8px; font-weight:700; width:24px; text-align:right; color:var(--red)">13%</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:4px">
+            <span style="font-size:8px; font-weight:700; width:20px; color:#EE4D2D; text-align:right">SP</span>
+            <div style="flex:1; height:5px; background:#F3F4F6; border-radius:3px; overflow:hidden"><div style="height:100%; width:9%; background:#EE4D2D; border-radius:3px"></div></div>
+            <span style="font-size:8px; color:var(--subtle); width:40px; text-align:right">18/200</span>
+            <span style="font-size:8px; font-weight:700; width:24px; text-align:right; color:var(--red)">9%</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:4px">
+            <span style="font-size:8px; font-weight:700; width:20px; color:#6366F1; text-align:right">Web</span>
+            <div style="flex:1; height:5px; background:#F3F4F6; border-radius:3px; overflow:hidden"><div style="height:100%; width:5%; background:#6366F1; border-radius:3px"></div></div>
+            <span style="font-size:8px; color:var(--subtle); width:40px; text-align:right">5/100</span>
+            <span style="font-size:8px; font-weight:700; width:24px; text-align:right; color:var(--red)">5%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ticket 3: Vuot target -->
+    <div style="border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:8px; background:#fff; cursor:pointer">
+      <div style="padding:10px 14px; display:flex; align-items:center; gap:10px; border-bottom:1px solid #F3F4F6">
+        <div style="flex:1; min-width:0">
+          <div style="font-weight:800; font-size:13px">Noi lau dien da nang 5L</div>
+          <div style="font-size:10px; color:var(--muted)">NLC-088 · 2026-03-25</div>
+        </div>
+        <div style="display:flex; gap:4px; align-items:center">
+          <span class="chip" style="background:var(--amber-lt); color:var(--amber)">Trung han</span>
+          <span class="chip" style="background:var(--blue-lt); color:var(--blue)">T3-T8/2026</span>
+          <span class="chip" style="background:var(--green-lt); color:var(--green)">Vuot</span>
+        </div>
+      </div>
+      <div style="padding:8px 14px; display:flex; gap:8px; align-items:center">
+        <div style="display:flex; gap:4px">
+          <div style="padding:4px 8px; border-left:3px solid var(--green); background:#FAFAFA; border-radius:0 4px 4px 0">
+            <div style="font-size:8px; font-weight:700; color:var(--green)">I · KH</div>
+            <div style="font-size:10px; font-weight:700; color:var(--green)">🔒 3/3</div>
+          </div>
+          <div style="padding:4px 8px; border-left:3px solid var(--green); background:#FAFAFA; border-radius:0 4px 4px 0">
+            <div style="font-size:8px; font-weight:700; color:var(--purple)">II · TK</div>
+            <div style="font-size:10px; font-weight:700; color:var(--green)">3/3</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:2px">
+          <div style="text-align:center; padding:3px 6px; background:#F5F5F7; border-radius:4px; min-width:52px">
+            <div style="font-size:7px; color:var(--subtle)">Ban</div>
+            <div style="font-size:12px; font-weight:800; color:var(--green)">418/420</div>
+          </div>
+          <div style="text-align:center; padding:3px 6px; background:#F5F5F7; border-radius:4px; min-width:52px">
+            <div style="font-size:7px; color:var(--subtle)">DT</div>
+            <div style="font-size:12px; font-weight:800; color:var(--brand2)">229.9M</div>
+          </div>
+          <div style="text-align:center; padding:3px 6px; background:#F5F5F7; border-radius:4px; min-width:40px">
+            <div style="font-size:7px; color:var(--subtle)">%</div>
+            <div style="font-size:12px; font-weight:800; color:var(--green)">100%</div>
+          </div>
+          <div style="text-align:center; padding:3px 6px; background:#F5F5F7; border-radius:4px; min-width:40px">
+            <div style="font-size:7px; color:var(--subtle)">Con</div>
+            <div style="font-size:12px; font-weight:800">2</div>
+          </div>
+        </div>
+        <div style="flex:1; display:flex; flex-direction:column; gap:2px; min-width:0">
+          <div style="display:flex; align-items:center; gap:4px">
+            <span style="font-size:8px; font-weight:700; width:20px; color:#18181B; text-align:right">TT</span>
+            <div style="flex:1; height:5px; background:#F3F4F6; border-radius:3px; overflow:hidden"><div style="height:100%; width:100%; background:#18181B; border-radius:3px"></div></div>
+            <span style="font-size:8px; color:var(--subtle); width:40px; text-align:right">320/300</span>
+            <span style="font-size:8px; font-weight:700; width:24px; text-align:right; color:var(--green)">107%</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:4px">
+            <span style="font-size:8px; font-weight:700; width:20px; color:#EE4D2D; text-align:right">SP</span>
+            <div style="flex:1; height:5px; background:#F3F4F6; border-radius:3px; overflow:hidden"><div style="height:100%; width:82%; background:#EE4D2D; border-radius:3px"></div></div>
+            <span style="font-size:8px; color:var(--subtle); width:40px; text-align:right">98/120</span>
+            <span style="font-size:8px; font-weight:700; width:24px; text-align:right; color:var(--blue)">82%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     CHI TIET TICKET — SP dang OK
+     ═══════════════════════════════════════ -->
+<div id="v-detail" class="view">
+  <div class="wrap">
+
+    <!-- Header -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px">
+      <div>
+        <div style="font-size:17px; font-weight:800">May hut bui cam tay V12 Pro</div>
+        <div style="font-size:11px; color:var(--muted)">SKU: MHB-301 · Launch 15/03/2026</div>
+      </div>
+      <div style="display:flex; gap:6px; align-items:center">
+        <span class="chip" style="background:#DBEAFE; color:#1E40AF">Dai han</span>
+        <span class="chip" style="background:var(--blue-lt); color:var(--blue)">T3-T9/2026</span>
+        <span style="padding:2px 8px; border-radius:6px; font-size:10px; font-weight:700; background:var(--green-lt); color:var(--green)">Dung tien do</span>
+        <button class="btn btn-ghost" onclick="show('v-list')" style="font-size:12px">✕</button>
+      </div>
+    </div>
+
+    <!-- TRANG THAI -->
+    <div style="font-size:11px; font-weight:700; color:var(--muted); margin-bottom:8px">TRANG THAI</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px">
+      <div style="border:1px solid var(--border); border-radius:8px; padding:10px 12px; border-left:3px solid var(--green); background:#fff">
+        <div style="font-size:10px; font-weight:700; color:var(--green); text-transform:uppercase; margin-bottom:4px">Phan I — Ke hoach</div>
+        <div style="font-size:12px; font-weight:600">Phan loai · Dinh gia · Phan bo</div>
+        <div style="display:flex; align-items:center; gap:4px; margin-top:4px">
+          <span style="font-size:9px; padding:1px 6px; border-radius:4px; background:#F3F4F6; color:#6B7280; font-weight:700">🔒 Da khoa</span>
+          <span style="padding:2px 8px; border-radius:6px; font-size:10px; font-weight:700; background:var(--green-lt); color:var(--green)">3/3 sign-off</span>
+        </div>
+      </div>
+      <div style="border:1px solid var(--border); border-radius:8px; padding:10px 12px; border-left:3px solid var(--green); background:#fff">
+        <div style="font-size:10px; font-weight:700; color:var(--purple); text-transform:uppercase; margin-bottom:4px">Phan II — Trien khai</div>
+        <div style="font-size:12px; font-weight:600">Noi dung · Listing</div>
+        <div style="display:flex; align-items:center; gap:4px; margin-top:4px">
+          <span style="font-size:10px; color:var(--muted)">Giao: Minh, Lan</span>
+          <span style="padding:2px 8px; border-radius:6px; font-size:10px; font-weight:700; background:var(--green-lt); color:var(--green)">4/4 checklist</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:1px; background:var(--border); margin-bottom:14px"></div>
+
+    <!-- KET QUA BAN -->
+    <div style="font-size:11px; font-weight:700; color:var(--muted); margin-bottom:6px">KET QUA BAN (dong bo tu Nhanh)</div>
+    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:12px">
+      <div style="text-align:center; padding:8px; background:#fff; border:1px solid var(--border); border-radius:6px">
+        <div style="font-size:9px; color:var(--muted)">Da ban</div>
+        <div style="font-size:18px; font-weight:800; color:var(--green)">520</div>
+        <div style="font-size:9px; color:var(--muted)">/ 700 SP</div>
+      </div>
+      <div style="text-align:center; padding:8px; background:#fff; border:1px solid var(--border); border-radius:6px">
+        <div style="font-size:9px; color:var(--muted)">Doanh thu</div>
+        <div style="font-size:18px; font-weight:800; color:var(--brand2)">982.8M</div>
+      </div>
+      <div style="text-align:center; padding:8px; background:#fff; border:1px solid var(--border); border-radius:6px">
+        <div style="font-size:9px; color:var(--muted)">Tien do</div>
+        <div style="font-size:18px; font-weight:800; color:var(--green)">74%</div>
+        <div class="progress-mini"><div style="width:74%; background:var(--green)"></div></div>
+      </div>
+      <div style="text-align:center; padding:8px; background:#fff; border:1px solid var(--border); border-radius:6px">
+        <div style="font-size:9px; color:var(--muted)">Con lai</div>
+        <div style="font-size:18px; font-weight:800">180</div>
+        <div style="font-size:9px; color:var(--muted)">SP</div>
+      </div>
+    </div>
+
+    <!-- THEO KENH -->
+    <div style="font-size:11px; font-weight:700; color:var(--muted); margin-bottom:6px">THEO KENH</div>
+    <div style="background:#fff; border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:14px">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px">
+        <span class="dot" style="background:#1877F2"></span>
+        <span style="font-size:11px; font-weight:600; width:80px">Facebook</span>
+        <div style="flex:1; height:6px; background:#F3F4F6; border-radius:3px; overflow:hidden"><div style="height:100%; width:73%; background:#1877F2; border-radius:3px"></div></div>
+        <span style="font-size:11px; font-weight:700; width:60px; text-align:right">145/200</span>
+        <span style="font-size:11px; font-weight:800; width:36px; text-align:right; color:var(--blue)">73%</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px">
+        <span class="dot" style="background:#18181B"></span>
+        <span style="font-size:11px; font-weight:600; width:80px">TikTok</span>
+        <div style="flex:1; height:6px; background:#F3F4F6; border-radius:3px; overflow:hidden"><div style="height:100%; width:80%; background:#18181B; border-radius:3px"></div></div>
+        <span style="font-size:11px; font-weight:700; width:60px; text-align:right">280/350</span>
+        <span style="font-size:11px; font-weight:800; width:36px; text-align:right; color:var(--blue)">80%</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px">
+        <span class="dot" style="background:#EE4D2D"></span>
+        <span style="font-size:11px; font-weight:600; width:80px">Shopee</span>
+        <div style="flex:1; height:6px; background:#F3F4F6; border-radius:3px; overflow:hidden"><div style="height:100%; width:63%; background:#EE4D2D; border-radius:3px"></div></div>
+        <span style="font-size:11px; font-weight:700; width:60px; text-align:right">95/150</span>
+        <span style="font-size:11px; font-weight:800; width:36px; text-align:right; color:var(--blue)">63%</span>
+      </div>
+      <!-- Tong -->
+      <div style="display:flex; align-items:center; gap:8px; margin-top:4px; padding-top:6px; border-top:1px solid #F3F4F6">
+        <span style="width:10px"></span>
+        <span style="font-size:11px; font-weight:800; width:80px">Tong</span>
+        <div style="flex:1; height:8px; background:#F3F4F6; border-radius:4px; overflow:hidden"><div style="height:100%; width:74%; background:var(--green); border-radius:4px"></div></div>
+        <span style="font-size:11px; font-weight:800; width:60px; text-align:right">520/700</span>
+        <span style="font-size:11px; font-weight:900; width:36px; text-align:right; color:var(--green)">74%</span>
+      </div>
+    </div>
+
+    <!-- THONG TIN KE HOACH -->
+    <div style="font-size:11px; font-weight:700; color:var(--muted); margin-bottom:6px">THONG TIN KE HOACH</div>
+    <div style="background:#fff; border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:14px; display:grid; grid-template-columns:1fr 1fr; gap:6px 16px; font-size:11px">
+      <div><span style="color:var(--subtle)">Gia von:</span> <strong>520.000d</strong></div>
+      <div><span style="color:var(--subtle)">Gia ban B1:</span> <strong>1.890.000d</strong></div>
+      <div><span style="color:var(--subtle)">Gia ban B2:</span> <strong>1.690.000d</strong></div>
+      <div><span style="color:var(--subtle)">Chu ky:</span> <strong>6 thang</strong></div>
+      <div><span style="color:var(--subtle)">Khach hang:</span> <strong>Ho gia dinh, chung cu 25-45 tuoi</strong></div>
+      <div><span style="color:var(--subtle)">Pain point:</span> <strong>Bui min, long thu cung</strong></div>
+      <div style="grid-column:1/-1"><span style="color:var(--subtle)">Doi thu:</span> <strong>Xiaomi G10 2.5tr · Dyson 8tr · Dreame V12 3.5tr</strong></div>
+    </div>
+
+    <!-- LISTING -->
+    <div style="font-size:11px; font-weight:700; color:var(--muted); margin-bottom:6px">LISTING</div>
+    <div style="background:#fff; border:1px solid var(--border); border-radius:8px; padding:8px 12px; margin-bottom:14px">
+      <div style="display:flex; align-items:center; gap:8px; padding:4px 0; border-bottom:1px solid #F3F4F6; font-size:11px">
+        <span class="dot" style="background:#1877F2"></span>
+        <span style="font-weight:600; width:90px">Facebook</span>
+        <span style="flex:1; color:var(--subtle); font-size:10px">https://fb.com/mhb301</span>
+        <span style="padding:1px 6px; border-radius:4px; font-size:9px; font-weight:700; background:var(--green-lt); color:var(--green)">✓ Done</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; padding:4px 0; border-bottom:1px solid #F3F4F6; font-size:11px">
+        <span class="dot" style="background:#18181B"></span>
+        <span style="font-weight:600; width:90px">TikTok Shop</span>
+        <span style="flex:1; color:var(--subtle); font-size:10px">https://tiktok.com/mhb301</span>
+        <span style="padding:1px 6px; border-radius:4px; font-size:9px; font-weight:700; background:var(--green-lt); color:var(--green)">✓ Done</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; padding:4px 0; font-size:11px">
+        <span class="dot" style="background:#EE4D2D"></span>
+        <span style="font-weight:600; width:90px">Shopee</span>
+        <span style="flex:1; color:var(--subtle); font-size:10px">https://shopee.vn/mhb301</span>
+        <span style="padding:1px 6px; border-radius:4px; font-size:9px; font-weight:700; background:var(--green-lt); color:var(--green)">✓ Done</span>
+      </div>
+    </div>
+
+    <!-- DON HANG LIEN QUAN -->
+    <div style="font-size:11px; font-weight:700; color:var(--muted); margin-bottom:6px">DON HANG LIEN QUAN (tu /list)</div>
+    <div style="background:#fff; border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:14px">
+      <div style="display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid #F3F4F6">
+        <span style="font-size:14px">📦</span>
+        <div style="flex:1">
+          <div style="font-size:12px; font-weight:700; color:var(--brand2)">PO-0067</div>
+          <div style="font-size:10px; color:var(--muted)">2000 hop · NCC A — Trung Quoc</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:10px; color:var(--muted)">ETA ve</div>
+          <div style="font-size:12px; font-weight:700">25/02/2026</div>
+        </div>
+        <span style="padding:2px 8px; border-radius:6px; font-size:9px; font-weight:700; background:var(--green-lt); color:var(--green)">Da ve</span>
+        <button class="btn btn-ghost" style="font-size:10px; padding:3px 8px">Xem don ↗</button>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; padding:6px 0">
+        <span style="font-size:14px">📦</span>
+        <div style="flex:1">
+          <div style="font-size:12px; font-weight:700; color:var(--brand2)">PO-0089</div>
+          <div style="font-size:10px; color:var(--muted)">500 hop · NCC A — Bo sung</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:10px; color:var(--muted)">ETA ve</div>
+          <div style="font-size:12px; font-weight:700; color:var(--amber)">10/05/2026</div>
+        </div>
+        <span style="padding:2px 8px; border-radius:6px; font-size:9px; font-weight:700; background:var(--amber-lt); color:var(--amber)">Dang van chuyen</span>
+        <button class="btn btn-ghost" style="font-size:10px; padding:3px 8px">Xem don ↗</button>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="display:flex; justify-content:flex-end; gap:8px">
+      <button class="btn btn-ghost" onclick="show('v-list')">Dong</button>
+      <button class="btn btn-brand" style="padding:8px 16px">✎ Sua plan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     CHI TIET TICKET — CANH BAO + RELAUNCH
+     ═══════════════════════════════════════ -->
+<div id="v-detail-warning" class="view">
+  <div class="wrap">
+
+    <!-- Header -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px">
+      <div>
+        <div style="font-size:17px; font-weight:800">Quat dieu hoa mini Arctic 2026</div>
+        <div style="font-size:11px; color:var(--muted)">SKU: QAK-205 · Launch 01/04/2026</div>
+      </div>
+      <div style="display:flex; gap:6px; align-items:center">
+        <span class="chip" style="background:#FEF3C7; color:#92400E">Ngan han</span>
+        <span class="chip" style="background:var(--blue-lt); color:var(--blue)">T4-T7/2026</span>
+        <span style="padding:2px 8px; border-radius:6px; font-size:10px; font-weight:700; background:var(--red-lt); color:var(--red)">Canh bao</span>
+        <button class="btn btn-ghost" onclick="show('v-list')" style="font-size:12px">✕</button>
+      </div>
+    </div>
+
+    <!-- TRANG THAI -->
+    <div style="font-size:11px; font-weight:700; color:var(--muted); margin-bottom:8px">TRANG THAI</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px">
+      <div style="border:1px solid var(--border); border-radius:8px; padding:10px 12px; border-left:3px solid var(--green); background:#fff">
+        <div style="font-size:10px; font-weight:700; color:var(--green); text-transform:uppercase; margin-bottom:4px">Phan I — Ke hoach</div>
+        <div style="font-size:12px; font-weight:600">Phan loai · Dinh gia · Phan bo</div>
+        <div style="display:flex; align-items:center; gap:4px; margin-top:4px">
+          <span style="font-size:9px; padding:1px 6px; border-radius:4px; background:#F3F4F6; color:#6B7280; font-weight:700">🔒 Da khoa</span>
+          <span style="padding:2px 8px; border-radius:6px; font-size:10px; font-weight:700; background:var(--green-lt); color:var(--green)">3/3 sign-off</span>
+        </div>
+      </div>
+      <div style="border:1px solid var(--border); border-radius:8px; padding:10px 12px; border-left:3px solid var(--amber); background:#fff">
+        <div style="font-size:10px; font-weight:700; color:var(--purple); text-transform:uppercase; margin-bottom:4px">Phan II — Trien khai</div>
+        <div style="font-size:12px; font-weight:600">Noi dung · Listing</div>
+        <div style="display:flex; align-items:center; gap:4px; margin-top:4px">
+          <span style="font-size:10px; color:var(--muted)">Giao: Ha, Tuan</span>
+          <span style="padding:2px 8px; border-radius:6px; font-size:10px; font-weight:700; background:var(--amber-lt); color:var(--amber)">4/5 checklist</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:1px; background:var(--border); margin-bottom:14px"></div>
+
+    <!-- KET QUA BAN -->
+    <div style="font-size:11px; font-weight:700; color:var(--muted); margin-bottom:6px">KET QUA BAN</div>
+    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:12px">
+      <div style="text-align:center; padding:8px; background:#fff; border:1px solid var(--border); border-radius:6px">
+        <div style="font-size:9px; color:var(--muted)">Da ban</div>
+        <div style="font-size:18px; font-weight:800; color:var(--red)">130</div>
+        <div style="font-size:9px; color:var(--muted)">/ 1100 SP</div>
+      </div>
+      <div style="text-align:center; padding:8px; background:#fff; border:1px solid var(--border); border-radius:6px">
+        <div style="font-size:9px; color:var(--muted)">Doanh thu</div>
+        <div style="font-size:18px; font-weight:800; color:var(--brand2)">89.7M</div>
+      </div>
+      <div style="text-align:center; padding:8px; background:#fff; border:1px solid var(--border); border-radius:6px">
+        <div style="font-size:9px; color:var(--muted)">Tien do</div>
+        <div style="font-size:18px; font-weight:800; color:var(--red)">12%</div>
+        <div class="progress-mini"><div style="width:12%; background:var(--red)"></div></div>
+      </div>
+      <div style="text-align:center; padding:8px; background:#fff; border:1px solid var(--border); border-radius:6px">
+        <div style="font-size:9px; color:var(--muted)">Con lai</div>
+        <div style="font-size:18px; font-weight:800">970</div>
+        <div style="font-size:9px; color:var(--muted)">SP</div>
+      </div>
+    </div>
+
+    <!-- THEO KENH -->
+    <div style="font-size:11px; font-weight:700; color:var(--muted); margin-bottom:6px">THEO KENH</div>
+    <div style="background:#fff; border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:14px">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px">
+        <span class="dot" style="background:#1877F2"></span>
+        <span style="font-size:11px; font-weight:600; width:80px">Facebook</span>
+        <div style="flex:1; height:6px; background:#F3F4F6; border-radius:3px; overflow:hidden"><div style="height:100%; width:14%; background:#1877F2; border-radius:3px"></div></div>
+        <span style="font-size:11px; font-weight:700; width:60px; text-align:right">42/300</span>
+        <span style="font-size:11px; font-weight:800; width:36px; text-align:right; color:var(--red)">14%</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px">
+        <span class="dot" style="background:#18181B"></span>
+        <span style="font-size:11px; font-weight:600; width:80px">TikTok</span>
+        <div style="flex:1; height:6px; background:#F3F4F6; border-radius:3px; overflow:hidden"><div style="height:100%; width:13%; background:#18181B; border-radius:3px"></div></div>
+        <span style="font-size:11px; font-weight:700; width:60px; text-align:right">65/500</span>
+        <span style="font-size:11px; font-weight:800; width:36px; text-align:right; color:var(--red)">13%</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px">
+        <span class="dot" style="background:#EE4D2D"></span>
+        <span style="font-size:11px; font-weight:600; width:80px">Shopee</span>
+        <div style="flex:1; height:6px; background:#F3F4F6; border-radius:3px; overflow:hidden"><div style="height:100%; width:9%; background:#EE4D2D; border-radius:3px"></div></div>
+        <span style="font-size:11px; font-weight:700; width:60px; text-align:right">18/200</span>
+        <span style="font-size:11px; font-weight:800; width:36px; text-align:right; color:var(--red)">9%</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px">
+        <span class="dot" style="background:#6366F1"></span>
+        <span style="font-size:11px; font-weight:600; width:80px">Web</span>
+        <div style="flex:1; height:6px; background:#F3F4F6; border-radius:3px; overflow:hidden"><div style="height:100%; width:5%; background:#6366F1; border-radius:3px"></div></div>
+        <span style="font-size:11px; font-weight:700; width:60px; text-align:right">5/100</span>
+        <span style="font-size:11px; font-weight:800; width:36px; text-align:right; color:var(--red)">5%</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; margin-top:4px; padding-top:6px; border-top:1px solid #F3F4F6">
+        <span style="width:10px"></span>
+        <span style="font-size:11px; font-weight:800; width:80px">Tong</span>
+        <div style="flex:1; height:8px; background:#F3F4F6; border-radius:4px; overflow:hidden"><div style="height:100%; width:12%; background:var(--red); border-radius:4px"></div></div>
+        <span style="font-size:11px; font-weight:800; width:60px; text-align:right">130/1100</span>
+        <span style="font-size:11px; font-weight:900; width:36px; text-align:right; color:var(--red)">12%</span>
+      </div>
+    </div>
+
+    <!-- DON HANG LIEN QUAN -->
+    <div style="font-size:11px; font-weight:700; color:var(--muted); margin-bottom:6px">DON HANG LIEN QUAN (tu /list)</div>
+    <div style="background:#fff; border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:14px">
+      <div style="display:flex; align-items:center; gap:8px; padding:6px 0">
+        <span style="font-size:14px">📦</span>
+        <div style="flex:1">
+          <div style="font-size:12px; font-weight:700; color:var(--brand2)">PO-0072</div>
+          <div style="font-size:10px; color:var(--muted)">3000 hop · NCC D — Quang Dong</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:10px; color:var(--muted)">ETA ve</div>
+          <div style="font-size:12px; font-weight:700">20/03/2026</div>
+        </div>
+        <span style="padding:2px 8px; border-radius:6px; font-size:9px; font-weight:700; background:var(--green-lt); color:var(--green)">Da ve</span>
+        <button class="btn btn-ghost" style="font-size:10px; padding:3px 8px">Xem don ↗</button>
+      </div>
+    </div>
+
+    <!-- RELAUNCH CTA -->
+    <div style="background:var(--amber-lt); border:1px solid #FCD34D; border-radius:10px; padding:14px; margin-bottom:14px">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px">
+        <div>
+          <div style="font-size:13px; font-weight:700; color:#92400E">Tien do cham — can dieu chinh?</div>
+          <div style="font-size:11px; color:#92400E; margin-top:2px">12% sau 1 thang (target 33%). TikTok + Shopee ban rat cham.</div>
+        </div>
+        <button style="padding:10px 20px; border-radius:8px; font-size:13px; font-weight:800; background:#92400E; color:#fff; border:none; cursor:pointer; white-space:nowrap">Relaunch →</button>
+      </div>
+      <div style="font-size:10px; color:#92400E; line-height:1.6; border-top:1px solid #FCD34D; padding-top:8px">
+        <strong>Goi y:</strong> Giam gia B1 690K → 590K · Tang ads TikTok · Bo sung 5-7 video moi · Xem xet flash sale Shopee
+      </div>
+    </div>
+
+    <!-- THONG TIN KE HOACH -->
+    <div style="font-size:11px; font-weight:700; color:var(--muted); margin-bottom:6px">THONG TIN KE HOACH</div>
+    <div style="background:#fff; border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:14px; display:grid; grid-template-columns:1fr 1fr; gap:6px 16px; font-size:11px">
+      <div><span style="color:var(--subtle)">Gia von:</span> <strong>185.000d</strong></div>
+      <div><span style="color:var(--subtle)">Gia ban B1:</span> <strong>690.000d</strong></div>
+      <div><span style="color:var(--subtle)">Gia ban B2:</span> <strong>590.000d</strong></div>
+      <div><span style="color:var(--subtle)">Chu ky:</span> <strong>3 thang (ngan han)</strong></div>
+      <div><span style="color:var(--subtle)">Khach hang:</span> <strong>Sinh vien, VP, phong tro</strong></div>
+      <div><span style="color:var(--subtle)">Pain point:</span> <strong>Nong, budget thap</strong></div>
+      <div style="grid-column:1/-1"><span style="color:var(--subtle)">Doi thu:</span> <strong>Kangaroo 800k · Sunhouse 1.2tr</strong></div>
+    </div>
+
+    <!-- Footer -->
+    <div style="display:flex; justify-content:flex-end; gap:8px">
+      <button class="btn btn-ghost" onclick="show('v-list')">Dong</button>
+      <button class="btn btn-brand" style="padding:8px 16px">✎ Sua plan</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function show(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('show'));
+  document.getElementById(id).classList.add('show');
+  document.querySelectorAll('.demo-bar button').forEach(b => b.className = 'off');
+  const map = {'v-list':0,'v-detail':1,'v-detail-warning':2};
+  document.querySelectorAll('.demo-bar button')[map[id]].className = 'on';
+  window.scrollTo(0,0);
+}
+</script>
+
+</body>
+</html>
