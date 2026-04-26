@@ -1,19 +1,13 @@
 export default function DashLoading() {
   return (
-    <section className="section" style={{ padding: 12 }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {/* Header skeleton */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <div className="skeleton" style={{ width: 120, height: 22, borderRadius: 6 }} />
-            <div className="skeleton" style={{ width: 180, height: 14, borderRadius: 4, marginTop: 4 }} />
-          </div>
-          <div style={{ display: "flex", gap: 4 }}>
-            <div className="skeleton" style={{ width: 50, height: 30, borderRadius: 8 }} />
-            <div className="skeleton" style={{ width: 50, height: 30, borderRadius: 8 }} />
-          </div>
-        </div>
+    <section className="section" id="dash-day" style={{ padding: 0 }}>
+      {/* Header — chuẩn tím giống 3 dashboard */}
+      <div className="dash-mobile-only" style={{ background: "linear-gradient(135deg,#7C3AED,#4C1D95)", padding: "14px 14px 16px", color: "#fff" }}>
+        <div style={{ fontSize: 17, fontWeight: 800 }}>Dashboard</div>
+        <div style={{ fontSize: 11, opacity: .6 }}>Đang tải...</div>
+      </div>
 
+      <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
         {/* Hero skeleton */}
         <div className="skeleton" style={{ width: "100%", height: 140, borderRadius: 14 }} />
 
