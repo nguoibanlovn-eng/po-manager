@@ -1201,11 +1201,30 @@ function ModalInner({
             </div>
             )}
 
-            {/* ── Production: Đặt mẫu — chỉ nút PO ── */}
+            {/* ── Production: Đặt mẫu — NCC info + nút PO ── */}
             {step.label === "Đặt mẫu" && isProduction(item) ? (() => {
               const linkedPo = String(data.linked_sample_po || "");
               return (
                 <div style={{ marginBottom: 14 }}>
+                  {/* Thông tin NCC */}
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={S.label}>Thông tin nhà cung cấp</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
+                      <div>
+                        <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 2 }}>Tên NCC</div>
+                        <input value={formData.sample_supplier || ""} onChange={(e) => setField("sample_supplier", e.target.value)} placeholder="VD: Shenzhen ABC Co." style={S.input} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 2 }}>Nền tảng</div>
+                        <input value={formData.sample_platform || ""} onChange={(e) => setField("sample_platform", e.target.value)} placeholder="1688, Alibaba..." style={S.input} />
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 2 }}>Liên hệ (WeChat, phone...)</div>
+                      <input value={formData.sample_contact || ""} onChange={(e) => setField("sample_contact", e.target.value)} placeholder="WeChat ID, SĐT..." style={S.input} />
+                    </div>
+                  </div>
+
                   {!linkedPo ? (
                     <div style={{ padding: 20, border: "2px dashed #C4B5FD", borderRadius: 10, textAlign: "center", cursor: "pointer" }}
                       onClick={() => openPoForm("sample")}>
