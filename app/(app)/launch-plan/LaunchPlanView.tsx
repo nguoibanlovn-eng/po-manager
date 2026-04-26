@@ -276,7 +276,7 @@ export default function LaunchPlanView({ plans, autoAdd }: { plans: LaunchPlanRo
         </div>
       )}
 
-      {/* ═══ TAB: ĐANG LAUNCH — Ticket mockup v2 ═══ */}
+      {/* ═══ TAB: ĐANG LAUNCH — Compact ticket ═══ */}
       {tab === "launching" && (
         <div>
           {filterList(launching).map((p) => {
@@ -305,88 +305,99 @@ export default function LaunchPlanView({ plans, autoAdd }: { plans: LaunchPlanRo
             const p2Done = listingsDone + (contentDone ? 1 : 0);
             const p2Total = listingsTotal + 1;
             const assignee = m.phase2?.assignees || m.content?.assignees || "";
-            const checklist = Array.isArray((m as Record<string, unknown>).checklist) ? (m as Record<string, unknown>).checklist as Array<{ done: boolean }> : null;
-            const checkDone = checklist ? checklist.filter((c) => c.done).length : p2Done;
-            const checkTotal = checklist ? checklist.length : p2Total;
+            // Channel list for mini bars
+            const chList = Object.entries(chTargets).map(([ch, target]) => {
+              const actual = chActuals[ch] || 0;
+              const t = target as number;
+              const pct = t > 0 ? Math.round((actual / t) * 100) : 0;
+              const short = ch.replace("TikTok Shop", "TT").replace("Facebook", "FB").replace("Shopee", "SP").replace("Web/B2B", "Web");
+              return { ch, short, actual, target: t, pct, color: CH_COLORS[ch] || CH_COLORS[ch.replace(" Shop", "")] || "#6B7280" };
+            }).filter((c) => c.target > 0);
 
             return (
-              <div key={p.id} style={{ border: "1px solid #E4E4E7", borderRadius: 10, overflow: "hidden", marginBottom: 10, background: "#fff", cursor: "pointer" }} onClick={() => setDetailPlan(p)}>
-                {/* ─── ticket-hdr ─── */}
-                <div style={{ padding: "12px 14px", background: "#FAFAFA", borderBottom: "1px solid #E4E4E7", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div>
-                    <div style={{ fontWeight: 800, fontSize: 14 }}>{p.product_name}</div>
-                    <div style={{ fontSize: 10, color: "#71717A" }}>SKU: {p.sku || "—"} · Launch {p.launch_date || "—"}</div>
+              <div key={p.id} style={{ border: "1px solid #E4E4E7", borderRadius: 10, overflow: "hidden", marginBottom: 8, background: "#fff", cursor: "pointer" }} onClick={() => setDetailPlan(p)}>
+                {/* ─── Row 1: Header + tags + actions ─── */}
+                <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid #F3F4F6" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 800, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.product_name}</div>
+                    <div style={{ fontSize: 10, color: "#71717A" }}>{p.sku || "—"} · {p.launch_date || "—"}</div>
                   </div>
-                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    {hz && <span style={{ padding: "2px 6px", borderRadius: 4, fontSize: 9, fontWeight: 700, background: hz.bgOff || "#FFFBEB", color: hz.colorOff || "#D97706" }}>{hz.label}</span>}
-                    {timeTag && <span style={{ padding: "2px 6px", borderRadius: 4, fontSize: 9, fontWeight: 700, background: "#EFF6FF", color: "#2563EB" }}>{timeTag}</span>}
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: isWarning ? "#FEF2F2" : pr.pct >= 100 ? "#F0FDF4" : "#FFFBEB", color: isWarning ? "#DC2626" : pr.pct >= 100 ? "#16A34A" : "#D97706" }}>
-                      {isWarning ? "Cảnh báo" : pr.pct >= 100 ? "Vượt target" : "Đang triển khai"}
+                  <div style={{ display: "flex", gap: 4, alignItems: "center", flexShrink: 0 }}>
+                    {hz && <span style={{ padding: "1px 5px", borderRadius: 4, fontSize: 9, fontWeight: 700, background: hz.bgOff || "#FFFBEB", color: hz.colorOff || "#D97706" }}>{hz.label}</span>}
+                    {timeTag && <span style={{ padding: "1px 5px", borderRadius: 4, fontSize: 9, fontWeight: 700, background: "#EFF6FF", color: "#2563EB" }}>{timeTag}</span>}
+                    <span style={{ padding: "1px 6px", borderRadius: 4, fontSize: 9, fontWeight: 700, background: isWarning ? "#FEF2F2" : pr.pct >= 100 ? "#F0FDF4" : "#FFFBEB", color: isWarning ? "#DC2626" : pr.pct >= 100 ? "#16A34A" : "#D97706" }}>
+                      {isWarning ? "Chậm" : pr.pct >= 100 ? "Vượt" : "OK"}
                     </span>
+                    {isWarning && (
+                      <button style={{ padding: "3px 10px", borderRadius: 5, fontSize: 10, fontWeight: 700, background: "#92400E", color: "#fff", border: "none", cursor: "pointer", whiteSpace: "nowrap" }} onClick={(e) => { e.stopPropagation(); setEditPlan(p); }}>Relaunch</button>
+                    )}
                   </div>
                 </div>
 
-                {/* ─── ticket-body ─── */}
-                <div style={{ padding: "12px 14px" }}>
-                  {/* TRẠNG THÁI */}
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#71717A", marginBottom: 8 }}>TRẠNG THÁI</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
-                    <div style={{ border: "1px solid #E4E4E7", borderRadius: 8, padding: "10px 12px", borderLeft: `3px solid ${p1Done ? "#16A34A" : "#D97706"}` }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: "#16A34A", textTransform: "uppercase", marginBottom: 4 }}>Phần I — Kế hoạch</div>
-                      <div style={{ fontSize: 12, fontWeight: 600 }}>Phân loại · Định giá · Phân bổ</div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4 }}>
-                        {p1Done && <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 4, background: "#F3F4F6", color: "#6B7280", fontWeight: 700 }}>🔒 Đã khoá</span>}
-                        <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: p1Done ? "#F0FDF4" : "#FFFBEB", color: p1Done ? "#16A34A" : "#D97706" }}>{p1Count}/3 sign-off</span>
-                      </div>
+                {/* ─── Row 2: Status + KPI + Channel bars ─── */}
+                <div style={{ padding: "8px 14px", display: "flex", gap: 8, alignItems: "center" }}>
+                  {/* Phần I + II compact */}
+                  <div style={{ display: "flex", gap: 4, flex: "0 0 auto" }}>
+                    <div style={{ padding: "4px 8px", borderLeft: `3px solid ${p1Done ? "#16A34A" : "#D97706"}`, background: "#FAFAFA", borderRadius: "0 4px 4px 0" }}>
+                      <div style={{ fontSize: 8, fontWeight: 700, color: "#16A34A" }}>I · KH</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: p1Done ? "#16A34A" : "#D97706" }}>{p1Done ? "🔒" : ""}{p1Count}/3</div>
                     </div>
-                    <div style={{ border: "1px solid #E4E4E7", borderRadius: 8, padding: "10px 12px", borderLeft: `3px solid ${checkDone >= checkTotal ? "#16A34A" : "#D97706"}` }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: "#7C3AED", textTransform: "uppercase", marginBottom: 4 }}>Phần II — Triển khai</div>
-                      <div style={{ fontSize: 12, fontWeight: 600 }}>Nội dung · Listing</div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4 }}>
-                        {assignee && <span style={{ fontSize: 10, color: "#71717A" }}>Giao: {assignee}</span>}
-                        <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: checkDone >= checkTotal ? "#F0FDF4" : "#FFFBEB", color: checkDone >= checkTotal ? "#16A34A" : "#D97706" }}>{checkDone}/{checkTotal} checklist</span>
-                      </div>
+                    <div style={{ padding: "4px 8px", borderLeft: `3px solid ${p2Done >= p2Total ? "#16A34A" : "#7C3AED"}`, background: "#FAFAFA", borderRadius: "0 4px 4px 0" }}>
+                      <div style={{ fontSize: 8, fontWeight: 700, color: "#7C3AED" }}>II · TK</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: p2Done >= p2Total ? "#16A34A" : "#D97706" }}>{p2Done}/{p2Total}</div>
                     </div>
                   </div>
 
-                  <div style={{ height: 1, background: "#E4E4E7", margin: "10px 0" }} />
-
-                  {/* KẾT QUẢ BÁN */}
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#71717A", marginBottom: 6 }}>KẾT QUẢ BÁN (đồng bộ từ Nhanh)</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginBottom: 8 }}>
-                    <div style={{ textAlign: "center", padding: 8, background: "#F5F5F7", borderRadius: 6 }}>
-                      <div style={{ fontSize: 9, color: "#71717A" }}>Đã bán</div>
-                      <div style={{ fontSize: 16, fontWeight: 800, color: "#16A34A" }}>{pr.totalActual}</div>
-                      <div style={{ fontSize: 9, color: "#71717A" }}>/ {pr.totalTarget} SP</div>
-                    </div>
-                    <div style={{ textAlign: "center", padding: 8, background: "#F5F5F7", borderRadius: 6 }}>
-                      <div style={{ fontSize: 9, color: "#71717A" }}>Doanh thu</div>
-                      <div style={{ fontSize: 16, fontWeight: 800, color: BRAND2 }}>{formatVNDCompact(revenue)}</div>
-                    </div>
-                    <div style={{ textAlign: "center", padding: 8, background: "#F5F5F7", borderRadius: 6 }}>
-                      <div style={{ fontSize: 9, color: "#71717A" }}>Tiến độ</div>
-                      <div style={{ fontSize: 16, fontWeight: 800, color: pr.color }}>{pr.pct}%</div>
-                      <div style={{ height: 4, background: "#E5E7EB", borderRadius: 2, overflow: "hidden", marginTop: 4 }}>
-                        <div style={{ height: "100%", width: `${Math.min(pr.pct, 100)}%`, background: pr.color, borderRadius: 2 }} />
+                  {/* KPI stats */}
+                  {(() => {
+                    const now = new Date();
+                    const startD = ld || now;
+                    const endD = endDate || new Date(startD.getTime() + (months || 3) * 30 * 86400000);
+                    const totalDays = Math.max(1, Math.round((endD.getTime() - startD.getTime()) / 86400000));
+                    const elapsedDays = Math.max(0, Math.round((now.getTime() - startD.getTime()) / 86400000));
+                    const timePct = Math.min(100, Math.round((elapsedDays / totalDays) * 100));
+                    const remainDays = Math.max(0, Math.round((endD.getTime() - now.getTime()) / 86400000));
+                    const timeClr = pr.pct >= timePct ? "#16A34A" : pr.pct >= timePct * 0.6 ? "#D97706" : "#DC2626";
+                    return (
+                      <div style={{ display: "flex", gap: 2, flex: 1 }}>
+                        <div style={{ textAlign: "center", padding: "3px 6px", background: "#F5F5F7", borderRadius: 4, flex: 1 }}>
+                          <div style={{ fontSize: 7, color: "#A1A1AA", lineHeight: 1 }}>Bán · còn {remaining}</div>
+                          <div style={{ fontSize: 12, fontWeight: 800, color: "#16A34A", lineHeight: 1.3 }}>{pr.totalActual}/{pr.totalTarget}</div>
+                        </div>
+                        <div style={{ textAlign: "center", padding: "3px 6px", background: "#F5F5F7", borderRadius: 4, flex: 1 }}>
+                          <div style={{ fontSize: 7, color: "#A1A1AA", lineHeight: 1 }}>DT</div>
+                          <div style={{ fontSize: 12, fontWeight: 800, color: "#185FA5", lineHeight: 1.3 }}>{formatVNDCompact(revenue)}</div>
+                        </div>
+                        <div style={{ textAlign: "center", padding: "3px 6px", background: "#F5F5F7", borderRadius: 4, flex: 1 }}>
+                          <div style={{ fontSize: 7, color: "#A1A1AA", lineHeight: 1 }}>Tiến độ</div>
+                          <div style={{ fontSize: 12, fontWeight: 800, color: pr.color, lineHeight: 1.3 }}>{pr.pct}%</div>
+                        </div>
+                        <div style={{ textAlign: "center", padding: "3px 4px", background: "#F5F5F7", borderRadius: 4, flex: 1 }}>
+                          <div style={{ fontSize: 7, color: "#A1A1AA", lineHeight: 1 }}>TG · còn {remainDays}d</div>
+                          <div style={{ fontSize: 10, fontWeight: 800, color: timeClr, lineHeight: 1.4 }}>{timePct}%</div>
+                          <div style={{ height: 3, background: "#E5E7EB", borderRadius: 2, overflow: "hidden", marginTop: 1 }}>
+                            <div style={{ height: "100%", width: `${timePct}%`, background: timeClr, borderRadius: 2 }} />
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <div style={{ textAlign: "center", padding: 8, background: "#F5F5F7", borderRadius: 6 }}>
-                      <div style={{ fontSize: 9, color: "#71717A" }}>Còn lại</div>
-                      <div style={{ fontSize: 16, fontWeight: 800 }}>{remaining}</div>
-                      <div style={{ fontSize: 9, color: "#71717A" }}>SP</div>
-                    </div>
+                    );
+                  })()}
+
+                  {/* Channel mini bars */}
+                  <div style={{ width: 130, flexShrink: 0, display: "flex", flexDirection: "column", gap: 1 }}>
+                    {chList.map((c) => {
+                      const clr = c.pct >= 80 ? "#16A34A" : c.pct >= 40 ? "#D97706" : "#DC2626";
+                      return (
+                        <div key={c.ch} style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                          <span style={{ fontSize: 7, fontWeight: 700, width: 16, color: c.color, textAlign: "right" }}>{c.short}</span>
+                          <div style={{ flex: 1, height: 3, background: "#F3F4F6", borderRadius: 2, overflow: "hidden" }}>
+                            <div style={{ height: "100%", width: `${Math.min(c.pct, 100)}%`, background: clr, borderRadius: 2 }} />
+                          </div>
+                          <span style={{ fontSize: 7, fontWeight: 700, width: 18, textAlign: "right", color: clr }}>{c.pct}%</span>
+                        </div>
+                      );
+                    })}
                   </div>
-
-                  {/* Relaunch CTA */}
-                  {isWarning && (
-                    <div style={{ background: "#FFFBEB", border: "1px solid #FCD34D", borderRadius: 8, padding: "10px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <div>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: "#92400E" }}>Tiến độ chậm — cần điều chỉnh?</div>
-                        <div style={{ fontSize: 10, color: "#92400E" }}>{pr.pct}% {months > 0 ? `sau ${months} tháng` : ""} (target 40%). Có thể relaunch để tăng hiệu quả.</div>
-                      </div>
-                      <button style={{ padding: "8px 16px", borderRadius: 7, fontSize: 12, fontWeight: 700, background: "#92400E", color: "#fff", border: "none", cursor: "pointer", whiteSpace: "nowrap" }} onClick={(e) => { e.stopPropagation(); setEditPlan(p); }}>Relaunch →</button>
-                    </div>
-                  )}
                 </div>
               </div>
             );
