@@ -37,11 +37,7 @@ function monthRange(offset: number) {
 }
 const CH_RANGES = [
   { key: "month", label: "Tháng này", ...monthRange(0) },
-  { key: "7d", label: "7N", from: daysAgo(-7), to: daysAgo(0) },
-  { key: "14d", label: "14N", from: daysAgo(-14), to: daysAgo(0) },
-  { key: "30d", label: "30N", from: daysAgo(-30), to: daysAgo(0) },
-  { key: "prev", label: "T.trước", ...monthRange(-1) },
-  { key: "year", label: "Năm nay", from: `${new Date().getFullYear()}-01-01`, to: daysAgo(0) },
+  { key: "prev", label: "Tháng trước", ...monthRange(-1) },
 ];
 
 export default function DashMonthMobile(p: DashMonthMobileProps) {
@@ -160,7 +156,7 @@ export default function DashMonthMobile(p: DashMonthMobileProps) {
       <div style={{ padding: "12px 10px 0" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: .5 }}>DT theo kênh{chRange !== "month" ? ` (${CH_RANGES.find(r => r.key === chRange)?.label})` : ""}</div>
-          {chLoading && <span style={{ fontSize: 9, color: "#94A3B8" }}>Loading...</span>}
+          {chLoading && <span style={{ fontSize: 10, color: "#7C3AED", fontWeight: 600 }}>Đang tải...</span>}
         </div>
         <div style={{ display: "flex", gap: 4, marginBottom: 10, overflowX: "auto", paddingBottom: 2 }}>
           {CH_RANGES.map(r => (

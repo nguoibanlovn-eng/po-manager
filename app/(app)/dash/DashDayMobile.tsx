@@ -218,7 +218,7 @@ export default function DashDayMobile(p: DashDayMobileProps) {
             }}>{r.label}</button>
           ))}
         </div>
-        {chLoading && <div style={{ textAlign: "center", fontSize: 11, color: "#7C3AED", marginBottom: 6 }}>Đang tải...</div>}
+        {chLoading && <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 999, background: "#7C3AED", color: "#fff", textAlign: "center", padding: "6px 0", fontSize: 12, fontWeight: 600 }}>Đang tải dữ liệu...</div>}
 
         {displayChannels.map(ch => {
           const change = chRange === "today" ? pctChange(ch.rev, ch.revYesterday) : 0;
