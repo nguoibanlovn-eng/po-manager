@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Mockup: Đơn hàng — Redesign</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #F8FAFC; color: #18181B; padding: 20px; }
+
+  .page { max-width: 1200px; margin: 0 auto; }
+  .page-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .page-title { font-size: 18px; font-weight: 800; }
+  .page-sub { font-size: 11px; color: #94A3B8; }
+  .btn { padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; }
+  .btn-primary { background: #7C3AED; color: #fff; }
+
+  /* ═══ STAT STRIP — chuẩn design ═══ */
+  .stat-strip { display: grid; grid-template-columns: repeat(6, 1fr); background: #fff; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden; margin-bottom: 14px; }
+  .stat-cell { padding: 14px 16px; border-right: 1px solid #F1F5F9; }
+  .stat-cell:last-child { border-right: none; }
+  .stat-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 4px; }
+  .stat-value { font-size: 20px; font-weight: 900; }
+  .stat-sub { font-size: 9px; color: #94A3B8; margin-top: 2px; }
+
+  /* ═══ TABS — pill style ═══ */
+  .tabs { display: flex; gap: 4px; margin-bottom: 14px; overflow-x: auto; padding-bottom: 2px; }
+  .tab { padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid #E2E8F0; background: #fff; color: #64748B; white-space: nowrap; display: flex; align-items: center; gap: 5px; }
+  .tab.active { background: #18181B; color: #fff; border-color: #18181B; }
+  .tab .cnt { font-size: 10px; padding: 1px 6px; border-radius: 10px; background: #F1F5F9; color: #64748B; }
+  .tab.active .cnt { background: rgba(255,255,255,.2); color: #fff; }
+  .tab.urgent .cnt { background: #DC2626; color: #fff; }
+
+  /* ═══ FILTERS — 1 dòng ═══ */
+  .filters { display: flex; gap: 8px; margin-bottom: 14px; align-items: center; }
+  .filters input, .filters select { padding: 7px 12px; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 12px; font-family: inherit; background: #fff; }
+  .filters input { flex: 0 0 220px; }
+
+  /* ═══ PENDING STRIP — giống stat strip ═══ */
+  .pending-strip { background: #FEF2F2; border: 1px solid #FECACA; border-radius: 12px; overflow: hidden; margin-bottom: 14px; }
+  .pending-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; padding: 12px 16px; border-bottom: 1px solid #FECACA; cursor: pointer; transition: background .1s; align-items: center; background: #fff; }
+  .pending-row:last-child { border-bottom: none; }
+  .pending-row:hover { background: #FFF5F5; }
+  .pending-name { font-size: 13px; font-weight: 700; }
+  .pending-name-sub { font-size: 10px; color: #64748B; margin-top: 2px; }
+
+  /* ═══ TABLE — phẳng ═══ */
+  .table-card { background: #fff; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; padding: 10px 14px; font-size: 10px; font-weight: 700; color: #94A3B8; text-transform: uppercase; background: #F8FAFC; border-bottom: 1px solid #E2E8F0; }
+  td { padding: 12px 14px; border-bottom: 1px solid #F1F5F9; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover { background: #FAFAFA; }
+
+  .chip { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 600; }
+  .chip-blue { background: #DBEAFE; color: #1D4ED8; }
+  .chip-green { background: #DCFCE7; color: #15803D; }
+  .chip-amber { background: #FEF3C7; color: #92400E; }
+  .chip-red { background: #FEE2E2; color: #B91C1C; }
+  .chip-gray { background: #F1F5F9; color: #64748B; }
+  .chip-purple { background: #F3E8FF; color: #7C3AED; }
+
+  .total-row { padding: 10px 14px; text-align: right; font-size: 12px; font-weight: 700; color: #18181B; background: #F8FAFC; border-top: 1px solid #E2E8F0; }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <!-- HEADER -->
+  <div class="page-hdr">
+    <div>
+      <div class="page-title">Đơn hàng</div>
+      <div class="page-sub">42 đơn · tổng 4.082.095.177đ</div>
+    </div>
+    <button class="btn btn-primary">+ Tạo đơn</button>
+  </div>
+
+  <!-- STAT STRIP -->
+  <div class="stat-strip">
+    <div class="stat-cell">
+      <div class="stat-label" style="color:#3B82F6">Ngân sách tháng</div>
+      <div class="stat-value" style="color:#3B82F6">800.0M</div>
+      <div class="stat-sub">Tháng 4/2026</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label" style="color:#16A34A">Đã nhập</div>
+      <div class="stat-value" style="color:#16A34A">3.85T</div>
+      <div class="stat-sub">481% ngân sách</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label" style="color:#D97706">Quota còn lại</div>
+      <div class="stat-value" style="color:#D97706">0đ</div>
+      <div class="stat-sub">0% còn</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label" style="color:#DC2626">Chờ xử lý</div>
+      <div class="stat-value" style="color:#DC2626">2</div>
+      <div class="stat-sub">—</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label" style="color:#0D9488">Đang vận chuyển</div>
+      <div class="stat-value" style="color:#0D9488">0</div>
+      <div class="stat-sub">—</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label" style="color:#7C3AED">Công nợ NCC</div>
+      <div class="stat-value" style="color:#7C3AED">1.13T</div>
+      <div class="stat-sub">11 NCC</div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tab active urgent">Chờ xử lý <span class="cnt">2</span></div>
+    <div class="tab">Tất cả <span class="cnt">42</span></div>
+    <div class="tab">Nháp <span class="cnt">7</span></div>
+    <div class="tab">Đã đặt <span class="cnt">0</span></div>
+    <div class="tab">Hàng về <span class="cnt">3</span></div>
+    <div class="tab">QC xong <span class="cnt">0</span></div>
+    <div class="tab">Lên kệ <span class="cnt">30</span></div>
+    <div class="tab">Đang bán <span class="cnt">0</span></div>
+    <div class="tab">Hoàn tất <span class="cnt">0</span></div>
+  </div>
+
+  <!-- FILTERS -->
+  <div class="filters">
+    <input type="text" placeholder="🔍 Tìm đơn, NCC, SP... (tất cả tab)" />
+    <select><option>Thanh toán: Tất cả</option></select>
+    <select><option>Phân loại: Tất cả</option></select>
+    <select><option>ETA: Tất cả</option></select>
+  </div>
+
+  <!-- PENDING — giống stat strip -->
+  <div class="pending-strip">
+    <div style="padding: 10px 16px; border-bottom: 1px solid #FECACA; background: #FEF2F2;">
+      <span style="font-size: 10px; font-weight: 700; color: #DC2626; text-transform: uppercase; letter-spacing: .4px;">⚠ Chờ xử lý · 2 đơn</span>
+    </div>
+    <div class="pending-row">
+      <div>
+        <div class="pending-name">Sạc nhanh mới <span class="chip chip-blue" style="font-size:9px; margin-left:4px;">KD</span></div>
+        <div class="pending-name-sub">NCC: — · Phân cho: Lê Vũ (Admin)</div>
+      </div>
+      <div style="font-size: 14px; font-weight: 800; color: #18181B;">15.600.000đ</div>
+      <div style="font-size: 11px; color: #DC2626; font-weight: 700;">25/04 · Quá 1d!</div>
+      <div style="text-align: right;"><span class="chip chip-red">Chưa TT</span></div>
+    </div>
+    <div class="pending-row">
+      <div>
+        <div class="pending-name">Cáp sạc Anker C to C 60W - Nobox <span class="chip chip-blue" style="font-size:9px; margin-left:4px;">KD</span></div>
+        <div class="pending-name-sub">NCC: — · Phân cho: Lê Vũ 2</div>
+      </div>
+      <div style="font-size: 14px; font-weight: 800; color: #18181B;">14.280.000đ</div>
+      <div style="font-size: 11px; color: #DC2626; font-weight: 700;">25/04 · Quá 1d!</div>
+      <div style="text-align: right;"><span class="chip chip-red">Chưa TT</span></div>
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="table-card">
+    <table>
+      <thead><tr>
+        <th>Mã đơn</th>
+        <th>Nguồn</th>
+        <th>Tên đơn</th>
+        <th>NCC</th>
+        <th>Ngày đặt</th>
+        <th>ETA</th>
+        <th>Giai đoạn</th>
+        <th style="text-align:right">Tổng tiền</th>
+        <th>Thanh toán</th>
+        <th></th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td><a href="#" style="color:#3B82F6; font-weight:600; text-decoration:none;">PO-177705...</a></td>
+          <td><span class="chip chip-blue" style="font-size:9px;">KD</span></td>
+          <td style="font-weight:600;">Sạc nhanh mới</td>
+          <td style="color:#64748B;">—</td>
+          <td>25/04/2026</td>
+          <td>—</td>
+          <td><span class="chip chip-purple">Chờ MH</span></td>
+          <td style="text-align:right; font-weight:700;">15.600.000đ</td>
+          <td><span class="chip chip-red">Chưa TT</span></td>
+          <td style="text-align:center; color:#94A3B8; cursor:pointer;">🗑</td>
+        </tr>
+        <tr>
+          <td><a href="#" style="color:#3B82F6; font-weight:600; text-decoration:none;">PO-177705...</a></td>
+          <td><span class="chip chip-blue" style="font-size:9px;">KD</span></td>
+          <td style="font-weight:600;">Cáp sạc Anker C to C 60W</td>
+          <td style="color:#64748B;">—</td>
+          <td>25/04/2026</td>
+          <td>—</td>
+          <td><span class="chip chip-purple">Chờ MH</span></td>
+          <td style="text-align:right; font-weight:700;">14.280.000đ</td>
+          <td><span class="chip chip-red">Chưa TT</span></td>
+          <td style="text-align:center; color:#94A3B8; cursor:pointer;">🗑</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="total-row">Tổng: 29.880.000đ · 2 đơn</div>
+  </div>
+</div>
+
+</body>
+</html>

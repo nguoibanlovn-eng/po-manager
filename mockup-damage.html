@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Mockup: Hàng hỏng — Flat Redesign</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #F8FAFC; color: #18181B; padding: 20px; }
+  .page { max-width: 1200px; margin: 0 auto; }
+  .page-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .page-title { font-size: 18px; font-weight: 800; }
+  .page-sub { font-size: 11px; color: #94A3B8; }
+
+  /* ═══ STAT STRIP ═══ */
+  .stat-strip { display: grid; grid-template-columns: repeat(4, 1fr); background: #fff; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden; margin-bottom: 14px; }
+  .stat-cell { padding: 14px 16px; border-right: 1px solid #F1F5F9; }
+  .stat-cell:last-child { border-right: none; }
+  .stat-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 4px; }
+  .stat-value { font-size: 22px; font-weight: 900; }
+  .stat-sub { font-size: 9px; color: #94A3B8; margin-top: 2px; }
+
+  /* ═══ TABS ═══ */
+  .tabs { display: flex; gap: 4px; margin-bottom: 14px; }
+  .tab { padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid #E2E8F0; background: #fff; color: #64748B; display: flex; align-items: center; gap: 5px; }
+  .tab.active { background: #18181B; color: #fff; border-color: #18181B; }
+  .tab .cnt { font-size: 10px; padding: 1px 6px; border-radius: 10px; background: #F1F5F9; color: #64748B; }
+  .tab.active .cnt { background: rgba(255,255,255,.2); color: #fff; }
+
+  /* ═══ FILTERS ═══ */
+  .filters { display: flex; gap: 8px; margin-bottom: 14px; align-items: center; }
+  .filters input, .filters select { padding: 7px 12px; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 12px; font-family: inherit; background: #fff; }
+
+  /* ═══ DAMAGE STRIP ═══ */
+  .damage-strip { background: #fff; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden; margin-bottom: 14px; }
+  .damage-header { padding: 12px 16px; border-bottom: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; }
+  .damage-header-left { display: flex; align-items: center; gap: 10px; }
+  .damage-header .title { font-size: 13px; font-weight: 700; }
+  .damage-header .sub { font-size: 10px; color: #94A3B8; }
+  .damage-header .po-link { font-size: 11px; color: #3B82F6; text-decoration: none; font-weight: 600; }
+  .damage-header-right { display: flex; align-items: center; gap: 10px; }
+  .damage-header .progress { font-size: 10px; font-weight: 700; }
+  .damage-header .value { font-size: 13px; font-weight: 800; color: #DC2626; }
+  .chip { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 600; }
+  .chip-red { background: #FEE2E2; color: #B91C1C; }
+  .chip-green { background: #DCFCE7; color: #15803D; }
+  .chip-amber { background: #FEF3C7; color: #92400E; }
+  .chip-gray { background: #F1F5F9; color: #64748B; }
+
+  /* Items inside strip */
+  .damage-items { }
+  .damage-item { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 100px; padding: 10px 16px; border-bottom: 1px solid #F1F5F9; align-items: center; font-size: 12px; }
+  .damage-item:last-child { border-bottom: none; }
+  .damage-item:hover { background: #FAFAFA; }
+  .item-name { font-weight: 600; }
+  .item-sku { font-size: 10px; color: #94A3B8; margin-top: 1px; }
+  .item-qty { font-weight: 700; color: #DC2626; }
+  .item-value { font-weight: 700; }
+  .item-status { }
+  .item-action { text-align: right; }
+  .item-action button { padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 600; border: 1px solid #E2E8F0; background: #fff; color: #64748B; cursor: pointer; }
+  .item-action button:hover { background: #F1F5F9; }
+
+  /* Table header */
+  .damage-items-header { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 100px; padding: 8px 16px; font-size: 9px; font-weight: 700; color: #94A3B8; text-transform: uppercase; background: #F8FAFC; border-bottom: 1px solid #E2E8F0; }
+
+  /* Warning strip for cần xử lý */
+  .damage-strip.warning { border-color: #FECACA; }
+  .damage-strip.warning .damage-header { background: #FEF2F2; border-bottom-color: #FECACA; }
+  .damage-strip.done { border-color: #BBF7D0; }
+  .damage-strip.done .damage-header { background: #F0FDF4; border-bottom-color: #BBF7D0; }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <!-- HEADER -->
+  <div class="page-hdr">
+    <div>
+      <div class="page-title">Xử lý hàng hỏng</div>
+      <div class="page-sub">Các SP lỗi do TECH ghi nhận — liên hệ NCC đổi/hoàn tiền</div>
+    </div>
+  </div>
+
+  <!-- STAT STRIP -->
+  <div class="stat-strip">
+    <div class="stat-cell">
+      <div class="stat-label" style="color:#DC2626">Cần xử lý</div>
+      <div class="stat-value" style="color:#DC2626">7</div>
+      <div class="stat-sub">SP lỗi chưa xong</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label" style="color:#16A34A">Đã xử lý</div>
+      <div class="stat-value" style="color:#16A34A">12</div>
+      <div class="stat-sub">Đổi/hoàn tiền xong</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label" style="color:#D97706">Tổng thiệt hại</div>
+      <div class="stat-value" style="color:#D97706">8.47M</div>
+      <div class="stat-sub">Chưa thu hồi</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label" style="color:#3B82F6">Đã thu hồi</div>
+      <div class="stat-value" style="color:#3B82F6">3.2M</div>
+      <div class="stat-sub">Từ NCC đổi/hoàn</div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tab active">Cần xử lý <span class="cnt">7</span></div>
+    <div class="tab">Đã xử lý <span class="cnt">12</span></div>
+    <div class="tab">Tất cả <span class="cnt">19</span></div>
+  </div>
+
+  <!-- FILTERS -->
+  <div class="filters">
+    <input type="text" placeholder="🔍 Tìm SP, NCC, PO..." style="width: 220px;" />
+    <select><option>NCC: Tất cả</option></select>
+    <select><option>Loại lỗi: Tất cả</option></select>
+  </div>
+
+  <!-- DAMAGE STRIP 1 — Warning (chưa xử lý xong) -->
+  <div class="damage-strip warning">
+    <div class="damage-header">
+      <div class="damage-header-left">
+        <div>
+          <div class="title">Lô hàng về 15/04/2026</div>
+          <div class="sub"><a href="#" class="po-link">PO-1776239921263-1888</a> · 4 SP lỗi · NCC: 1688 TQ</div>
+        </div>
+      </div>
+      <div class="damage-header-right">
+        <div class="progress" style="color: #DC2626;">0/4 xong</div>
+        <div class="value">7.372.823đ</div>
+        <span class="chip chip-gray">NCC: 1688 TQ</span>
+      </div>
+    </div>
+    <div class="damage-items-header">
+      <div>Sản phẩm</div>
+      <div>Số lượng</div>
+      <div>Thiệt hại</div>
+      <div>Trạng thái</div>
+      <div></div>
+    </div>
+    <div class="damage-item">
+      <div><div class="item-name">Đồng hồ ARMODD Squarz 12 Pro</div><div class="item-sku">SKU: 2000214320844</div></div>
+      <div class="item-qty">2 cái</div>
+      <div class="item-value">3.690.000đ</div>
+      <div><span class="chip chip-red">Chưa xử lý</span></div>
+      <div class="item-action"><button>Xử lý</button></div>
+    </div>
+    <div class="damage-item">
+      <div><div class="item-name">Pin dự phòng Magsafe Lanex 10.000mAh</div><div class="item-sku">SKU: 2000214322712</div></div>
+      <div class="item-qty">1 cái</div>
+      <div class="item-value">890.000đ</div>
+      <div><span class="chip chip-amber">Đang liên hệ NCC</span></div>
+      <div class="item-action"><button>Cập nhật</button></div>
+    </div>
+    <div class="damage-item">
+      <div><div class="item-name">Cáp sạc 4 in 1 Mfish</div><div class="item-sku">SKU: 2000214318364</div></div>
+      <div class="item-qty">5 cái</div>
+      <div class="item-value">1.245.000đ</div>
+      <div><span class="chip chip-red">Chưa xử lý</span></div>
+      <div class="item-action"><button>Xử lý</button></div>
+    </div>
+    <div class="damage-item">
+      <div><div class="item-name">Bàn chải điện Velasboost NEO</div><div class="item-sku">SKU: 2000214290653</div></div>
+      <div class="item-qty">1 cái</div>
+      <div class="item-value">1.547.823đ</div>
+      <div><span class="chip chip-red">Chưa xử lý</span></div>
+      <div class="item-action"><button>Xử lý</button></div>
+    </div>
+  </div>
+
+  <!-- DAMAGE STRIP 2 — Warning -->
+  <div class="damage-strip warning">
+    <div class="damage-header">
+      <div class="damage-header-left">
+        <div>
+          <div class="title">Lô hàng về 10/04/2026</div>
+          <div class="sub"><a href="#" class="po-link">PO-1776162399875-8945</a> · 2 SP lỗi · NCC: Đức Cường</div>
+        </div>
+      </div>
+      <div class="damage-header-right">
+        <div class="progress" style="color: #DC2626;">0/2 xong</div>
+        <div class="value">840.000đ</div>
+        <span class="chip chip-gray">NCC: Đức Cường</span>
+      </div>
+    </div>
+    <div class="damage-items-header">
+      <div>Sản phẩm</div>
+      <div>Số lượng</div>
+      <div>Thiệt hại</div>
+      <div>Trạng thái</div>
+      <div></div>
+    </div>
+    <div class="damage-item">
+      <div><div class="item-name">Tai nghe Bluetooth XY-30</div><div class="item-sku">SKU: 2000214310022</div></div>
+      <div class="item-qty">2 cái</div>
+      <div class="item-value">840.000đ</div>
+      <div><span class="chip chip-red">Chưa xử lý</span></div>
+      <div class="item-action"><button>Xử lý</button></div>
+    </div>
+  </div>
+
+  <!-- DAMAGE STRIP 3 — Done -->
+  <div class="damage-strip done">
+    <div class="damage-header">
+      <div class="damage-header-left">
+        <div>
+          <div class="title" style="color: #16A34A;">Lô hàng về 04/04/2026 ✓</div>
+          <div class="sub"><a href="#" class="po-link">PO-1775284173625-8306</a> · 1 SP lỗi · NCC: Bảo Phong</div>
+        </div>
+      </div>
+      <div class="damage-header-right">
+        <div class="progress" style="color: #16A34A;">1/1 xong</div>
+        <div class="value" style="color: #16A34A;">259.000đ</div>
+        <span class="chip chip-green">Đã hoàn tiền</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

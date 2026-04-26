@@ -300,7 +300,8 @@ function ModalInner({
     setLinks(s.links || []);
     setPhotos(s.photos || []);
     setResult(s.result || "");
-    const fields = STEP_FORM_FIELDS[s.label] || [];
+    const resolved = (isProd && s.label === "Nghiên cứu") ? "Triển khai" : s.label;
+    const fields = STEP_FORM_FIELDS[resolved] || STEP_FORM_FIELDS[s.label] || [];
     const d: Record<string, string> = {};
     for (const f of fields) d[f.key] = String(data[f.key] ?? "");
     setFormData(d);
@@ -383,8 +384,6 @@ function ModalInner({
       if (!String(fd.assign_dat_mau || d.assign_dat_mau || "")) missing.push("Giao NV đặt mẫu");
       if (!String(fd.deadline_dat_mau || d.deadline_dat_mau || "")) missing.push("Deadline đặt mẫu");
     } else if (sl === "Đặt mẫu") {
-      if (!String(d.linked_sample_po || "")) missing.push("Tạo đơn PO mẫu");
-    } else if (sl === "Đặt mẫu" && isProduction(item)) {
       if (!String(d.linked_sample_po || "")) missing.push("Tạo đơn PO mẫu");
     } else if (sl === "Chờ mẫu về") {
       // Bước chờ — không cần validation
@@ -988,10 +987,10 @@ function ModalInner({
                         const now = new Date().toLocaleDateString("vi-VN");
                         const byName = users.find((u) => u.email === currentUserEmail)?.name || currentUserEmail;
                         // Reopen previous work step, lock this + intermediate approval steps
-                        // "Nhận mẫu & QC" not pass → quay về "Triển khai SP" (skip "Duyệt triển khai")
+                        // "Nhận mẫu & QC" not pass → quay về "Đặt mẫu" để đặt lại mẫu
                         const revLog = { action: "revision", by: currentUserEmail, at: now, step: step.label, note: result };
                         const reopenIdx = (step.label === "Nhận mẫu & QC")
-                          ? initSteps.findIndex(s => s.label === "Triển khai SP")
+                          ? initSteps.findIndex(s => s.label === "Đặt mẫu")
                           : activeIdx - 1;
                         const targetIdx = reopenIdx >= 0 ? reopenIdx : activeIdx - 1;
                         const updatedSteps = initSteps.map((s, i) => {
@@ -1040,7 +1039,7 @@ function ModalInner({
             {/* ── Locked summary view for completed steps ── */}
             {isLocked ? (() => {
               // Collect all non-empty field values for this step
-              const fields = STEP_FORM_FIELDS[step.label] || [];
+              const fields = STEP_FORM_FIELDS[resolvedLabel] || STEP_FORM_FIELDS[step.label] || [];
               const filledFields = fields.filter((f) => {
                 const v = String(data[f.key] || "").trim();
                 return v && v !== "0";
