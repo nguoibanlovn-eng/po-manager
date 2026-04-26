@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { formatVNDCompact } from "@/lib/format";
 import AutoSyncToday from "../components/AutoSyncToday";
@@ -49,6 +49,8 @@ export default function DashMonthMobile(p: DashMonthMobileProps) {
   const [chData, setChData] = useState<{ name: string; color: string; rev: number; target: number; ads: number }[] | null>(null);
   const [chSources, setChSources] = useState<Record<string, { name: string; revenue: number; orders: number; expected: number }[]> | null>(null);
   const [chLoading, setChLoading] = useState(false);
+  const [navLoading, setNavLoading] = useState(false);
+  useEffect(() => { setNavLoading(false); }, [p.month]);
 
   async function loadChRange(key: string) {
     setChRange(key);
@@ -112,7 +114,7 @@ export default function DashMonthMobile(p: DashMonthMobileProps) {
       <AutoSyncToday extraSyncs={["/api/tiktok/sync-ads", "/api/tiktok/sync-gmv-max", "/api/fb/sync-ads"]} />
 
       {/* Loading banner */}
-      {chLoading && (
+      {(chLoading || navLoading) && (
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 999, background: "#7C3AED", color: "#fff", textAlign: "center", padding: "6px 0", fontSize: 12, fontWeight: 600 }}>
           Đang tải dữ liệu...
         </div>
@@ -128,16 +130,28 @@ export default function DashMonthMobile(p: DashMonthMobileProps) {
           <Link href={`/dash?view=month&month=${p.month}`} style={{ background: "rgba(255,255,255,.15)", padding: "3px 10px", borderRadius: 10, fontSize: 10, color: "#fff", textDecoration: "none" }}>⟳</Link>
         </div>
         {/* Month quick switch */}
-        <div style={{ display: "flex", gap: 6, paddingBottom: 10 }}>
-          <Link href={`/dash?view=month&month=${monthRange(0).from.substring(0, 7)}`} style={{
-            background: p.month === monthRange(0).from.substring(0, 7) ? "rgba(255,255,255,.3)" : "rgba(255,255,255,.1)",
-            color: "#fff", padding: "5px 14px", borderRadius: 8, fontSize: 11, fontWeight: 600, textDecoration: "none",
-          }}>Tháng này</Link>
-          <Link href={`/dash?view=month&month=${monthRange(-1).from.substring(0, 7)}`} style={{
-            background: p.month === monthRange(-1).from.substring(0, 7) ? "rgba(255,255,255,.3)" : "rgba(255,255,255,.1)",
-            color: "rgba(255,255,255,.7)", padding: "5px 14px", borderRadius: 8, fontSize: 11, fontWeight: 600, textDecoration: "none",
-          }}>Tháng trước</Link>
-        </div>
+        {(() => {
+          const now = new Date();
+          const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+          const pm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          const prevMonth = `${pm.getFullYear()}-${String(pm.getMonth() + 1).padStart(2, "0")}`;
+          const isThis = p.month === thisMonth;
+          const isPrev = p.month === prevMonth;
+          return (
+            <div style={{ display: "flex", gap: 6, paddingBottom: 10 }}>
+              <Link href={`/dash?view=month&month=${thisMonth}`} onClick={() => setNavLoading(true)} style={{
+                background: isThis ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.1)",
+                color: isThis ? "#fff" : "rgba(255,255,255,.5)",
+                padding: "5px 14px", borderRadius: 8, fontSize: 11, fontWeight: 600, textDecoration: "none",
+              }}>Tháng này</Link>
+              <Link href={`/dash?view=month&month=${prevMonth}`} onClick={() => setNavLoading(true)} style={{
+                background: isPrev ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.1)",
+                color: isPrev ? "#fff" : "rgba(255,255,255,.5)",
+                padding: "5px 14px", borderRadius: 8, fontSize: 11, fontWeight: 600, textDecoration: "none",
+              }}>Tháng trước</Link>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Hero */}

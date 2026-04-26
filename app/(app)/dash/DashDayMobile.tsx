@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { formatVNDCompact } from "@/lib/format";
 import AutoSyncToday from "../components/AutoSyncToday";
 
@@ -75,6 +75,8 @@ export default function DashDayMobile(p: DashDayMobileProps) {
   const [chData, setChData] = useState<typeof p.channels | null>(null);
   const [chLoading, setChLoading] = useState(false);
   const [navLoading, setNavLoading] = useState(false);
+  // Reset loading when date changes (component re-renders with new props)
+  useEffect(() => { setNavLoading(false); }, [p.today]);
 
   const loadChRange = useCallback(async (key: string) => {
     setChRange(key);
@@ -121,8 +123,14 @@ export default function DashDayMobile(p: DashDayMobileProps) {
           </div>
         </div>
         <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-          <Link href="/dash?view=day" onClick={() => setNavLoading(true)} style={{ background: "rgba(255,255,255,.25)", color: "#fff", padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600, textDecoration: "none" }}>Hôm nay</Link>
-          <Link href={`/dash?view=day&date=${daysAgo(-1)}`} onClick={() => setNavLoading(true)} style={{ background: "rgba(255,255,255,.1)", color: "rgba(255,255,255,.6)", padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600, textDecoration: "none" }}>Hôm qua</Link>
+          {(() => {
+            const isToday = p.today === daysAgo(0);
+            const isYesterday = p.today === daysAgo(-1);
+            return (<>
+              <Link href="/dash?view=day" onClick={() => setNavLoading(true)} style={{ background: isToday ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.1)", color: isToday ? "#fff" : "rgba(255,255,255,.5)", padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600, textDecoration: "none" }}>Hôm nay</Link>
+              <Link href={`/dash?view=day&date=${daysAgo(-1)}`} onClick={() => setNavLoading(true)} style={{ background: isYesterday ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.1)", color: isYesterday ? "#fff" : "rgba(255,255,255,.5)", padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600, textDecoration: "none" }}>Hôm qua</Link>
+            </>);
+          })()}
         </div>
       </div>
 
