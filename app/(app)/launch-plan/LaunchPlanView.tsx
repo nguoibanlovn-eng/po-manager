@@ -79,11 +79,16 @@ function getPhaseChecks(m: Metrics): boolean[] {
 /* ═══════════════════════════════════════════════════════════
    READY TAB — Chờ launching (click expand chi tiết)
    ═══════════════════════════════════════════════════════════ */
+const PAGE_SIZE = 20;
+
 function ReadyTab({ plans, onEdit }: { plans: LaunchPlanRow[]; onEdit: (p: LaunchPlanRow) => void }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const totalPages = Math.ceil(plans.length / PAGE_SIZE);
+  const paged = plans.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
   return (
     <div>
-      {plans.map((p) => {
+      {paged.map((p) => {
         const m = M(p);
         const cost = m.phase3?.cost || m.pricing?.cost || 0;
         const sellPrice = m.phase3?.sell_price || m.pricing?.sell_price || 0;
@@ -96,7 +101,7 @@ function ReadyTab({ plans, onEdit }: { plans: LaunchPlanRow[]; onEdit: (p: Launc
         const ageLabel = createdDays <= 3 ? "Mới" : createdDays <= 14 ? `${createdDays}d` : createdDays <= 30 ? `${createdDays}d` : `${createdDays}d`;
 
         return (
-          <div key={p.id} style={{ border: "1px solid #E4E4E7", borderRadius: 10, overflow: "hidden", marginBottom: 8, background: "#fff", borderLeft: `3px solid ${ageColor}` }}>
+          <div key={p.id} style={{ border: "1px solid #E4E4E7", borderRadius: 10, overflow: "hidden", marginBottom: 6, background: createdDays <= 3 ? "#F0FDF4" : createdDays <= 14 ? "#EFF6FF" : createdDays <= 30 ? "#FFFBEB" : "#FEF2F2" }}>
             {/* Row 1: tên + info compact */}
             <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, borderBottom: isOpen ? "1px solid #F3F4F6" : undefined }}>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -135,6 +140,14 @@ function ReadyTab({ plans, onEdit }: { plans: LaunchPlanRow[]; onEdit: (p: Launc
         );
       })}
       {plans.length === 0 && <div className="muted" style={{ padding: 24, textAlign: "center" }}>Không có SP sẵn sàng.</div>}
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 8, padding: "12px 0" }}>
+          <button disabled={page === 0} onClick={() => setPage(page - 1)} style={{ padding: "4px 12px", borderRadius: 5, fontSize: 11, border: "1px solid #E4E4E7", background: page === 0 ? "#F3F4F6" : "#fff", cursor: page === 0 ? "default" : "pointer", color: page === 0 ? "#A1A1AA" : "#18181B" }}>← Trước</button>
+          <span style={{ fontSize: 11, color: "#71717A" }}>Trang {page + 1}/{totalPages} · {plans.length} SP</span>
+          <button disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)} style={{ padding: "4px 12px", borderRadius: 5, fontSize: 11, border: "1px solid #E4E4E7", background: page >= totalPages - 1 ? "#F3F4F6" : "#fff", cursor: page >= totalPages - 1 ? "default" : "pointer", color: page >= totalPages - 1 ? "#A1A1AA" : "#18181B" }}>Sau →</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -297,31 +310,21 @@ export default function LaunchPlanView({ plans, autoAdd, users = [], currentUser
         ))}
       </div>
 
-      <div style={{ display: "flex", gap: 5, marginBottom: 10, alignItems: "center", flexWrap: "wrap" }}>
-        <input placeholder="Tìm SP, SKU..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "5px 9px", fontSize: 11, border: "1px solid #E4E4E7", borderRadius: 6, width: 160 }} />
-        <select value={filterTime} onChange={(e) => setFilterTime(e.target.value)} style={{ fontSize: 10, padding: "5px 6px", borderRadius: 5, border: "1px solid #E4E4E7", color: filterTime ? "#2563EB" : undefined }}>
-          <option value="">Thời gian</option>
-          <option value="7d">7 ngày qua</option>
-          <option value="30d">30 ngày qua</option>
-          <option value="old">Trên 30 ngày</option>
+      <div style={{ display: "flex", gap: 5, marginBottom: 10, alignItems: "center" }}>
+        <input placeholder="Tìm SP, SKU..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "5px 9px", fontSize: 11, border: "1px solid #E4E4E7", borderRadius: 6, width: 150 }} />
+        <select value={filterTime} onChange={(e) => setFilterTime(e.target.value)} style={{ fontSize: 10, padding: "4px 5px", borderRadius: 5, border: "1px solid #E4E4E7", color: filterTime ? "#2563EB" : undefined }}>
+          <option value="">Thời gian</option><option value="7d">7 ngày</option><option value="30d">30 ngày</option><option value="old">30d+</option>
         </select>
-        <select value={filterQty} onChange={(e) => setFilterQty(e.target.value)} style={{ fontSize: 10, padding: "5px 6px", borderRadius: 5, border: "1px solid #E4E4E7", color: filterQty ? "#16A34A" : undefined }}>
-          <option value="">Số lượng</option>
-          <option value="high">≥100 SP</option>
-          <option value="mid">20-99 SP</option>
-          <option value="low">&lt;20 SP</option>
+        <select value={filterQty} onChange={(e) => setFilterQty(e.target.value)} style={{ fontSize: 10, padding: "4px 5px", borderRadius: 5, border: "1px solid #E4E4E7", color: filterQty ? "#16A34A" : undefined }}>
+          <option value="">SL</option><option value="high">≥100</option><option value="mid">20-99</option><option value="low">&lt;20</option>
         </select>
         {tab === "launching" && (
-          <select value={filterProgress} onChange={(e) => setFilterProgress(e.target.value)} style={{ fontSize: 10, padding: "5px 6px", borderRadius: 5, border: "1px solid #E4E4E7", color: filterProgress ? "#D97706" : undefined }}>
-            <option value="">Tiến độ</option>
-            <option value="Vượt target">Vượt target</option>
-            <option value="Đúng tiến độ">Đúng tiến độ</option>
-            <option value="Chậm">Chậm</option>
-            <option value="Cảnh báo">Cảnh báo</option>
+          <select value={filterProgress} onChange={(e) => setFilterProgress(e.target.value)} style={{ fontSize: 10, padding: "4px 5px", borderRadius: 5, border: "1px solid #E4E4E7", color: filterProgress ? "#D97706" : undefined }}>
+            <option value="">Tiến độ</option><option value="Vượt target">Vượt</option><option value="Đúng tiến độ">OK</option><option value="Chậm">Chậm</option><option value="Cảnh báo">Cảnh báo</option>
           </select>
         )}
-        {(filterTime || filterQty || filterProgress || filterHorizon) && (
-          <button onClick={() => { setFilterTime(""); setFilterQty(""); setFilterProgress(""); setFilterHorizon(""); }} style={{ fontSize: 9, padding: "4px 8px", borderRadius: 4, border: "none", background: "#FEF2F2", color: "#DC2626", cursor: "pointer", fontWeight: 600 }}>Xoá lọc</button>
+        {(filterTime || filterQty || filterProgress) && (
+          <button onClick={() => { setFilterTime(""); setFilterQty(""); setFilterProgress(""); }} style={{ fontSize: 9, padding: "3px 6px", borderRadius: 3, border: "none", background: "#FEF2F2", color: "#DC2626", cursor: "pointer", fontWeight: 600 }}>✕</button>
         )}
       </div>
 
