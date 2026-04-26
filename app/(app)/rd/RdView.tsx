@@ -24,8 +24,10 @@ const STAGE_STYLE: Record<string, { bg: string; color: string; border: string }>
   "Kết quả":     { bg: "#F0FDF4", color: "#166534", border: "#86EFAC" },
   "Loại bỏ":     { bg: "#FEE2E2", color: "#B91C1C", border: "#FECACA" },
   "Tạo ticket":  { bg: "#F4F4F5", color: "#52525B", border: "#D4D4D8" },
+  "Tạo yêu cầu": { bg: "#EDE9FE", color: "#6D28D9", border: "#DDD6FE" },
   "Thiết kế":    { bg: "#F3E8FF", color: "#7E22CE", border: "#E9D5FF" },
   "NCC":         { bg: "#FEF3C7", color: "#92400E", border: "#FCD34D" },
+  "Nhận mẫu & QC": { bg: "#FFEDD5", color: "#C2410C", border: "#FED7AA" },
   "Chờ mẫu về":  { bg: "#FFEDD5", color: "#C2410C", border: "#FED7AA" },
   "Duyệt mẫu":   { bg: "#DCFCE7", color: "#15803D", border: "#86EFAC" },
   "Đặt hàng":    { bg: "#F0FDF4", color: "#166534", border: "#86EFAC" },
@@ -46,8 +48,8 @@ function stageStyleFor(stage: string | null | undefined) {
 // Progress % theo stage — research workflow (8 bước)
 const RESEARCH_STEPS = ["Đề xuất", "Xác nhận", "Nghiên cứu", "Duyệt NC", "Đặt mẫu", "Hàng về", "Duyệt mẫu", "Nhập hàng"];
 const PRODUCTION_STEPS = [
-  "Tạo ticket", "Nghiên cứu", "Duyệt B1", "Giao TK", "Thiết kế",
-  "Duyệt 2A", "NCC+Tracking", "Chờ mẫu về", "Duyệt mẫu", "Đặt hàng",
+  "Tạo yêu cầu", "Nghiên cứu", "Duyệt NC", "Đặt mẫu",
+  "Chờ mẫu về", "Nhận mẫu & QC", "Duyệt mẫu", "Đặt hàng",
 ];
 
 // Map stage tiếng Anh → tiếng Việt
@@ -312,6 +314,12 @@ function RdRow({
     : pipelineSteps.findIndex((s) => (item.stage || "").toLowerCase().includes(s.toLowerCase()));
   const currentStep = derivedStepLabel;
 
+  // Tags info
+  const assignedName = String(data.assigned_name || activeStepFromJson?.assignee_name || "");
+  const priority = String(data.priority || "");
+  const deadline = activeStepFromJson?.deadline || "";
+  const isOverdue = deadline && new Date(deadline) < new Date(new Date().toISOString().split("T")[0]);
+
   return (
     <tr onClick={onOpen} style={{ cursor: "pointer" }}>
       <td>
@@ -326,10 +334,32 @@ function RdRow({
       <td>
         <div style={{ fontWeight: 700, fontSize: 13 }}>{item.name || "(không tên)"}</div>
         {description && (
-          <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 400 }}>
+          <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 340 }}>
             {description}
           </div>
         )}
+        <div style={{ display: "flex", gap: 4, marginTop: 4, flexWrap: "wrap" }}>
+          {assignedName && (
+            <span style={{ fontSize: 9, fontWeight: 600, padding: "1px 6px", borderRadius: 3, background: "#EFF6FF", color: "#1D4ED8" }}>
+              {assignedName}
+            </span>
+          )}
+          {priority === "high" && (
+            <span style={{ fontSize: 9, fontWeight: 600, padding: "1px 6px", borderRadius: 3, background: "#FEF2F2", color: "#DC2626" }}>
+              Ưu tiên cao
+            </span>
+          )}
+          {priority === "low" && (
+            <span style={{ fontSize: 9, fontWeight: 600, padding: "1px 6px", borderRadius: 3, background: "#F4F4F5", color: "#71717A" }}>
+              Thấp
+            </span>
+          )}
+          {deadline && (
+            <span style={{ fontSize: 9, fontWeight: 600, padding: "1px 6px", borderRadius: 3, background: isOverdue ? "#FEE2E2" : "#F0FDF4", color: isOverdue ? "#DC2626" : "#16A34A" }}>
+              {isOverdue ? "QUÁ HẠN " : "DL: "}{deadline.substring(5)}
+            </span>
+          )}
+        </div>
       </td>
       <td>
         <div style={{ display: "flex", gap: 2, alignItems: "center", marginBottom: 3 }}>
