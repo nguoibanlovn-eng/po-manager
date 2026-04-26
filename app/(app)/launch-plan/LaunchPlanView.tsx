@@ -730,18 +730,29 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
   pending: boolean; startTransition: ReturnType<typeof useTransition>[1];
 }) {
   const m = initial ? M(initial) : {} as Metrics;
-  const [step, setStep] = useState(1);
   const [sku] = useState(initial?.sku || defaultSku || "");
   const [name] = useState(initial?.product_name || defaultName || "");
   const [cost, setCost] = useState(m.phase3?.cost || m.pricing?.cost || defaultCost || 0);
 
-  // Step 1 — Loại hàng
+  // B1 — Phân loại hàng
   const [horizon, setHorizon] = useState(m.phase1?.horizon || m.product_type || "medium");
   const [horizonNote, setHorizonNote] = useState((m as Record<string, unknown>).horizonNote as string || "");
-  // Step 2 — Khách hàng
   const [custGroup, setCustGroup] = useState(m.phase1?.customer || m.customer?.group || "");
   const [custPain, setCustPain] = useState(m.phase1?.pain_point || m.customer?.pain_point || "");
   const [custComp, setCustComp] = useState((m as Record<string, unknown>).competitors as string || "");
+  const [startDate, setStartDate] = useState((m as Record<string, unknown>).start_date as string || "");
+  const [endDateF, setEndDateF] = useState((m as Record<string, unknown>).end_date as string || "");
+  // Bàn giao
+  const [handoverTo, setHandoverTo] = useState((m as Record<string, unknown>).handover_to as string || "");
+  const [handoverDeadline, setHandoverDeadline] = useState((m as Record<string, unknown>).handover_deadline as string || "");
+  // B4 — Checklist tự do
+  type CheckItem = { name: string; qty: number; assignee: string; deadline: string; done: boolean };
+  const existingChecklist = Array.isArray((m as Record<string, unknown>).checklist) ? (m as Record<string, unknown>).checklist as CheckItem[] : null;
+  const hzKeyInit = (horizon === "short" ? "short" : horizon === "long" ? "long" : "medium") as "short" | "medium" | "long";
+  const defaultChecklist: CheckItem[] = VIDEO_TYPES.map((vt) => ({ name: vt.label + " — " + vt.desc, qty: vt[hzKeyInit], assignee: "", deadline: "", done: false }));
+  const [checklist, setChecklist] = useState<CheckItem[]>(existingChecklist || defaultChecklist);
+  const [newItemName, setNewItemName] = useState("");
+  const [newItemQty, setNewItemQty] = useState("");
   // Step 3 — Kênh bán
   const [selChannels, setSelChannels] = useState<string[]>(m.channels_selected || (m.phase4?.channels ? Object.keys(m.phase4.channels).filter((k) => (m.phase4?.channels?.[k] || 0) > 0) : ["Facebook", "TikTok Shop", "Shopee"]));
   const [channelNote, setChannelNote] = useState((m as Record<string, unknown>).channelNote as string || "");
@@ -810,7 +821,8 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
   function save(asStage?: string) {
     if (!name.trim()) return alert("Nhập tên SP");
     const metrics: Metrics = {
-      ...m, product_type: horizon, horizonNote,
+      ...m, product_type: horizon, horizonNote, start_date: startDate, end_date: endDateF,
+      handover_to: handoverTo, handover_deadline: handoverDeadline, checklist,
       phase1: { horizon, customer: custGroup, pain_point: custPain }, competitors: custComp,
       channels_selected: selChannels, channelNote,
       phase3: { sell_price: sellB1, sell_price_2: sellB2, cost },
@@ -965,11 +977,36 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
           </div>
           <div className="form-group"><div style={{ display: "inline-block", fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>ĐỐI THỦ + GIÁ THAM CHIẾU</div><input value={custComp} onChange={(e) => setCustComp(e.target.value)} placeholder="Xiaomi 1.2tr · Sharp 2.5tr..." /></div>
           {/* Thời gian triển khai */}
-          <div className="form-grid fg-3" style={{ marginTop: 10 }}>
-            <div className="form-group"><div style={{ display: "inline-block", fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>SỐ THÁNG</div><input type="number" value={months || ""} onChange={(e) => setMonths(Number(e.target.value))} /></div>
-            <div className="form-group"><div style={{ display: "inline-block", fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>DEADLINE</div><input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} /></div>
-            <div className="form-group"><div style={{ display: "inline-block", fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>TỒN KHO CẦN BÁN</div><input type="number" value={stockQty || ""} onChange={(e) => setStockQty(Number(e.target.value))} /></div>
+          <div style={{ display: "inline-block", fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4, marginTop: 10 }}>THỜI GIAN TRIỂN KHAI DỰ KIẾN</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 8 }}>
+            <div><input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={{ width: "100%", padding: "6px 10px", border: "1px solid #E4E4E7", borderRadius: 7, fontSize: 12 }} /><div style={{ fontSize: 9, color: "#A1A1AA", marginTop: 2 }}>Bắt đầu bán</div></div>
+            <div><input type="date" value={endDateF} onChange={(e) => setEndDateF(e.target.value)} style={{ width: "100%", padding: "6px 10px", border: "1px solid #E4E4E7", borderRadius: 7, fontSize: 12 }} /><div style={{ fontSize: 9, color: "#A1A1AA", marginTop: 2 }}>Kết thúc dự kiến</div></div>
+            <div><input type="number" value={stockQty || ""} onChange={(e) => setStockQty(Number(e.target.value))} style={{ width: "100%", padding: "6px 10px", border: "1px solid #E4E4E7", borderRadius: 7, fontSize: 12 }} placeholder="SL" /><div style={{ fontSize: 9, color: "#A1A1AA", marginTop: 2 }}>Tồn kho cần bán</div></div>
           </div>
+          {/* Timeline visual */}
+          {startDate && endDateF && (() => {
+            const s = new Date(startDate), e = new Date(endDateF);
+            const diffMs = e.getTime() - s.getTime();
+            const diffMonths = Math.max(1, Math.round(diffMs / (30 * 86400000)));
+            const monthNames: string[] = [];
+            const colors = ["#1877F2", "#2563EB", "#4F46E5", "#6D28D9", "#7C3AED", "#9333EA", "#A855F7", "#C084FC", "#D8B4FE", "#E9D5FF", "#F3E8FF", "#FAF5FF"];
+            for (let i = 0; i < diffMonths; i++) { const d = new Date(s); d.setMonth(d.getMonth() + i); monthNames.push(`T${d.getMonth() + 1}`); }
+            return (
+              <div style={{ background: "#F5F5F7", borderRadius: 8, padding: "8px 10px", fontSize: 10, color: "#71717A", marginBottom: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                  <span><strong>{s.toLocaleDateString("vi-VN")}</strong></span>
+                  <span>{diffMonths} tháng</span>
+                  <span><strong>{e.toLocaleDateString("vi-VN")}</strong></span>
+                </div>
+                <div style={{ display: "flex", height: 24, borderRadius: 6, overflow: "hidden", border: "1px solid #E4E4E7", fontSize: 9, fontWeight: 700 }}>
+                  {monthNames.map((mn, i) => (
+                    <div key={i} style={{ width: `${100 / monthNames.length}%`, background: colors[i % colors.length], display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>{mn}</div>
+                  ))}
+                </div>
+                <div style={{ fontSize: 9, color: "#A1A1AA", marginTop: 4 }}>→ Tag ticket: <span style={{ padding: "1px 6px", borderRadius: 4, background: "#FFFBEB", color: "#D97706", fontSize: 9, fontWeight: 700 }}>{horizon === "short" ? "Ngắn hạn" : horizon === "long" ? "Dài hạn" : "Trung hạn"} · {monthNames[0]}-{monthNames[monthNames.length - 1]}/{e.getFullYear()}</span></div>
+              </div>
+            );
+          })()}
           <div className="form-group"><div style={{ display: "inline-block", fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>GHI CHÚ</div><textarea rows={2} value={horizonNote} onChange={(e) => setHorizonNote(e.target.value)} placeholder="Lý do phân loại, đặc điểm hàng hóa..." /></div>
         </div>
 
@@ -1108,11 +1145,53 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
           )}
         </div>
 
-        {/* ═══ Xác nhận kế hoạch (Sign-off placeholder) ═══ */}
+        {/* ═══ Xác nhận kế hoạch + Bàn giao ═══ */}
         <div style={{ background: "#fff", border: "2px solid #D97706", borderRadius: 10, padding: 14, marginBottom: 12 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: "#92400E", marginBottom: 8 }}>Xác nhận kế hoạch</div>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "#92400E", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+            Xác nhận kế hoạch
+            <span style={{ marginLeft: "auto", padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: "#FFFBEB", color: "#D97706" }}>Chờ sign-off</span>
+          </div>
           <div style={{ fontSize: 11, color: "#71717A", marginBottom: 8, lineHeight: 1.5 }}>Các leader xác nhận phân loại + định giá + phân bổ trước khi chuyển sang triển khai.</div>
-          <div style={{ fontSize: 10, color: "#9CA3AF", fontStyle: "italic" }}>Sign-off sẽ được kích hoạt sau khi lưu plan.</div>
+
+          {/* Leader sign-off list */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 8 }}>
+            {["Admin", "Leader KD", "Leader MH"].map((role) => (
+              <div key={role} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", border: "1px solid #E4E4E7", borderRadius: 6 }}>
+                <div style={{ width: 18, height: 18, borderRadius: 4, border: "2px solid #E4E4E7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, flexShrink: 0 }} />
+                <span style={{ fontSize: 12, fontWeight: 600, flex: 1 }}>{role}</span>
+                <button type="button" className="btn btn-sm" style={{ background: BRAND, color: "#fff", fontSize: 10, padding: "3px 10px", border: "none", borderRadius: 5, cursor: "pointer" }}>Xác nhận</button>
+              </div>
+            ))}
+          </div>
+
+          {/* Comment input */}
+          <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+            <input type="text" placeholder="Bình luận..." style={{ flex: 1, padding: "5px 10px", border: "1px solid #E4E4E7", borderRadius: 6, fontSize: 11 }} />
+            <button type="button" className="btn btn-ghost" style={{ fontSize: 10, padding: "5px 10px" }}>Gửi</button>
+          </div>
+
+          {/* Bàn giao Phần II */}
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #FCD34D" }}>
+            <div style={{ padding: "10px 12px", background: "#F5F3FF", border: "1px solid #DDD6FE", borderRadius: 8, marginBottom: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#7C3AED" }}>Bàn giao Phần II cho:</span>
+                <select value={handoverTo} onChange={(e) => setHandoverTo(e.target.value)} style={{ padding: "4px 8px", fontSize: 11, border: "1px solid #DDD6FE", borderRadius: 6, fontWeight: 600 }}>
+                  <option value="">— Chọn người nhận —</option>
+                  <option value="nv_kd_1">NV Kinh doanh 1</option>
+                  <option value="nv_kd_2">NV Kinh doanh 2</option>
+                  <option value="sales_leader">Sales Leader</option>
+                </select>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 11, color: "#7C3AED", fontWeight: 600 }}>Deadline phân bổ việc:</span>
+                <input type="date" value={handoverDeadline} onChange={(e) => setHandoverDeadline(e.target.value)} style={{ padding: "4px 8px", fontSize: 11, border: "1px solid #DDD6FE", borderRadius: 6 }} />
+                <span style={{ fontSize: 9, color: "#71717A" }}>Người nhận phải phân bổ + Launch trước ngày này</span>
+              </div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button type="button" className="btn" style={{ background: BRAND, color: "#fff", padding: "10px 24px", fontSize: 13, border: "none", borderRadius: 7, fontWeight: 700, cursor: "pointer" }} onClick={() => save("LAUNCHED")}>Xác nhận & Bàn giao →</button>
+            </div>
+          </div>
         </div>
 
         {/* ╔══════════════════════════════════╗ */}
@@ -1132,29 +1211,47 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
             <div className="form-group"><div style={{ display: "inline-block", fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>NGƯỜI PHỤ TRÁCH</div><input value={assignees} onChange={(e) => setAssignees(e.target.value)} placeholder="Tên nhân sự..." /></div>
           </div>
 
-          {/* Video targets */}
+          {/* Checklist nội dung — tự do */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase" }}>Checklist nội dung</div>
             <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 4, background: "#EFF6FF", color: "#1E40AF", fontWeight: 600 }}>Gợi ý: {horizon === "short" ? "Ngắn hạn 7" : horizon === "long" ? "Dài hạn 15" : "Trung hạn 10"} video</span>
           </div>
-          {VIDEO_TYPES.map((vt, vi) => (
-            <div key={vt.type} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", border: "1px solid #E5E7EB", borderRadius: 8, marginBottom: 4 }}>
-              <span style={{ width: 10, height: 10, borderRadius: "50%", background: vt.color, flexShrink: 0 }} />
-              <span style={{ fontSize: 12, fontWeight: 600, flex: 1 }}>{vt.label} <span style={{ fontSize: 10, color: "#9CA3AF", fontWeight: 400 }}>— {vt.desc}</span></span>
-              <input type="number" value={videos[vi].count} min={0} style={{ width: 50, textAlign: "center", fontSize: 12, padding: "3px 6px", border: "1px solid #E5E7EB", borderRadius: 6 }} onChange={(e) => { const arr = [...videos]; arr[vi] = { ...arr[vi], count: Number(e.target.value) }; setVideos(arr); }} />
+          {checklist.map((item, idx) => (
+            <div key={idx} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", border: "1px solid #E5E7EB", borderRadius: 8, marginBottom: 4, flexWrap: "wrap", opacity: item.done ? 0.6 : 1 }}>
+              <input type="checkbox" checked={item.done} onChange={(e) => { const arr = [...checklist]; arr[idx] = { ...arr[idx], done: e.target.checked }; setChecklist(arr); }} style={{ accentColor: "#16A34A" }} />
+              <span style={{ fontSize: 12, fontWeight: item.done ? 400 : 600, flex: 1, minWidth: 120 }}>{item.name}</span>
+              <span style={{ fontSize: 10, color: "#71717A" }}>{item.qty}</span>
+              <select value={item.assignee} onChange={(e) => { const arr = [...checklist]; arr[idx] = { ...arr[idx], assignee: e.target.value }; setChecklist(arr); }} style={{ width: "auto", padding: "2px 6px", fontSize: 10, border: "1px solid #E4E4E7", borderRadius: 4, color: item.assignee ? "#4F46E5" : "#A1A1AA" }}>
+                <option value="">— Giao —</option>
+                <option>Hoa</option><option>Phát</option><option>Linh</option><option>Đức</option><option>Mai Thu</option>
+              </select>
+              <span style={{ fontSize: 9, color: "#A1A1AA" }}>DL:</span>
+              <input type="date" value={item.deadline} onChange={(e) => { const arr = [...checklist]; arr[idx] = { ...arr[idx], deadline: e.target.value }; setChecklist(arr); }} style={{ padding: "2px 4px", fontSize: 9, border: "1px solid #E4E4E7", borderRadius: 4, width: "auto" }} />
+              <button type="button" onClick={() => setChecklist(checklist.filter((_, i) => i !== idx))} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 13, padding: "0 4px" }}>×</button>
             </div>
           ))}
+          <div style={{ display: "flex", gap: 6, marginTop: 6, marginBottom: 12 }}>
+            <input type="text" placeholder="Tên mục mới (VD: Video unbox, Infographic...)" value={newItemName} onChange={(e) => setNewItemName(e.target.value)} style={{ flex: 1, padding: "5px 10px", border: "1px solid #E4E4E7", borderRadius: 6, fontSize: 12 }} />
+            <input type="text" placeholder="SL" value={newItemQty} onChange={(e) => setNewItemQty(e.target.value)} style={{ width: 50, padding: "5px 8px", border: "1px solid #E4E4E7", borderRadius: 6, fontSize: 12, textAlign: "center" }} />
+            <button type="button" className="btn btn-ghost" style={{ fontSize: 10, padding: "5px 10px" }} onClick={() => { if (!newItemName.trim()) return; setChecklist([...checklist, { name: newItemName, qty: Number(newItemQty) || 1, assignee: "", deadline: "", done: false }]); setNewItemName(""); setNewItemQty(""); }}>+ Thêm</button>
+          </div>
 
           <div style={{ height: 1, background: "#E5E7EB", margin: "12px 0" }} />
 
           {/* Listing */}
           <div style={{ fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase", marginBottom: 6 }}>LISTING SẢN PHẨM</div>
           {selChannels.map((ch) => (
-            <div key={ch} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", border: "1px solid #E5E7EB", borderRadius: 8, marginBottom: 4 }}>
+            <div key={ch} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", border: "1px solid #E5E7EB", borderRadius: 8, marginBottom: 4, flexWrap: "wrap" }}>
               <input type="checkbox" checked={listings[ch]?.done || false} onChange={(e) => setListings({ ...listings, [ch]: { ...listings[ch], done: e.target.checked } })} style={{ accentColor: "#16A34A" }} />
               <span style={{ width: 10, height: 10, borderRadius: "50%", background: CH_CHIP_COLORS[ch], flexShrink: 0 }} />
-              <span style={{ fontSize: 12, fontWeight: 600, minWidth: 80 }}>{ch}</span>
-              <input type="text" placeholder={`Link ${ch}...`} value={(listings[ch]?.links || "").split("\n")[0]} onChange={(e) => setListings({ ...listings, [ch]: { ...listings[ch], links: e.target.value } })} style={{ flex: 1, padding: "4px 8px", border: "1px solid #E5E7EB", borderRadius: 6, fontSize: 11 }} />
+              <span style={{ fontSize: 12, fontWeight: 600, minWidth: 70 }}>{ch}</span>
+              <input type="text" placeholder={`Link ${ch}...`} value={(listings[ch]?.links || "").split("\n")[0]} onChange={(e) => setListings({ ...listings, [ch]: { ...listings[ch], links: e.target.value } })} style={{ flex: 1, padding: "4px 8px", border: "1px solid #E5E7EB", borderRadius: 6, fontSize: 11, minWidth: 120 }} />
+              <select style={{ width: "auto", padding: "2px 6px", fontSize: 10, border: "1px solid #E4E4E7", borderRadius: 4 }}>
+                <option value="">— Giao —</option>
+                <option>Hoa</option><option>Phát</option><option>Linh</option>
+              </select>
+              <span style={{ fontSize: 9, color: "#A1A1AA" }}>DL:</span>
+              <input type="date" style={{ padding: "2px 4px", fontSize: 9, border: "1px solid #E4E4E7", borderRadius: 4, width: "auto" }} />
             </div>
           ))}
           {selChannels.length === 0 && <div style={{ color: "#9CA3AF", fontSize: 12, textAlign: "center", padding: 16 }}>Chọn kênh bán ở B3 trước</div>}
