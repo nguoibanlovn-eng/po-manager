@@ -810,10 +810,10 @@ function HandoverBlock({ users, handoverTo, setHandoverTo, handoverDeadline, set
   return (
     <div style={{ background: "#F5F3FF", border: "1px solid #DDD6FE", borderRadius: 10, padding: 14, marginBottom: 12 }}>
       <div style={{ fontSize: 13, fontWeight: 800, color: "#7C3AED", marginBottom: 10 }}>Bàn giao triển khai</div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         {/* Searchable user input */}
         <span style={{ fontSize: 12, fontWeight: 600, color: "#7C3AED", whiteSpace: "nowrap" }}>Giao cho:</span>
-        <div style={{ position: "relative", flex: 1, minWidth: 160 }}>
+        <div style={{ position: "relative", flex: 1, minWidth: 120 }}>
           <input
             value={open ? search : (selected ? `${selected.name || selected.email}${selected.role ? ` (${selected.role})` : ""}` : "")}
             placeholder="Gõ tên nhân sự..."
