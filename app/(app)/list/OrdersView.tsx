@@ -205,7 +205,6 @@ export default function OrdersView({
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 700 }}>
                     {o.order_name || o.order_id}
-                    {(o as Record<string, unknown>).source_tag && <span className="chip chip-blue" style={{ fontSize: 9, marginLeft: 4 }}>{String((o as Record<string, unknown>).source_tag)}</span>}
                   </div>
                   <div style={{ fontSize: 10, color: "#64748B", marginTop: 2 }}>
                     NCC: {o.supplier_name || "—"} · Phân cho: {assignee?.name || o.assigned_to || "—"}
