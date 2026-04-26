@@ -200,55 +200,25 @@ function OrderQcCard({
         }}
         onClick={() => setExpanded((v) => !v)}
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 13 }}>
+            <div style={{ fontWeight: 800, fontSize: 14 }}>
               {order.order_name || order.order_id}
             </div>
-            <div style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>
-              {order.supplier_name || "—"} · Về {formatDate(order.arrival_date)} · <span style={{ color: isUrgent ? "#DC2626" : "#64748B", fontWeight: isUrgent ? 700 : 400 }}>{daysAgo}d trước</span>
+            <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
+              {order.supplier_name || "—"} · {formatDate(order.arrival_date)} · {items.length} SP · {totalQty} cái · <span style={{ color: isUrgent ? "#DC2626" : "#64748B", fontWeight: isUrgent ? 700 : 400 }}>{daysAgo} ngày trước</span>
             </div>
           </div>
-          <span className={`stage-badge stage-${order.stage}`}>{order.stage}</span>
+          <div style={{ textAlign: "right", flexShrink: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: qcPct >= 100 && shelfPct >= 100 ? "#16A34A" : qcPct > 0 ? "#D97706" : "#DC2626" }}>
+              {qcPct >= 100 && shelfPct >= 100 ? "Xong" : `${Math.min(qcPct, shelfPct)}%`}
+            </div>
+            <div style={{ fontSize: 10, color: "#94A3B8" }}>QC {qcPct}% · Kệ {shelfPct}%</div>
+          </div>
           <span style={{ fontSize: 10, color: "#94A3B8", transform: expanded ? "rotate(90deg)" : "none", transition: "transform .2s" }}>›</span>
         </div>
-
-        {/* KPI strip */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 4, background: "#F8FAFC", borderRadius: 8, padding: "6px 8px", marginBottom: 8 }}>
-          <div>
-            <div style={{ fontSize: 8, color: "#94A3B8", textTransform: "uppercase" }}>Sản phẩm</div>
-            <div style={{ fontSize: 11, fontWeight: 700 }}>{items.length} SP · {totalQty} cái</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 8, color: "#94A3B8", textTransform: "uppercase" }}>QC</div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: qcPct >= 100 ? "#16A34A" : qcPct > 0 ? "#D97706" : "#DC2626" }}>{qcDoneCount}/{items.length} ({qcPct}%)</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 8, color: "#94A3B8", textTransform: "uppercase" }}>Lên kệ</div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: shelfPct >= 100 ? "#16A34A" : shelfPct > 0 ? "#D97706" : "#DC2626" }}>{shelfDoneCount}/{items.length} ({shelfPct}%)</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 8, color: "#94A3B8", textTransform: "uppercase" }}>Lỗi</div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: damageCount > 0 ? "#DC2626" : "#94A3B8" }}>{damageCount > 0 ? `${damageCount} SP · ${formatVND(damageCost)}` : "0"}</div>
-          </div>
-        </div>
-
-        {/* Dual progress bar */}
-        {items.length > 0 && (
-          <div style={{ display: "flex", gap: 6 }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ height: 5, background: "#F3F4F6", borderRadius: 3, overflow: "hidden" }}>
-                <div style={{ width: `${qcPct}%`, height: "100%", background: qcPct >= 100 ? "#22C55E" : "#0D9488", borderRadius: 3, transition: "width 0.3s" }} />
-              </div>
-              <div style={{ fontSize: 8, color: "#94A3B8", marginTop: 2 }}>QC</div>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ height: 5, background: "#F3F4F6", borderRadius: 3, overflow: "hidden" }}>
-                <div style={{ width: `${shelfPct}%`, height: "100%", background: shelfPct >= 100 ? "#22C55E" : "#16A34A", borderRadius: 3, transition: "width 0.3s" }} />
-              </div>
-              <div style={{ fontSize: 8, color: "#94A3B8", marginTop: 2 }}>Kệ</div>
-            </div>
-          </div>
+        {damageCount > 0 && (
+          <div style={{ fontSize: 11, color: "#DC2626", fontWeight: 700, marginTop: 4 }}>Lỗi: {damageCount} SP · {formatVND(damageCost)}</div>
         )}
       </div>
 
