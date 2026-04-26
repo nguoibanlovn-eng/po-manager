@@ -187,25 +187,37 @@ export default function OrdersView({
         </select>
       </div>
 
-      {/* Pending task cards */}
+      {/* Pending strip — flat design */}
       {stage === "PENDING_PURCHASE" && filtered.length > 0 && (
-        <div style={{ marginBottom: 14 }}>
-          {filtered.map((o) => {
+        <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 12, overflow: "hidden", marginBottom: 14 }}>
+          <div style={{ padding: "10px 16px", borderBottom: "1px solid #FECACA", background: "#FEF2F2" }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: "#DC2626", textTransform: "uppercase", letterSpacing: ".4px" }}>⚠ Chờ xử lý · {filtered.length} đơn</span>
+          </div>
+          {filtered.map((o, idx) => {
             const dl = daysFromNow(o.deadline);
-            const urgency = dl !== null && dl < 0 ? "overdue" : dl !== null && dl <= 3 ? "soon" : "ok";
             const assignee = users.find((u) => u.email === o.assigned_to);
             return (
-              <div key={o.order_id} onClick={() => setDetailOrderId(o.order_id)} style={{ background: urgency === "overdue" ? "var(--red-lt)" : urgency === "soon" ? "var(--amber-lt)" : "#fff", border: `1px solid ${urgency === "overdue" ? "#FECACA" : urgency === "soon" ? "#FCD34D" : "var(--border)"}`, borderLeft: `4px solid ${urgency === "overdue" ? "var(--red)" : urgency === "soon" ? "var(--amber)" : "var(--blue)"}`, borderRadius: 12, padding: 14, marginBottom: 8, cursor: "pointer" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                  <span style={{ fontWeight: 800, fontSize: 14 }}>{o.order_name || o.order_id}</span>
-                  <span style={{ padding: "1px 6px", borderRadius: 4, fontSize: 9, fontWeight: 800, background: "#DBEAFE", color: "#1E40AF", textTransform: "uppercase" }}>Order KD</span>
+              <div key={o.order_id} onClick={() => setDetailOrderId(o.order_id)} style={{
+                display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", padding: "12px 16px",
+                borderBottom: idx < filtered.length - 1 ? "1px solid #FECACA" : "none",
+                background: "#fff", cursor: "pointer", alignItems: "center",
+              }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700 }}>
+                    {o.order_name || o.order_id}
+                    {o.source_tag && <span className="chip chip-blue" style={{ fontSize: 9, marginLeft: 4 }}>{o.source_tag}</span>}
+                  </div>
+                  <div style={{ fontSize: 10, color: "#64748B", marginTop: 2 }}>
+                    NCC: {o.supplier_name || "—"} · Phân cho: {assignee?.name || o.assigned_to || "—"}
+                  </div>
                 </div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", fontSize: 11, color: "var(--muted)" }}>
-                  {o.supplier_name && <span>NCC: <strong style={{ color: "var(--text)" }}>{o.supplier_name}</strong></span>}
-                  <span>Giá trị: <strong style={{ color: "var(--text)" }}>{formatVND(o.order_total)}</strong></span>
-                  {assignee && <span>Phân cho: <strong style={{ color: "#4F46E5" }}>{assignee.name || assignee.email}</strong></span>}
-                  <span style={{ fontWeight: 700, color: urgency === "overdue" ? "var(--red)" : urgency === "soon" ? "var(--amber)" : "var(--muted)" }}>
-                    DL: {formatDate(o.deadline) || "—"}{dl !== null && (dl < 0 ? ` · Quá ${-dl}d!` : ` · Còn ${dl}d`)}
+                <div style={{ fontSize: 14, fontWeight: 800 }}>{formatVND(o.order_total)}</div>
+                <div style={{ fontSize: 11, color: dl !== null && dl < 0 ? "#DC2626" : "#D97706", fontWeight: 700 }}>
+                  {formatDate(o.deadline) || "—"}{dl !== null && (dl < 0 ? ` · Quá ${-dl}d!` : dl <= 3 ? ` · Còn ${dl}d` : "")}
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <span className={`chip ${o.pay_status === "Công nợ" ? "chip-amber" : o.pay_status === "Đã thanh toán" ? "chip-green" : "chip-red"}`} style={{ fontSize: 10 }}>
+                    {o.pay_status === "Chưa thanh toán" ? "Chưa TT" : o.pay_status || "—"}
                   </span>
                 </div>
               </div>
