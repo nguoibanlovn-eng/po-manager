@@ -74,6 +74,7 @@ export default function DashDayMobile(p: DashDayMobileProps) {
   const [chRange, setChRange] = useState("today");
   const [chData, setChData] = useState<typeof p.channels | null>(null);
   const [chLoading, setChLoading] = useState(false);
+  const [navLoading, setNavLoading] = useState(false);
 
   const loadChRange = useCallback(async (key: string) => {
     setChRange(key);
@@ -115,13 +116,13 @@ export default function DashDayMobile(p: DashDayMobileProps) {
             <div style={{ fontSize: 11, opacity: .6 }}>{p.dayOfWeek}, {p.displayDate}</div>
           </div>
           <div style={{ display: "flex", gap: 4 }}>
-            <Link href={`/dash?view=day&date=${p.prevDay}`} style={{ background: "rgba(255,255,255,.1)", border: "none", color: "#fff", width: 30, height: 30, borderRadius: 8, fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}>‹</Link>
-            <Link href={`/dash?view=day&date=${p.nextDay}`} style={{ background: "rgba(255,255,255,.1)", border: "none", color: "#fff", width: 30, height: 30, borderRadius: 8, fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}>›</Link>
+            <Link href={`/dash?view=day&date=${p.prevDay}`} onClick={() => setNavLoading(true)} style={{ background: "rgba(255,255,255,.1)", border: "none", color: "#fff", width: 30, height: 30, borderRadius: 8, fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}>‹</Link>
+            <Link href={`/dash?view=day&date=${p.nextDay}`} onClick={() => setNavLoading(true)} style={{ background: "rgba(255,255,255,.1)", border: "none", color: "#fff", width: 30, height: 30, borderRadius: 8, fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}>›</Link>
           </div>
         </div>
         <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-          <Link href="/dash?view=day" style={{ background: "rgba(255,255,255,.25)", color: "#fff", padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600, textDecoration: "none" }}>Hôm nay</Link>
-          <Link href={`/dash?view=day&date=${daysAgo(-1)}`} style={{ background: "rgba(255,255,255,.1)", color: "rgba(255,255,255,.6)", padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600, textDecoration: "none" }}>Hôm qua</Link>
+          <Link href="/dash?view=day" onClick={() => setNavLoading(true)} style={{ background: "rgba(255,255,255,.25)", color: "#fff", padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600, textDecoration: "none" }}>Hôm nay</Link>
+          <Link href={`/dash?view=day&date=${daysAgo(-1)}`} onClick={() => setNavLoading(true)} style={{ background: "rgba(255,255,255,.1)", color: "rgba(255,255,255,.6)", padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600, textDecoration: "none" }}>Hôm qua</Link>
         </div>
       </div>
 
@@ -218,7 +219,7 @@ export default function DashDayMobile(p: DashDayMobileProps) {
             }}>{r.label}</button>
           ))}
         </div>
-        {chLoading && <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 999, background: "#7C3AED", color: "#fff", textAlign: "center", padding: "6px 0", fontSize: 12, fontWeight: 600 }}>Đang tải dữ liệu...</div>}
+        {(chLoading || navLoading) && <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 999, background: "#7C3AED", color: "#fff", textAlign: "center", padding: "6px 0", fontSize: 12, fontWeight: 600 }}>Đang tải dữ liệu...</div>}
 
         {displayChannels.map(ch => {
           const change = chRange === "today" ? pctChange(ch.rev, ch.revYesterday) : 0;
