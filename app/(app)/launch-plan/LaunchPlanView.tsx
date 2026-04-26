@@ -97,11 +97,11 @@ function ReadyTab({ plans, onEdit }: { plans: LaunchPlanRow[]; onEdit: (p: Launc
         const grossPct = sellPrice > 0 ? ((gross / sellPrice) * 100).toFixed(0) : "0";
         const isOpen = expanded === p.id;
         const createdDays = p.created_at ? Math.round((Date.now() - new Date(p.created_at).getTime()) / 86400000) : 0;
-        const ageColor = createdDays <= 3 ? "#16A34A" : createdDays <= 14 ? "#2563EB" : createdDays <= 30 ? "#D97706" : "#DC2626";
-        const ageLabel = createdDays <= 3 ? "Mới" : createdDays <= 14 ? `${createdDays}d` : createdDays <= 30 ? `${createdDays}d` : `${createdDays}d`;
+        const ageColor = createdDays <= 3 ? "#16A34A" : createdDays <= 7 ? "#D97706" : "#DC2626";
+        const ageLabel = createdDays <= 3 ? "Mới" : createdDays <= 7 ? "Chậm" : "Quá hạn";
 
         return (
-          <div key={p.id} style={{ border: "1px solid #E4E4E7", borderRadius: 10, overflow: "hidden", marginBottom: 6, background: createdDays <= 3 ? "#F0FDF4" : createdDays <= 14 ? "#EFF6FF" : createdDays <= 30 ? "#FFFBEB" : "#FEF2F2" }}>
+          <div key={p.id} style={{ border: "1px solid #E4E4E7", borderRadius: 10, overflow: "hidden", marginBottom: 6, background: createdDays <= 3 ? "#F0FDF4" : createdDays <= 7 ? "#FFFBEB" : "#FEF2F2" }}>
             {/* Row 1: tên + info compact */}
             <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, borderBottom: isOpen ? "1px solid #F3F4F6" : undefined }}>
               <div style={{ flex: 1, minWidth: 0 }}>
