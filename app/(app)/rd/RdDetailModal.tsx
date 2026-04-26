@@ -263,6 +263,7 @@ function ModalInner({
   const [newCheckLabel, setNewCheckLabel] = useState("");
   const [newLink, setNewLink] = useState("");
   const [newPhoto, setNewPhoto] = useState("");
+  const [previewImg, setPreviewImg] = useState("");
 
   // Dynamic key-value fields for Nghiên cứu
   type KV = { key: string; value: string };
@@ -1669,19 +1670,19 @@ function ModalInner({
             {step.label !== "Hàng về" && step.label !== "QC & Nhận hàng" && step.label !== "Nhập hàng" && step.label !== "Đặt hàng" && (photos.length > 0 || true) && (
               <div style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: ".3px", marginBottom: 5 }}>Hình ảnh ({photos.length})</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 6 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 6 }}>
                   {photos.map((url, i) => (
                     <div key={i} style={{ position: "relative" }}>
                       {isImageUrl(url) ? (
-                        <a href={url} target="_blank" rel="noopener noreferrer">
-                          <img src={url} alt="" style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 6, border: "1px solid #E2E8F0" }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                        </a>
+                        <div onClick={() => setPreviewImg(url)} style={{ cursor: "pointer" }}>
+                          <img src={url} alt="" style={{ width: 120, height: 120, objectFit: "cover", borderRadius: 8, border: "1px solid #E2E8F0" }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                        </div>
                       ) : (
-                        <a href={url} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 60, height: 60, borderRadius: 6, border: "1px solid #E2E8F0", background: "#F8FAFC", fontSize: 8, color: "#3B82F6", textDecoration: "none", padding: 3, textAlign: "center", wordBreak: "break-all" }}>
-                          {url.length > 25 ? url.substring(0, 22) + "..." : url}
-                        </a>
+                        <div onClick={() => setPreviewImg(url)} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 120, height: 120, borderRadius: 8, border: "1px solid #E2E8F0", background: "#F8FAFC", fontSize: 10, color: "#3B82F6", cursor: "pointer", padding: 6, textAlign: "center", wordBreak: "break-all" }}>
+                          {url.length > 40 ? url.substring(0, 37) + "..." : url}
+                        </div>
                       )}
-                      <button type="button" onClick={() => removePhoto(i)} style={{ position: "absolute", top: -4, right: -4, width: 14, height: 14, borderRadius: "50%", background: "#DC2626", color: "#fff", border: "none", fontSize: 9, cursor: "pointer", lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+                      <button type="button" onClick={() => removePhoto(i)} style={{ position: "absolute", top: -4, right: -4, width: 16, height: 16, borderRadius: "50%", background: "#DC2626", color: "#fff", border: "none", fontSize: 9, cursor: "pointer", lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
                     </div>
                   ))}
                   <div style={{ display: "flex", gap: 3, alignItems: "flex-end" }}>
@@ -1783,6 +1784,14 @@ function ModalInner({
           </div>
         </div>
       </div>
+
+      {/* ═══ IMAGE PREVIEW POPUP ═══ */}
+      {previewImg && (
+        <div onClick={() => setPreviewImg("")} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.85)", zIndex: 10002, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+          <img src={previewImg} alt="" style={{ maxWidth: "90vw", maxHeight: "90vh", borderRadius: 8, objectFit: "contain" }} onClick={(e) => e.stopPropagation()} />
+          <button type="button" onClick={() => setPreviewImg("")} style={{ position: "absolute", top: 16, right: 16, width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,.2)", color: "#fff", border: "none", fontSize: 18, cursor: "pointer" }}>✕</button>
+        </div>
+      )}
 
       {/* ═══ PO SIMPLE POPUP FORM ═══ */}
       {showPoForm && (
