@@ -77,7 +77,6 @@ const STEP_FORM_FIELDS: Record<string, FieldDef[]> = {
   // ─── Production pipeline ───
   "Tạo yêu cầu": [
     { key: "description",       label: "Yêu cầu chi tiết", type: "textarea", required: true },
-    { key: "reason",            label: "Mục đích / lý do", type: "textarea", required: true },
     { key: "ref_links",         label: "Link tham khảo", type: "url" },
   ],
   // "Đặt mẫu" (production) — chỉ tạo PO, render custom trong modal
@@ -345,7 +344,7 @@ function ModalInner({
       if (!assignee) missing.push("Giao cho ai");
       if (!deadline) missing.push("Deadline");
       if (!String(fd.description || d.description || "").trim()) missing.push(sl === "Tạo yêu cầu" ? "Yêu cầu chi tiết" : "Mô tả sản phẩm");
-      if (!String(fd.reason || d.reason || "").trim()) missing.push(sl === "Tạo yêu cầu" ? "Mục đích / lý do" : "Lý do đề xuất");
+      if (sl !== "Tạo yêu cầu" && !String(fd.reason || d.reason || "").trim()) missing.push("Lý do đề xuất");
     } else if (sl === "Nghiên cứu") {
       if (!String(fd.usp || d.usp || "").trim()) missing.push("Phân tích USP");
       if (!Number(fd.price_buy || d.price_buy || 0)) missing.push("Giá nhập dự kiến");
