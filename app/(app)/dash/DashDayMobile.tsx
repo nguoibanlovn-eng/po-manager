@@ -1,8 +1,26 @@
 "use client";
 
 import Link from "next/link";
+import { useState, useCallback } from "react";
 import { formatVNDCompact } from "@/lib/format";
 import AutoSyncToday from "../components/AutoSyncToday";
+
+function daysAgo(d: number): string { const dt = new Date(); dt.setDate(dt.getDate() + d); return dt.toISOString().substring(0, 10); }
+function monthRange(offset: number) {
+  const now = new Date(); const y = now.getFullYear(); const m = now.getMonth() + offset;
+  const first = new Date(y, m, 1); const last = offset === 0 ? now : new Date(y, m + 1, 0);
+  const fmt = (d: Date) => d.toISOString().substring(0, 10);
+  return { from: fmt(first), to: fmt(last) };
+}
+const DAY_CH_RANGES = [
+  { key: "today", label: "Hôm nay" },
+  { key: "7d", label: "7N", from: daysAgo(-7), to: daysAgo(0) },
+  { key: "14d", label: "14N", from: daysAgo(-14), to: daysAgo(0) },
+  { key: "30d", label: "30N", from: daysAgo(-30), to: daysAgo(0) },
+  { key: "month", label: "Tháng này", ...monthRange(0) },
+  { key: "prev", label: "T.trước", ...monthRange(-1) },
+  { key: "year", label: "Năm nay", from: `${new Date().getFullYear()}-01-01`, to: daysAgo(0) },
+];
 
 export type DashDayMobileProps = {
   today: string;
@@ -53,6 +71,32 @@ const pctChange = (cur: number, prev: number) => {
 };
 
 export default function DashDayMobile(p: DashDayMobileProps) {
+  const [chRange, setChRange] = useState("today");
+  const [chData, setChData] = useState<typeof p.channels | null>(null);
+  const [chLoading, setChLoading] = useState(false);
+
+  const loadChRange = useCallback(async (key: string) => {
+    setChRange(key);
+    if (key === "today") { setChData(null); return; }
+    const range = DAY_CH_RANGES.find(r => r.key === key);
+    if (!range || !("from" in range)) return;
+    setChLoading(true);
+    try {
+      const res = await fetch(`/api/dash/channel-range?from=${range.from}&to=${range.to}`);
+      const json = await res.json();
+      if (json.ok) {
+        const CH_COLORS: Record<string, string> = { Facebook: "#1877F2", TikTok: "#FE2C55", Shopee: "#EE4D2D", "Web/App": "#6366F1" };
+        setChData((json.channels as Array<{ name: string; revenue: number }>).map(c => ({
+          name: c.name, rev: c.revenue, exp: 0, revYesterday: 0,
+          color: CH_COLORS[c.name] || "#94A3B8", dailyTarget: 0,
+        })));
+      }
+    } catch { /* */ }
+    setChLoading(false);
+  }, []);
+
+  const displayChannels = chData || p.channels;
+
   const S = {
     green: { bg: "#059669", grad: "linear-gradient(135deg,#059669,#10B981)" },
     amber: { bg: "#D97706" },

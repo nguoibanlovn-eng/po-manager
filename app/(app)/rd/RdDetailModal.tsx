@@ -1219,10 +1219,12 @@ function ModalInner({
               );
             })()
 
-            /* ── Production: Chờ mẫu về — hiện PO status ── */
+            /* ── Production: Chờ mẫu về — hiện PO status + check ETA ── */
             : step.label === "Chờ mẫu về" ? (() => {
               const linkedPo = String(data.linked_sample_po || "");
               const eta = String(data.sample_eta || "");
+              const today = new Date().toISOString().substring(0, 10);
+              const arrived = eta && eta <= today;
               return (
                 <div style={{ marginBottom: 14 }}>
                   {linkedPo && (
@@ -1237,12 +1239,21 @@ function ModalInner({
                       </div>
                     </div>
                   )}
-                  <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 8, padding: 16, textAlign: "center" }}>
-                    <div style={{ fontSize: 28, marginBottom: 6 }}>⏳</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1D4ED8" }}>Đang chờ hàng mẫu về</div>
-                    {eta && <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>ETA: {eta}</div>}
-                    <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 6 }}>Khi hàng về, bấm chuyển bước QC</div>
-                  </div>
+                  {arrived ? (
+                    <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 8, padding: 16, textAlign: "center" }}>
+                      <div style={{ fontSize: 28, marginBottom: 6 }}>📦</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#15803D" }}>Hàng mẫu đã về!</div>
+                      <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>ETA: {eta}</div>
+                      <div style={{ fontSize: 10, color: "#16A34A", marginTop: 6, fontWeight: 600 }}>Bấm chuyển bước để QC mẫu</div>
+                    </div>
+                  ) : (
+                    <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 8, padding: 16, textAlign: "center" }}>
+                      <div style={{ fontSize: 28, marginBottom: 6 }}>&#9203;</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#1D4ED8" }}>Đang chờ hàng mẫu về</div>
+                      {eta && <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>ETA: {eta}</div>}
+                      <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 6 }}>Chưa đến ngày ETA, chờ hàng về</div>
+                    </div>
+                  )}
                 </div>
               );
             })()
@@ -1779,9 +1790,24 @@ function ModalInner({
               ) : (
                 <>
                   <button type="button" onClick={save} disabled={pending || !dirty} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#F1F5F9", color: "#64748B", cursor: "pointer" }}>Lưu nháp</button>
-                  <button type="button" onClick={markComplete} disabled={pending} style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#7C3AED", color: "#fff", cursor: "pointer" }}>
-                    {isLastStep ? "✓ Hoàn thành — Kết thúc" : step.label === "Đặt mẫu" ? "Đã đặt mẫu — Chờ hàng về →" : "Hoàn thành & Chuyển bước →"}
-                  </button>
+                  {(() => {
+                    const etaWait = step.label === "Chờ mẫu về";
+                    const etaDate = String(data.sample_eta || "");
+                    const etaArrived = etaDate && etaDate <= new Date().toISOString().substring(0, 10);
+                    const canComplete = !etaWait || etaArrived;
+                    const label = isLastStep ? "✓ Hoàn thành — Kết thúc"
+                      : step.label === "Đặt mẫu" ? "Đã đặt mẫu — Chờ hàng về →"
+                      : etaWait && etaArrived ? "Đã về — Chuyển QC →"
+                      : etaWait ? "Chưa đến ETA — Chờ hàng về"
+                      : "Hoàn thành & Chuyển bước →";
+                    return (
+                      <button type="button" onClick={markComplete} disabled={pending || !canComplete}
+                        style={{ padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none",
+                          background: canComplete ? "#7C3AED" : "#E2E8F0", color: canComplete ? "#fff" : "#94A3B8", cursor: canComplete ? "pointer" : "not-allowed" }}>
+                        {label}
+                      </button>
+                    );
+                  })()}
                 </>
               )}
             </div>
