@@ -872,7 +872,7 @@ function ModalInner({
               // Title
               const title = isXacNhan
                 ? (leaderFlow ? "NV xác nhận nhận việc" : "Leader duyệt đề xuất")
-                : isDuyetNC ? "Leader duyệt nghiên cứu"
+                : isDuyetNC ? (isProd ? "Leader duyệt triển khai" : "Leader duyệt nghiên cứu")
                 : isDuyetMau ? "Leader duyệt mẫu" : step.label;
               // Avatar
               const avatarBg = (isXacNhan && leaderFlow) ? "#DBEAFE" : "#F3E8FF";
@@ -883,8 +883,14 @@ function ModalInner({
               const personTagBg = (isXacNhan && leaderFlow) ? "#EFF6FF" : "#F5F3FF";
               const personTagColor = (isXacNhan && leaderFlow) ? "#3B82F6" : "#7C3AED";
               // Summary
+              // Build summary from previous step data
+              const prevStep = activeIdx > 0 ? initSteps[activeIdx - 1] : null;
+              const prevChecklist = prevStep?.checklist || [];
+              const prevChecked = prevChecklist.filter(c => c.checked).length;
               const summary = isXacNhan
                 ? `${leaderFlow ? "Leader" : "NV"} đề xuất:\n${itemName || "SP mới"}\n${String(data.description || data.reason || "")}`
+                : isDuyetNC && isProd
+                ? `Checklist: ${prevChecked}/${prevChecklist.length} hoàn thành\n${prevChecklist.map(c => `${c.checked ? "✓" : "○"} ${c.text}${c.note ? ` — ${c.note}` : ""}`).join("\n")}\nĐánh giá: ${String(data.evaluation || "—")}`
                 : isDuyetNC
                 ? `USP: ${String(data.usp || "—")}\nNCC: ${String(data.supplier_name || "—")}, Giá: ${String(data.price_buy || "—")} → ${String(data.price_sell || "—")}\nĐánh giá: ${String(data.evaluation || "—")}`
                 : isDuyetMau
@@ -919,7 +925,7 @@ function ModalInner({
                         <span style={{ fontSize: 9, marginLeft: 4, padding: "1px 5px", borderRadius: 4, background: personTagBg, color: personTagColor }}>{personTag}</span>
                       </div>
                       <div style={{ fontSize: 9, color: "#94A3B8" }}>
-                        {isXacNhan && leaderFlow ? `Được giao bởi Leader · Deadline ${deadline || "—"}` : isXacNhan ? "Duyệt đề xuất từ nhân viên" : isDuyetNC ? "Duyệt nghiên cứu từ NV" : "Duyệt mẫu từ NV"}
+                        {isXacNhan && leaderFlow ? `Được giao bởi Leader · Deadline ${deadline || "—"}` : isXacNhan ? "Duyệt đề xuất từ nhân viên" : isDuyetNC ? (isProd ? "Duyệt triển khai từ NV" : "Duyệt nghiên cứu từ NV") : "Duyệt mẫu từ NV"}
                       </div>
                     </div>
                   </div>
@@ -1787,7 +1793,7 @@ function ModalInner({
 
       {/* ═══ IMAGE PREVIEW POPUP ═══ */}
       {previewImg && (
-        <div onClick={() => setPreviewImg("")} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.85)", zIndex: 10002, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+        <div onClick={(e) => { e.stopPropagation(); setPreviewImg(""); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.85)", zIndex: 10002, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <img src={previewImg} alt="" style={{ maxWidth: "90vw", maxHeight: "90vh", borderRadius: 8, objectFit: "contain" }} onClick={(e) => e.stopPropagation()} />
           <button type="button" onClick={() => setPreviewImg("")} style={{ position: "absolute", top: 16, right: 16, width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,.2)", color: "#fff", border: "none", fontSize: 18, cursor: "pointer" }}>✕</button>
         </div>
