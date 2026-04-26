@@ -46,7 +46,7 @@ export default function HrView({
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [tab, setTab] = useState<"accounts" | "evaluate" | "dashboard">("accounts");
+  const [tab, setTab] = useState<"accounts" | "evaluate" | "dashboard">("dashboard");
   const [filterTeam, setFilterTeam] = useState("");
   const [filterGrade, setFilterGrade] = useState("");
   const [sortBy, setSortBy] = useState("score_desc");
@@ -107,9 +107,9 @@ export default function HrView({
       {/* Tabs */}
       <div style={{ display: "flex", gap: 0, borderBottom: "2px solid var(--border)", marginBottom: 16 }}>
         {([
-          { key: "accounts" as const, icon: "👤", label: "Tài khoản", badge: String(users.length) },
-          { key: "evaluate" as const, icon: "⭐", label: "Đánh giá", badge: currentPeriod.substring(5) },
           { key: "dashboard" as const, icon: "📊", label: "Dashboard", badge: "" },
+          { key: "evaluate" as const, icon: "⭐", label: "Đánh giá", badge: currentPeriod.substring(5) },
+          { key: "accounts" as const, icon: "👤", label: "Tài khoản", badge: String(users.length) },
         ]).map((t) => (
           <button key={t.key} onClick={() => setTab(t.key)} style={{
             padding: "10px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer",
