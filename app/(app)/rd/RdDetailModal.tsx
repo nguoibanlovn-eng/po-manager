@@ -389,7 +389,8 @@ function ModalInner({
     } else if (sl === "Chờ mẫu về") {
       // Bước chờ — không cần validation
     } else if (sl === "Hàng về" || sl === "QC & Nhận hàng" || sl === "Nhận mẫu & QC") {
-      if (!String(fd.qc_actual || d.qc_actual || "").trim()) missing.push("Mô tả mẫu thực tế");
+      // Research: cần mô tả thực tế. Production (Nhận mẫu & QC): bỏ
+      if (sl !== "Nhận mẫu & QC" && !String(fd.qc_actual || d.qc_actual || "").trim()) missing.push("Mô tả mẫu thực tế");
       const evaluated = checklist.filter(c => c.verdict === "pass" || c.verdict === "fail");
       if (checklist.length < 3) missing.push("Tối thiểu 3 mục checklist");
       else if (evaluated.length < checklist.length) missing.push("Đánh giá hết checklist (pass/fail)");
@@ -433,12 +434,21 @@ function ModalInner({
           const inheritChecklist = (step.label === "Tạo yêu cầu" && checklist.length > 0)
             ? checklist.map(c => ({ ...c, checked: false }))
             : undefined;
+          // "Chờ mẫu về" → "Nhận mẫu & QC": auto-assign Leader KT + deadline +3 ngày
+          const isChoMauVe = step.label === "Chờ mẫu về";
+          const leaderKt = isChoMauVe ? users.find(u => u.role === "LEADER_KT") : null;
+          const qcDeadline = isChoMauVe ? (() => { const d = new Date(); d.setDate(d.getDate() + 3); return d.toISOString().split("T")[0]; })() : "";
+          // Carry assignee from current step if no approval assignment
+          const carryAssignee = !nextAssignEmail && !leaderKt && assignee;
           return {
             ...s, status: "active" as const,
             ...(inheritChecklist ? { checklist: inheritChecklist } : {}),
+            ...(leaderKt ? { assignee: leaderKt.email, assignee_name: leaderKt.name || leaderKt.email, assigneeName: leaderKt.name || leaderKt.email } : {}),
             ...(nextAssignEmail ? { assignee: nextAssignEmail, assignee_name: nextAssignName, assigneeName: nextAssignName } : {}),
+            ...(carryAssignee ? { assignee, assignee_name: assigneeName, assigneeName } : {}),
+            ...(qcDeadline ? { deadline: qcDeadline } : {}),
             ...(nextDl ? { deadline: nextDl } : {}),
-            logs: [...(s.logs || []), { action: "activate", by: currentUserEmail, at: now, from: step.label, ...(nextAssignName ? { assigned_to: nextAssignName } : {}) }],
+            logs: [...(s.logs || []), { action: "activate", by: currentUserEmail, at: now, from: step.label, ...(leaderKt ? { assigned_to: leaderKt.name || leaderKt.email } : nextAssignName ? { assigned_to: nextAssignName } : {}) }],
           };
         }
         return s;
@@ -894,7 +904,7 @@ function ModalInner({
                 : isDuyetNC
                 ? `USP: ${String(data.usp || "—")}\nNCC: ${String(data.supplier_name || "—")}, Giá: ${String(data.price_buy || "—")} → ${String(data.price_sell || "—")}\nĐánh giá: ${String(data.evaluation || "—")}`
                 : isDuyetMau
-                ? `QC: ${String(data.qc_score || "—")}/10\n${String(data.qc_evaluation || "Chưa có đánh giá")}`
+                ? `QC: ${prevChecklist.filter(c => c.verdict === "pass").length}/${prevChecklist.length} Pass${prevChecklist.filter(c => c.verdict === "fail").length > 0 ? ` · ${prevChecklist.filter(c => c.verdict === "fail").length} Fail` : ""}\n${prevChecklist.map(c => `${c.verdict === "pass" ? "✓" : c.verdict === "fail" ? "✗" : "○"} ${c.text}`).join("\n")}\nĐánh giá: ${String(data.qc_evaluation || "Chưa có")}`
                 : "";
               // Action buttons
               const greenLabel = isXacNhan && leaderFlow ? "✓ Nhận việc — Bắt đầu NC"
@@ -1352,20 +1362,65 @@ function ModalInner({
                 </div>
               </>
               );
+            })() : step.label === "Nhận mẫu & QC" ? (() => {
+              /* ── Production: Nhận mẫu & QC — QC Checklist → Tài liệu → Hình ảnh → Đánh giá → Gửi sếp ── */
+              return (
+              <>
+                {/* Deadline info */}
+                {deadline && (
+                  <div style={{ padding: "6px 10px", background: "#FFF7ED", borderRadius: 7, marginBottom: 12, fontSize: 11, color: "#92400E" }}>
+                    Deadline QC: {deadline} (3 ngày từ khi nhận mẫu)
+                  </div>
+                )}
+
+                {/* QC Checklist */}
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: ".3px", marginBottom: 5 }}>
+                    QC Checklist ({passCount}/{checklist.length} Pass{failCount > 0 ? ` · ${failCount} Fail` : ""})<span style={{ color: "#DC2626", marginLeft: 2 }}>*</span>
+                  </div>
+                  {checklist.length > 0 && (
+                    <div style={{ height: 3, borderRadius: 2, background: "#E5E7EB", marginBottom: 8, overflow: "hidden" }}>
+                      <div style={{ height: "100%", borderRadius: 2, width: `${(passCount / checklist.length) * 100}%`, background: failCount > 0 ? "#DC2626" : passCount === checklist.length ? "#16A34A" : "#3B82F6", transition: "width .2s" }} />
+                    </div>
+                  )}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    {checklist.map((c, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 0", borderBottom: "1px solid #F1F5F9" }}>
+                        <span style={{ flex: 1, fontSize: 11, color: c.verdict === "fail" ? "#DC2626" : c.verdict === "pass" ? "#94A3B8" : "#18181B" }}>{c.text}</span>
+                        <div style={{ display: "flex", gap: 3 }}>
+                          <button type="button" onClick={() => setVerdict(i, c.verdict === "pass" ? null : "pass")} style={{
+                            padding: "2px 8px", borderRadius: 4, fontSize: 9, fontWeight: 600, cursor: "pointer",
+                            border: `1.5px solid ${c.verdict === "pass" ? "#16A34A" : "#E2E8F0"}`,
+                            background: c.verdict === "pass" ? "#F0FDF4" : "#fff", color: c.verdict === "pass" ? "#16A34A" : "#94A3B8",
+                          }}>Pass</button>
+                          <button type="button" onClick={() => setVerdict(i, c.verdict === "fail" ? null : "fail")} style={{
+                            padding: "2px 8px", borderRadius: 4, fontSize: 9, fontWeight: 600, cursor: "pointer",
+                            border: `1.5px solid ${c.verdict === "fail" ? "#DC2626" : "#E2E8F0"}`,
+                            background: c.verdict === "fail" ? "#FEF2F2" : "#fff", color: c.verdict === "fail" ? "#DC2626" : "#94A3B8",
+                          }}>Fail</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
+                    <input value={newCheckLabel} onChange={(e) => setNewCheckLabel(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCheckItem())} placeholder="Thêm mục kiểm tra..."
+                      style={{ flex: 1, padding: "5px 11px", border: "1px solid #E2E8F0", borderRadius: 7, fontSize: 12, outline: "none" }} />
+                    <button type="button" onClick={addCheckItem} style={{ padding: "5px 10px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#7C3AED", color: "#fff", cursor: "pointer" }}>+</button>
+                  </div>
+                </div>
+              </>
+              );
             })() : step.label === "Hàng về" || step.label === "QC & Nhận hàng" ? (() => {
+              /* ── Research: Hàng về — full QC form ── */
               const samplePo = String(data.linked_sample_po || "");
-              // Find original assignee (from Đề xuất step) and Leader KT
               const dxStep = initSteps.find((s) => s.label === "Đề xuất");
               const originalAssignee = dxStep?.assignee_name || dxStep?.assignee || "";
               const leaderKt = users.find((u) => u.role === "LEADER_KT");
               return (
               <>
-                {/* Info banner — thông báo cho NV + Leader KT */}
                 <div style={{ padding: "8px 10px", background: "#EFF6FF", borderRadius: 8, marginBottom: 12, fontSize: 11, color: "#1E40AF" }}>
                   📦 {samplePo ? `Mẫu đã về — ${samplePo}. ` : "Hàng về — "}Thông báo đã gửi cho NV + Leader KT.
                 </div>
-
-                {/* Người tham gia QC */}
                 <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
                   <div style={{ flex: 1, padding: "8px 10px", background: "#F8FAFC", borderRadius: 8, border: "1px solid #E2E8F0" }}>
                     <div style={{ fontSize: 9, color: "#94A3B8", marginBottom: 3 }}>NV tiếp nhận</div>
@@ -1382,14 +1437,10 @@ function ModalInner({
                     </div>
                   </div>
                 </div>
-
-                {/* Thông tin thực tế */}
                 <div style={S.section}>
                   <div style={S.label}>Thông tin thực tế<span style={{ color: "#DC2626", marginLeft: 2 }}>*</span></div>
                   <textarea value={formData.qc_actual || ""} onChange={(e) => setField("qc_actual", e.target.value)} placeholder="Mô tả thực tế: kích thước, trọng lượng, đóng gói..." style={S.textarea} />
                 </div>
-
-                {/* Checklist đánh giá */}
                 <div style={{ marginBottom: 14 }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: ".3px", marginBottom: 5 }}>
                     Checklist đánh giá ({passCount}/{checklist.length} Pass{failCount > 0 ? ` · ${failCount} Fail` : ""})<span style={{ color: "#DC2626", marginLeft: 2 }}>*</span>
@@ -1407,14 +1458,12 @@ function ModalInner({
                           <button type="button" onClick={() => setVerdict(i, c.verdict === "pass" ? null : "pass")} style={{
                             padding: "2px 8px", borderRadius: 4, fontSize: 9, fontWeight: 600, cursor: "pointer",
                             border: `1.5px solid ${c.verdict === "pass" ? "#16A34A" : "#E2E8F0"}`,
-                            background: c.verdict === "pass" ? "#F0FDF4" : "#fff",
-                            color: c.verdict === "pass" ? "#16A34A" : "#94A3B8",
+                            background: c.verdict === "pass" ? "#F0FDF4" : "#fff", color: c.verdict === "pass" ? "#16A34A" : "#94A3B8",
                           }}>Pass</button>
                           <button type="button" onClick={() => setVerdict(i, c.verdict === "fail" ? null : "fail")} style={{
                             padding: "2px 8px", borderRadius: 4, fontSize: 9, fontWeight: 600, cursor: "pointer",
                             border: `1.5px solid ${c.verdict === "fail" ? "#DC2626" : "#E2E8F0"}`,
-                            background: c.verdict === "fail" ? "#FEF2F2" : "#fff",
-                            color: c.verdict === "fail" ? "#DC2626" : "#94A3B8",
+                            background: c.verdict === "fail" ? "#FEF2F2" : "#fff", color: c.verdict === "fail" ? "#DC2626" : "#94A3B8",
                           }}>Fail</button>
                         </div>
                         <button type="button" onClick={() => removeCheck(i)} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 14, padding: 2 }}>✕</button>
@@ -1426,58 +1475,11 @@ function ModalInner({
                       style={{ flex: 1, padding: "5px 11px", border: "1px solid #E2E8F0", borderRadius: 7, fontSize: 12, outline: "none" }} />
                     <button type="button" onClick={addCheckItem} style={{ padding: "5px 10px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#7C3AED", color: "#fff", cursor: "pointer" }}>+</button>
                   </div>
-                  {checklist.length > 0 && (
-                    <div style={{ marginTop: 8, padding: "6px 10px", background: "#F8FAFC", borderRadius: 6, fontSize: 10, fontWeight: 600, color: "#64748B" }}>
-                      {passCount}/{checklist.length} Pass
-                    </div>
-                  )}
                 </div>
-
-                {/* Tài liệu hình ảnh */}
-                <div style={{ marginBottom: 14 }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: ".3px", marginBottom: 5 }}>Tài liệu hình ảnh</div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 6 }}>
-                    {photos.map((url, i) => (
-                      <div key={`p${i}`} style={{ position: "relative" }}>
-                        {isImageUrl(url) ? (
-                          <a href={url} target="_blank" rel="noopener noreferrer">
-                            <img src={url} alt="" style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 6, border: "1px solid #E2E8F0" }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                          </a>
-                        ) : (
-                          <a href={url} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 60, height: 60, borderRadius: 6, border: "1px solid #E2E8F0", background: "#F8FAFC", fontSize: 8, color: "#3B82F6", textDecoration: "none", padding: 3, textAlign: "center", wordBreak: "break-all" }}>
-                            {url.length > 25 ? url.substring(0, 22) + "..." : url}
-                          </a>
-                        )}
-                        <button type="button" onClick={() => removePhoto(i)} style={{ position: "absolute", top: -4, right: -4, width: 14, height: 14, borderRadius: "50%", background: "#DC2626", color: "#fff", border: "none", fontSize: 9, cursor: "pointer", lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
-                      </div>
-                    ))}
-                    {links.map((link, i) => {
-                      const url = getLinkUrl(link);
-                      const tag = getLinkTag(link);
-                      return (
-                        <div key={`l${i}`} style={{ padding: "3px 7px", background: "#F1F5F9", borderRadius: 5, fontSize: 9, display: "flex", alignItems: "center", gap: 3 }}>
-                          <a href={url.startsWith("http") ? url : `https://${url}`} target="_blank" rel="noopener noreferrer" style={{ color: "#3B82F6", textDecoration: "none" }}>
-                            {tag || (url.length > 35 ? url.substring(0, 32) + "..." : url)}
-                          </a>
-                          <button type="button" onClick={() => removeLink(i)} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 10, padding: 0 }}>✕</button>
-                        </div>
-                      );
-                    })}
-                    <div style={{ display: "flex", gap: 3, alignItems: "flex-end" }}>
-                      <input value={newPhoto} onChange={(e) => setNewPhoto(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addPhoto())} placeholder="+ Thêm"
-                        style={{ padding: "3px 7px", border: "1px dashed #D1D5DB", borderRadius: 5, fontSize: 9, width: 80, outline: "none" }} />
-                      {newPhoto && <button type="button" onClick={addPhoto} style={{ padding: "3px 7px", borderRadius: 5, fontSize: 9, fontWeight: 600, border: "none", background: "#7C3AED", color: "#fff", cursor: "pointer" }}>+</button>}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Đánh giá chung */}
                 <div style={S.section}>
                   <div style={S.label}>Đánh giá chung<span style={{ color: "#DC2626", marginLeft: 2 }}>*</span></div>
                   <textarea value={formData.qc_evaluation || ""} onChange={(e) => setField("qc_evaluation", e.target.value)} placeholder="VD: 8/10. Pin tốt, phun sương OK 2/3 chế độ. Đề xuất: PASS — nhập 200 cái test." style={{ ...S.textarea, minHeight: 60 }} />
                 </div>
-
-                {/* Deadline QC tự tính từ ETA + 3 ngày — không cần chọn thủ công */}
               </>
               );
             })() : resolvedLabel === "Triển khai" ? (
@@ -1802,6 +1804,7 @@ function ModalInner({
                       : step.label === "Đặt mẫu" ? "Đã đặt mẫu — Chờ hàng về →"
                       : etaWait && etaArrived ? "Đã về — Chuyển QC →"
                       : etaWait ? "Chưa đến ETA — Chờ hàng về"
+                      : step.label === "Nhận mẫu & QC" ? "Gửi sếp duyệt →"
                       : "Hoàn thành & Chuyển bước →";
                     return (
                       <button type="button" onClick={markComplete} disabled={pending || !canComplete}
