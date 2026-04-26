@@ -93,21 +93,22 @@ export async function listMyTasks(email: string): Promise<MyTaskItem[]> {
     });
   }
 
-  // 5. Regular tasks assigned to me (Tasks Manager, Phase 4 but already seeded)
+  // 5. Regular tasks assigned to me
   const { data: myTasks = [] } = await db
     .from("tasks")
-    .select("task_id, title, status, deadline, priority")
+    .select("task_id, title, status, deadline, priority, note")
     .eq("assignee_email", email)
     .neq("status", "DONE")
     .neq("status", "CANCELLED");
   for (const t of myTasks || []) {
+    const isLaunch = (t.note || "").startsWith("launch_plan:");
     out.push({
-      kind: "task",
+      kind: isLaunch ? "deploy_pending" : "task",
       title: t.title || "(Không tiêu đề)",
       sub: `Deadline: ${t.deadline ? new Date(t.deadline).toLocaleDateString("vi-VN") : "—"}`,
-      href: `/tasks`,
-      badge: t.priority || t.status || undefined,
-      badgeColor: t.priority === "URGENT" ? "chip-red" : "chip-blue",
+      href: isLaunch ? `/launch-plan` : `/tasks`,
+      badge: isLaunch ? "Launch" : (t.priority || t.status || undefined),
+      badgeColor: isLaunch ? "chip-purple" : t.priority === "URGENT" ? "chip-red" : "chip-blue",
     });
   }
 

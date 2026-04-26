@@ -1745,7 +1745,7 @@ function ModalInner({
             )}
 
             {/* ── Links ── */}
-            {step.label !== "Hàng về" && step.label !== "QC & Nhận hàng" && step.label !== "Nhập hàng" && step.label !== "Đặt hàng" && step.label !== "Đặt mẫu" && step.label !== "Chờ mẫu về" && (links.length > 0 || true) && (
+            {step.label !== "Hàng về" && step.label !== "QC & Nhận hàng" && step.label !== "Nhập hàng" && step.label !== "Đặt hàng" && step.label !== "Đặt mẫu" && step.label !== "Chờ mẫu về" && !(step.label === "Nhận mẫu & QC" && !data.qc_confirmed) && (links.length > 0 || true) && (
               <div style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: ".3px", marginBottom: 5 }}>Tài liệu ({links.length})</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 6 }}>
@@ -1771,7 +1771,7 @@ function ModalInner({
             )}
 
             {/* ── Photos ── */}
-            {step.label !== "Hàng về" && step.label !== "QC & Nhận hàng" && step.label !== "Nhập hàng" && step.label !== "Đặt hàng" && step.label !== "Đặt mẫu" && step.label !== "Chờ mẫu về" && (photos.length > 0 || true) && (
+            {step.label !== "Hàng về" && step.label !== "QC & Nhận hàng" && step.label !== "Nhập hàng" && step.label !== "Đặt hàng" && step.label !== "Đặt mẫu" && step.label !== "Chờ mẫu về" && !(step.label === "Nhận mẫu & QC" && !data.qc_confirmed) && (photos.length > 0 || true) && (
               <div style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: ".3px", marginBottom: 5 }}>Hình ảnh ({photos.length})</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 6 }}>
