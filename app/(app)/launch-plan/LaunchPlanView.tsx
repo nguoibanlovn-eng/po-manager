@@ -1406,46 +1406,45 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
             const results = item.results || [];
             const updateItem = (patch: Partial<CheckItem>) => { const arr = [...checklist]; arr[idx] = { ...arr[idx], ...patch }; setChecklist(arr); };
             return (
-            <div key={idx} style={{ borderBottom: "1px solid #F3F4F6", padding: "6px 8px" }}>
-              {/* Row 1: checkbox + tên + SL + deadline + xoá */}
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                <input type="checkbox" checked={item.done} onChange={(e) => updateItem({ done: e.target.checked })} style={{ accentColor: "#16A34A", flexShrink: 0 }} />
-                <span style={{ fontSize: 12, fontWeight: item.done ? 400 : 600, flex: 1, color: item.done ? "#16A34A" : undefined, textDecoration: item.done ? "line-through" : undefined }}>{item.name}</span>
-                <span style={{ fontSize: 10, color: "#71717A", flexShrink: 0 }}>×{item.qty}</span>
-                <input type="date" value={item.deadline} onChange={(e) => updateItem({ deadline: e.target.value })} style={{ padding: "2px 4px", fontSize: 10, border: "1px solid #E4E4E7", borderRadius: 4, flexShrink: 0 }} />
-                <button type="button" onClick={() => setChecklist(checklist.filter((_, i) => i !== idx))} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 14, padding: 0 }}>×</button>
+            <div key={idx} style={{ borderBottom: "1px solid #F3F4F6", padding: "4px 0" }}>
+              {/* Row chính: compact 1 dòng */}
+              <div style={{ display: "grid", gridTemplateColumns: "22px 1fr auto", gap: 4, alignItems: "center", padding: "2px 8px" }}>
+                <input type="checkbox" checked={item.done} onChange={(e) => updateItem({ done: e.target.checked })} style={{ accentColor: "#16A34A", width: 14, height: 14 }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: item.done ? "#16A34A" : "#18181B", textDecoration: item.done ? "line-through" : undefined }}>{item.name}</span>
+                  <span style={{ fontSize: 9, color: "#A1A1AA", flexShrink: 0 }}>×{item.qty}</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}>
+                  <input type="date" value={item.deadline} onChange={(e) => updateItem({ deadline: e.target.value })} style={{ padding: "1px 3px", fontSize: 9, border: "1px solid #E4E4E7", borderRadius: 3, width: 90 }} />
+                  <button type="button" onClick={() => setChecklist(checklist.filter((_, i) => i !== idx))} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 12, padding: 0, lineHeight: 1 }}>×</button>
+                </div>
               </div>
-
-              {/* Row 2: Nhân sự chips + add */}
-              <div style={{ paddingLeft: 28, marginBottom: 4, display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 9, color: "#A1A1AA", flexShrink: 0 }}>Nhân sự:</span>
-                {asgns.map((email) => {
-                  const u = users.find((x) => x.email === email);
-                  return (
-                    <span key={email} style={{ fontSize: 10, padding: "1px 6px", borderRadius: 10, background: "#EDE9FE", color: "#7C3AED", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 3 }}>
-                      {u?.name || email}
-                      <button type="button" onClick={() => updateItem({ assignees: asgns.filter((e) => e !== email) })} style={{ background: "none", border: "none", color: "#7C3AED", cursor: "pointer", fontSize: 11, padding: 0, lineHeight: 1 }}>×</button>
-                    </span>
-                  );
-                })}
-                <select value="" onChange={(e) => { if (e.target.value && !asgns.includes(e.target.value)) updateItem({ assignees: [...asgns, e.target.value] }); e.target.value = ""; }} style={{ padding: "1px 4px", fontSize: 10, border: "1px solid #E4E4E7", borderRadius: 4, color: "#A1A1AA", width: 80 }}>
-                  <option value="">+ Thêm</option>
-                  {users.filter((u) => !asgns.includes(u.email)).map((u) => <option key={u.email} value={u.email}>{u.name || u.email}</option>)}
-                </select>
+              {/* Nhân sự + Kết quả: compact dưới */}
+              <div style={{ paddingLeft: 26, paddingRight: 8, display: "flex", gap: 6, alignItems: "flex-start", fontSize: 10, marginTop: 2 }}>
+                {/* Nhân sự chips */}
+                <div style={{ display: "flex", alignItems: "center", gap: 3, flexWrap: "wrap", flex: 1 }}>
+                  {asgns.map((email) => {
+                    const u = users.find((x) => x.email === email);
+                    return <span key={email} style={{ padding: "0 5px", borderRadius: 8, background: "#EDE9FE", color: "#7C3AED", fontWeight: 600, fontSize: 9, display: "inline-flex", alignItems: "center", gap: 2 }}>{u?.name || email}<button type="button" onClick={() => updateItem({ assignees: asgns.filter((e) => e !== email) })} style={{ background: "none", border: "none", color: "#7C3AED", cursor: "pointer", fontSize: 10, padding: 0, lineHeight: 1 }}>×</button></span>;
+                  })}
+                  <select value="" onChange={(e) => { if (e.target.value && !asgns.includes(e.target.value)) updateItem({ assignees: [...asgns, e.target.value] }); e.target.value = ""; }} style={{ padding: "0 2px", fontSize: 9, border: "1px solid #E4E4E7", borderRadius: 3, color: "#A1A1AA", width: 65 }}>
+                    <option value="">+NV</option>
+                    {users.filter((u) => !asgns.includes(u.email)).map((u) => <option key={u.email} value={u.email}>{u.name || u.email}</option>)}
+                  </select>
+                </div>
               </div>
-
-              {/* Row 3: Kết quả (nhiều dòng) */}
-              <div style={{ paddingLeft: 28 }}>
-                <span style={{ fontSize: 9, color: "#A1A1AA" }}>Kết quả:</span>
-                {results.map((r, ri) => (
-                  <div key={ri} style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
-                    {r.by && <span style={{ fontSize: 9, color: "#7C3AED", fontWeight: 600, flexShrink: 0 }}>{users.find((u) => u.email === r.by)?.name || r.by}:</span>}
-                    <input type="text" value={r.text} onChange={(e) => { const nr = [...results]; nr[ri] = { ...nr[ri], text: e.target.value }; updateItem({ results: nr }); }} style={{ flex: 1, padding: "3px 6px", border: "1px solid #BBF7D0", borderRadius: 4, fontSize: 11, background: "#F0FDF4" }} />
-                    <button type="button" onClick={() => updateItem({ results: results.filter((_, i) => i !== ri) })} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 12, padding: 0 }}>×</button>
-                  </div>
-                ))}
-                <button type="button" onClick={() => updateItem({ results: [...results, { by: "", text: "" }] })} style={{ fontSize: 10, color: "#7C3AED", background: "none", border: "none", cursor: "pointer", padding: "2px 0", marginTop: 2 }}>+ Thêm kết quả</button>
-              </div>
+              {/* Kết quả */}
+              {(results.length > 0 || item.done) && (
+                <div style={{ paddingLeft: 26, paddingRight: 8, marginTop: 2 }}>
+                  {results.map((r, ri) => (
+                    <div key={ri} style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 2 }}>
+                      <input type="text" value={r.text} placeholder="Link / ghi chú..." onChange={(e) => { const nr = [...results]; nr[ri] = { ...nr[ri], text: e.target.value }; updateItem({ results: nr }); }} style={{ flex: 1, padding: "2px 6px", border: "1px solid #BBF7D0", borderRadius: 3, fontSize: 10, background: "#F0FDF4" }} />
+                      <button type="button" onClick={() => updateItem({ results: results.filter((_, i) => i !== ri) })} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 10, padding: 0 }}>×</button>
+                    </div>
+                  ))}
+                  <button type="button" onClick={() => updateItem({ results: [...results, { by: "", text: "" }] })} style={{ fontSize: 9, color: "#7C3AED", background: "none", border: "none", cursor: "pointer", padding: 0 }}>+ kết quả</button>
+                </div>
+              )}
             </div>
             );
           })}
