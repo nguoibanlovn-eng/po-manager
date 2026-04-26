@@ -1486,9 +1486,7 @@ function ModalInner({
                       <span style={{ flex: 1, fontSize: 12, color: c.checked ? "#94A3B8" : "#18181B", textDecoration: c.checked ? "line-through" : "none" }}>{c.text}</span>
                       <input value={c.note || ""} onClick={(e) => e.stopPropagation()} onChange={(e) => {
                         const n = [...checklist]; n[i] = { ...n[i], note: e.target.value }; setChecklist(n); setDirty(true);
-                      }} placeholder="Ghi chú" style={{ width: 120, fontSize: 10, padding: "2px 6px", border: "1px solid #E2E8F0", borderRadius: 4, color: "#64748B" }} />
-                      <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setChecklist(checklist.filter((_, j) => j !== i)); setDirty(true); }}
-                        style={{ background: "none", border: "none", color: "#CBD5E1", cursor: "pointer", fontSize: 11, padding: "0 2px" }}>✕</button>
+                      }} placeholder="Ghi chú" style={{ width: 180, fontSize: 11, padding: "4px 8px", border: "1px solid #E2E8F0", borderRadius: 4, color: "#475569" }} />
                     </label>
                   ))}
                   <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
