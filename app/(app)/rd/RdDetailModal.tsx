@@ -1819,7 +1819,7 @@ function ModalInner({
             )}
 
             {/* ── Create PO banner ── */}
-            {(step.label === "Nhập hàng" || step.label === "Nhập?" || step.label === "Đặt hàng") && (() => {
+            {(step.label === "Nhập hàng" || step.label === "Nhập?" || (step.label === "Đặt hàng" && !isProd)) && (() => {
               const linkedBulkPo = String(data.linked_bulk_po || "");
               return (
               <>
