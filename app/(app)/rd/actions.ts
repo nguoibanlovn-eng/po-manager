@@ -47,9 +47,13 @@ export async function createBlankRdItemAction(rdType: string = "research") {
   const stepsKey = rdType === "research" ? "new_steps_json" : "mfg_steps_json";
   const steps = createBlankSteps(rdType);
 
+  const isProduction = rdType === "production" || rdType === "upgrade" || rdType === "mfg";
+  const firstStepLabel = isProduction ? "Tạo yêu cầu" : "Đề xuất";
+
   const id = await saveRdItem(null, {
     name: "SP mới",
-    stage: "Đề xuất",
+    stage: firstStepLabel,
+    rd_type: rdType,
     created_by: u.email,
     data: {
       rd_type: rdType,

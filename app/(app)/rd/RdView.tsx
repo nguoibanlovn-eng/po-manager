@@ -200,7 +200,7 @@ export default function RdView({ items, users = [], suppliers = [], currentUserR
         <div className="row" style={{ gap: 6 }}>
           <button type="button" className="btn btn-primary btn-sm" disabled={pending} onClick={() => {
             startTransition(async () => {
-              const rdType = tab === "production" ? "upgrade" : "research";
+              const rdType = tab === "production" ? "production" : "research";
               const r = await createBlankRdItemAction(rdType);
               if (r.ok && r.item) { setDetailItem(r.item); router.refresh(); }
               else alert("Lỗi tạo SP");
