@@ -400,7 +400,7 @@ export default function LaunchPlanView({ plans, autoAdd, users = [], currentUser
             }).filter((c) => c.target > 0);
 
             return (
-              <div key={p.id} style={{ border: "1px solid #E4E4E7", borderRadius: 10, overflow: "hidden", marginBottom: 8, background: "#fff", cursor: "pointer" }} onClick={() => setDetailPlan(p)}>
+              <div key={p.id} style={{ border: "1px solid #E4E4E7", borderRadius: 10, overflow: "hidden", marginBottom: 8, background: "#fff", cursor: "pointer" }} onClick={() => setEditPlan(p)}>
                 {/* ─── Row 1: Header + tags + actions ─── */}
                 <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid #F3F4F6" }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -871,10 +871,11 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
   users?: UserRef[]; currentUserRole?: string;
 }) {
   const m = initial ? M(initial) : {} as Metrics;
-  // Phần I khoá khi đã LAUNCHED, chỉ Admin/Leader sửa được
+  // Phần I khoá + rút gọn khi đã LAUNCHED, chỉ Admin/Leader sửa được
   const isLaunched = initial?.stage === "LAUNCHED";
   const canEditP1 = !isLaunched || currentUserRole === "ADMIN" || (currentUserRole || "").startsWith("LEADER_");
   const [p1Unlocked, setP1Unlocked] = useState(false);
+  const [p1Expanded, setP1Expanded] = useState(!isLaunched); // collapsed by default for launched
   const p1Locked = isLaunched && !p1Unlocked;
   const [sku] = useState(initial?.sku || defaultSku || "");
   const [name] = useState(initial?.product_name || defaultName || "");
@@ -1116,19 +1117,31 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
         {/* ╔══════════════════════════════════╗ */}
         {/* ║  PHẦN I: KẾ HOẠCH (Leader chốt)  ║ */}
         {/* ╚══════════════════════════════════╝ */}
-        {/* Phần I header + lock */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+        {/* Phần I header — collapsible khi LAUNCHED */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6, cursor: isLaunched ? "pointer" : undefined }} onClick={isLaunched ? () => setP1Expanded(!p1Expanded) : undefined}>
           {partLabel("I", "Kế hoạch — Leader chốt", BRAND)}
           {isLaunched && (
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 9, padding: "2px 8px", borderRadius: 4, background: p1Locked ? "#F3F4F6" : "#F0FDF4", color: p1Locked ? "#6B7280" : "#16A34A", fontWeight: 700 }}>{p1Locked ? "🔒 Đã khoá" : "🔓 Đang sửa"}</span>
-              {canEditP1 && <button type="button" onClick={() => setP1Unlocked(!p1Unlocked)} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, border: "1px solid #DDD6FE", background: p1Locked ? "#fff" : "#FEF2F2", color: p1Locked ? "#7C3AED" : "#DC2626", cursor: "pointer", fontWeight: 600 }}>{p1Locked ? "Sửa" : "Khoá lại"}</button>}
+              <span style={{ fontSize: 9, padding: "2px 8px", borderRadius: 4, background: "#F3F4F6", color: "#6B7280", fontWeight: 700 }}>🔒 Đã khoá</span>
+              <span style={{ fontSize: 12, color: "#A1A1AA", transform: p1Expanded ? "rotate(180deg)" : "rotate(0)", transition: "transform .2s" }}>▼</span>
+              {canEditP1 && <button type="button" onClick={(e) => { e.stopPropagation(); setP1Expanded(true); setP1Unlocked(!p1Unlocked); }} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, border: "1px solid #DDD6FE", background: p1Locked ? "#fff" : "#FEF2F2", color: p1Locked ? "#7C3AED" : "#DC2626", cursor: "pointer", fontWeight: 600 }}>{p1Locked ? "Sửa" : "Khoá lại"}</button>}
             </div>
           )}
         </div>
 
-        {/* Phần I content — khoá khi LAUNCHED */}
-        <div style={p1Locked ? { opacity: 0.5, pointerEvents: "none", position: "relative" } : undefined}>
+        {/* Phần I summary khi collapsed */}
+        {isLaunched && !p1Expanded && (
+          <div style={{ background: "#fff", border: "1px solid #E4E4E7", borderRadius: 8, padding: "8px 12px", marginBottom: 12, fontSize: 11, color: "#71717A", display: "flex", gap: 12, flexWrap: "wrap" }}>
+            {cost > 0 && <span>Vốn: <strong style={{ color: "#18181B" }}>{formatVND(cost)}</strong></span>}
+            {sellB1 > 0 && <span>Giá bán: <strong style={{ color: "#18181B" }}>{formatVND(sellB1)}</strong></span>}
+            {stockQty > 0 && <span>SL: <strong style={{ color: "#18181B" }}>{stockQty}</strong></span>}
+            {totalTarget > 0 && <span>Phân bổ: <strong style={{ color: BRAND }}>{totalTarget} SP</strong></span>}
+            {horizon && <span>Chu kỳ: <strong>{horizon === "short" ? "Ngắn hạn" : horizon === "long" ? "Dài hạn" : "Trung hạn"}</strong></span>}
+          </div>
+        )}
+
+        {/* Phần I content — ẩn khi collapsed, khoá khi LAUNCHED */}
+        <div style={{ ...(p1Locked ? { opacity: 0.5, pointerEvents: "none" as const, position: "relative" as const } : {}), display: p1Expanded ? undefined : "none" }}>
         {p1Locked && <div style={{ position: "absolute", inset: 0, zIndex: 5, cursor: "not-allowed" }} />}
         {/* ═══ B1: Phân loại hàng ═══ */}
         <div style={sectionStyle}>
