@@ -1370,53 +1370,47 @@ function ModalInner({
               const qcDeadlineVal = String(data.qc_deadline || deadline || "");
               return (
               <>
-                {/* Thông tin tiếp nhận — cho sửa assignee */}
-                <div style={{ padding: "10px 14px", background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, marginBottom: 14, fontSize: 11 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <span style={{ fontWeight: 700, color: "#475569" }}>Tiếp nhận mẫu</span>
-                    {qcConfirmed && <span style={{ fontSize: 9, color: "#16A34A", fontWeight: 600 }}>Đã xác nhận</span>}
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 10px", alignItems: "center" }}>
-                    <span style={{ color: "#94A3B8" }}>Người tiếp nhận:</span>
-                    <select value={assignee} onChange={(e) => {
-                      const email = e.target.value;
-                      const u = users.find(uu => uu.email === email);
-                      setAssignee(email); setAssigneeName(u ? (u.name || email) : ""); setDirty(true);
-                    }} style={{ fontSize: 11, padding: "2px 6px", border: "1px solid #E2E8F0", borderRadius: 4 }}>
-                      <option value="">— Chọn —</option>
-                      {users.map(u => <option key={u.email} value={u.email}>{u.name || u.email}</option>)}
-                    </select>
-                    <span style={{ color: "#94A3B8" }}>Sản phẩm:</span>
-                    <span style={{ fontWeight: 600 }}>{itemName}</span>
-                    <span style={{ color: "#94A3B8" }}>Ngày về (ETA):</span>
-                    <span>{eta || "—"}</span>
-                    {linkedPo && <><span style={{ color: "#94A3B8" }}>Đơn PO:</span><span style={{ color: "#2563EB", fontWeight: 600 }}>{linkedPo}</span></>}
-                  </div>
-                </div>
-
-                {/* Tình trạng nhận + Deadline — luôn sửa được */}
-                <div style={S.section}>
-                  <div style={S.label}>Tình trạng nhận hàng</div>
-                  <textarea value={formData.qc_receive_note || ""} onChange={(e) => setField("qc_receive_note", e.target.value)} placeholder="Mô tả nhanh tình trạng đóng gói, ngoại quan khi nhận..." style={{ ...S.textarea, minHeight: 40 }} />
-                </div>
-                <div style={S.section}>
-                  <div style={S.label}>Deadline hoàn thành QC<span style={{ color: "#DC2626", marginLeft: 2 }}>*</span> <span style={{ color: "#94A3B8", fontWeight: 400 }}>(tối đa 7 ngày)</span></div>
-                  <input type="date" value={formData.qc_deadline || qcDeadlineVal} onChange={(e) => {
-                    const picked = e.target.value;
-                    const max = new Date(); max.setDate(max.getDate() + 7);
-                    if (picked > max.toISOString().split("T")[0]) { alert("Tối đa 7 ngày!"); return; }
-                    setField("qc_deadline", picked); setDeadline(picked); setDirty(true);
-                  }} max={(() => { const d = new Date(); d.setDate(d.getDate() + 7); return d.toISOString().split("T")[0]; })()} style={S.input} />
-                </div>
-
                 {!qcConfirmed ? (
                   <>
+                    {/* ═══ GIAI ĐOẠN 1: Xác nhận tiếp nhận ═══ */}
+                    <div style={{ padding: "12px 14px", background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, marginBottom: 14, fontSize: 11 }}>
+                      <div style={{ fontWeight: 700, color: "#475569", marginBottom: 8 }}>Tiếp nhận mẫu</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 10px", alignItems: "center" }}>
+                        <span style={{ color: "#94A3B8" }}>Người tiếp nhận:</span>
+                        <select value={assignee} onChange={(e) => {
+                          const email = e.target.value;
+                          const u = users.find(uu => uu.email === email);
+                          setAssignee(email); setAssigneeName(u ? (u.name || email) : ""); setDirty(true);
+                        }} style={{ fontSize: 11, padding: "2px 6px", border: "1px solid #E2E8F0", borderRadius: 4 }}>
+                          <option value="">— Chọn —</option>
+                          {users.map(u => <option key={u.email} value={u.email}>{u.name || u.email}</option>)}
+                        </select>
+                        <span style={{ color: "#94A3B8" }}>Sản phẩm:</span>
+                        <span style={{ fontWeight: 600 }}>{itemName}</span>
+                        <span style={{ color: "#94A3B8" }}>Ngày về (ETA):</span>
+                        <span>{eta || "—"}</span>
+                        {linkedPo && <><span style={{ color: "#94A3B8" }}>Đơn PO:</span><span style={{ color: "#2563EB", fontWeight: 600 }}>{linkedPo}</span></>}
+                      </div>
+                    </div>
+                    <div style={S.section}>
+                      <div style={S.label}>Tình trạng nhận hàng</div>
+                      <textarea value={formData.qc_receive_note || ""} onChange={(e) => setField("qc_receive_note", e.target.value)} placeholder="Mô tả nhanh tình trạng đóng gói, ngoại quan khi nhận..." style={{ ...S.textarea, minHeight: 40 }} />
+                    </div>
+                    <div style={S.section}>
+                      <div style={S.label}>Deadline hoàn thành QC<span style={{ color: "#DC2626", marginLeft: 2 }}>*</span> <span style={{ color: "#94A3B8", fontWeight: 400 }}>(tối đa 7 ngày)</span></div>
+                      <input type="date" value={formData.qc_deadline || qcDeadlineVal} onChange={(e) => {
+                        const picked = e.target.value;
+                        const max = new Date(); max.setDate(max.getDate() + 7);
+                        if (picked > max.toISOString().split("T")[0]) { alert("Tối đa 7 ngày!"); return; }
+                        setField("qc_deadline", picked); setDeadline(picked); setDirty(true);
+                      }} max={(() => { const d = new Date(); d.setDate(d.getDate() + 7); return d.toISOString().split("T")[0]; })()} style={S.input} />
+                    </div>
                     <button type="button" disabled={pending || !(formData.qc_deadline || qcDeadlineVal)} onClick={() => {
                       startTransition(async () => {
                         const dl = formData.qc_deadline || qcDeadlineVal || "";
                         if (!dl) { alert("Chọn deadline QC trước"); return; }
                         const logEntry = { action: "qc_confirmed", by: currentUserEmail, at: new Date().toISOString(), deadline: dl, note: formData.qc_receive_note || "" };
-                        const updSteps = buildUpdatedSteps().map((s, i) => i === activeIdx ? { ...s, logs: [...(s.logs || []), logEntry] } : s);
+                        const updSteps = buildUpdatedSteps().map((s, i) => i === activeIdx ? { ...s, deadline: dl, logs: [...(s.logs || []), logEntry] } : s);
                         const newData = { ...data, ...formData, qc_confirmed: true, qc_deadline: dl, [stepsKey]: JSON.stringify(updSteps) };
                         const isNew = item.id === "__NEW__";
                         await saveRdItemAction(isNew ? null : item.id, { name: itemName, data: newData });
@@ -1432,12 +1426,28 @@ function ModalInner({
                   </>
                 ) : (
                   <>
-                    {/* Giai đoạn 2: QC Checklist */}
-                    {qcDeadlineVal && (
-                      <div style={{ padding: "6px 10px", background: "#FFF7ED", borderRadius: 7, marginBottom: 12, fontSize: 11, color: "#92400E" }}>
-                        Deadline QC: {qcDeadlineVal}
+                    {/* ═══ GIAI ĐOẠN 2: QC (đã xác nhận tiếp nhận) ═══ */}
+                    {/* Summary tiếp nhận — compact + nút sửa */}
+                    <div style={{ padding: "8px 12px", background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 8, marginBottom: 14, fontSize: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div>
+                        <span style={{ color: "#15803D", fontWeight: 600 }}>Đã tiếp nhận</span>
+                        <span style={{ color: "#64748B", marginLeft: 8 }}>{assigneeName || "Leader KT"} · {itemName} · DL: {qcDeadlineVal}</span>
+                        {String(data.qc_receive_note || "") && <span style={{ color: "#94A3B8", marginLeft: 6 }}>· {String(data.qc_receive_note).substring(0, 40)}</span>}
                       </div>
-                    )}
+                      <button type="button" onClick={() => {
+                        startTransition(async () => {
+                          const logEntry = { action: "qc_reopen", by: currentUserEmail, at: new Date().toISOString() };
+                          const updSteps = buildUpdatedSteps().map((s, i) => i === activeIdx ? { ...s, logs: [...(s.logs || []), logEntry] } : s);
+                          const newData = { ...data, ...formData, qc_confirmed: false, [stepsKey]: JSON.stringify(updSteps) };
+                          await saveRdItemAction(item.id, { name: itemName, data: newData });
+                          (data as Record<string, unknown>).qc_confirmed = false;
+                          setDirty(false);
+                          onRefresh();
+                        });
+                      }} style={{ fontSize: 9, color: "#7C3AED", fontWeight: 600, background: "none", border: "none", cursor: "pointer", whiteSpace: "nowrap" }}>Sửa</button>
+                    </div>
+
+                    {/* QC Checklist */}
                     <div style={{ marginBottom: 14 }}>
                       <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: ".3px", marginBottom: 5 }}>
                         QC Checklist ({passCount}/{checklist.length} Pass{failCount > 0 ? ` · ${failCount} Fail` : ""})<span style={{ color: "#DC2626", marginLeft: 2 }}>*</span>
@@ -1471,6 +1481,12 @@ function ModalInner({
                           style={{ flex: 1, padding: "5px 11px", border: "1px solid #E2E8F0", borderRadius: 7, fontSize: 12, outline: "none" }} />
                         <button type="button" onClick={addCheckItem} style={{ padding: "5px 10px", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: "#7C3AED", color: "#fff", cursor: "pointer" }}>+</button>
                       </div>
+                    </div>
+
+                    {/* Đánh giá chung */}
+                    <div style={S.section}>
+                      <div style={S.label}>Đánh giá chung<span style={{ color: "#DC2626", marginLeft: 2 }}>*</span></div>
+                      <textarea value={formData.qc_evaluation || ""} onChange={(e) => setField("qc_evaluation", e.target.value)} placeholder="Kết luận QC: PASS/FAIL, ghi chú..." style={{ ...S.textarea, minHeight: 50 }} />
                     </div>
                   </>
                 )}
