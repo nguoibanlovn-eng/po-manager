@@ -61,15 +61,16 @@ export default function ReturnsView({
     const s = { total: 0, pending: 0, sold: 0, totalCost: 0, totalRepair: 0, totalRevenue: 0, totalSellPrice: 0, totalLoss: 0 };
     for (const r of items) {
       s.total++;
-      if (r.status === "pending" || r.status === "PENDING") s.pending++;
-      if (r.status === "sold" || r.status === "SOLD") {
+      const isSold = (r.status || "").toLowerCase() === "sold";
+      if (!isSold) s.pending++;
+      if (isSold) {
         s.sold++;
         s.totalRevenue += toNum(r.sell_price);
       }
       s.totalCost += toNum(r.cost);
       s.totalRepair += toNum(r.repair_cost);
       s.totalSellPrice += toNum(r.sell_price);
-      s.totalLoss += toNum(r.loss);
+      s.totalLoss += toNum(r.cost) + toNum(r.repair_cost) - toNum(r.sell_price);
     }
     return s;
   }, [items]);
@@ -120,13 +121,40 @@ export default function ReturnsView({
         </button>
       </div>
 
-      {/* ═══ KPI STRIP ═══ */}
-      <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 14, fontSize: 13, flexWrap: "wrap" }}>
-        <span><strong>{stats.total}</strong> <span className="muted">SP</span></span>
-        <span style={{ color: "#B45309" }}>● <strong>{stats.pending}</strong> chờ bán</span>
-        <span style={{ color: "#15803D" }}>● <strong>{stats.sold}</strong> đã bán · <span style={{ color: "#15803D" }}>thu hồi</span></span>
-        <span style={{ color: "#B91C1C" }}>● <strong>{formatVND(Math.abs(stats.totalLoss))}</strong> lỗ ròng</span>
-        <span style={{ color: "#7C3AED" }}>● <strong>{stats.totalCost > 0 ? Math.round((stats.totalSellPrice / stats.totalCost) * 100) : 0}%</strong> tỷ lệ thu hồi</span>
+      {/* ═══ KPI DASHBOARD ═══ */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 16 }}>
+        <div style={{ padding: "12px 14px", background: "#EFF6FF", borderRadius: 10, border: "1px solid #BFDBFE" }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "#3B82F6", textTransform: "uppercase" }}>Tổng SP</div>
+          <div style={{ fontSize: 24, fontWeight: 900, color: "#1D4ED8" }}>{stats.total}</div>
+          <div style={{ fontSize: 10, color: "#64748B" }}>{stats.pending} chờ · {stats.sold} đã bán</div>
+        </div>
+        <div style={{ padding: "12px 14px", background: "#FFF7ED", borderRadius: 10, border: "1px solid #FED7AA" }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "#EA580C", textTransform: "uppercase" }}>Chờ bán</div>
+          <div style={{ fontSize: 24, fontWeight: 900, color: "#C2410C" }}>{stats.pending}</div>
+          <div style={{ fontSize: 10, color: "#64748B" }}>{formatVND(stats.totalCost - (stats.totalRevenue || 0))} vốn</div>
+        </div>
+        <div style={{ padding: "12px 14px", background: "#F0FDF4", borderRadius: 10, border: "1px solid #BBF7D0" }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "#16A34A", textTransform: "uppercase" }}>Đã bán</div>
+          <div style={{ fontSize: 24, fontWeight: 900, color: "#15803D" }}>{stats.sold}</div>
+          <div style={{ fontSize: 10, color: "#64748B" }}>Thu hồi {formatVND(stats.totalRevenue)}</div>
+        </div>
+        <div style={{ padding: "12px 14px", background: "#FEF2F2", borderRadius: 10, border: "1px solid #FECACA" }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "#DC2626", textTransform: "uppercase" }}>Lỗ ròng</div>
+          <div style={{ fontSize: 24, fontWeight: 900, color: "#B91C1C" }}>{formatVND(stats.totalLoss)}</div>
+          <div style={{ fontSize: 10, color: "#64748B" }}>Vốn {formatVND(stats.totalCost)}</div>
+        </div>
+        <div style={{ padding: "12px 14px", background: "#F5F3FF", borderRadius: 10, border: "1px solid #DDD6FE" }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "#7C3AED", textTransform: "uppercase" }}>Thu hồi</div>
+          <div style={{ fontSize: 24, fontWeight: 900, color: "#6D28D9" }}>{stats.totalCost > 0 ? Math.round((stats.totalRevenue / stats.totalCost) * 100) : 0}%</div>
+          <div style={{ height: 4, background: "#E5E7EB", borderRadius: 2, marginTop: 4, overflow: "hidden" }}>
+            <div style={{ height: "100%", borderRadius: 2, width: `${Math.min(100, stats.totalCost > 0 ? (stats.totalRevenue / stats.totalCost) * 100 : 0)}%`, background: "#7C3AED" }} />
+          </div>
+        </div>
+        <div style={{ padding: "12px 14px", background: "#FFFBEB", borderRadius: 10, border: "1px solid #FDE68A" }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "#D97706", textTransform: "uppercase" }}>Chi phí sửa</div>
+          <div style={{ fontSize: 24, fontWeight: 900, color: "#B45309" }}>{formatVND(stats.totalRepair)}</div>
+          <div style={{ fontSize: 10, color: "#64748B" }}>{stats.totalRepair > 0 ? `${Math.round((stats.totalRepair / stats.totalCost) * 100)}% vốn` : "Không có"}</div>
+        </div>
       </div>
 
       {/* ═══ TAB CONTENT ═══ */}
@@ -891,99 +919,100 @@ function ReportTab({ items }: { items: ReturnRow[] }) {
     return Object.entries(m).sort((a, b) => b[0].localeCompare(a[0]));
   }, [items]);
 
+  const recoveryPct = fin.totalCost > 0 ? Math.round((fin.soldRevenue / fin.totalCost) * 100) : 0;
+  const netLoss = fin.totalCost + fin.totalRepair - fin.soldRevenue;
+
   return (
-    <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-      {/* Left: condition breakdown */}
-      <div className="card" style={{ flex: 1, minWidth: 300 }}>
-        <div style={{ fontWeight: 700, fontSize: 12, textTransform: "uppercase", color: "var(--muted)", marginBottom: 10 }}>
-          Phân loại tình trạng
+    <div>
+      {/* ── Tổng hợp tài chính — 4 KPI cards ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 16 }}>
+        <div style={{ padding: 14, background: "#EFF6FF", borderRadius: 10, border: "1px solid #BFDBFE" }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "#3B82F6", textTransform: "uppercase" }}>Tổng giá vốn</div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: "#1D4ED8", marginTop: 2 }}>{formatVND(fin.totalCost)}</div>
+          <div style={{ fontSize: 10, color: "#64748B" }}>{items.length} sản phẩm</div>
         </div>
-        {CONDITIONS.map((c) => {
-          const s = condStats[c.value] || { count: 0, cost: 0 };
-          return (
-            <div key={c.value} style={{
-              display: "flex", justifyContent: "space-between", alignItems: "center",
-              padding: "8px 0", borderBottom: "1px solid var(--border)",
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ width: 4, height: 24, borderRadius: 2, background: c.color }} />
-                <span style={{ fontSize: 13 }}>{c.icon} {c.label} ({s.count})</span>
+        <div style={{ padding: 14, background: "#FFFBEB", borderRadius: 10, border: "1px solid #FDE68A" }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "#D97706", textTransform: "uppercase" }}>Chi phí sửa</div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: "#B45309", marginTop: 2 }}>{formatVND(fin.totalRepair)}</div>
+          <div style={{ fontSize: 10, color: "#64748B" }}>{fin.totalCost > 0 ? Math.round((fin.totalRepair / fin.totalCost) * 100) : 0}% giá vốn</div>
+        </div>
+        <div style={{ padding: 14, background: "#F0FDF4", borderRadius: 10, border: "1px solid #BBF7D0" }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "#16A34A", textTransform: "uppercase" }}>Thu hồi (đã bán)</div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: "#15803D", marginTop: 2 }}>{formatVND(fin.soldRevenue)}</div>
+          <div style={{ fontSize: 10, color: "#64748B" }}>{fin.soldCount} SP đã bán</div>
+        </div>
+        <div style={{ padding: 14, background: "#FEF2F2", borderRadius: 10, border: "1px solid #FECACA" }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "#DC2626", textTransform: "uppercase" }}>Lỗ ròng</div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: "#B91C1C", marginTop: 2 }}>{formatVND(netLoss)}</div>
+          <div style={{ fontSize: 10, color: "#64748B" }}>Vốn + sửa - thu hồi</div>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
+        {/* ── Tỷ lệ thu hồi ── */}
+        <div style={{ padding: 16, background: "#fff", borderRadius: 10, border: "1px solid #E2E8F0" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#475569" }}>Tỷ lệ thu hồi</span>
+            <span style={{ fontSize: 22, fontWeight: 900, color: recoveryPct >= 50 ? "#16A34A" : recoveryPct >= 25 ? "#D97706" : "#DC2626" }}>{recoveryPct}%</span>
+          </div>
+          <div style={{ height: 8, background: "#E5E7EB", borderRadius: 4, overflow: "hidden", marginBottom: 10 }}>
+            <div style={{ height: "100%", borderRadius: 4, width: `${Math.min(100, recoveryPct)}%`, background: recoveryPct >= 50 ? "#16A34A" : recoveryPct >= 25 ? "#D97706" : "#DC2626", transition: "width .3s" }} />
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#94A3B8" }}>
+            <span>0%</span><span>50%</span><span>100%</span>
+          </div>
+        </div>
+
+        {/* ── Phân loại tình trạng ── */}
+        <div style={{ padding: 16, background: "#fff", borderRadius: 10, border: "1px solid #E2E8F0" }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 10 }}>Phân loại tình trạng</div>
+          {CONDITIONS.map((c) => {
+            const s = condStats[c.value] || { count: 0, cost: 0 };
+            const pct = items.length > 0 ? Math.round((s.count / items.length) * 100) : 0;
+            return (
+              <div key={c.value} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                <span style={{ width: 70, fontSize: 10, color: c.color, fontWeight: 600 }}>{c.icon} {c.label}</span>
+                <div style={{ flex: 1, height: 6, background: "#F1F5F9", borderRadius: 3, overflow: "hidden" }}>
+                  <div style={{ height: "100%", borderRadius: 3, width: `${pct}%`, background: c.color, transition: "width .3s" }} />
+                </div>
+                <span style={{ fontSize: 10, fontWeight: 700, color: "#475569", width: 30, textAlign: "right" }}>{s.count}</span>
+                <span style={{ fontSize: 9, color: "#94A3B8", width: 50, textAlign: "right" }}>{formatVND(s.cost)}</span>
               </div>
-              <span style={{ fontWeight: 600, color: s.cost > 0 ? c.color : "var(--muted)" }}>
-                {s.cost > 0 ? `+${formatVND(s.cost)}` : `–${formatVND(0)}`}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Right: financial summary */}
-      <div className="card" style={{ flex: 1, minWidth: 300 }}>
-        <div style={{ fontWeight: 700, fontSize: 12, textTransform: "uppercase", color: "var(--muted)", marginBottom: 10 }}>
-          Tổng hợp tài chính
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <div className="stat-card c-blue" style={{ padding: 12 }}>
-            <div style={{ fontSize: 20, fontWeight: 800 }}>{formatVND(fin.totalCost)}</div>
-            <div className="muted" style={{ fontSize: 11 }}>Tổng giá vốn</div>
-          </div>
-          <div className="stat-card c-red" style={{ padding: 12 }}>
-            <div style={{ fontSize: 20, fontWeight: 800, color: "var(--red)" }}>{formatVND(fin.totalRepair)}</div>
-            <div className="muted" style={{ fontSize: 11 }}>Chi phí sửa</div>
-          </div>
-          <div className="stat-card c-amber" style={{ padding: 12 }}>
-            <div style={{ fontSize: 20, fontWeight: 800 }}>{formatVND(fin.totalSellPrice)}</div>
-            <div className="muted" style={{ fontSize: 11 }}>Thu hồi thanh lý</div>
-          </div>
-          <div className="stat-card c-red" style={{ padding: 12 }}>
-            <div style={{ fontSize: 20, fontWeight: 800, color: "var(--red)" }}>{formatVND(Math.abs(fin.totalLoss))}</div>
-            <div className="muted" style={{ fontSize: 11 }}>Lỗ ròng tổng</div>
-          </div>
-        </div>
-
-        {/* Recovery rate */}
-        <div style={{ marginTop: 14, padding: 10, background: "#F9FAFB", borderRadius: 6 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-            <span className="muted" style={{ fontSize: 12 }}>Tỷ lệ thu hồi</span>
-            <span style={{ fontWeight: 700, fontSize: 14, color: "var(--blue)" }}>
-              {fin.totalCost > 0 ? Math.round((fin.totalSellPrice / fin.totalCost) * 100) : 0}%
-            </span>
-          </div>
-          <div style={{ height: 6, background: "#E5E7EB", borderRadius: 3, overflow: "hidden" }}>
-            <div style={{
-              height: "100%", borderRadius: 3,
-              width: `${Math.min(100, fin.totalCost > 0 ? (fin.totalSellPrice / fin.totalCost) * 100 : 0)}%`,
-              background: "var(--blue)", transition: "width .3s",
-            }} />
-          </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* Monthly table */}
+      {/* ── Bảng theo tháng ── */}
       {monthly.length > 0 && (
-        <div className="card" style={{ width: "100%" }}>
-          <div style={{ fontWeight: 700, fontSize: 12, textTransform: "uppercase", color: "var(--muted)", marginBottom: 10 }}>
-            Theo tháng
-          </div>
+        <div style={{ padding: 16, background: "#fff", borderRadius: 10, border: "1px solid #E2E8F0" }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 10 }}>Theo tháng</div>
           <div className="tbl-wrap">
             <table>
               <thead><tr>
                 <th>Tháng</th>
-                <th className="text-right">Số lượng</th>
+                <th className="text-right">SL</th>
                 <th className="text-right">Giá vốn</th>
                 <th className="text-right">Thu hồi</th>
                 <th className="text-right">Lỗ ròng</th>
+                <th className="text-right">Thu hồi %</th>
               </tr></thead>
               <tbody>
-                {monthly.map(([month, d]) => (
-                  <tr key={month}>
-                    <td style={{ fontWeight: 600 }}>{month}</td>
-                    <td className="text-right">{d.count}</td>
-                    <td className="text-right muted">{formatVND(d.cost)}</td>
-                    <td className="text-right" style={{ color: "var(--green)" }}>{formatVND(d.revenue)}</td>
-                    <td className="text-right" style={{ color: "var(--red)" }}>{formatVND(Math.abs(d.loss))}</td>
-                  </tr>
-                ))}
+                {monthly.map(([month, d]) => {
+                  const mPct = d.cost > 0 ? Math.round((d.revenue / d.cost) * 100) : 0;
+                  return (
+                    <tr key={month}>
+                      <td style={{ fontWeight: 600 }}>{month}</td>
+                      <td className="text-right">{d.count}</td>
+                      <td className="text-right" style={{ color: "#64748B" }}>{formatVND(d.cost)}</td>
+                      <td className="text-right" style={{ color: "#16A34A", fontWeight: 600 }}>{formatVND(d.revenue)}</td>
+                      <td className="text-right" style={{ color: "#DC2626", fontWeight: 600 }}>{formatVND(d.cost - d.revenue)}</td>
+                      <td className="text-right">
+                        <span style={{ padding: "1px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700, background: mPct >= 50 ? "#DCFCE7" : mPct >= 25 ? "#FEF3C7" : "#FEE2E2", color: mPct >= 50 ? "#15803D" : mPct >= 25 ? "#92400E" : "#DC2626" }}>{mPct}%</span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
