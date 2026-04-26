@@ -178,7 +178,9 @@ function ReadyTab({ plans, onEdit }: { plans: LaunchPlanRow[]; onEdit: (p: Launc
 /* ═══════════════════════════════════════════════════════════
    MAIN VIEW
    ═══════════════════════════════════════════════════════════ */
-export default function LaunchPlanView({ plans, autoAdd }: { plans: LaunchPlanRow[]; autoAdd?: { sku: string; name: string; cost: number } }) {
+type UserRef = { email: string; name: string | null; role: string | null };
+
+export default function LaunchPlanView({ plans, autoAdd, users = [] }: { plans: LaunchPlanRow[]; autoAdd?: { sku: string; name: string; cost: number }; users?: UserRef[] }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [tab, setTab] = useState<Tab>("launching");
@@ -573,6 +575,7 @@ export default function LaunchPlanView({ plans, autoAdd }: { plans: LaunchPlanRo
           onClose={() => { setFormOpen(null); setEditPlan(null); }}
           onSaved={() => { setFormOpen(null); setEditPlan(null); router.refresh(); }}
           pending={pending} startTransition={startTransition}
+          users={users}
         />
       )}
     </section>
@@ -797,11 +800,12 @@ const VIDEO_TYPES = [
   { type: "lifestyle", label: "Lifestyle", desc: "Bối cảnh sử dụng", color: "#7C3AED", short: 1, medium: 2, long: 3 },
 ];
 
-function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClose, onSaved, pending, startTransition }: {
+function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClose, onSaved, pending, startTransition, users = [] }: {
   initial: LaunchPlanRow | null;
   defaultSku?: string; defaultName?: string; defaultCost?: number;
   onClose: () => void; onSaved: () => void;
   pending: boolean; startTransition: ReturnType<typeof useTransition>[1];
+  users?: UserRef[];
 }) {
   const m = initial ? M(initial) : {} as Metrics;
   const [sku] = useState(initial?.sku || defaultSku || "");
@@ -1258,52 +1262,24 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
           })()}
         </div>
 
-        {/* ═══ Xác nhận kế hoạch + Bàn giao ═══ */}
-        <div style={{ background: "#fff", border: "2px solid #D97706", borderRadius: 10, padding: 14, marginBottom: 12 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: "#92400E", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-            Xác nhận kế hoạch
-            <span style={{ marginLeft: "auto", padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: "#FFFBEB", color: "#D97706" }}>Chờ sign-off</span>
+        {/* ═══ Bàn giao nhân sự ═══ */}
+        <div style={{ background: "#F5F3FF", border: "1px solid #DDD6FE", borderRadius: 10, padding: 14, marginBottom: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "#7C3AED", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+            Bàn giao triển khai
           </div>
-          <div style={{ fontSize: 11, color: "#71717A", marginBottom: 8, lineHeight: 1.5 }}>Các leader xác nhận phân loại + định giá + phân bổ trước khi chuyển sang triển khai.</div>
-
-          {/* Leader sign-off list */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 8 }}>
-            {["Admin", "Leader KD", "Leader MH"].map((role) => (
-              <div key={role} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", border: "1px solid #E4E4E7", borderRadius: 6 }}>
-                <div style={{ width: 18, height: 18, borderRadius: 4, border: "2px solid #E4E4E7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, flexShrink: 0 }} />
-                <span style={{ fontSize: 12, fontWeight: 600, flex: 1 }}>{role}</span>
-                <button type="button" className="btn btn-sm" style={{ background: BRAND, color: "#fff", fontSize: 10, padding: "3px 10px", border: "none", borderRadius: 5, cursor: "pointer" }}>Xác nhận</button>
-              </div>
-            ))}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "#7C3AED", whiteSpace: "nowrap" }}>Giao cho:</span>
+            <select value={handoverTo} onChange={(e) => setHandoverTo(e.target.value)} style={{ flex: 1, padding: "6px 10px", fontSize: 12, border: "1px solid #DDD6FE", borderRadius: 6, fontWeight: 600 }}>
+              <option value="">— Chọn nhân sự —</option>
+              {users.map((u) => (
+                <option key={u.email} value={u.email}>{u.name || u.email}{u.role ? ` (${u.role})` : ""}</option>
+              ))}
+            </select>
           </div>
-
-          {/* Comment input */}
-          <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-            <input type="text" placeholder="Bình luận..." style={{ flex: 1, padding: "5px 10px", border: "1px solid #E4E4E7", borderRadius: 6, fontSize: 11 }} />
-            <button type="button" className="btn btn-ghost" style={{ fontSize: 10, padding: "5px 10px" }}>Gửi</button>
-          </div>
-
-          {/* Bàn giao Phần II */}
-          <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #FCD34D" }}>
-            <div style={{ padding: "10px 12px", background: "#F5F3FF", border: "1px solid #DDD6FE", borderRadius: 8, marginBottom: 10 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#7C3AED" }}>Bàn giao Phần II cho:</span>
-                <select value={handoverTo} onChange={(e) => setHandoverTo(e.target.value)} style={{ padding: "4px 8px", fontSize: 11, border: "1px solid #DDD6FE", borderRadius: 6, fontWeight: 600 }}>
-                  <option value="">— Chọn người nhận —</option>
-                  <option value="nv_kd_1">NV Kinh doanh 1</option>
-                  <option value="nv_kd_2">NV Kinh doanh 2</option>
-                  <option value="sales_leader">Sales Leader</option>
-                </select>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 11, color: "#7C3AED", fontWeight: 600 }}>Deadline phân bổ việc:</span>
-                <input type="date" value={handoverDeadline} onChange={(e) => setHandoverDeadline(e.target.value)} style={{ padding: "4px 8px", fontSize: 11, border: "1px solid #DDD6FE", borderRadius: 6 }} />
-                <span style={{ fontSize: 9, color: "#71717A" }}>Người nhận phải phân bổ + Launch trước ngày này</span>
-              </div>
-            </div>
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button type="button" className="btn" style={{ background: BRAND, color: "#fff", padding: "10px 24px", fontSize: 13, border: "none", borderRadius: 7, fontWeight: 700, cursor: "pointer" }} onClick={() => save("LAUNCHED")}>Xác nhận & Bàn giao →</button>
-            </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 11, color: "#7C3AED", fontWeight: 600, whiteSpace: "nowrap" }}>Deadline:</span>
+            <input type="date" value={handoverDeadline} onChange={(e) => setHandoverDeadline(e.target.value)} style={{ padding: "5px 10px", fontSize: 12, border: "1px solid #DDD6FE", borderRadius: 6 }} />
+            <span style={{ fontSize: 9, color: "#71717A" }}>Người nhận phải phân bổ việc + Launch trước ngày này</span>
           </div>
         </div>
 
