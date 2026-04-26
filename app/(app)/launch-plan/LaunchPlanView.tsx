@@ -91,13 +91,19 @@ function ReadyTab({ plans, onEdit }: { plans: LaunchPlanRow[]; onEdit: (p: Launc
         const gross = sellPrice > 0 && cost > 0 ? sellPrice - cost : 0;
         const grossPct = sellPrice > 0 ? ((gross / sellPrice) * 100).toFixed(0) : "0";
         const isOpen = expanded === p.id;
+        const createdDays = p.created_at ? Math.round((Date.now() - new Date(p.created_at).getTime()) / 86400000) : 0;
+        const ageColor = createdDays <= 3 ? "#16A34A" : createdDays <= 14 ? "#2563EB" : createdDays <= 30 ? "#D97706" : "#DC2626";
+        const ageLabel = createdDays <= 3 ? "Mới" : createdDays <= 14 ? `${createdDays}d` : createdDays <= 30 ? `${createdDays}d` : `${createdDays}d`;
 
         return (
-          <div key={p.id} style={{ border: "1px solid #E4E4E7", borderRadius: 10, overflow: "hidden", marginBottom: 8, background: "#fff" }}>
+          <div key={p.id} style={{ border: "1px solid #E4E4E7", borderRadius: 10, overflow: "hidden", marginBottom: 8, background: "#fff", borderLeft: `3px solid ${ageColor}` }}>
             {/* Row 1: tên + info compact */}
             <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, borderBottom: isOpen ? "1px solid #F3F4F6" : undefined }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 800, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.product_name}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <span style={{ fontSize: 8, padding: "1px 4px", borderRadius: 3, background: ageColor, color: "#fff", fontWeight: 700, flexShrink: 0 }}>{ageLabel}</span>
+                  <span style={{ fontWeight: 800, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.product_name}</span>
+                </div>
                 <div style={{ fontSize: 10, color: "#71717A" }}>{p.sku || "—"}{stockQty > 0 ? ` · ${stockQty} SP` : ""}{cost > 0 ? ` · Vốn ${formatVNDCompact(cost)}` : ""}{sellPrice > 0 ? ` · Bán ${formatVNDCompact(sellPrice)}` : ""}{gross > 0 ? ` · Lãi ${grossPct}%` : ""}</div>
               </div>
               <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
@@ -145,6 +151,8 @@ export default function LaunchPlanView({ plans, autoAdd, users = [], currentUser
   const [search, setSearch] = useState("");
   const [filterHorizon, setFilterHorizon] = useState("");
   const [filterProgress, setFilterProgress] = useState("");
+  const [filterTime, setFilterTime] = useState("");
+  const [filterQty, setFilterQty] = useState("");
   const [invSearch, setInvSearch] = useState("");
   const [invResults, setInvResults] = useState<InvItem[]>([]);
   const [invLoading, setInvLoading] = useState(false);
@@ -217,9 +225,30 @@ export default function LaunchPlanView({ plans, autoAdd, users = [], currentUser
     if (filterProgress && tab === "launching") {
       result = result.filter((p) => getProgress(M(p), p.launch_date).status === filterProgress);
     }
+    if (filterTime) {
+      const now = new Date();
+      result = result.filter((p) => {
+        const created = p.created_at ? new Date(p.created_at) : now;
+        const days = Math.round((now.getTime() - created.getTime()) / 86400000);
+        if (filterTime === "7d") return days <= 7;
+        if (filterTime === "30d") return days <= 30;
+        if (filterTime === "old") return days > 30;
+        return true;
+      });
+    }
+    if (filterQty) {
+      result = result.filter((p) => {
+        const qty = M(p).phase4?.stock_qty || M(p).sales_target?.stock_qty || 0;
+        if (filterQty === "high") return qty >= 100;
+        if (filterQty === "mid") return qty >= 20 && qty < 100;
+        if (filterQty === "low") return qty > 0 && qty < 20;
+        return true;
+      });
+      if (filterQty === "high") result.sort((a, b) => (M(b).phase4?.stock_qty || 0) - (M(a).phase4?.stock_qty || 0));
+    }
     // Sort: cảnh báo lên đầu for launching tab
-    if (tab === "launching") {
-      result.sort((a, b) => getProgress(M(a)).pct - getProgress(M(b)).pct);
+    if (tab === "launching" && !filterQty) {
+      result.sort((a, b) => getProgress(M(a), a.launch_date).pct - getProgress(M(b), b.launch_date).pct);
     }
     return result;
   }
@@ -268,13 +297,22 @@ export default function LaunchPlanView({ plans, autoAdd, users = [], currentUser
         ))}
       </div>
 
-      <div style={{ display: "flex", gap: 6, marginBottom: 10, alignItems: "center" }}>
-        <select value={filterHorizon} onChange={(e) => setFilterHorizon(e.target.value)} style={{ fontSize: 11, padding: "5px 8px" }}>
-          <option value="">Loại hàng</option>
-          {HORIZONS.map((h) => <option key={h.k} value={h.k}>{h.label}</option>)}
+      <div style={{ display: "flex", gap: 5, marginBottom: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <input placeholder="Tìm SP, SKU..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "5px 9px", fontSize: 11, border: "1px solid #E4E4E7", borderRadius: 6, width: 160 }} />
+        <select value={filterTime} onChange={(e) => setFilterTime(e.target.value)} style={{ fontSize: 10, padding: "5px 6px", borderRadius: 5, border: "1px solid #E4E4E7", color: filterTime ? "#2563EB" : undefined }}>
+          <option value="">Thời gian</option>
+          <option value="7d">7 ngày qua</option>
+          <option value="30d">30 ngày qua</option>
+          <option value="old">Trên 30 ngày</option>
+        </select>
+        <select value={filterQty} onChange={(e) => setFilterQty(e.target.value)} style={{ fontSize: 10, padding: "5px 6px", borderRadius: 5, border: "1px solid #E4E4E7", color: filterQty ? "#16A34A" : undefined }}>
+          <option value="">Số lượng</option>
+          <option value="high">≥100 SP</option>
+          <option value="mid">20-99 SP</option>
+          <option value="low">&lt;20 SP</option>
         </select>
         {tab === "launching" && (
-          <select value={filterProgress} onChange={(e) => setFilterProgress(e.target.value)} style={{ fontSize: 11, padding: "5px 8px" }}>
+          <select value={filterProgress} onChange={(e) => setFilterProgress(e.target.value)} style={{ fontSize: 10, padding: "5px 6px", borderRadius: 5, border: "1px solid #E4E4E7", color: filterProgress ? "#D97706" : undefined }}>
             <option value="">Tiến độ</option>
             <option value="Vượt target">Vượt target</option>
             <option value="Đúng tiến độ">Đúng tiến độ</option>
@@ -282,7 +320,9 @@ export default function LaunchPlanView({ plans, autoAdd, users = [], currentUser
             <option value="Cảnh báo">Cảnh báo</option>
           </select>
         )}
-        <input placeholder="Tìm SP, SKU..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "5px 9px", fontSize: 12, border: "1px solid #E4E4E7", borderRadius: 6, flex: 1, minWidth: 120 }} />
+        {(filterTime || filterQty || filterProgress || filterHorizon) && (
+          <button onClick={() => { setFilterTime(""); setFilterQty(""); setFilterProgress(""); setFilterHorizon(""); }} style={{ fontSize: 9, padding: "4px 8px", borderRadius: 4, border: "none", background: "#FEF2F2", color: "#DC2626", cursor: "pointer", fontWeight: 600 }}>Xoá lọc</button>
+        )}
       </div>
 
       {/* Inventory results dropdown */}
