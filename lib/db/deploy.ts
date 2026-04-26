@@ -193,7 +193,7 @@ export async function updateDeployInfo(
   if (info_done) {
     const { data: deploy } = await db
       .from("deployments")
-      .select("deploy_id, sku, product_name, unit_price, sell_price, product_desc, fb_done, shopee_done, tiktok_done, web_done, fb_links, shopee_links, tiktok_links, web_links, created_by")
+      .select("deploy_id, sku, product_name, qty, unit_price, sell_price, product_desc, fb_done, shopee_done, tiktok_done, web_done, fb_links, shopee_links, tiktok_links, web_links, created_by")
       .eq("deploy_id", deployId)
       .maybeSingle();
     if (deploy) {

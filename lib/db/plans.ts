@@ -89,7 +89,7 @@ export async function backfillLaunchFromDeploys(): Promise<number> {
   const db = supabaseAdmin();
   const { data: deploys } = await db
     .from("deployments")
-    .select("deploy_id, sku, product_name, unit_price, sell_price, product_desc, fb_done, shopee_done, tiktok_done, web_done, fb_links, shopee_links, tiktok_links, web_links, created_by")
+    .select("deploy_id, sku, product_name, qty, unit_price, sell_price, product_desc, fb_done, shopee_done, tiktok_done, web_done, fb_links, shopee_links, tiktok_links, web_links, created_by")
     .eq("info_done", true);
   if (!deploys?.length) return 0;
 
@@ -104,7 +104,7 @@ export async function backfillLaunchFromDeploys(): Promise<number> {
 /** Auto-create launch plan from a completed deployment. Idempotent by deploy_id in metrics. */
 export async function createLaunchFromDeploy(deploy: {
   deploy_id: string; sku: string | null; product_name: string | null;
-  unit_price: number | null; sell_price: number | null; product_desc: string | null;
+  qty?: number | null; unit_price: number | null; sell_price: number | null; product_desc: string | null;
   fb_done: boolean; shopee_done: boolean; tiktok_done: boolean; web_done: boolean;
   fb_links: string | null; shopee_links: string | null; tiktok_links: string | null; web_links: string | null;
 }, createdBy: string): Promise<string | null> {
@@ -139,10 +139,13 @@ export async function createLaunchFromDeploy(deploy: {
     }
   }
 
+  const qty = Number(deploy.qty || 0);
   const metrics = {
     deploy_id: deploy.deploy_id,
     product_type: "medium",
     pricing: { cost: Number(deploy.unit_price || 0), sell_price: Number(deploy.sell_price || 0) },
+    phase4: { stock_qty: qty },
+    sales_target: { stock_qty: qty },
     channels_selected: channels.length > 0 ? channels : ["Facebook", "TikTok Shop", "Shopee"],
     listings,
     product_desc: deploy.product_desc,
