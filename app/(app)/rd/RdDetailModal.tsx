@@ -248,7 +248,15 @@ function ModalInner({
   const [assignee, setAssignee] = useState(step.assignee || "");
   const [assigneeName, setAssigneeName] = useState(step.assignee_name || "");
   const [deadline, setDeadline] = useState(step.deadline || "");
-  const [checklist, setChecklist] = useState<RdCheckItem[]>(step.checklist || []);
+  const [checklist, setChecklist] = useState<RdCheckItem[]>(() => {
+    if (step.checklist && step.checklist.length > 0) return step.checklist;
+    // Triển khai: inherit checklist from Tạo yêu cầu step
+    if (resolvedLabel === "Triển khai") {
+      const step1 = initSteps.find(s => s.label === "Tạo yêu cầu");
+      if (step1?.checklist?.length) return step1.checklist.map(c => ({ ...c, checked: false }));
+    }
+    return [];
+  });
   const [links, setLinks] = useState<RdLink[]>(step.links || []);
   const [photos, setPhotos] = useState<string[]>(step.photos || []);
   const [result, setResult] = useState(step.result || "");
@@ -420,8 +428,13 @@ function ModalInner({
       const updated = initSteps.map((s, i) => {
         if (i === activeIdx) return { ...s, status: "approved" as const, assignee, assignee_name: assigneeName, assigneeName, deadline, checklist, links, photos, result, logs: [...(s.logs || []), logEntry] };
         if (i === activeIdx + 1 && (s.status === "locked" || s.status === "skipped")) {
+          // "Tạo yêu cầu" → "Triển khai": copy checklist (reset checked)
+          const inheritChecklist = (step.label === "Tạo yêu cầu" && checklist.length > 0)
+            ? checklist.map(c => ({ ...c, checked: false }))
+            : undefined;
           return {
             ...s, status: "active" as const,
+            ...(inheritChecklist ? { checklist: inheritChecklist } : {}),
             ...(nextAssignEmail ? { assignee: nextAssignEmail, assignee_name: nextAssignName, assigneeName: nextAssignName } : {}),
             ...(nextDl ? { deadline: nextDl } : {}),
             logs: [...(s.logs || []), { action: "activate", by: currentUserEmail, at: now, from: step.label, ...(nextAssignName ? { assigned_to: nextAssignName } : {}) }],
