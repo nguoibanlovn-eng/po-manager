@@ -643,6 +643,44 @@ function ModalInner({
               </div>
             )}
 
+            {/* ── Production: Tạo yêu cầu — custom form ── */}
+            {step.label === "Tạo yêu cầu" && (
+              <>
+                {/* Tên SP */}
+                <div style={S.section}>
+                  <div style={S.label}>{reqStar("Tên sản phẩm", true)}</div>
+                  <input type="text" value={itemName} onChange={(e) => { setItemName(e.target.value); setDirty(true); }} placeholder="Nhập tên SP mới" style={S.input} />
+                </div>
+
+                {/* Giao NV + Deadline + Ưu tiên */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
+                  <div>
+                    <div style={S.label}>{reqStar("Giao cho", true)}</div>
+                    <select value={assignee} onChange={(e) => {
+                      const email = e.target.value;
+                      const u = users.find((uu) => uu.email === email);
+                      setAssignee(email); setAssigneeName(u ? (u.name || email) : ""); setDirty(true);
+                    }} style={S.select}>
+                      <option value="">— Chọn —</option>
+                      {users.map((u) => <option key={u.email} value={u.email}>{u.name || u.email}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <div style={S.label}>{reqStar("Deadline", true)}</div>
+                    <input type="date" value={deadlineToISO(deadline)} onChange={(e) => { setDeadline(e.target.value); setDirty(true); }} style={S.input} />
+                  </div>
+                  <div>
+                    <div style={S.label}>Ưu tiên</div>
+                    <select value={priority} onChange={(e) => { setPriority(e.target.value); setDirty(true); }} style={S.select}>
+                      <option value="normal">Bình thường</option>
+                      <option value="high">Cao</option>
+                      <option value="low">Thấp</option>
+                    </select>
+                  </div>
+                </div>
+              </>
+            )}
+
             {/* Role selector — only at Đề xuất step */}
             {step.label === "Đề xuất" && (
               <>
@@ -1469,7 +1507,7 @@ function ModalInner({
             ) : null}
 
             {/* ── QC Checklist (for Hàng về step) — skip if custom rendered ── */}
-            {step.label !== "Hàng về" && step.label !== "QC & Nhận hàng" && step.label !== "Nhập hàng" && step.label !== "Đặt hàng" && (checklist.length > 0 || isQcStep) && (
+            {step.label !== "Hàng về" && step.label !== "QC & Nhận hàng" && step.label !== "Nhập hàng" && step.label !== "Đặt hàng" && step.label !== "Đặt mẫu" && step.label !== "Chờ mẫu về" && (checklist.length > 0 || isQcStep || step.label === "Tạo yêu cầu" || step.label === "Đề xuất") && (
               <div style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: ".3px", marginBottom: 5 }}>
                   {isQcStep ? `QC Checklist (${passCount}/${checklist.length} Pass${failCount > 0 ? ` · ${failCount} Fail` : ""})` : `Checklist (${checkedCount}/${checklist.length})`}
