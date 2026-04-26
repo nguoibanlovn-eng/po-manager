@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MOCKUP — Order nhập hàng</title>
+<style>
+  :root {
+    --bg:#F5F5F7;--card:#FFFFFF;--border:#E4E4E7;--text:#18181B;--muted:#71717A;--subtle:#A1A1AA;
+    --blue:#2563EB;--blue-lt:#EFF6FF;--blue-bd:#BFDBFE;
+    --green:#16A34A;--green-lt:#F0FDF4;
+    --amber:#D97706;--amber-lt:#FFFBEB;
+    --red:#DC2626;--red-lt:#FEF2F2;
+    --purple:#7C3AED;--purple-lt:#F5F3FF;
+    --teal:#0D9488;--teal-lt:#F0FDFA;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); font-family:'Inter',system-ui,sans-serif; font-size:14px; color:var(--text); }
+
+  /* ═══ SHARED ═══ */
+  .btn { display:inline-flex; align-items:center; gap:5px; border:0; border-radius:7px; padding:7px 12px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; transition:all .12s; white-space:nowrap; }
+  .btn-primary { background:var(--blue); color:#fff; }
+  .btn-primary:hover { background:#1D4ED8; }
+  .btn-ghost { background:transparent; color:var(--muted); border:1px solid var(--border); }
+  .btn-ghost:hover { background:var(--bg); }
+  .btn-success { background:var(--green); color:#fff; }
+  .btn-success:hover { background:#15803D; }
+  .btn-danger { background:var(--red); color:#fff; }
+  .btn-sm { padding:5px 10px; font-size:11px; }
+  .btn-xs { padding:3px 8px; font-size:11px; }
+  .chip { display:inline-flex; align-items:center; gap:3px; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; border:1px solid; }
+  .chip-blue { background:var(--blue-lt); color:#1E40AF; border-color:var(--blue-bd); }
+  .chip-green { background:var(--green-lt); color:#15803D; border-color:#86EFAC; }
+  .chip-amber { background:var(--amber-lt); color:#B45309; border-color:#FCD34D; }
+  .chip-red { background:var(--red-lt); color:#991B1B; border-color:#FECACA; }
+  .chip-gray { background:#F4F4F5; color:#52525B; border-color:#D4D4D8; }
+  .chip-purple { background:var(--purple-lt); color:#6D28D9; border-color:#DDD6FE; }
+
+  .card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+  .form-group { display:flex; flex-direction:column; gap:4px; }
+  .form-group label { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; }
+  .form-group input, .form-group select, .form-group textarea { width:100%; padding:6px 10px; border:1px solid var(--border); border-radius:7px; font-size:12px; font-family:inherit; background:#fff; color:var(--text); outline:none; }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(37,99,235,.1); }
+  .form-grid { display:grid; gap:10px; }
+  .fg-2 { grid-template-columns:1fr 1fr; }
+  .fg-3 { grid-template-columns:1fr 1fr 1fr; }
+  .fg-4 { grid-template-columns:1fr 1fr 1fr 1fr; }
+
+  /* ═══ LAYOUT ═══ */
+  .wrapper { max-width:1100px; margin:0 auto; padding:20px; }
+  .page-hdr { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:14px; }
+  .page-title { font-size:17px; font-weight:800; }
+  .page-sub { font-size:13px; color:var(--muted); margin-top:2px; }
+
+  /* ═══ TABS ═══ */
+  .mini-tabs { display:flex; gap:0; border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:16px; width:fit-content; }
+  .mini-tab { padding:7px 18px; font-size:13px; font-weight:600; background:#fff; color:var(--muted); border:0; cursor:pointer; border-right:1px solid var(--border); }
+  .mini-tab:last-child { border-right:0; }
+  .mini-tab.active { background:var(--blue); color:#fff; font-weight:700; }
+  .mini-tab .cnt { display:inline-block; background:rgba(0,0,0,.12); border-radius:999px; padding:1px 7px; font-size:11px; margin-left:5px; }
+  .mini-tab.active .cnt { background:rgba(255,255,255,.25); }
+
+  /* ═══ STAT GRID ═══ */
+  .stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:14px; }
+  .stat-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:10px 12px; }
+  .stat-card .sl { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+  .stat-card .sv { font-size:18px; font-weight:900; margin:2px 0 1px; line-height:1; }
+  .stat-card .ss { font-size:11px; color:var(--subtle); }
+  .stat-card.c-blue { border-left:3px solid var(--blue); }
+  .stat-card.c-green { border-left:3px solid var(--green); }
+  .stat-card.c-amber { border-left:3px solid var(--amber); }
+  .stat-card.c-red { border-left:3px solid var(--red); }
+
+  /* ═══ TABLE ═══ */
+  .tbl-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:10px; background:#fff; }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  thead th { background:#FAFAFA; padding:7px 10px; text-align:left; font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  tbody tr { border-bottom:1px solid var(--border); transition:background .1s; cursor:pointer; }
+  tbody tr:last-child { border-bottom:0; }
+  tbody tr:hover { background:#FAFAFA; }
+  td { padding:7px 10px; vertical-align:middle; }
+
+  /* ═══ MODAL ═══ */
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; z-index:999; padding:20px; }
+  .modal { background:#fff; border-radius:16px; width:100%; max-width:680px; max-height:92vh; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 25px 50px rgba(0,0,0,.25); }
+  .modal-hdr { padding:14px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; }
+  .modal-title { font-weight:800; font-size:15px; flex:1; }
+  .modal-body { flex:1; overflow-y:auto; padding:16px; }
+  .modal-footer { padding:12px 16px; border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:#FAFAFA; }
+
+  /* ═══ TYPE TOGGLE ═══ */
+  .type-toggle { display:flex; gap:0; border:2px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:16px; }
+  .type-btn { flex:1; padding:10px 16px; border:none; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; background:#fff; color:var(--muted); text-align:center; transition:all .15s; }
+  .type-btn.active-new { background:var(--purple-lt); color:var(--purple); border-color:var(--purple); }
+  .type-btn.active-old { background:var(--teal-lt); color:var(--teal); }
+
+  /* ═══ SEARCH PRODUCT ═══ */
+  .search-box { position:relative; margin-bottom:12px; }
+  .search-box input { width:100%; padding:10px 14px 10px 36px; border:1px solid var(--border); border-radius:10px; font-size:13px; outline:none; font-family:inherit; }
+  .search-box input:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(37,99,235,.1); }
+  .search-box .si { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--subtle); font-size:14px; }
+  .search-results { border:1px solid var(--border); border-radius:10px; max-height:260px; overflow-y:auto; }
+  .sr-item { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .1s; }
+  .sr-item:last-child { border-bottom:0; }
+  .sr-item:hover { background:var(--blue-lt); }
+  .sr-item.selected { background:var(--green-lt); border-left:3px solid var(--green); }
+  .sr-img { width:40px; height:40px; border-radius:6px; background:#F4F4F5; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+  .sr-info { flex:1; min-width:0; }
+  .sr-name { font-size:13px; font-weight:700; }
+  .sr-meta { font-size:11px; color:var(--muted); display:flex; gap:10px; margin-top:2px; }
+  .sr-qty { font-size:12px; font-weight:700; color:var(--teal); }
+
+  /* ═══ SELECTED PRODUCTS ═══ */
+  .sel-product { display:flex; align-items:center; gap:10px; padding:10px 12px; background:#F9FAFB; border:1px solid var(--border); border-radius:8px; margin-bottom:6px; }
+  .sel-product .sp-name { flex:1; font-size:13px; font-weight:600; }
+  .sel-product input { width:80px; padding:5px 8px; border:1px solid var(--border); border-radius:6px; font-size:12px; text-align:center; outline:none; }
+  .sel-product input:focus { border-color:var(--blue); }
+  .sel-product .sp-remove { width:24px; height:24px; border-radius:50%; border:none; background:var(--red-lt); color:var(--red); cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; }
+
+  /* ═══ ITEM CARD (in create form) ═══ */
+  .item-block { border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:10px; background:#fff; position:relative; }
+  .item-block .ib-num { position:absolute; top:-8px; left:12px; background:var(--blue); color:#fff; font-size:10px; font-weight:800; padding:1px 8px; border-radius:99px; }
+  .item-block .ib-remove { position:absolute; top:8px; right:8px; width:22px; height:22px; border-radius:50%; border:none; background:var(--red-lt); color:var(--red); cursor:pointer; font-size:12px; }
+
+  /* ═══ SUMMARY BOX ═══ */
+  .summary-box { background:linear-gradient(135deg, #EFF6FF 0%, #F0FDF4 100%); border:1px solid #86EFAC; border-radius:12px; padding:14px 16px; margin-top:14px; }
+  .summary-row { display:flex; justify-content:space-between; align-items:center; padding:4px 0; font-size:13px; }
+  .summary-row.total { border-top:1px solid #86EFAC; padding-top:8px; margin-top:4px; font-weight:800; font-size:15px; color:var(--green); }
+
+  /* ═══ DEMO BAR ═══ */
+  .demo-bar { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); z-index:9999; display:flex; gap:6px; background:#1F2937; padding:8px 16px; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.3); }
+  .demo-bar button { padding:8px 16px; border-radius:8px; border:none; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .demo-bar button.on { background:var(--blue); color:#fff; }
+  .demo-bar button.off { background:#374151; color:#9CA3AF; }
+
+  .view { display:none; }
+  .view.show { display:block; }
+</style>
+</head>
+<body>
+
+<!-- Demo switch bar -->
+<div class="demo-bar">
+  <span style="color:#9CA3AF; font-size:11px; align-self:center; margin-right:6px">DEMO:</span>
+  <button class="on" onclick="showView('v-list',this)">Danh sach Order</button>
+  <button class="off" onclick="showView('v-new',this)">Tao — Hang moi</button>
+  <button class="off" onclick="showView('v-old',this)">Tao — Hang cu</button>
+  <button class="off" onclick="showView('v-detail',this)">Chi tiet Order</button>
+</div>
+
+<!-- ═══════════════════════════════════════
+     VIEW 1: DANH SACH ORDER
+     ═══════════════════════════════════════ -->
+<div id="v-list" class="view show">
+  <div class="wrapper">
+    <div class="page-hdr">
+      <div>
+        <div class="page-title">Order nhap hang</div>
+        <div class="page-sub">Quan ly don nhap hang tu cac team kinh doanh</div>
+      </div>
+      <button class="btn btn-primary" onclick="showView('v-new',null)">+ Tao Order</button>
+    </div>
+
+    <!-- KPI -->
+    <div class="stat-grid">
+      <div class="stat-card c-blue">
+        <div class="sl">Tong Order</div>
+        <div class="sv">47</div>
+        <div class="ss">Thang 04/2026</div>
+      </div>
+      <div class="stat-card c-amber">
+        <div class="sl">Cho duyet</div>
+        <div class="sv" style="color:var(--amber)">8</div>
+        <div class="ss">Can xu ly</div>
+      </div>
+      <div class="stat-card c-green">
+        <div class="sl">Da duyet</div>
+        <div class="sv" style="color:var(--green)">32</div>
+        <div class="ss">68% duyet</div>
+      </div>
+      <div class="stat-card c-red">
+        <div class="sl">Tu choi</div>
+        <div class="sv" style="color:var(--red)">7</div>
+        <div class="ss">15%</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="mini-tabs">
+      <button class="mini-tab active">Tat ca <span class="cnt">47</span></button>
+      <button class="mini-tab">Cho duyet <span class="cnt">8</span></button>
+      <button class="mini-tab">Da duyet <span class="cnt">32</span></button>
+      <button class="mini-tab">Tu choi <span class="cnt">7</span></button>
+    </div>
+
+    <!-- Filter row -->
+    <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap">
+      <select style="padding:5px 10px; border:1px solid var(--border); border-radius:7px; font-size:12px; min-width:140px">
+        <option>Team: Tat ca</option>
+        <option>Team FB</option>
+        <option>Team TikTok</option>
+        <option>Team Shopee</option>
+        <option>Team Web/App</option>
+      </select>
+      <select style="padding:5px 10px; border:1px solid var(--border); border-radius:7px; font-size:12px; min-width:120px">
+        <option>Loai: Tat ca</option>
+        <option>Hang moi</option>
+        <option>Hang cu</option>
+      </select>
+      <input type="text" placeholder="Tim kiem order..." style="padding:5px 10px; border:1px solid var(--border); border-radius:7px; font-size:12px; flex:1; min-width:160px; outline:none" />
+    </div>
+
+    <!-- Table -->
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Ma Order</th>
+            <th>Team</th>
+            <th>Loai</th>
+            <th>San pham</th>
+            <th>SL</th>
+            <th>Tong gia tri</th>
+            <th>Nguoi tao</th>
+            <th>Ngay tao</th>
+            <th>Trang thai</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr onclick="showView('v-detail',null)">
+            <td style="font-weight:700; color:var(--blue)">ORD-047</td>
+            <td><span class="chip chip-blue" style="font-size:10px">FB</span></td>
+            <td><span class="chip chip-purple" style="font-size:10px">Hang moi</span></td>
+            <td style="font-weight:600">Cap sac GaN 67W PD</td>
+            <td style="text-align:right">500</td>
+            <td style="text-align:right; font-weight:700">92.500.000</td>
+            <td>Phat</td>
+            <td style="color:var(--muted)">24/04</td>
+            <td><span class="chip chip-amber" style="font-size:10px">Cho duyet</span></td>
+          </tr>
+          <tr>
+            <td style="font-weight:700; color:var(--blue)">ORD-046</td>
+            <td><span class="chip chip-green" style="font-size:10px">TikTok</span></td>
+            <td><span class="chip" style="font-size:10px; background:var(--teal-lt); color:var(--teal); border-color:#99F6E4">Hang cu</span></td>
+            <td style="font-weight:600">Kinh mat Phi 10 BZ (3 mau)</td>
+            <td style="text-align:right">1.200</td>
+            <td style="text-align:right; font-weight:700">156.000.000</td>
+            <td>Hoa</td>
+            <td style="color:var(--muted)">23/04</td>
+            <td><span class="chip chip-green" style="font-size:10px">Da duyet</span></td>
+          </tr>
+          <tr>
+            <td style="font-weight:700; color:var(--blue)">ORD-045</td>
+            <td><span class="chip chip-blue" style="font-size:10px">FB</span></td>
+            <td><span class="chip chip-purple" style="font-size:10px">Hang moi</span></td>
+            <td style="font-weight:600">Quat mini USB co den LED</td>
+            <td style="text-align:right">2.000</td>
+            <td style="text-align:right; font-weight:700">70.000.000</td>
+            <td>Phat</td>
+            <td style="color:var(--muted)">22/04</td>
+            <td><span class="chip chip-green" style="font-size:10px">Da duyet</span></td>
+          </tr>
+          <tr>
+            <td style="font-weight:700; color:var(--blue)">ORD-044</td>
+            <td><span class="chip" style="font-size:10px; background:var(--amber-lt); color:var(--amber); border-color:#FCD34D">Shopee</span></td>
+            <td><span class="chip" style="font-size:10px; background:var(--teal-lt); color:var(--teal); border-color:#99F6E4">Hang cu</span></td>
+            <td style="font-weight:600">Op lung iPhone 16 Pro Max</td>
+            <td style="text-align:right">3.000</td>
+            <td style="text-align:right; font-weight:700">135.000.000</td>
+            <td>Linh</td>
+            <td style="color:var(--muted)">21/04</td>
+            <td><span class="chip chip-red" style="font-size:10px">Tu choi</span></td>
+          </tr>
+          <tr>
+            <td style="font-weight:700; color:var(--blue)">ORD-043</td>
+            <td><span class="chip chip-green" style="font-size:10px">TikTok</span></td>
+            <td><span class="chip chip-purple" style="font-size:10px">Hang moi</span></td>
+            <td style="font-weight:600">Tai nghe TWS ANC 2026</td>
+            <td style="text-align:right">800</td>
+            <td style="text-align:right; font-weight:700">240.000.000</td>
+            <td>Hoa</td>
+            <td style="color:var(--muted)">20/04</td>
+            <td><span class="chip chip-amber" style="font-size:10px">Cho duyet</span></td>
+          </tr>
+          <tr>
+            <td style="font-weight:700; color:var(--blue)">ORD-042</td>
+            <td><span class="chip" style="font-size:10px; background:var(--purple-lt); color:var(--purple); border-color:#DDD6FE">Web</span></td>
+            <td><span class="chip" style="font-size:10px; background:var(--teal-lt); color:var(--teal); border-color:#99F6E4">Hang cu</span></td>
+            <td style="font-weight:600">Balo laptop 15.6" chong nuoc</td>
+            <td style="text-align:right">500</td>
+            <td style="text-align:right; font-weight:700">124.500.000</td>
+            <td>Duc</td>
+            <td style="color:var(--muted)">19/04</td>
+            <td><span class="chip chip-green" style="font-size:10px">Da duyet</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     VIEW 2: TAO ORDER — HANG MOI
+     ═══════════════════════════════════════ -->
+<div id="v-new" class="view">
+  <div class="wrapper" style="max-width:720px">
+    <div class="page-hdr">
+      <div>
+        <div class="page-title">Tao Order nhap hang</div>
+        <div class="page-sub">Tao yeu cau nhap hang moi cho team</div>
+      </div>
+      <button class="btn btn-ghost" onclick="showView('v-list',null)">← Quay lai</button>
+    </div>
+
+    <!-- Type toggle -->
+    <div class="type-toggle">
+      <button class="type-btn active-new" onclick="showView('v-new',null)">
+        <span style="font-size:16px">&#x2728;</span> Hang moi
+        <div style="font-size:10px; font-weight:400; margin-top:2px; opacity:.7">Nhap thong tin san pham moi</div>
+      </button>
+      <button class="type-btn" onclick="showView('v-old',null)">
+        <span style="font-size:16px">&#x1F4E6;</span> Hang cu
+        <div style="font-size:10px; font-weight:400; margin-top:2px; opacity:.7">Chon tu kho hang co san</div>
+      </button>
+    </div>
+
+    <!-- Order info -->
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-size:12px; font-weight:800; margin-bottom:10px; display:flex; align-items:center; gap:6px">
+        Thong tin Order
+        <span class="chip chip-purple" style="font-size:9px">Hang moi</span>
+      </div>
+      <div class="form-grid fg-2" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Team</label>
+          <select>
+            <option>Team FB</option>
+            <option>Team TikTok</option>
+            <option>Team Shopee</option>
+            <option>Team Web/App</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Nguoi tao</label>
+          <input type="text" value="Phat (SALES_LEADER)" readonly style="background:var(--bg); color:var(--muted)" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Ghi chu chung</label>
+        <textarea rows="2" placeholder="Ly do nhap, ghi chu cho nguoi duyet..." style="font-family:inherit">Hang ban chay tren TikTok, can nhap gap de chay ads thang 5</textarea>
+      </div>
+    </div>
+
+    <!-- Products -->
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-size:12px; font-weight:800; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between">
+        <span>San pham (2)</span>
+        <button class="btn btn-ghost btn-sm">+ Them SP</button>
+      </div>
+
+      <!-- Product 1 -->
+      <div class="item-block">
+        <span class="ib-num">1</span>
+        <button class="ib-remove">x</button>
+        <div class="form-group" style="margin-bottom:10px">
+          <label>Ten san pham</label>
+          <input type="text" value="Cap sac nhanh GaN 67W PD 3.0" />
+        </div>
+        <div class="form-grid fg-3" style="margin-bottom:10px">
+          <div class="form-group">
+            <label>So luong</label>
+            <input type="text" value="500" />
+          </div>
+          <div class="form-group">
+            <label>Gia nhap du kien</label>
+            <input type="text" value="185.000" />
+          </div>
+          <div class="form-group">
+            <label>Gia ban du kien</label>
+            <input type="text" value="399.000" />
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:10px">
+          <label>Mo ta / Spec</label>
+          <textarea rows="2" style="font-family:inherit">GaN 67W, 1x USB-C PD 3.0, man hinh LED, tuong thich iPhone 16 / MacBook Air. NCC Shenzhen</textarea>
+        </div>
+        <div class="form-grid fg-2">
+          <div class="form-group">
+            <label>Link tham khao (1688, Alibaba...)</label>
+            <input type="text" value="https://detail.1688.com/offer/gan-67w.html" />
+          </div>
+          <div class="form-group">
+            <label>Link doi thu</label>
+            <input type="text" value="https://shopee.vn/Anker-737-GaN-67W" />
+          </div>
+        </div>
+        <div style="margin-top:8px; display:flex; gap:6px; align-items:center">
+          <span style="font-size:11px; color:var(--muted)">Bien loi du kien:</span>
+          <span style="font-size:13px; font-weight:800; color:var(--green)">53.6%</span>
+        </div>
+      </div>
+
+      <!-- Product 2 -->
+      <div class="item-block">
+        <span class="ib-num">2</span>
+        <button class="ib-remove">x</button>
+        <div class="form-group" style="margin-bottom:10px">
+          <label>Ten san pham</label>
+          <input type="text" value="Day cap USB-C to USB-C 100W 2m" />
+        </div>
+        <div class="form-grid fg-3" style="margin-bottom:10px">
+          <div class="form-group">
+            <label>So luong</label>
+            <input type="text" value="1.000" />
+          </div>
+          <div class="form-group">
+            <label>Gia nhap du kien</label>
+            <input type="text" value="25.000" />
+          </div>
+          <div class="form-group">
+            <label>Gia ban du kien</label>
+            <input type="text" value="89.000" />
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:10px">
+          <label>Mo ta / Spec</label>
+          <textarea rows="2" style="font-family:inherit">USB-C 100W PD, day du boc nylon, dai 2m, dau hop kim</textarea>
+        </div>
+        <div class="form-grid fg-2">
+          <div class="form-group">
+            <label>Link tham khao</label>
+            <input type="text" value="" placeholder="Dan link..." />
+          </div>
+          <div class="form-group">
+            <label>Link doi thu</label>
+            <input type="text" value="" placeholder="Dan link..." />
+          </div>
+        </div>
+        <div style="margin-top:8px; display:flex; gap:6px; align-items:center">
+          <span style="font-size:11px; color:var(--muted)">Bien loi du kien:</span>
+          <span style="font-size:13px; font-weight:800; color:var(--green)">71.9%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="summary-box">
+      <div style="font-size:13px; font-weight:800; margin-bottom:8px; color:var(--green)">Tom tat Order</div>
+      <div class="summary-row">
+        <span style="color:var(--muted)">1. Cap sac GaN 67W PD — 500 x 185.000</span>
+        <span style="font-weight:700">92.500.000</span>
+      </div>
+      <div class="summary-row">
+        <span style="color:var(--muted)">2. Day cap USB-C 100W 2m — 1.000 x 25.000</span>
+        <span style="font-weight:700">25.000.000</span>
+      </div>
+      <div class="summary-row total">
+        <span>Tong gia tri</span>
+        <span>117.500.000 d</span>
+      </div>
+    </div>
+
+    <!-- Action -->
+    <div style="display:flex; justify-content:space-between; margin-top:16px; margin-bottom:60px">
+      <button class="btn btn-ghost">Luu nhap</button>
+      <button class="btn btn-success" style="padding:10px 24px; font-size:13px">Gui duyet →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     VIEW 3: TAO ORDER — HANG CU
+     ═══════════════════════════════════════ -->
+<div id="v-old" class="view">
+  <div class="wrapper" style="max-width:720px">
+    <div class="page-hdr">
+      <div>
+        <div class="page-title">Tao Order nhap hang</div>
+        <div class="page-sub">Chon san pham tu kho hang co san</div>
+      </div>
+      <button class="btn btn-ghost" onclick="showView('v-list',null)">← Quay lai</button>
+    </div>
+
+    <!-- Type toggle -->
+    <div class="type-toggle">
+      <button class="type-btn" onclick="showView('v-new',null)">
+        <span style="font-size:16px">&#x2728;</span> Hang moi
+        <div style="font-size:10px; font-weight:400; margin-top:2px; opacity:.7">Nhap thong tin san pham moi</div>
+      </button>
+      <button class="type-btn active-old" onclick="showView('v-old',null)">
+        <span style="font-size:16px">&#x1F4E6;</span> Hang cu
+        <div style="font-size:10px; font-weight:400; margin-top:2px; opacity:.7">Chon tu kho hang co san</div>
+      </button>
+    </div>
+
+    <!-- Order info -->
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-size:12px; font-weight:800; margin-bottom:10px; display:flex; align-items:center; gap:6px">
+        Thong tin Order
+        <span class="chip" style="font-size:9px; background:var(--teal-lt); color:var(--teal); border-color:#99F6E4">Hang cu</span>
+      </div>
+      <div class="form-grid fg-2" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Team</label>
+          <select>
+            <option>Team TikTok</option>
+            <option>Team FB</option>
+            <option>Team Shopee</option>
+            <option>Team Web/App</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Nguoi tao</label>
+          <input type="text" value="Hoa (SALES_STAFF)" readonly style="background:var(--bg); color:var(--muted)" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Ghi chu chung</label>
+        <textarea rows="2" placeholder="Ly do nhap them..." style="font-family:inherit">Hang ban nhanh, ton kho con 50 cai, can nhap them de chay campaign thang 5</textarea>
+      </div>
+    </div>
+
+    <!-- Search & Select products -->
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-size:12px; font-weight:800; margin-bottom:10px">Tim & chon san pham tu kho</div>
+
+      <div class="search-box">
+        <span class="si">&#128269;</span>
+        <input type="text" placeholder="Tim theo ten, SKU, danh muc..." value="kinh" />
+      </div>
+
+      <div class="search-results">
+        <div class="sr-item selected">
+          <div class="sr-img">&#128083;</div>
+          <div class="sr-info">
+            <div class="sr-name">Kinh mat Phi 10 BZ — Den</div>
+            <div class="sr-meta">
+              <span>SKU: PHI10-BK</span>
+              <span>Gia nhap: 130.000</span>
+              <span>Gia ban: 299.000</span>
+            </div>
+          </div>
+          <div class="sr-qty">Ton: 48</div>
+          <span style="color:var(--green); font-size:16px">&#10003;</span>
+        </div>
+        <div class="sr-item selected">
+          <div class="sr-img">&#128083;</div>
+          <div class="sr-info">
+            <div class="sr-name">Kinh mat Phi 10 BZ — Nau</div>
+            <div class="sr-meta">
+              <span>SKU: PHI10-BR</span>
+              <span>Gia nhap: 130.000</span>
+              <span>Gia ban: 299.000</span>
+            </div>
+          </div>
+          <div class="sr-qty">Ton: 22</div>
+          <span style="color:var(--green); font-size:16px">&#10003;</span>
+        </div>
+        <div class="sr-item selected">
+          <div class="sr-img">&#128083;</div>
+          <div class="sr-info">
+            <div class="sr-name">Kinh mat Phi 10 BZ — Xanh</div>
+            <div class="sr-meta">
+              <span>SKU: PHI10-BL</span>
+              <span>Gia nhap: 130.000</span>
+              <span>Gia ban: 299.000</span>
+            </div>
+          </div>
+          <div class="sr-qty">Ton: 15</div>
+          <span style="color:var(--green); font-size:16px">&#10003;</span>
+        </div>
+        <div class="sr-item">
+          <div class="sr-img">&#128083;</div>
+          <div class="sr-info">
+            <div class="sr-name">Kinh mat VIA PHI BZ 7 — Den</div>
+            <div class="sr-meta">
+              <span>SKU: VIA7-BK</span>
+              <span>Gia nhap: 95.000</span>
+              <span>Gia ban: 219.000</span>
+            </div>
+          </div>
+          <div class="sr-qty">Ton: 340</div>
+        </div>
+        <div class="sr-item">
+          <div class="sr-img">&#128083;</div>
+          <div class="sr-info">
+            <div class="sr-name">Kinh mat Sport UV400</div>
+            <div class="sr-meta">
+              <span>SKU: SPT-UV4</span>
+              <span>Gia nhap: 65.000</span>
+              <span>Gia ban: 179.000</span>
+            </div>
+          </div>
+          <div class="sr-qty">Ton: 580</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Selected products with qty -->
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-size:12px; font-weight:800; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between">
+        <span>San pham da chon (3)</span>
+        <span style="font-size:11px; color:var(--muted); font-weight:400">Nhap so luong can bo sung</span>
+      </div>
+
+      <div class="sel-product">
+        <div class="sr-img" style="width:32px; height:32px; font-size:14px">&#128083;</div>
+        <div class="sp-name">
+          Kinh mat Phi 10 BZ — Den
+          <div style="font-size:10px; color:var(--muted); font-weight:400">SKU: PHI10-BK · Ton: 48 · Gia: 130.000</div>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:2px">
+          <span style="font-size:9px; color:var(--muted); font-weight:700">SO LUONG</span>
+          <input type="text" value="400" />
+        </div>
+        <button class="sp-remove">x</button>
+      </div>
+
+      <div class="sel-product">
+        <div class="sr-img" style="width:32px; height:32px; font-size:14px">&#128083;</div>
+        <div class="sp-name">
+          Kinh mat Phi 10 BZ — Nau
+          <div style="font-size:10px; color:var(--muted); font-weight:400">SKU: PHI10-BR · Ton: 22 · Gia: 130.000</div>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:2px">
+          <span style="font-size:9px; color:var(--muted); font-weight:700">SO LUONG</span>
+          <input type="text" value="400" />
+        </div>
+        <button class="sp-remove">x</button>
+      </div>
+
+      <div class="sel-product">
+        <div class="sr-img" style="width:32px; height:32px; font-size:14px">&#128083;</div>
+        <div class="sp-name">
+          Kinh mat Phi 10 BZ — Xanh
+          <div style="font-size:10px; color:var(--muted); font-weight:400">SKU: PHI10-BL · Ton: 15 · Gia: 130.000</div>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:2px">
+          <span style="font-size:9px; color:var(--muted); font-weight:700">SO LUONG</span>
+          <input type="text" value="400" />
+        </div>
+        <button class="sp-remove">x</button>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="summary-box">
+      <div style="font-size:13px; font-weight:800; margin-bottom:8px; color:var(--green)">Tom tat Order</div>
+      <div class="summary-row">
+        <span style="color:var(--muted)">Kinh Phi 10 Den — 400 x 130.000</span>
+        <span style="font-weight:700">52.000.000</span>
+      </div>
+      <div class="summary-row">
+        <span style="color:var(--muted)">Kinh Phi 10 Nau — 400 x 130.000</span>
+        <span style="font-weight:700">52.000.000</span>
+      </div>
+      <div class="summary-row">
+        <span style="color:var(--muted)">Kinh Phi 10 Xanh — 400 x 130.000</span>
+        <span style="font-weight:700">52.000.000</span>
+      </div>
+      <div class="summary-row total">
+        <span>Tong gia tri (1.200 SP)</span>
+        <span>156.000.000 d</span>
+      </div>
+    </div>
+
+    <!-- Action -->
+    <div style="display:flex; justify-content:space-between; margin-top:16px; margin-bottom:60px">
+      <button class="btn btn-ghost">Luu nhap</button>
+      <button class="btn btn-success" style="padding:10px 24px; font-size:13px">Gui duyet →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     VIEW 4: CHI TIET ORDER (DUYET)
+     ═══════════════════════════════════════ -->
+<div id="v-detail" class="view">
+  <div class="wrapper" style="max-width:720px">
+    <div class="page-hdr">
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap">
+        <div class="page-title">ORD-047</div>
+        <span class="chip chip-amber">Cho duyet</span>
+        <span class="chip chip-purple" style="font-size:10px">Hang moi</span>
+        <span class="chip chip-blue" style="font-size:10px">Team FB</span>
+      </div>
+      <button class="btn btn-ghost" onclick="showView('v-list',null)">← Quay lai</button>
+    </div>
+
+    <!-- Meta -->
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:10px; font-size:12px">
+        <div>
+          <div style="color:var(--muted); font-size:10px; font-weight:700; text-transform:uppercase; margin-bottom:2px">Nguoi tao</div>
+          <div style="font-weight:700">Phat</div>
+          <div style="font-size:10px; color:var(--muted)">SALES_LEADER</div>
+        </div>
+        <div>
+          <div style="color:var(--muted); font-size:10px; font-weight:700; text-transform:uppercase; margin-bottom:2px">Ngay tao</div>
+          <div style="font-weight:700">24/04/2026</div>
+          <div style="font-size:10px; color:var(--muted)">14:32</div>
+        </div>
+        <div>
+          <div style="color:var(--muted); font-size:10px; font-weight:700; text-transform:uppercase; margin-bottom:2px">Tong SP</div>
+          <div style="font-weight:700">2 san pham</div>
+          <div style="font-size:10px; color:var(--muted)">1.500 don vi</div>
+        </div>
+        <div>
+          <div style="color:var(--muted); font-size:10px; font-weight:700; text-transform:uppercase; margin-bottom:2px">Tong gia tri</div>
+          <div style="font-weight:800; color:var(--green); font-size:14px">117.500.000</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Note -->
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; margin-bottom:6px">Ghi chu</div>
+      <div style="font-size:13px; line-height:1.5">Hang ban chay tren TikTok, can nhap gap de chay ads thang 5. Cap sac GaN dang trending, doi thu Anker ban 450k — minh ban 399k co loi the.</div>
+    </div>
+
+    <!-- Products -->
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-size:12px; font-weight:800; margin-bottom:10px">San pham trong Order</div>
+
+      <div class="item-block" style="border-left:3px solid var(--blue)">
+        <span class="ib-num">1</span>
+        <div style="font-size:14px; font-weight:700; margin-bottom:8px">Cap sac nhanh GaN 67W PD 3.0</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:8px; font-size:12px; margin-bottom:8px">
+          <div><div style="color:var(--muted); font-size:10px">So luong</div><div style="font-weight:700">500</div></div>
+          <div><div style="color:var(--muted); font-size:10px">Gia nhap</div><div style="font-weight:700">185.000</div></div>
+          <div><div style="color:var(--muted); font-size:10px">Gia ban</div><div style="font-weight:700">399.000</div></div>
+          <div><div style="color:var(--muted); font-size:10px">Bien loi</div><div style="font-weight:700; color:var(--green)">53.6%</div></div>
+        </div>
+        <div style="font-size:11px; color:var(--muted); margin-bottom:6px">GaN 67W, 1x USB-C PD 3.0, man hinh LED, tuong thich iPhone 16 / MacBook Air. NCC Shenzhen</div>
+        <div style="display:flex; gap:8px; font-size:11px">
+          <a href="#" style="color:var(--blue); text-decoration:none">Link 1688</a>
+          <a href="#" style="color:var(--blue); text-decoration:none">Link doi thu</a>
+        </div>
+        <div style="margin-top:6px; text-align:right; font-weight:800; font-size:13px; color:var(--text)">= 92.500.000</div>
+      </div>
+
+      <div class="item-block" style="border-left:3px solid var(--blue)">
+        <span class="ib-num">2</span>
+        <div style="font-size:14px; font-weight:700; margin-bottom:8px">Day cap USB-C to USB-C 100W 2m</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:8px; font-size:12px; margin-bottom:8px">
+          <div><div style="color:var(--muted); font-size:10px">So luong</div><div style="font-weight:700">1.000</div></div>
+          <div><div style="color:var(--muted); font-size:10px">Gia nhap</div><div style="font-weight:700">25.000</div></div>
+          <div><div style="color:var(--muted); font-size:10px">Gia ban</div><div style="font-weight:700">89.000</div></div>
+          <div><div style="color:var(--muted); font-size:10px">Bien loi</div><div style="font-weight:700; color:var(--green)">71.9%</div></div>
+        </div>
+        <div style="font-size:11px; color:var(--muted); margin-bottom:6px">USB-C 100W PD, day du boc nylon, dai 2m, dau hop kim</div>
+        <div style="margin-top:6px; text-align:right; font-weight:800; font-size:13px; color:var(--text)">= 25.000.000</div>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="summary-box" style="margin-bottom:14px; margin-top:0">
+      <div class="summary-row total" style="border:none; margin:0; padding:0">
+        <span>Tong gia tri Order</span>
+        <span style="font-size:17px">117.500.000 d</span>
+      </div>
+    </div>
+
+    <!-- Approval actions -->
+    <div class="card" style="margin-bottom:60px; border:2px solid var(--amber); background:var(--amber-lt)">
+      <div style="font-size:13px; font-weight:800; margin-bottom:8px; color:#92400E">Duyet Order</div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Ghi chu duyet</label>
+        <textarea rows="2" placeholder="Ghi chu khi duyet hoac tu choi..." style="font-family:inherit; background:#fff"></textarea>
+      </div>
+      <div style="display:flex; gap:10px; justify-content:flex-end">
+        <button class="btn btn-danger" style="padding:10px 20px" onclick="alert('Tu choi Order ORD-047')">
+          ✕ Tu choi
+        </button>
+        <button class="btn btn-success" style="padding:10px 24px; font-size:13px" onclick="alert('Da duyet Order ORD-047!\n→ Chuyen sang tao don nhap hang')">
+          ✓ Duyet & Tao don nhap
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showView(id, btn) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('show'));
+  document.getElementById(id).classList.add('show');
+  document.querySelectorAll('.demo-bar button').forEach(b => { b.className = 'off'; });
+  if (btn) btn.className = 'on';
+  else {
+    const map = {'v-list':0,'v-new':1,'v-old':2,'v-detail':3};
+    document.querySelectorAll('.demo-bar button')[map[id]].className = 'on';
+  }
+  window.scrollTo(0,0);
+}
+</script>
+
+</body>
+</html>

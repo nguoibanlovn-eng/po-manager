@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MOCKUP — Tai chinh</title>
+<style>
+  :root {
+    --bg:#F5F5F7;--card:#FFFFFF;--border:#E4E4E7;--text:#18181B;--muted:#71717A;--subtle:#A1A1AA;
+    --blue:#2563EB;--blue-lt:#EFF6FF;
+    --green:#16A34A;--green-lt:#F0FDF4;
+    --amber:#D97706;--amber-lt:#FFFBEB;
+    --red:#DC2626;--red-lt:#FEF2F2;
+    --purple:#7C3AED;--purple-lt:#F5F3FF;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'Inter',system-ui,sans-serif; font-size:14px; padding:20px; max-width:1200px; margin:0 auto; }
+
+  .mockup-badge { display:inline-block; background:var(--purple); color:#fff; font-size:10px; font-weight:700; padding:3px 10px; border-radius:10px; margin-bottom:6px; letter-spacing:1px; }
+  .mockup-note { font-size:11px; color:var(--muted); margin-bottom:16px; }
+
+  .page-hdr { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:14px; }
+  .page-title { font-size:17px; font-weight:800; }
+  .page-sub { font-size:13px; color:var(--muted); margin-top:2px; }
+
+  .card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 14px; box-shadow:0 1px 3px rgba(0,0,0,.06); margin-bottom:10px; }
+
+  .kpi-strip { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-bottom:12px; }
+  .kpi { padding:10px 14px; border-radius:8px; border:1px solid; }
+  .kpi .kl { font-size:9px; font-weight:600; letter-spacing:.3px; margin-bottom:2px; }
+  .kpi .kv { font-size:20px; font-weight:800; margin:2px 0; }
+  .kpi .ks { font-size:9px; opacity:.7; }
+
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  th { background:#FAFAFA; padding:7px 10px; text-align:left; font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; border-bottom:1px solid var(--border); }
+  td { padding:7px 10px; border-bottom:1px solid var(--border); }
+  .text-right { text-align:right; }
+  .font-bold { font-weight:700; }
+  tr:hover { background:#FAFAFA; }
+  tr.total-row { background:#F9FAFB; font-weight:700; }
+  tr.highlight { background:var(--green-lt); }
+  tr.section-row td { font-weight:800; background:#F4F4F5; font-size:11px; text-transform:uppercase; letter-spacing:.3px; }
+  tr.sub-row td:first-child { padding-left:24px; color:var(--muted); }
+  tr.sub2-row td:first-child { padding-left:40px; color:var(--subtle); font-size:11px; }
+
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+  .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:12px; }
+
+  .sec-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+  .sec-title { font-weight:700; font-size:13px; }
+
+  .bar-h { height:8px; background:#F3F4F6; border-radius:4px; overflow:hidden; margin-top:4px; }
+  .bar-fill { height:100%; border-radius:4px; }
+
+  .waterfall { display:flex; align-items:flex-end; gap:3px; height:160px; padding:20px 0; }
+  .wf-item { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .wf-bar { width:80%; border-radius:3px 3px 0 0; min-height:4px; position:relative; }
+  .wf-label { font-size:9px; color:var(--muted); text-align:center; }
+  .wf-val { font-size:10px; font-weight:700; text-align:center; }
+
+  .donut-wrap { display:flex; align-items:center; gap:16px; }
+  .donut-legend { display:flex; flex-direction:column; gap:4px; }
+  .legend-item { display:flex; align-items:center; gap:6px; font-size:11px; }
+  .legend-dot { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+
+  .period-tabs { display:flex; gap:4px; margin-bottom:12px; }
+  .period-tab { padding:5px 12px; border-radius:6px; border:1px solid var(--border); font-size:11px; font-weight:600; cursor:pointer; background:#fff; color:var(--muted); }
+  .period-tab.active { background:var(--purple); color:#fff; border-color:var(--purple); }
+
+  .ratio-card { display:flex; align-items:center; gap:10px; padding:8px 12px; background:#F9FAFB; border-radius:6px; margin-bottom:6px; }
+  .ratio-label { flex:1; font-size:11px; color:var(--muted); }
+  .ratio-val { font-size:16px; font-weight:800; }
+  .ratio-bar { width:80px; }
+
+  .btn { display:inline-flex; align-items:center; gap:4px; border:none; border-radius:7px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .btn-ghost { background:transparent; color:var(--muted); border:1px solid var(--border); }
+  .btn-primary { background:var(--purple); color:#fff; }
+  .btn-sm { padding:4px 10px; font-size:11px; }
+</style>
+</head>
+<body>
+
+<div class="mockup-badge">MOCKUP</div>
+<div class="mockup-note">Muc Tai chinh — Quan tri → Menu sidebar</div>
+
+<!-- ═══ HEADER ═══ -->
+<div class="page-hdr">
+  <div>
+    <div class="page-title">$ Tai chinh</div>
+    <div class="page-sub">Bao cao ket qua kinh doanh</div>
+  </div>
+  <div style="display:flex; gap:6px; align-items:center">
+    <div class="period-tabs">
+      <span class="period-tab">T1</span>
+      <span class="period-tab">T2</span>
+      <span class="period-tab">T3</span>
+      <span class="period-tab active">Q1</span>
+      <span class="period-tab">T4</span>
+    </div>
+    <button class="btn btn-ghost btn-sm">↑ Upload Excel</button>
+  </div>
+</div>
+
+<!-- ═══ KPI STRIP ═══ -->
+<div class="kpi-strip">
+  <div class="kpi" style="background:var(--green-lt); border-color:#BBF7D0">
+    <div class="kl" style="color:#166534">DOANH THU</div>
+    <div class="kv" style="color:#166534">29.37 ty</div>
+    <div class="ks" style="color:#166534">Q1/2026</div>
+  </div>
+  <div class="kpi" style="background:var(--red-lt); border-color:#FECACA">
+    <div class="kl" style="color:#991B1B">TONG CHI PHI</div>
+    <div class="kv" style="color:#991B1B">26.88 ty</div>
+    <div class="ks" style="color:#991B1B">91.5% DT</div>
+  </div>
+  <div class="kpi" style="background:var(--blue-lt); border-color:#BFDBFE">
+    <div class="kl" style="color:#1E40AF">LOI NHUAN</div>
+    <div class="kv" style="color:#1E40AF">2.49 ty</div>
+    <div class="ks" style="color:#1E40AF">8.5% DT</div>
+  </div>
+  <div class="kpi" style="background:var(--amber-lt); border-color:#FDE68A">
+    <div class="kl" style="color:#92400E">GIA VON / DT</div>
+    <div class="kv" style="color:#92400E">58.4%</div>
+    <div class="ks" style="color:#92400E">Bien loi gop 41.6%</div>
+  </div>
+  <div class="kpi" style="background:var(--purple-lt); border-color:#DDD6FE">
+    <div class="kl" style="color:#6D28D9">ADS / DT</div>
+    <div class="kv" style="color:#6D28D9">4.8%</div>
+    <div class="ks" style="color:#6D28D9">1.41 ty chi ads</div>
+  </div>
+</div>
+
+<!-- ═══ WATERFALL CHART: DT → CP → LN ═══ -->
+<div class="card">
+  <div class="sec-hdr">
+    <span class="sec-title">Cau truc Doanh thu → Chi phi → Loi nhuan</span>
+    <span style="font-size:10px; color:var(--muted)">Q1/2026</span>
+  </div>
+  <div class="waterfall">
+    <div class="wf-item"><div class="wf-val" style="color:var(--green)">29.37T</div><div class="wf-bar" style="height:140px; background:var(--green)"></div><div class="wf-label">Doanh thu</div></div>
+    <div class="wf-item"><div class="wf-val" style="color:var(--red)">-17.15T</div><div class="wf-bar" style="height:82px; background:var(--red); opacity:.7"></div><div class="wf-label">Gia von</div></div>
+    <div class="wf-item"><div class="wf-val" style="color:var(--amber)">-5.42T</div><div class="wf-bar" style="height:26px; background:var(--amber); opacity:.7"></div><div class="wf-label">CP Ban hang</div></div>
+    <div class="wf-item"><div class="wf-val" style="color:var(--amber)">-1.21T</div><div class="wf-bar" style="height:6px; background:var(--amber); opacity:.5"></div><div class="wf-label">CP BH chung</div></div>
+    <div class="wf-item"><div class="wf-val" style="color:var(--purple)">-3.09T</div><div class="wf-bar" style="height:15px; background:var(--purple); opacity:.7"></div><div class="wf-label">CP QLDN</div></div>
+    <div class="wf-item"><div class="wf-val" style="color:var(--blue); font-size:12px">2.49T</div><div class="wf-bar" style="height:12px; background:var(--blue)"></div><div class="wf-label" style="font-weight:700">Loi nhuan</div></div>
+  </div>
+</div>
+
+<!-- ═══ ROW 1: P&L theo thang + Ti le chi phi ═══ -->
+<div class="grid-2">
+  <!-- P&L theo thang -->
+  <div class="card">
+    <div class="sec-hdr">
+      <span class="sec-title">P&L theo thang</span>
+    </div>
+    <table>
+      <thead><tr>
+        <th></th><th class="text-right">T1</th><th class="text-right">T2</th><th class="text-right">T3</th><th class="text-right">Q1</th>
+      </tr></thead>
+      <tbody>
+        <tr class="section-row"><td colspan="5">Doanh thu</td></tr>
+        <tr><td>DT ban hang</td><td class="text-right">9.93T</td><td class="text-right">7.29T</td><td class="text-right">10.43T</td><td class="text-right font-bold" style="color:var(--green)">27.65T</td></tr>
+        <tr class="sub-row"><td>Facebook</td><td class="text-right">5.55T</td><td class="text-right">3.73T</td><td class="text-right">5.64T</td><td class="text-right">14.92T</td></tr>
+        <tr class="sub-row"><td>TikTok</td><td class="text-right">2.53T</td><td class="text-right">2.04T</td><td class="text-right">2.59T</td><td class="text-right">7.16T</td></tr>
+        <tr class="sub-row"><td>Shopee</td><td class="text-right">987M</td><td class="text-right">636M</td><td class="text-right">1.12T</td><td class="text-right">2.74T</td></tr>
+        <tr class="sub-row"><td>API</td><td class="text-right">857M</td><td class="text-right">877M</td><td class="text-right">1.07T</td><td class="text-right">2.80T</td></tr>
+        <tr><td>DT dich vu</td><td class="text-right">624M</td><td class="text-right">454M</td><td class="text-right">654M</td><td class="text-right">1.73T</td></tr>
+        <tr><td>Giam tru (tra hang)</td><td class="text-right" style="color:var(--red)">-67M</td><td class="text-right" style="color:var(--red)">-28M</td><td class="text-right" style="color:var(--red)">-49M</td><td class="text-right" style="color:var(--red)">-144M</td></tr>
+        <tr class="total-row"><td>TONG DT</td><td class="text-right">10.55T</td><td class="text-right">7.73T</td><td class="text-right">11.10T</td><td class="text-right font-bold" style="color:var(--green)">29.37T</td></tr>
+
+        <tr class="section-row"><td colspan="5">Chi phi</td></tr>
+        <tr><td>Gia von</td><td class="text-right">6.11T</td><td class="text-right">4.66T</td><td class="text-right">6.38T</td><td class="text-right font-bold">17.15T</td></tr>
+        <tr><td>CP Ban hang</td><td class="text-right">1.87T</td><td class="text-right">1.38T</td><td class="text-right">2.17T</td><td class="text-right">5.42T</td></tr>
+        <tr><td>CP BH chung</td><td class="text-right">457M</td><td class="text-right">345M</td><td class="text-right">413M</td><td class="text-right">1.21T</td></tr>
+        <tr><td>CP QLDN</td><td class="text-right">1.32T</td><td class="text-right">911M</td><td class="text-right">853M</td><td class="text-right">3.09T</td></tr>
+        <tr class="total-row"><td>TONG CP</td><td class="text-right">9.76T</td><td class="text-right">7.29T</td><td class="text-right">9.82T</td><td class="text-right font-bold" style="color:var(--red)">26.88T</td></tr>
+
+        <tr class="highlight"><td style="font-weight:800">LOI NHUAN</td><td class="text-right font-bold" style="color:var(--blue)">783M</td><td class="text-right font-bold" style="color:var(--blue)">435M</td><td class="text-right font-bold" style="color:var(--blue)">1.27T</td><td class="text-right font-bold" style="color:var(--blue); font-size:14px">2.49T</td></tr>
+        <tr><td style="color:var(--muted)">% Loi nhuan</td><td class="text-right" style="color:var(--blue)">7.4%</td><td class="text-right" style="color:var(--amber)">5.6%</td><td class="text-right" style="color:var(--green)">11.5%</td><td class="text-right font-bold" style="color:var(--blue)">8.5%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Ti le chi phi -->
+  <div class="card">
+    <div class="sec-hdr">
+      <span class="sec-title">Co cau chi phi / Doanh thu</span>
+    </div>
+
+    <div class="ratio-card">
+      <span class="legend-dot" style="background:var(--red)"></span>
+      <span class="ratio-label">Gia von hang ban</span>
+      <span class="ratio-val">58.4%</span>
+      <div class="ratio-bar"><div class="bar-h"><div class="bar-fill" style="width:58%; background:var(--red)"></div></div></div>
+    </div>
+    <div class="ratio-card">
+      <span class="legend-dot" style="background:var(--amber)"></span>
+      <span class="ratio-label">CP Ban hang (Ads, phi san, VC...)</span>
+      <span class="ratio-val">18.5%</span>
+      <div class="ratio-bar"><div class="bar-h"><div class="bar-fill" style="width:37%; background:var(--amber)"></div></div></div>
+    </div>
+    <div class="ratio-card">
+      <span class="legend-dot" style="background:var(--amber); opacity:.5"></span>
+      <span class="ratio-label">CP BH chung (FFM, dong hang...)</span>
+      <span class="ratio-val">4.1%</span>
+      <div class="ratio-bar"><div class="bar-h"><div class="bar-fill" style="width:8%; background:var(--amber)"></div></div></div>
+    </div>
+    <div class="ratio-card">
+      <span class="legend-dot" style="background:var(--purple)"></span>
+      <span class="ratio-label">CP QLDN (Luong, thuong, thue MB)</span>
+      <span class="ratio-val">10.5%</span>
+      <div class="ratio-bar"><div class="bar-h"><div class="bar-fill" style="width:21%; background:var(--purple)"></div></div></div>
+    </div>
+    <div class="ratio-card" style="background:var(--green-lt); border:1px solid #BBF7D0">
+      <span class="legend-dot" style="background:var(--blue)"></span>
+      <span class="ratio-label font-bold">Loi nhuan rong</span>
+      <span class="ratio-val" style="color:var(--blue)">8.5%</span>
+      <div class="ratio-bar"><div class="bar-h"><div class="bar-fill" style="width:17%; background:var(--blue)"></div></div></div>
+    </div>
+
+    <!-- Stacked bar -->
+    <div style="margin-top:14px">
+      <div style="font-size:10px; color:var(--muted); margin-bottom:4px">Phan bo 100% doanh thu</div>
+      <div style="display:flex; height:20px; border-radius:6px; overflow:hidden">
+        <div style="width:58.4%; background:var(--red); display:flex; align-items:center; justify-content:center"><span style="font-size:8px; color:#fff; font-weight:700">GV 58%</span></div>
+        <div style="width:18.5%; background:var(--amber); display:flex; align-items:center; justify-content:center"><span style="font-size:8px; color:#fff; font-weight:700">BH 19%</span></div>
+        <div style="width:4.1%; background:#F59E0B; opacity:.6"></div>
+        <div style="width:10.5%; background:var(--purple); display:flex; align-items:center; justify-content:center"><span style="font-size:8px; color:#fff; font-weight:700">QL 11%</span></div>
+        <div style="width:8.5%; background:var(--blue); display:flex; align-items:center; justify-content:center"><span style="font-size:8px; color:#fff; font-weight:700">LN 9%</span></div>
+      </div>
+    </div>
+
+    <!-- Key insights -->
+    <div style="margin-top:14px; border-top:1px solid var(--border); padding-top:10px">
+      <div style="font-size:11px; font-weight:700; margin-bottom:6px">Chi phi ban hang chi tiet</div>
+      <div style="display:flex; flex-direction:column; gap:3px; font-size:11px">
+        <div style="display:flex; justify-content:space-between"><span style="color:var(--muted)">Ads (FB+TT+SP)</span><span class="font-bold">1.41T <span style="color:var(--muted); font-weight:400">(4.8%)</span></span></div>
+        <div style="display:flex; justify-content:space-between"><span style="color:var(--muted)">Phi san TikTok</span><span class="font-bold">1.59T <span style="color:var(--muted); font-weight:400">(5.4%)</span></span></div>
+        <div style="display:flex; justify-content:space-between"><span style="color:var(--muted)">Phi san Shopee</span><span class="font-bold">665M <span style="color:var(--muted); font-weight:400">(2.3%)</span></span></div>
+        <div style="display:flex; justify-content:space-between"><span style="color:var(--muted)">Van chuyen</span><span class="font-bold">689M <span style="color:var(--muted); font-weight:400">(2.3%)</span></span></div>
+        <div style="display:flex; justify-content:space-between"><span style="color:var(--muted)">Luong BH</span><span class="font-bold">600M <span style="color:var(--muted); font-weight:400">(2.0%)</span></span></div>
+        <div style="display:flex; justify-content:space-between"><span style="color:var(--muted)">Thue BH</span><span class="font-bold">415M <span style="color:var(--muted); font-weight:400">(1.4%)</span></span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ROW 2: CP QLDN chi tiet + Xu huong LN ═══ -->
+<div class="grid-2">
+  <!-- QLDN chi tiet -->
+  <div class="card">
+    <div class="sec-hdr">
+      <span class="sec-title">Chi phi QLDN chi tiet</span>
+      <span style="font-size:10px; color:var(--muted)">3.09T · 10.5% DT</span>
+    </div>
+    <table>
+      <thead><tr><th>Khoan muc</th><th>Loai</th><th class="text-right">T1</th><th class="text-right">T2</th><th class="text-right">T3</th><th class="text-right">Q1</th><th class="text-right">% DT</th></tr></thead>
+      <tbody>
+        <tr><td>Luong, BHXH</td><td style="font-size:10px; color:var(--blue)">Dinh phi</td><td class="text-right">421M</td><td class="text-right">401M</td><td class="text-right">421M</td><td class="text-right font-bold">1.24T</td><td class="text-right">4.2%</td></tr>
+        <tr><td>Thuong, phuc loi</td><td style="font-size:10px; color:var(--amber)">Bien phi</td><td class="text-right">739M</td><td class="text-right">238M</td><td class="text-right">204M</td><td class="text-right font-bold">1.18T</td><td class="text-right">4.0%</td></tr>
+        <tr><td>Thue mat bang</td><td style="font-size:10px; color:var(--blue)">Dinh phi</td><td class="text-right">93M</td><td class="text-right">85M</td><td class="text-right">98M</td><td class="text-right font-bold">276M</td><td class="text-right">0.9%</td></tr>
+        <tr><td>Quan ly khac</td><td style="font-size:10px; color:var(--amber)">Bien phi</td><td class="text-right">1M</td><td class="text-right">62M</td><td class="text-right">63M</td><td class="text-right">126M</td><td class="text-right">0.4%</td></tr>
+        <tr><td>CCDC, TSCD, PM</td><td style="font-size:10px; color:var(--blue)">Dinh phi</td><td class="text-right">52M</td><td class="text-right">108M</td><td class="text-right">58M</td><td class="text-right">218M</td><td class="text-right">0.7%</td></tr>
+        <tr><td>Hanh chinh</td><td style="font-size:10px; color:var(--blue)">Dinh phi</td><td class="text-right">19M</td><td class="text-right">16M</td><td class="text-right">8M</td><td class="text-right">43M</td><td class="text-right">0.1%</td></tr>
+        <tr class="total-row"><td colspan="3">Tong QLDN</td><td class="text-right">911M</td><td class="text-right">853M</td><td class="text-right font-bold" style="color:var(--purple)">3.09T</td><td class="text-right">10.5%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Xu huong loi nhuan -->
+  <div class="card">
+    <div class="sec-hdr">
+      <span class="sec-title">Xu huong theo thang</span>
+    </div>
+    <!-- Mini bar chart -->
+    <div style="display:flex; align-items:flex-end; gap:8px; height:120px; padding:10px 0; margin-bottom:14px">
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:4px">
+        <div style="font-size:10px; font-weight:700; color:var(--green)">10.55T</div>
+        <div style="width:80%; height:100px; background:var(--green); opacity:.2; border-radius:4px 4px 0 0; position:relative">
+          <div style="position:absolute; bottom:0; width:100%; height:7%; background:var(--blue); border-radius:0 0 4px 4px"></div>
+        </div>
+        <div style="font-size:10px; color:var(--muted)">T1</div>
+        <div style="font-size:9px; color:var(--blue); font-weight:700">LN 783M</div>
+      </div>
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:4px">
+        <div style="font-size:10px; font-weight:700; color:var(--green)">7.73T</div>
+        <div style="width:80%; height:73px; background:var(--green); opacity:.2; border-radius:4px 4px 0 0; position:relative">
+          <div style="position:absolute; bottom:0; width:100%; height:6%; background:var(--blue); border-radius:0 0 4px 4px"></div>
+        </div>
+        <div style="font-size:10px; color:var(--muted)">T2</div>
+        <div style="font-size:9px; color:var(--amber); font-weight:700">LN 435M</div>
+      </div>
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:4px">
+        <div style="font-size:10px; font-weight:700; color:var(--green)">11.10T</div>
+        <div style="width:80%; height:105px; background:var(--green); opacity:.2; border-radius:4px 4px 0 0; position:relative">
+          <div style="position:absolute; bottom:0; width:100%; height:11%; background:var(--blue); border-radius:0 0 4px 4px"></div>
+        </div>
+        <div style="font-size:10px; color:var(--muted)">T3</div>
+        <div style="font-size:9px; color:var(--green); font-weight:700">LN 1.27T</div>
+      </div>
+    </div>
+
+    <!-- Ratios per month -->
+    <div style="border-top:1px solid var(--border); padding-top:10px">
+      <div style="font-size:11px; font-weight:700; margin-bottom:6px">Chi so theo thang</div>
+      <table>
+        <thead><tr><th>Chi so</th><th class="text-right">T1</th><th class="text-right">T2</th><th class="text-right">T3</th></tr></thead>
+        <tbody>
+          <tr><td>Bien LN gop</td><td class="text-right">41.5%</td><td class="text-right">39.5%</td><td class="text-right">41.9%</td></tr>
+          <tr><td>Bien LN rong</td><td class="text-right" style="color:var(--blue)">7.4%</td><td class="text-right" style="color:var(--amber)">5.6%</td><td class="text-right" style="color:var(--green)">11.5%</td></tr>
+          <tr><td>Ads / DT</td><td class="text-right">4.5%</td><td class="text-right">4.1%</td><td class="text-right">5.6%</td></tr>
+          <tr><td>GV / DT</td><td class="text-right">57.9%</td><td class="text-right">60.3%</td><td class="text-right">57.5%</td></tr>
+          <tr><td>QLDN / DT</td><td class="text-right" style="color:var(--red)">12.6%</td><td class="text-right" style="color:var(--red)">11.8%</td><td class="text-right" style="color:var(--green)">7.7%</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ FULL P&L TABLE ═══ -->
+<div class="card">
+  <div class="sec-hdr">
+    <span class="sec-title">Bao cao KQKD chi tiet</span>
+    <span style="font-size:10px; color:var(--muted)">Du lieu tu: TH 3 thang.xlsx</span>
+  </div>
+  <div style="max-height:400px; overflow-y:auto">
+    <table>
+      <thead><tr><th style="width:40%">Khoan muc</th><th>Ma</th><th class="text-right">T1</th><th class="text-right">T2</th><th class="text-right">T3</th><th class="text-right font-bold">Q1</th><th class="text-right">%DT</th></tr></thead>
+      <tbody>
+        <tr class="section-row"><td colspan="7">DOANH THU</td></tr>
+        <tr><td>DT ban hang hoa</td><td style="color:var(--muted);font-size:10px"></td><td class="text-right">9.93T</td><td class="text-right">7.29T</td><td class="text-right">10.43T</td><td class="text-right font-bold">27.65T</td><td class="text-right">94.1%</td></tr>
+        <tr class="sub-row"><td>Facebook</td><td></td><td class="text-right">5.55T</td><td class="text-right">3.73T</td><td class="text-right">5.64T</td><td class="text-right">14.92T</td><td class="text-right">50.8%</td></tr>
+        <tr class="sub-row"><td>TikTok</td><td></td><td class="text-right">2.53T</td><td class="text-right">2.04T</td><td class="text-right">2.59T</td><td class="text-right">7.16T</td><td class="text-right">24.4%</td></tr>
+        <tr class="sub-row"><td>Shopee</td><td></td><td class="text-right">987M</td><td class="text-right">636M</td><td class="text-right">1.12T</td><td class="text-right">2.74T</td><td class="text-right">9.3%</td></tr>
+        <tr class="sub-row"><td>API</td><td></td><td class="text-right">857M</td><td class="text-right">877M</td><td class="text-right">1.07T</td><td class="text-right">2.80T</td><td class="text-right">9.5%</td></tr>
+        <tr><td>DT dich vu</td><td></td><td class="text-right">624M</td><td class="text-right">454M</td><td class="text-right">654M</td><td class="text-right">1.73T</td><td class="text-right">5.9%</td></tr>
+        <tr><td style="color:var(--red)">Giam tru DT</td><td></td><td class="text-right" style="color:var(--red)">-67M</td><td class="text-right" style="color:var(--red)">-28M</td><td class="text-right" style="color:var(--red)">-49M</td><td class="text-right" style="color:var(--red)">-144M</td><td class="text-right">-0.5%</td></tr>
+        <tr class="total-row"><td>TONG DOANH THU</td><td></td><td class="text-right">10.55T</td><td class="text-right">7.73T</td><td class="text-right">11.10T</td><td class="text-right font-bold" style="color:var(--green)">29.37T</td><td class="text-right">100%</td></tr>
+
+        <tr class="section-row"><td colspan="7">GIA VON HANG BAN</td></tr>
+        <tr><td>GV hang hoa</td><td></td><td class="text-right">5.51T</td><td class="text-right">4.40T</td><td class="text-right">6.07T</td><td class="text-right font-bold">15.98T</td><td class="text-right">54.4%</td></tr>
+        <tr><td>GV dich vu</td><td></td><td class="text-right">329M</td><td class="text-right">234M</td><td class="text-right">261M</td><td class="text-right">824M</td><td class="text-right">2.8%</td></tr>
+        <tr><td>GV cong them</td><td></td><td class="text-right">275M</td><td class="text-right">23M</td><td class="text-right">55M</td><td class="text-right">353M</td><td class="text-right">1.2%</td></tr>
+
+        <tr class="section-row"><td colspan="7">CHI PHI BAN HANG</td></tr>
+        <tr><td>Chi phi ADS</td><td style="color:var(--muted);font-size:10px">BH.ADS</td><td class="text-right">474M</td><td class="text-right">316M</td><td class="text-right">622M</td><td class="text-right font-bold" style="color:var(--red)">1.41T</td><td class="text-right">4.8%</td></tr>
+        <tr><td>Phi san TikTok</td><td style="color:var(--muted);font-size:10px">BHT.*</td><td class="text-right">574M</td><td class="text-right">414M</td><td class="text-right">605M</td><td class="text-right font-bold">1.59T</td><td class="text-right">5.4%</td></tr>
+        <tr><td>Van chuyen</td><td style="color:var(--muted);font-size:10px">BH.VC</td><td class="text-right">245M</td><td class="text-right">163M</td><td class="text-right">281M</td><td class="text-right">689M</td><td class="text-right">2.3%</td></tr>
+        <tr><td>Phi san Shopee</td><td style="color:var(--muted);font-size:10px">BHS.*</td><td class="text-right">228M</td><td class="text-right">168M</td><td class="text-right">269M</td><td class="text-right">665M</td><td class="text-right">2.3%</td></tr>
+        <tr><td>Luong BH</td><td style="color:var(--muted);font-size:10px">BH.LUONG</td><td class="text-right">185M</td><td class="text-right">193M</td><td class="text-right">222M</td><td class="text-right">600M</td><td class="text-right">2.0%</td></tr>
+        <tr><td>Thue BH</td><td style="color:var(--muted);font-size:10px">BH.TAX</td><td class="text-right">149M</td><td class="text-right">107M</td><td class="text-right">159M</td><td class="text-right">415M</td><td class="text-right">1.4%</td></tr>
+
+        <tr class="section-row"><td colspan="7">CHI PHI BAN HANG CHUNG</td></tr>
+        <tr><td>FFM (hoan tat don)</td><td style="color:var(--muted);font-size:10px">BHC.FFM</td><td class="text-right">172M</td><td class="text-right">138M</td><td class="text-right">189M</td><td class="text-right">499M</td><td class="text-right">1.7%</td></tr>
+        <tr><td>Vat tu dong hang</td><td style="color:var(--muted);font-size:10px">BHC.VL</td><td class="text-right">138M</td><td class="text-right">126M</td><td class="text-right">149M</td><td class="text-right">414M</td><td class="text-right">1.4%</td></tr>
+        <tr><td>Khac (PM, CCDC...)</td><td></td><td class="text-right">147M</td><td class="text-right">81M</td><td class="text-right">75M</td><td class="text-right">303M</td><td class="text-right">1.0%</td></tr>
+
+        <tr class="section-row"><td colspan="7">CHI PHI QLDN</td></tr>
+        <tr><td>Luong, BHXH</td><td style="color:var(--muted);font-size:10px">QL.LUONG</td><td class="text-right">421M</td><td class="text-right">401M</td><td class="text-right">421M</td><td class="text-right font-bold">1.24T</td><td class="text-right">4.2%</td></tr>
+        <tr><td>Thuong, phuc loi</td><td style="color:var(--muted);font-size:10px">QL.PL</td><td class="text-right">739M</td><td class="text-right">238M</td><td class="text-right">204M</td><td class="text-right font-bold">1.18T</td><td class="text-right">4.0%</td></tr>
+        <tr><td>Thue mat bang</td><td style="color:var(--muted);font-size:10px">QL.THUEMB</td><td class="text-right">93M</td><td class="text-right">85M</td><td class="text-right">98M</td><td class="text-right">276M</td><td class="text-right">0.9%</td></tr>
+        <tr><td>Khac</td><td></td><td class="text-right">72M</td><td class="text-right">187M</td><td class="text-right">130M</td><td class="text-right">389M</td><td class="text-right">1.3%</td></tr>
+
+        <tr class="highlight" style="font-size:14px"><td style="font-weight:900">LOI NHUAN TRUOC THUE</td><td></td><td class="text-right font-bold" style="color:var(--blue)">783M</td><td class="text-right font-bold" style="color:var(--blue)">435M</td><td class="text-right font-bold" style="color:var(--blue)">1.27T</td><td class="text-right font-bold" style="color:var(--blue); font-size:16px">2.49T</td><td class="text-right font-bold" style="color:var(--blue)">8.5%</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div style="text-align:center; padding:16px; color:var(--muted); font-size:11px">
+  MOCKUP — Tai chinh · Du lieu tu "TH 3 thang.xlsx" · Q1/2026
+</div>
+
+</body>
+</html>

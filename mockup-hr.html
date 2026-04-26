@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Mockup: Nhân sự — Tài khoản · Đánh giá · Dashboard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F8FAFC; color: #18181B; }
+
+  .page { max-width: 1100px; margin: 0 auto; padding: 20px; }
+  .page-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .page-title { font-size: 20px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .page-sub { font-size: 11px; color: #94A3B8; margin-top: 2px; }
+
+  .tabs { display: flex; gap: 0; border-bottom: 2px solid #E2E8F0; margin-bottom: 20px; }
+  .tab { padding: 10px 20px; font-size: 13px; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; color: #64748B; transition: all .15s; }
+  .tab:hover { color: #18181B; }
+  .tab.active { color: #7C3AED; border-bottom-color: #7C3AED; }
+  .tab .badge { font-size: 10px; background: #F1F5F9; padding: 1px 6px; border-radius: 10px; margin-left: 4px; }
+  .tab.active .badge { background: #F3E8FF; color: #7C3AED; }
+
+  .card { background: #fff; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .card-title { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .3px; color: #64748B; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
+  .stat { background: #fff; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px; text-align: center; }
+  .stat-val { font-size: 22px; font-weight: 800; }
+  .stat-label { font-size: 10px; color: #94A3B8; margin-top: 2px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; padding: 8px 10px; font-size: 10px; font-weight: 700; color: #94A3B8; text-transform: uppercase; border-bottom: 1px solid #E2E8F0; }
+  td { padding: 10px; border-bottom: 1px solid #F1F5F9; }
+
+  .chip { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 600; }
+  .chip-green { background: #DCFCE7; color: #15803D; }
+  .chip-red { background: #FEE2E2; color: #B91C1C; }
+  .chip-blue { background: #DBEAFE; color: #1D4ED8; }
+  .chip-amber { background: #FEF3C7; color: #92400E; }
+  .chip-purple { background: #F3E8FF; color: #7C3AED; }
+  .chip-gray { background: #F1F5F9; color: #64748B; }
+
+  .avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; color: #fff; }
+
+  .progress-bar { height: 6px; border-radius: 3px; background: #E2E8F0; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 3px; }
+
+  .stars { color: #F59E0B; letter-spacing: 2px; }
+
+  .section-title { font-size: 13px; font-weight: 800; margin-bottom: 10px; color: #18181B; }
+
+  .kpi-row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .kpi-item { flex: 1; padding: 10px; background: #F8FAFC; border-radius: 8px; border: 1px solid #E2E8F0; }
+  .kpi-val { font-size: 16px; font-weight: 800; }
+  .kpi-label { font-size: 9px; color: #94A3B8; }
+
+  .note { margin-top: 16px; padding: 12px; background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 8px; font-size: 11px; color: #92400E; }
+  .divider { height: 1px; background: #E2E8F0; margin: 20px 0; }
+
+  .btn { padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; }
+  .btn-primary { background: #7C3AED; color: #fff; }
+  .btn-ghost { background: #F1F5F9; color: #64748B; }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <!-- HEADER -->
+  <div class="page-hdr">
+    <div>
+      <div class="page-title">👥 Nhân sự</div>
+      <div class="page-sub">Quản lý tài khoản · Đánh giá · Theo dõi công việc</div>
+    </div>
+    <button class="btn btn-primary">+ Thêm nhân viên</button>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tab" onclick="showTab(0)">👤 Tài khoản <span class="badge">12</span></div>
+    <div class="tab active" onclick="showTab(1)">⭐ Đánh giá <span class="badge">T04</span></div>
+    <div class="tab" onclick="showTab(2)">📊 Dashboard</div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- TAB 1: TÀI KHOẢN (existing, compact view) -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div id="tab0" style="display:none">
+    <div class="card">
+      <div class="card-title">Danh sách tài khoản</div>
+      <table>
+        <thead><tr>
+          <th></th><th>Tên</th><th>Email</th><th>Vai trò</th><th>Team</th><th>Trạng thái</th><th>Ngày tạo</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td><div class="avatar" style="background:#7C3AED">LV</div></td>
+            <td style="font-weight:700">Lê Vũ</td>
+            <td style="color:#64748B">admin@vuabanlo.vn</td>
+            <td><span class="chip chip-purple">ADMIN</span></td>
+            <td>—</td>
+            <td><span class="chip chip-green">Hoạt động</span></td>
+            <td style="color:#94A3B8">01/01/2026</td>
+          </tr>
+          <tr>
+            <td><div class="avatar" style="background:#3B82F6">PL</div></td>
+            <td style="font-weight:700">Phan Huy Long</td>
+            <td style="color:#64748B">long@vuabanlo.vn</td>
+            <td><span class="chip chip-blue">LEADER_KT</span></td>
+            <td>Kỹ thuật</td>
+            <td><span class="chip chip-green">Hoạt động</span></td>
+            <td style="color:#94A3B8">15/01/2026</td>
+          </tr>
+          <tr>
+            <td><div class="avatar" style="background:#16A34A">NT</div></td>
+            <td style="font-weight:700">Nguyễn Thảo</td>
+            <td style="color:#64748B">thao@vuabanlo.vn</td>
+            <td><span class="chip chip-green">NV_KD</span></td>
+            <td>Team FB</td>
+            <td><span class="chip chip-green">Hoạt động</span></td>
+            <td style="color:#94A3B8">01/02/2026</td>
+          </tr>
+          <tr>
+            <td><div class="avatar" style="background:#94A3B8">TH</div></td>
+            <td style="font-weight:700">Trần Hùng</td>
+            <td style="color:#64748B">hung@vuabanlo.vn</td>
+            <td><span class="chip chip-gray">VIEWER</span></td>
+            <td>—</td>
+            <td><span class="chip chip-red">Đã khoá</span></td>
+            <td style="color:#94A3B8">10/03/2026</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- TAB 2: ĐÁNH GIÁ NHÂN SỰ -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div id="tab1">
+    <!-- Filters row -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:8px;">
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <div>
+          <span style="font-size:11px; color:#94A3B8; font-weight:600;">KỲ</span>
+          <select style="padding:6px 10px; border:1px solid #E2E8F0; border-radius:7px; font-size:12px; margin-left:4px;">
+            <option selected>Tháng 04/2026</option>
+            <option>Tháng 03/2026</option>
+            <option>Tháng 02/2026</option>
+            <option>Q1/2026</option>
+            <option>Năm 2026</option>
+          </select>
+        </div>
+        <div>
+          <span style="font-size:11px; color:#94A3B8; font-weight:600;">TEAM</span>
+          <select style="padding:6px 10px; border:1px solid #E2E8F0; border-radius:7px; font-size:12px; margin-left:4px;">
+            <option selected>Tất cả</option>
+            <option>Team FB</option>
+            <option>Team TikTok</option>
+            <option>Team Shopee</option>
+            <option>Kỹ thuật</option>
+            <option>Mua hàng</option>
+            <option>Kế toán</option>
+          </select>
+        </div>
+        <div>
+          <span style="font-size:11px; color:#94A3B8; font-weight:600;">XẾP LOẠI</span>
+          <select style="padding:6px 10px; border:1px solid #E2E8F0; border-radius:7px; font-size:12px; margin-left:4px;">
+            <option selected>Tất cả</option>
+            <option>⭐ Xuất sắc</option>
+            <option>✅ Tốt</option>
+            <option>⚠ Trung bình</option>
+            <option>❌ Yếu</option>
+            <option>⏳ Chưa đánh giá</option>
+          </select>
+        </div>
+        <div>
+          <span style="font-size:11px; color:#94A3B8; font-weight:600;">SẮP XẾP</span>
+          <select style="padding:6px 10px; border:1px solid #E2E8F0; border-radius:7px; font-size:12px; margin-left:4px;">
+            <option selected>Điểm cao → thấp</option>
+            <option>Điểm thấp → cao</option>
+            <option>KPI cao → thấp</option>
+            <option>KPI thấp → cao</option>
+            <option>Tên A-Z</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex; gap:6px;">
+        <button class="btn btn-ghost">Xuất Excel</button>
+        <button class="btn btn-primary">+ Tạo đánh giá</button>
+      </div>
+    </div>
+
+    <!-- Overview stats -->
+    <div class="stat-grid">
+      <div class="stat">
+        <div class="stat-val" style="color:#7C3AED">12</div>
+        <div class="stat-label">Tổng NV</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val" style="color:#16A34A">8</div>
+        <div class="stat-label">Đã đánh giá</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val" style="color:#D97706">4</div>
+        <div class="stat-label">Chưa đánh giá</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val" style="color:#16A34A">4.2</div>
+        <div class="stat-label">Điểm TB /5</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val" style="color:#3B82F6">87%</div>
+        <div class="stat-label">Hoàn thành KPI</div>
+      </div>
+    </div>
+
+    <!-- Evaluation table -->
+    <div class="card">
+      <div class="card-title">Bảng đánh giá tháng 04/2026</div>
+      <table>
+        <thead><tr>
+          <th></th>
+          <th>Nhân viên</th>
+          <th>Team</th>
+          <th style="text-align:center">KPI %</th>
+          <th style="text-align:center">Chất lượng</th>
+          <th style="text-align:center">Thái độ</th>
+          <th style="text-align:center">Tổng điểm</th>
+          <th>Xếp loại</th>
+          <th>Nhận xét</th>
+          <th></th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td><div class="avatar" style="background:#16A34A">NT</div></td>
+            <td style="font-weight:700">Nguyễn Thảo</td>
+            <td><span class="chip chip-blue">Team FB</span></td>
+            <td style="text-align:center">
+              <div style="font-weight:700; color:#16A34A">112%</div>
+              <div class="progress-bar" style="width:80px; margin:3px auto 0;">
+                <div class="progress-fill" style="width:100%; background:#16A34A;"></div>
+              </div>
+            </td>
+            <td style="text-align:center"><span class="stars">★★★★★</span></td>
+            <td style="text-align:center"><span class="stars">★★★★☆</span></td>
+            <td style="text-align:center; font-weight:800; font-size:16px; color:#16A34A">4.7</td>
+            <td><span class="chip chip-green">Xuất sắc</span></td>
+            <td style="color:#64748B; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Vượt target FB, chủ động...</td>
+            <td><button class="btn btn-ghost" style="padding:4px 8px; font-size:10px;">Sửa</button></td>
+          </tr>
+          <tr>
+            <td><div class="avatar" style="background:#3B82F6">PL</div></td>
+            <td style="font-weight:700">Phan Huy Long</td>
+            <td><span class="chip chip-amber">Kỹ thuật</span></td>
+            <td style="text-align:center">
+              <div style="font-weight:700; color:#16A34A">95%</div>
+              <div class="progress-bar" style="width:80px; margin:3px auto 0;">
+                <div class="progress-fill" style="width:95%; background:#3B82F6;"></div>
+              </div>
+            </td>
+            <td style="text-align:center"><span class="stars">★★★★☆</span></td>
+            <td style="text-align:center"><span class="stars">★★★★★</span></td>
+            <td style="text-align:center; font-weight:800; font-size:16px; color:#3B82F6">4.3</td>
+            <td><span class="chip chip-blue">Tốt</span></td>
+            <td style="color:#64748B">QC nhanh, ít lỗi</td>
+            <td><button class="btn btn-ghost" style="padding:4px 8px; font-size:10px;">Sửa</button></td>
+          </tr>
+          <tr>
+            <td><div class="avatar" style="background:#F59E0B">VH</div></td>
+            <td style="font-weight:700">Võ Hà</td>
+            <td><span class="chip chip-blue">Team TikTok</span></td>
+            <td style="text-align:center">
+              <div style="font-weight:700; color:#D97706">72%</div>
+              <div class="progress-bar" style="width:80px; margin:3px auto 0;">
+                <div class="progress-fill" style="width:72%; background:#D97706;"></div>
+              </div>
+            </td>
+            <td style="text-align:center"><span class="stars">★★★☆☆</span></td>
+            <td style="text-align:center"><span class="stars">★★★★☆</span></td>
+            <td style="text-align:center; font-weight:800; font-size:16px; color:#D97706">3.4</td>
+            <td><span class="chip chip-amber">Trung bình</span></td>
+            <td style="color:#64748B">Cần cải thiện content...</td>
+            <td><button class="btn btn-ghost" style="padding:4px 8px; font-size:10px;">Sửa</button></td>
+          </tr>
+          <tr style="background:#FEF2F2">
+            <td><div class="avatar" style="background:#DC2626">LT</div></td>
+            <td style="font-weight:700">Lê Tùng</td>
+            <td><span class="chip chip-blue">Team Shopee</span></td>
+            <td style="text-align:center">
+              <div style="font-weight:700; color:#DC2626">45%</div>
+              <div class="progress-bar" style="width:80px; margin:3px auto 0;">
+                <div class="progress-fill" style="width:45%; background:#DC2626;"></div>
+              </div>
+            </td>
+            <td style="text-align:center"><span class="stars">★★☆☆☆</span></td>
+            <td style="text-align:center"><span class="stars">★★★☆☆</span></td>
+            <td style="text-align:center; font-weight:800; font-size:16px; color:#DC2626">2.1</td>
+            <td><span class="chip chip-red">Yếu</span></td>
+            <td style="color:#DC2626">Không đạt KPI 2 tháng liên tiếp</td>
+            <td><button class="btn btn-ghost" style="padding:4px 8px; font-size:10px;">Sửa</button></td>
+          </tr>
+          <tr style="background:#FFF7ED">
+            <td><div class="avatar" style="background:#94A3B8">DP</div></td>
+            <td style="font-weight:700; color:#94A3B8">Đặng Phương</td>
+            <td><span class="chip chip-gray">Team FB</span></td>
+            <td colspan="6" style="text-align:center; color:#D97706; font-style:italic;">⚠ Chưa đánh giá — <a href="#" style="color:#7C3AED; text-decoration:none; font-weight:600;">Đánh giá ngay</a></td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Ranking + Trend -->
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
+      <!-- TOP 3 -->
+      <div class="card">
+        <div class="card-title">🏆 Top 3 nhân viên tháng</div>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; align-items:center; gap:10px; padding:8px; background:#FEF9C3; border-radius:8px; border:1px solid #FDE68A;">
+            <div style="font-size:20px; font-weight:800; color:#CA8A04; width:28px; text-align:center;">🥇</div>
+            <div class="avatar" style="background:#16A34A; width:28px; height:28px; font-size:10px;">NT</div>
+            <div style="flex:1;">
+              <div style="font-weight:700; font-size:12px;">Nguyễn Thảo</div>
+              <div style="font-size:9px; color:#94A3B8;">Team FB · KPI 112%</div>
+            </div>
+            <div style="font-size:18px; font-weight:800; color:#16A34A;">4.7</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px; padding:8px; background:#F1F5F9; border-radius:8px;">
+            <div style="font-size:20px; font-weight:800; color:#94A3B8; width:28px; text-align:center;">🥈</div>
+            <div class="avatar" style="background:#3B82F6; width:28px; height:28px; font-size:10px;">PL</div>
+            <div style="flex:1;">
+              <div style="font-weight:700; font-size:12px;">Phan Huy Long</div>
+              <div style="font-size:9px; color:#94A3B8;">Kỹ thuật · KPI 95%</div>
+            </div>
+            <div style="font-size:18px; font-weight:800; color:#3B82F6;">4.3</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px; padding:8px; background:#F1F5F9; border-radius:8px;">
+            <div style="font-size:20px; font-weight:800; color:#CA8A04; width:28px; text-align:center;">🥉</div>
+            <div class="avatar" style="background:#F59E0B; width:28px; height:28px; font-size:10px;">TM</div>
+            <div style="flex:1;">
+              <div style="font-weight:700; font-size:12px;">Trần Mai</div>
+              <div style="font-size:9px; color:#94A3B8;">Team TikTok · KPI 98%</div>
+            </div>
+            <div style="font-size:18px; font-weight:800; color:#3B82F6;">4.1</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trend / So sánh tháng trước -->
+      <div class="card">
+        <div class="card-title">📈 Xu hướng so với tháng trước</div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #F1F5F9; font-size:12px;">
+            <span style="color:#64748B;">Điểm TB toàn team</span>
+            <span><strong>4.2</strong> <span style="color:#16A34A; font-size:10px;">▲ +0.3 vs T03</span></span>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #F1F5F9; font-size:12px;">
+            <span style="color:#64748B;">KPI trung bình</span>
+            <span><strong>87%</strong> <span style="color:#16A34A; font-size:10px;">▲ +5% vs T03</span></span>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #F1F5F9; font-size:12px;">
+            <span style="color:#64748B;">NV xuất sắc</span>
+            <span><strong>3</strong> <span style="color:#16A34A; font-size:10px;">▲ +1</span></span>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #F1F5F9; font-size:12px;">
+            <span style="color:#64748B;">NV yếu</span>
+            <span><strong>1</strong> <span style="color:#DC2626; font-size:10px;">▲ +1 ⚠</span></span>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding:8px; font-size:12px;">
+            <span style="color:#64748B;">Việc quá hạn</span>
+            <span><strong>3</strong> <span style="color:#DC2626; font-size:10px;">▲ +2 ⚠</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Criteria explanation -->
+    <div class="card" style="background:#F8FAFC">
+      <div class="card-title">Tiêu chí đánh giá</div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; font-size:11px;">
+        <div>
+          <div style="font-weight:700; margin-bottom:4px;">📊 KPI (40%)</div>
+          <div style="color:#64748B;">Doanh thu / target kênh được giao. Tự tính từ data dashboard.</div>
+        </div>
+        <div>
+          <div style="font-weight:700; margin-bottom:4px;">✅ Chất lượng (30%)</div>
+          <div style="color:#64748B;">Leader đánh giá: content, QC, xử lý đơn, chăm sóc KH.</div>
+        </div>
+        <div>
+          <div style="font-weight:700; margin-bottom:4px;">🤝 Thái độ (30%)</div>
+          <div style="color:#64748B;">Chủ động, đúng giờ, teamwork, tinh thần học hỏi.</div>
+        </div>
+      </div>
+      <div style="margin-top:10px; font-size:10px; color:#94A3B8;">
+        Xếp loại: <span class="chip chip-green">Xuất sắc ≥4.5</span>
+        <span class="chip chip-blue" style="margin-left:4px;">Tốt 3.5-4.4</span>
+        <span class="chip chip-amber" style="margin-left:4px;">TB 2.5-3.4</span>
+        <span class="chip chip-red" style="margin-left:4px;">Yếu &lt;2.5</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- TAB 3: DASHBOARD CÔNG VIỆC -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div id="tab2" style="display:none">
+    <!-- Filters -->
+    <div style="display:flex; gap:8px; align-items:center; margin-bottom:16px; flex-wrap:wrap;">
+      <div>
+        <span style="font-size:11px; color:#94A3B8; font-weight:600;">KỲ</span>
+        <select style="padding:6px 10px; border:1px solid #E2E8F0; border-radius:7px; font-size:12px; margin-left:4px;">
+          <option selected>Tháng 04/2026</option>
+          <option>Tháng 03/2026</option>
+        </select>
+      </div>
+      <div>
+        <span style="font-size:11px; color:#94A3B8; font-weight:600;">TEAM</span>
+        <select style="padding:6px 10px; border:1px solid #E2E8F0; border-radius:7px; font-size:12px; margin-left:4px;">
+          <option selected>Tất cả</option>
+          <option>Team FB</option>
+          <option>Team TikTok</option>
+          <option>Kỹ thuật</option>
+        </select>
+      </div>
+      <div>
+        <span style="font-size:11px; color:#94A3B8; font-weight:600;">NGUỒN</span>
+        <select style="padding:6px 10px; border:1px solid #E2E8F0; border-radius:7px; font-size:12px; margin-left:4px;">
+          <option selected>Tất cả</option>
+          <option>Giao việc</option>
+          <option>R&D Pipeline</option>
+          <option>Đơn hàng PO</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="stat-grid" style="grid-template-columns: repeat(4, 1fr);">
+      <div class="stat">
+        <div class="stat-val" style="color:#3B82F6">47</div>
+        <div class="stat-label">Tổng việc tháng này</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val" style="color:#16A34A">38</div>
+        <div class="stat-label">Hoàn thành</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val" style="color:#D97706">6</div>
+        <div class="stat-label">Đang làm</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val" style="color:#DC2626">3</div>
+        <div class="stat-label">Quá hạn</div>
+      </div>
+    </div>
+
+    <!-- Per-person work summary -->
+    <div class="card">
+      <div class="card-title">Công việc theo nhân viên — Tháng 04/2026</div>
+      <table>
+        <thead><tr>
+          <th></th>
+          <th>Nhân viên</th>
+          <th>Team</th>
+          <th style="text-align:center">Giao</th>
+          <th style="text-align:center">Xong</th>
+          <th style="text-align:center">Đang làm</th>
+          <th style="text-align:center">Quá hạn</th>
+          <th style="text-align:center">Tỷ lệ</th>
+          <th>Tiến độ</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td><div class="avatar" style="background:#16A34A; width:28px; height:28px; font-size:10px;">NT</div></td>
+            <td style="font-weight:700">Nguyễn Thảo</td>
+            <td><span class="chip chip-blue">FB</span></td>
+            <td style="text-align:center; font-weight:700">15</td>
+            <td style="text-align:center; color:#16A34A; font-weight:700">14</td>
+            <td style="text-align:center; color:#D97706">1</td>
+            <td style="text-align:center; color:#DC2626">0</td>
+            <td style="text-align:center; font-weight:700; color:#16A34A">93%</td>
+            <td>
+              <div class="progress-bar" style="width:120px;">
+                <div class="progress-fill" style="width:93%; background:#16A34A;"></div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td><div class="avatar" style="background:#3B82F6; width:28px; height:28px; font-size:10px;">PL</div></td>
+            <td style="font-weight:700">Phan Huy Long</td>
+            <td><span class="chip chip-amber">KT</span></td>
+            <td style="text-align:center; font-weight:700">12</td>
+            <td style="text-align:center; color:#16A34A; font-weight:700">10</td>
+            <td style="text-align:center; color:#D97706">2</td>
+            <td style="text-align:center; color:#DC2626">0</td>
+            <td style="text-align:center; font-weight:700; color:#3B82F6">83%</td>
+            <td>
+              <div class="progress-bar" style="width:120px;">
+                <div class="progress-fill" style="width:83%; background:#3B82F6;"></div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td><div class="avatar" style="background:#F59E0B; width:28px; height:28px; font-size:10px;">VH</div></td>
+            <td style="font-weight:700">Võ Hà</td>
+            <td><span class="chip chip-blue">TT</span></td>
+            <td style="text-align:center; font-weight:700">10</td>
+            <td style="text-align:center; color:#16A34A; font-weight:700">7</td>
+            <td style="text-align:center; color:#D97706">1</td>
+            <td style="text-align:center; color:#DC2626; font-weight:700">2</td>
+            <td style="text-align:center; font-weight:700; color:#D97706">70%</td>
+            <td>
+              <div class="progress-bar" style="width:120px;">
+                <div class="progress-fill" style="width:70%; background:#D97706;"></div>
+              </div>
+            </td>
+          </tr>
+          <tr style="background:#FEF2F2">
+            <td><div class="avatar" style="background:#DC2626; width:28px; height:28px; font-size:10px;">LT</div></td>
+            <td style="font-weight:700">Lê Tùng</td>
+            <td><span class="chip chip-blue">SP</span></td>
+            <td style="text-align:center; font-weight:700">10</td>
+            <td style="text-align:center; color:#16A34A; font-weight:700">5</td>
+            <td style="text-align:center; color:#D97706">2</td>
+            <td style="text-align:center; color:#DC2626; font-weight:700">3</td>
+            <td style="text-align:center; font-weight:700; color:#DC2626">50%</td>
+            <td>
+              <div class="progress-bar" style="width:120px;">
+                <div class="progress-fill" style="width:50%; background:#DC2626;"></div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Recent overdue tasks -->
+    <div class="card" style="border-color:#FECACA; background:#FFFBFB">
+      <div class="card-title" style="color:#DC2626;">⚠ Việc quá hạn (3)</div>
+      <table>
+        <thead><tr>
+          <th>Việc</th><th>Giao cho</th><th>Deadline</th><th>Trễ</th><th>Trạng thái</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td style="font-weight:600">Deploy SP Quạt phun sương lên Shopee</td>
+            <td>Lê Tùng</td>
+            <td style="color:#DC2626">20/04</td>
+            <td style="color:#DC2626; font-weight:700">5 ngày</td>
+            <td><span class="chip chip-amber">Đang làm</span></td>
+          </tr>
+          <tr>
+            <td style="font-weight:600">QC lô hàng ARMODD Squarz 12 Pro</td>
+            <td>Lê Tùng</td>
+            <td style="color:#DC2626">22/04</td>
+            <td style="color:#DC2626; font-weight:700">3 ngày</td>
+            <td><span class="chip chip-red">Chưa bắt đầu</span></td>
+          </tr>
+          <tr>
+            <td style="font-weight:600">Tạo video TikTok cho Bàn Chải Điện NEO</td>
+            <td>Võ Hà</td>
+            <td style="color:#DC2626">23/04</td>
+            <td style="color:#DC2626; font-weight:700">2 ngày</td>
+            <td><span class="chip chip-amber">Đang làm</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+function showTab(idx) {
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === idx));
+  for (let i = 0; i < 3; i++) document.getElementById('tab' + i).style.display = i === idx ? 'block' : 'none';
+}
+</script>
+
+</body>
+</html>

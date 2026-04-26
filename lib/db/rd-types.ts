@@ -144,7 +144,7 @@ export const RESEARCH_PIPELINE: PipelineStep[] = [
 
 export const PRODUCTION_PIPELINE: PipelineStep[] = [
   { key: "tao_yc",        label: "Tạo yêu cầu",     who: "proposer" },
-  { key: "nghien_cuu",    label: "Nghiên cứu",       who: "worker" },
+  { key: "trien_khai",    label: "Triển khai",        who: "worker" },
   { key: "duyet_nc",      label: "Duyệt NC",         who: "leader" },
   { key: "dat_mau",       label: "Đặt mẫu",         who: "worker" },    // Tạo PO mẫu
   { key: "cho_mau_ve",    label: "Chờ mẫu về",      who: "worker" },    // Chờ PO cập nhật

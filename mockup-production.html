@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup — Pipeline Sản xuất / Thiết kế (Modal)</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #64748B; }
+
+/* Modal overlay */
+.modal-overlay { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+.modal { background: #fff; border-radius: 12px; width: 920px; max-height: 85vh; display: flex; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+
+/* Sidebar */
+.sidebar { width: 190px; background: #FAFBFC; border-right: 1px solid #E2E8F0; padding: 16px 0; overflow-y: auto; flex-shrink: 0; }
+.sidebar-step { display: flex; align-items: center; gap: 10px; padding: 9px 14px; cursor: pointer; font-size: 12px; border-left: 3px solid transparent; }
+.sidebar-step:hover { background: #F1F5F9; }
+.sidebar-step.active { background: #EFF6FF; border-left-color: #3B82F6; }
+.sidebar-num { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; border: 2px solid #CBD5E1; color: #94A3B8; background: #fff; flex-shrink: 0; }
+.sidebar-num.done { background: #22C55E; border-color: #22C55E; color: #fff; font-size: 10px; }
+.sidebar-num.active { background: #3B82F6; border-color: #3B82F6; color: #fff; }
+.sidebar-label { font-weight: 600; color: #374151; font-size: 11px; line-height: 1.3; }
+.sidebar-sub { font-size: 9px; color: #94A3B8; }
+.sidebar-sub.done { color: #16A34A; }
+.sidebar-sub.active { color: #3B82F6; }
+
+/* Main content */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.main-header { padding: 14px 20px; border-bottom: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+.main-header h2 { font-size: 15px; font-weight: 800; }
+.main-header .step-badge { font-size: 11px; color: #3B82F6; font-weight: 600; }
+.main-body { flex: 1; overflow-y: auto; padding: 20px; }
+.main-footer { padding: 12px 20px; border-top: 1px solid #E2E8F0; background: #FAFBFC; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+
+/* Form */
+.form-group { margin-bottom: 14px; }
+.form-label { font-size: 11px; font-weight: 600; color: #64748B; text-transform: uppercase; letter-spacing: .3px; margin-bottom: 5px; display: block; }
+.req { color: #DC2626; margin-left: 2px; }
+.form-input, .form-textarea, .form-select { width: 100%; padding: 8px 12px; border: 1px solid #E2E8F0; border-radius: 7px; font-size: 12px; font-family: inherit; outline: none; }
+.form-input:focus, .form-textarea:focus { border-color: #3B82F6; box-shadow: 0 0 0 3px rgba(59,130,246,.1); }
+.form-textarea { min-height: 70px; resize: vertical; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
+/* Buttons */
+.btn { padding: 7px 16px; border-radius: 7px; font-size: 11px; font-weight: 700; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+.btn-primary { background: #3B82F6; color: #fff; }
+.btn-green { background: #22C55E; color: #fff; }
+.btn-amber { background: #D97706; color: #fff; }
+.btn-red { background: #DC2626; color: #fff; }
+.btn-ghost { background: #F1F5F9; color: #64748B; }
+
+/* Badge */
+.badge { padding: 2px 8px; border-radius: 20px; font-size: 9px; font-weight: 700; }
+.badge-blue { background: #EFF6FF; color: #1D4ED8; }
+.badge-green { background: #F0FDF4; color: #16A34A; }
+.badge-amber { background: #FFFBEB; color: #92400E; }
+
+/* Checklist */
+.checklist { list-style: none; }
+.checklist li { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid #F8FAFC; }
+.check-circle { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #CBD5E1; display: flex; align-items: center; justify-content: center; font-size: 11px; cursor: pointer; flex-shrink: 0; }
+.check-circle.checked { background: #22C55E; border-color: #22C55E; color: #fff; }
+.check-circle.fail { background: #EF4444; border-color: #EF4444; color: #fff; }
+.check-text { flex: 1; font-size: 11px; }
+.check-note { margin-left: 30px; margin-top: 2px; font-size: 10px; color: #64748B; background: #F8FAFC; padding: 4px 8px; border-radius: 4px; }
+.check-actions { display: flex; gap: 3px; }
+.check-btn { padding: 2px 7px; border-radius: 4px; font-size: 9px; font-weight: 600; border: none; cursor: pointer; }
+.check-pass { background: #DCFCE7; color: #15803D; }
+.check-fail { background: #FEE2E2; color: #B91C1C; }
+.check-pass.on { background: #22C55E; color: #fff; }
+.check-fail.on { background: #EF4444; color: #fff; }
+
+/* Section */
+.section-title { font-size: 11px; font-weight: 700; color: #3B82F6; margin: 16px 0 10px; display: flex; align-items: center; gap: 8px; }
+.section-title hr { flex: 1; border: none; height: 1px; background: #E2E8F0; }
+
+/* Sub-approval block */
+.sub-block { border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+.sub-block h4 { font-size: 12px; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dot-pending { background: #F59E0B; }
+.dot-pass { background: #22C55E; }
+
+/* Attachments */
+.attach-list { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.attach-pill { padding: 3px 8px; background: #EFF6FF; border-radius: 5px; font-size: 10px; color: #1D4ED8; display: flex; align-items: center; gap: 4px; }
+
+/* Revision banner */
+.revision-banner { background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; font-size: 11px; }
+.revision-banner .title { font-weight: 700; color: #92400E; }
+.revision-banner .note { color: #78350F; margin-top: 3px; }
+
+/* Approval summary */
+.approval-summary { background: #F8FAFC; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; font-size: 11px; color: #475569; }
+
+/* Role selector */
+.role-select { display: flex; gap: 8px; margin-bottom: 16px; }
+.role-card { flex: 1; border: 2px solid #E2E8F0; border-radius: 8px; padding: 12px; text-align: center; cursor: pointer; }
+.role-card.active { border-color: #3B82F6; background: #EFF6FF; }
+.role-icon { font-size: 24px; margin-bottom: 4px; }
+.role-label { font-size: 11px; font-weight: 700; }
+.role-sub { font-size: 9px; color: #94A3B8; }
+
+/* PO link */
+.po-link-card { border: 2px dashed #E2E8F0; border-radius: 8px; padding: 20px; text-align: center; }
+.po-link-card.has-po { border-style: solid; border-color: #BBF7D0; background: #F0FDF4; }
+
+/* Tab selector for examples */
+.example-tabs { display: flex; gap: 0; margin-bottom: 0; background: #1E293B; border-radius: 8px 8px 0 0; overflow: hidden; }
+.example-tab { padding: 10px 16px; font-size: 11px; font-weight: 600; color: #94A3B8; cursor: pointer; border: none; background: none; }
+.example-tab.active { color: #fff; background: #334155; }
+.example-wrap { display: none; }
+.example-wrap.active { display: block; }
+</style>
+</head>
+<body>
+
+<!-- Tab chọn bước để xem -->
+<div style="max-width:920px; margin:20px auto 0; padding:0 20px">
+  <div style="color:#fff; font-size:18px; font-weight:800; margin-bottom:8px">Mockup — Sản xuất / Thiết kế</div>
+  <div style="color:#94A3B8; font-size:12px; margin-bottom:12px">Click từng tab để xem form từng bước. Layout = modal sidebar giống Research pipeline.</div>
+  <div class="example-tabs">
+    <button class="example-tab active" onclick="showStep(0)">B1: Tạo YC</button>
+    <button class="example-tab" onclick="showStep(1)">B2: Nghiên cứu</button>
+    <button class="example-tab" onclick="showStep(2)">B3: Duyệt NC</button>
+    <button class="example-tab" onclick="showStep(3)">B4: Đặt mẫu</button>
+    <button class="example-tab" onclick="showStep(4)">B5: Chờ về</button>
+    <button class="example-tab" onclick="showStep(5)">B6: QC</button>
+    <button class="example-tab" onclick="showStep(6)">B7: Duyệt mẫu</button>
+    <button class="example-tab" onclick="showStep(7)">B8: Đặt hàng</button>
+    <button class="example-tab" onclick="showStep(8)">QC Fail</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     BƯỚC 1: TẠO YÊU CẦU
+     ═══════════════════════════════════════════════════ -->
+<div class="example-wrap active" id="step-0">
+<div class="modal-overlay" style="padding-top:0">
+<div class="modal">
+  <div class="sidebar">
+    <div class="sidebar-step active">
+      <div class="sidebar-num active">1</div>
+      <div><div class="sidebar-label">Tạo yêu cầu</div><div class="sidebar-sub active">Đang làm</div></div>
+    </div>
+    <div class="sidebar-step"><div class="sidebar-num">2</div><div><div class="sidebar-label">Nghiên cứu</div><div class="sidebar-sub">—</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num">3</div><div><div class="sidebar-label">Duyệt NC</div><div class="sidebar-sub">—</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num">4</div><div><div class="sidebar-label">Triển khai SP</div><div class="sidebar-sub">—</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num">5</div><div><div class="sidebar-label">Duyệt triển khai</div><div class="sidebar-sub">—</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num">6</div><div><div class="sidebar-label">Nhận mẫu & QC</div><div class="sidebar-sub">—</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num">7</div><div><div class="sidebar-label">Duyệt mẫu</div><div class="sidebar-sub">—</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num">8</div><div><div class="sidebar-label">Đặt hàng</div><div class="sidebar-sub">—</div></div></div>
+  </div>
+  <div class="main">
+    <div class="main-header">
+      <h2>Cáp sạc VelasX Pro 240W</h2>
+      <span class="step-badge">Bước 1: Tạo yêu cầu</span>
+      <div style="display:flex;gap:6px"><button class="btn btn-ghost">Lưu</button><button style="background:none;border:none;font-size:18px;cursor:pointer;color:#94A3B8">✕</button></div>
+    </div>
+    <div class="main-body">
+      <div class="form-group">
+        <label class="form-label">Tên sản phẩm<span class="req">*</span></label>
+        <div style="display:flex;gap:6px">
+          <input class="form-input" value="Cáp sạc VelasX Pro 240W" style="flex:1">
+          <button class="btn btn-ghost" style="white-space:nowrap">Chọn từ kho</button>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Giao cho nhân viên<span class="req">*</span></label>
+          <select class="form-select"><option>Minh Anh</option></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Deadline<span class="req">*</span></label>
+          <input class="form-input" type="date" value="2026-04-28">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Ưu tiên</label>
+          <select class="form-select"><option>Bình thường</option><option>Cao</option><option>Khẩn cấp</option></select>
+        </div>
+        <div></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Yêu cầu chi tiết<span class="req">*</span></label>
+        <textarea class="form-textarea">Thiết kế bao bì mới cho dòng VelasX Pro, sản xuất mẫu 500 chiếc để test thị trường.</textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Mục đích / Lý do<span class="req">*</span></label>
+        <textarea class="form-textarea" style="min-height:50px">Dòng cáp 240W bán tốt, cần nâng cấp bao bì để tăng giá bán.</textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Link tham khảo (1688, Shopee...)</label>
+        <input class="form-input" value="https://1688.com/reference">
+      </div>
+
+      <!-- Checklist -->
+      <div class="section-title"><span>Checklist công việc</span><hr></div>
+      <ul class="checklist">
+        <li><div class="check-circle">○</div><span class="check-text">Nghiên cứu NCC sản xuất bao bì</span></li>
+        <li><div class="check-circle">○</div><span class="check-text">Lấy báo giá sản xuất mẫu 500 chiếc</span></li>
+        <li><div class="check-circle">○</div><span class="check-text">Thiết kế mockup bao bì</span></li>
+        <li><div class="check-circle">○</div><span class="check-text">So sánh giá vốn cũ vs mới</span></li>
+      </ul>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <input class="form-input" placeholder="Thêm mục..." style="flex:1;font-size:11px">
+        <button class="btn btn-ghost">+ Thêm</button>
+      </div>
+    </div>
+    <div class="main-footer">
+      <button class="btn btn-ghost">Lưu nháp</button>
+      <button class="btn btn-primary">Hoàn thành & Chuyển bước →</button>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     BƯỚC 2: NGHIÊN CỨU
+     ═══════════════════════════════════════════════════ -->
+<div class="example-wrap" id="step-1">
+<div class="modal-overlay" style="padding-top:0">
+<div class="modal">
+  <div class="sidebar">
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Tạo yêu cầu</div><div class="sidebar-sub done">✓ Xong</div></div></div>
+    <div class="sidebar-step active"><div class="sidebar-num active">2</div><div><div class="sidebar-label">Nghiên cứu</div><div class="sidebar-sub active">Đang làm</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num">3</div><div><div class="sidebar-label">Duyệt NC</div><div class="sidebar-sub">—</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num">4</div><div><div class="sidebar-label">Triển khai SP</div><div class="sidebar-sub">—</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num">5</div><div><div class="sidebar-label">Duyệt triển khai</div><div class="sidebar-sub">—</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num">6</div><div><div class="sidebar-label">Nhận mẫu & QC</div><div class="sidebar-sub">—</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num">7</div><div><div class="sidebar-label">Duyệt mẫu</div><div class="sidebar-sub">—</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num">8</div><div><div class="sidebar-label">Đặt hàng</div><div class="sidebar-sub">—</div></div></div>
+  </div>
+  <div class="main">
+    <div class="main-header">
+      <h2>Cáp sạc VelasX Pro 240W</h2>
+      <span class="step-badge">Bước 2: Nghiên cứu · Minh Anh · DL: 28/04</span>
+    </div>
+    <div class="main-body">
+      <div class="section-title"><span>Checklist công việc</span><hr><span style="font-size:10px;color:#94A3B8">2/4</span></div>
+      <ul class="checklist">
+        <li>
+          <div class="check-circle checked">✓</div>
+          <span class="check-text" style="text-decoration:line-through;color:#94A3B8">Nghiên cứu NCC sản xuất bao bì</span>
+          <span class="badge badge-green">Xong</span>
+        </li>
+        <li style="display:block">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="check-circle checked">✓</div>
+            <span class="check-text" style="text-decoration:line-through;color:#94A3B8">Lấy báo giá sản xuất mẫu 500 chiếc</span>
+            <span class="badge badge-green">Xong</span>
+          </div>
+          <div class="check-note">NCC A = 15.000đ/hộp, NCC B = 12.500đ/hộp (MOQ 300). Đề xuất NCC B.</div>
+        </li>
+        <li><div class="check-circle">○</div><span class="check-text">Thiết kế mockup bao bì</span></li>
+        <li><div class="check-circle">○</div><span class="check-text">So sánh giá vốn cũ vs mới</span></li>
+      </ul>
+
+      <div class="section-title"><span>Tài liệu đính kèm</span><hr></div>
+      <div class="attach-list">
+        <div class="attach-pill">📄 Báo giá NCC B.pdf <span style="color:#94A3B8;cursor:pointer;margin-left:2px">✕</span></div>
+        <div class="attach-pill">🖼 Mockup v1.png <span style="color:#94A3B8;cursor:pointer;margin-left:2px">✕</span></div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <input class="form-input" placeholder="Paste link tài liệu..." style="flex:1;font-size:11px">
+        <button class="btn btn-ghost">+ Đính kèm</button>
+      </div>
+    </div>
+    <div class="main-footer">
+      <button class="btn btn-ghost">Lưu nháp</button>
+      <button class="btn btn-green">Hoàn thành & Gửi duyệt →</button>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     BƯỚC 3: DUYỆT NC
+     ═══════════════════════════════════════════════════ -->
+<div class="example-wrap" id="step-2">
+<div class="modal-overlay" style="padding-top:0">
+<div class="modal">
+  <div class="sidebar">
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Tạo yêu cầu</div><div class="sidebar-sub done">✓ Xong</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Nghiên cứu</div><div class="sidebar-sub done">✓ Xong</div></div></div>
+    <div class="sidebar-step active"><div class="sidebar-num active">3</div><div><div class="sidebar-label">Duyệt NC</div><div class="sidebar-sub active">Chờ duyệt</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num">4</div><div><div class="sidebar-label">Triển khai SP</div><div class="sidebar-sub">—</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num">5</div><div><div class="sidebar-label">Duyệt triển khai</div><div class="sidebar-sub">—</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num">6</div><div><div class="sidebar-label">Nhận mẫu & QC</div><div class="sidebar-sub">—</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num">7</div><div><div class="sidebar-label">Duyệt mẫu</div><div class="sidebar-sub">—</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num">8</div><div><div class="sidebar-label">Đặt hàng</div><div class="sidebar-sub">—</div></div></div>
+  </div>
+  <div class="main">
+    <div class="main-header">
+      <h2>Cáp sạc VelasX Pro 240W</h2>
+      <span class="step-badge">Bước 3: Duyệt NC</span>
+    </div>
+    <div class="main-body">
+      <div class="approval-summary">
+        <strong>Tóm tắt nghiên cứu:</strong><br>
+        ✓ 4/4 checklist hoàn thành · 2 tài liệu đính kèm<br>
+        NCC B đề xuất, giá 12.500đ/hộp, MOQ 300.
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Nhận xét</label>
+        <textarea class="form-textarea" style="min-height:50px" placeholder="Ghi nhận xét..."></textarea>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Giao NV triển khai</label>
+          <select class="form-select"><option>Minh Anh</option></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Deadline triển khai</label>
+          <input class="form-input" type="date" value="2026-05-05">
+        </div>
+      </div>
+    </div>
+    <div class="main-footer">
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-red">✕ Huỷ</button>
+        <button class="btn btn-amber">↺ Yêu cầu sửa</button>
+      </div>
+      <button class="btn btn-green">✓ Duyệt — Cho triển khai</button>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     BƯỚC 4: TRIỂN KHAI SP
+     ═══════════════════════════════════════════════════ -->
+<div class="example-wrap" id="step-3">
+<div class="modal-overlay" style="padding-top:0">
+<div class="modal">
+  <div class="sidebar">
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Tạo yêu cầu</div><div class="sidebar-sub done">✓ Xong</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Nghiên cứu</div><div class="sidebar-sub done">✓ Xong</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Duyệt NC</div><div class="sidebar-sub done">✓ Duyệt</div></div></div>
+    <div class="sidebar-step active"><div class="sidebar-num active">4</div><div><div class="sidebar-label">Đặt mẫu</div><div class="sidebar-sub active">Đang làm</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num">5</div><div><div class="sidebar-label">Chờ mẫu về</div><div class="sidebar-sub">—</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num">6</div><div><div class="sidebar-label">Nhận mẫu & QC</div><div class="sidebar-sub">—</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num">7</div><div><div class="sidebar-label">Duyệt mẫu</div><div class="sidebar-sub">—</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num">8</div><div><div class="sidebar-label">Đặt hàng</div><div class="sidebar-sub">—</div></div></div>
+  </div>
+  <div class="main">
+    <div class="main-header">
+      <h2>Cáp sạc VelasX Pro 240W</h2>
+      <span class="step-badge">Bước 4: Đặt mẫu · Minh Anh · DL: 05/05</span>
+    </div>
+    <div class="main-body">
+      <!-- Tạo PO mẫu -->
+      <div class="po-link-card" style="padding:16px">
+        <div style="font-size:28px;margin-bottom:6px">📦</div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px">Tạo đơn PO đặt mẫu</div>
+        <div style="font-size:10px;color:#94A3B8;margin-bottom:10px">Đơn PO sẽ tạo bên mục Đơn hàng</div>
+        <button class="btn btn-primary">+ Tạo đơn PO mẫu</button>
+      </div>
+
+      <!-- Sau khi tạo PO -->
+      <div style="margin-top:12px">
+        <div class="po-link-card has-po" style="padding:12px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="font-size:22px">✅</div>
+            <div style="text-align:left;flex:1">
+              <div style="font-size:12px;font-weight:700;color:#15803D">PO-0041</div>
+              <div style="font-size:11px;color:#475569">500 hộp · NCC B · ETA: 10/05/2026</div>
+            </div>
+            <a href="#" class="btn btn-ghost">Xem đơn ↗</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="main-footer">
+      <button class="btn btn-ghost">Lưu nháp</button>
+      <button class="btn btn-primary">Hoàn thành & Chuyển bước →</button>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     BƯỚC 5: CHỜ MẪU VỀ
+     ═══════════════════════════════════════════════════ -->
+<div class="example-wrap" id="step-4">
+<div class="modal-overlay" style="padding-top:0">
+<div class="modal">
+  <div class="sidebar">
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Tạo yêu cầu</div><div class="sidebar-sub done">✓ Xong</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Nghiên cứu</div><div class="sidebar-sub done">✓ Xong</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Duyệt NC</div><div class="sidebar-sub done">✓ Duyệt</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Đặt mẫu</div><div class="sidebar-sub done">✓ Xong</div></div></div>
+    <div class="sidebar-step active"><div class="sidebar-num active">5</div><div><div class="sidebar-label">Chờ mẫu về</div><div class="sidebar-sub active">Đang chờ</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num">6</div><div><div class="sidebar-label">Nhận mẫu & QC</div><div class="sidebar-sub">—</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num">7</div><div><div class="sidebar-label">Duyệt mẫu</div><div class="sidebar-sub">—</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num">8</div><div><div class="sidebar-label">Đặt hàng</div><div class="sidebar-sub">—</div></div></div>
+  </div>
+  <div class="main">
+    <div class="main-header">
+      <h2>Cáp sạc VelasX Pro 240W</h2>
+      <span class="step-badge">Bước 5: Chờ mẫu về</span>
+    </div>
+    <div class="main-body">
+      <!-- PO đã tạo — thông tin lấy từ đơn hàng /list -->
+      <div class="po-link-card has-po" style="padding:14px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="font-size:22px">📦</div>
+          <div style="text-align:left;flex:1">
+            <div style="font-size:12px;font-weight:700;color:#1D4ED8">PO-0041</div>
+            <div style="font-size:11px;color:#475569">500 hộp · NCC B - Bao bì Phú Yên</div>
+            <div style="font-size:10px;color:#94A3B8;margin-top:2px">ETA: 10/05/2026 · Trạng thái: <span style="color:#D97706;font-weight:600">Đang sản xuất</span></div>
+          </div>
+          <a href="#" class="btn btn-ghost">Xem đơn ↗</a>
+        </div>
+      </div>
+
+      <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:14px;margin-top:14px;text-align:center">
+        <div style="font-size:28px;margin-bottom:6px">⏳</div>
+        <div style="font-size:13px;font-weight:700;color:#1D4ED8">Đang chờ hàng mẫu về</div>
+        <div style="font-size:11px;color:#64748B;margin-top:4px">ETA: 10/05/2026 — còn 14 ngày</div>
+        <div style="font-size:10px;color:#94A3B8;margin-top:6px">Khi đơn PO cập nhật "Đã nhận hàng" bên Đơn hàng, bước này sẽ tự động hoàn thành</div>
+      </div>
+    </div>
+    <div class="main-footer">
+      <div></div>
+      <button class="btn btn-primary" style="opacity:.4;cursor:not-allowed" disabled>Đã về — Chuyển QC →</button>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     BƯỚC 6: NHẬN MẪU & QC
+     ═══════════════════════════════════════════════════ -->
+<div class="example-wrap" id="step-5">
+<div class="modal-overlay" style="padding-top:0">
+<div class="modal">
+  <div class="sidebar">
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Tạo yêu cầu</div><div class="sidebar-sub done">✓ Xong</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Nghiên cứu</div><div class="sidebar-sub done">✓ Xong</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Duyệt NC</div><div class="sidebar-sub done">✓ Duyệt</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Đặt mẫu</div><div class="sidebar-sub done">✓ Xong</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Chờ mẫu về</div><div class="sidebar-sub done">✓ Đã về</div></div></div>
+    <div class="sidebar-step active"><div class="sidebar-num active">6</div><div><div class="sidebar-label">Nhận mẫu & QC</div><div class="sidebar-sub active">Đang làm</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num">7</div><div><div class="sidebar-label">Duyệt mẫu</div><div class="sidebar-sub">—</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num">8</div><div><div class="sidebar-label">Đặt hàng</div><div class="sidebar-sub">—</div></div></div>
+  </div>
+  <div class="main">
+    <div class="main-header">
+      <h2>Cáp sạc VelasX Pro 240W</h2>
+      <span class="step-badge">Bước 6: Nhận mẫu & QC · Minh Anh</span>
+    </div>
+    <div class="main-body">
+      <div class="form-group">
+        <label class="form-label">Mô tả mẫu thực tế<span class="req">*</span></label>
+        <textarea class="form-textarea" style="min-height:50px">Hộp đẹp, in sắc nét. Khay nhựa hơi lỏng.</textarea>
+      </div>
+
+      <div class="section-title"><span>QC Checklist</span><hr><span style="font-size:10px;color:#16A34A;font-weight:700">3P · 1F · 1 chưa</span></div>
+      <ul class="checklist">
+        <li><div class="check-circle checked">✓</div><span class="check-text">Đóng gói nguyên vẹn</span><div class="check-actions"><button class="check-btn check-pass on">Pass</button><button class="check-btn check-fail">Fail</button></div></li>
+        <li><div class="check-circle checked">✓</div><span class="check-text">Kích thước đúng mô tả</span><div class="check-actions"><button class="check-btn check-pass on">Pass</button><button class="check-btn check-fail">Fail</button></div></li>
+        <li><div class="check-circle checked">✓</div><span class="check-text">Chất lượng vật liệu</span><div class="check-actions"><button class="check-btn check-pass on">Pass</button><button class="check-btn check-fail">Fail</button></div></li>
+        <li style="display:block">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="check-circle fail">✕</div><span class="check-text" style="color:#DC2626">Khay nhựa bên trong</span>
+            <div class="check-actions"><button class="check-btn check-pass">Pass</button><button class="check-btn check-fail on">Fail</button></div>
+          </div>
+          <div class="check-note" style="border-left:2px solid #EF4444">Khay lỏng, SP xê dịch khi vận chuyển</div>
+        </li>
+        <li><div class="check-circle">○</div><span class="check-text">Màu sắc / ngoại quan</span><div class="check-actions"><button class="check-btn check-pass">Pass</button><button class="check-btn check-fail">Fail</button></div></li>
+      </ul>
+
+      <div class="form-row" style="margin-top:14px">
+        <div class="form-group"><label class="form-label">Điểm QC (/10)</label><input class="form-input" value="7"></div>
+        <div class="form-group"><label class="form-label">Đánh giá chung<span class="req">*</span></label><textarea class="form-textarea" style="min-height:40px">Hộp đạt 80%, khay cần làm lại.</textarea></div>
+      </div>
+
+      <div class="section-title"><span>Ảnh mẫu</span><hr></div>
+      <div class="attach-list">
+        <div class="attach-pill">🖼 Hộp mặt trước.jpg <span style="color:#94A3B8;cursor:pointer">✕</span></div>
+        <div class="attach-pill">🖼 Khay lỏng.jpg <span style="color:#94A3B8;cursor:pointer">✕</span></div>
+      </div>
+    </div>
+    <div class="main-footer">
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-red">✕ Huỷ dự án</button>
+        <button class="btn btn-amber">↺ Không đạt — Làm lại B4</button>
+      </div>
+      <button class="btn btn-green">✓ Pass — Gửi sếp duyệt →</button>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     BƯỚC 7: ĐẶT HÀNG (chỉ nút tạo PO + link)
+     ═══════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════
+     BƯỚC 7: DUYỆT MẪU
+     ═══════════════════════════════════════════════════ -->
+<div class="example-wrap" id="step-6">
+<div class="modal-overlay" style="padding-top:0">
+<div class="modal">
+  <div class="sidebar">
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Tạo yêu cầu</div><div class="sidebar-sub done">✓ Xong</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Nghiên cứu</div><div class="sidebar-sub done">✓ Xong</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Duyệt NC</div><div class="sidebar-sub done">✓ Duyệt</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Đặt mẫu</div><div class="sidebar-sub done">✓ Xong</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Chờ mẫu về</div><div class="sidebar-sub done">✓ Đã về</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Nhận mẫu & QC</div><div class="sidebar-sub done">✓ Pass</div></div></div>
+    <div class="sidebar-step active"><div class="sidebar-num active">7</div><div><div class="sidebar-label">Duyệt mẫu</div><div class="sidebar-sub active">Chờ duyệt</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num">8</div><div><div class="sidebar-label">Đặt hàng</div><div class="sidebar-sub">—</div></div></div>
+  </div>
+  <div class="main">
+    <div class="main-header">
+      <h2>Cáp sạc VelasX Pro 240W</h2>
+      <span class="step-badge">Bước 7: Duyệt mẫu</span>
+    </div>
+    <div class="main-body">
+      <div class="approval-summary">
+        <strong>Kết quả QC:</strong><br>
+        Điểm: 9/10 · 5/5 checklist Pass<br>
+        Hộp đẹp, in sắc nét, khay nhựa vừa khít sau chỉnh khuôn.<br>
+        <div class="attach-list" style="margin-top:6px">
+          <div class="attach-pill">🖼 Ảnh mẫu 1.jpg</div>
+          <div class="attach-pill">🖼 Ảnh mẫu 2.jpg</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Nhận xét</label>
+        <textarea class="form-textarea" style="min-height:50px" placeholder="Nhận xét về mẫu..."></textarea>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Giao NV đặt hàng</label><select class="form-select"><option>Minh Anh</option></select></div>
+        <div class="form-group"><label class="form-label">Deadline</label><input class="form-input" type="date" value="2026-05-20"></div>
+      </div>
+    </div>
+    <div class="main-footer">
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-red">✕ Huỷ</button>
+        <button class="btn btn-amber">↺ Không đạt — Làm lại B4</button>
+      </div>
+      <button class="btn btn-green">✓ Duyệt — Cho đặt hàng</button>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+<div class="example-wrap" id="step-7">
+<div class="modal-overlay" style="padding-top:0">
+<div class="modal">
+  <div class="sidebar">
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Tạo yêu cầu</div><div class="sidebar-sub done">✓ Xong</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Nghiên cứu</div><div class="sidebar-sub done">✓ Xong</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Duyệt NC</div><div class="sidebar-sub done">✓ Duyệt</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Triển khai SP</div><div class="sidebar-sub done">✓ Xong</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Duyệt triển khai</div><div class="sidebar-sub done">✓ Duyệt</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Đặt mẫu</div><div class="sidebar-sub done">✓ Xong</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Chờ mẫu về</div><div class="sidebar-sub done">✓ Đã về</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Nhận mẫu & QC</div><div class="sidebar-sub done">✓ Pass</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Duyệt mẫu</div><div class="sidebar-sub done">✓ Duyệt</div></div></div>
+    <div class="sidebar-step active"><div class="sidebar-num active">8</div><div><div class="sidebar-label">Đặt hàng</div><div class="sidebar-sub active">Đang làm</div></div></div>
+  </div>
+  <div class="main">
+    <div class="main-header">
+      <h2>Cáp sạc VelasX Pro 240W</h2>
+      <span class="step-badge">Bước 8: Đặt hàng</span>
+    </div>
+    <div class="main-body">
+      <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:10px 12px;margin-bottom:16px;font-size:12px;color:#15803D">
+        ✓ QC Pass · Điểm: 9/10 · Tất cả checklist pass
+      </div>
+
+      <!-- Chưa có PO -->
+      <div class="po-link-card">
+        <div style="font-size:36px;margin-bottom:8px">📦</div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px">Tạo đơn PO nhập hàng</div>
+        <div style="font-size:11px;color:#94A3B8;margin-bottom:12px">Đơn PO sẽ được tạo bên mục Đơn hàng</div>
+        <button class="btn btn-primary" style="font-size:13px;padding:10px 24px">+ Tạo đơn PO</button>
+      </div>
+
+      <!-- Đã có PO (ví dụ sau khi tạo) -->
+      <div style="margin-top:20px;padding-top:16px;border-top:2px dashed #E2E8F0">
+        <div style="font-size:10px;color:#94A3B8;margin-bottom:8px;font-style:italic">↓ Sau khi tạo PO:</div>
+        <div class="po-link-card has-po">
+          <div style="display:flex;align-items:center;justify-content:center;gap:12px">
+            <div style="font-size:28px">✅</div>
+            <div style="text-align:left">
+              <div style="font-size:13px;font-weight:700;color:#15803D">PO-0042</div>
+              <div style="font-size:11px;color:#475569">Cáp sạc VelasX Pro 240W · 5.000 chiếc</div>
+              <div style="font-size:10px;color:#94A3B8">Tạo: 15/05/2026 · NCC B - Bao bì Phú Yên</div>
+            </div>
+            <a href="#" class="btn btn-ghost" style="margin-left:auto">Xem đơn ↗</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="main-footer">
+      <div></div>
+      <button class="btn btn-green">✓ Hoàn thành pipeline</button>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     QC FAIL — Quay lại bước 4 (revision)
+     ═══════════════════════════════════════════════════ -->
+<div class="example-wrap" id="step-8">
+<div class="modal-overlay" style="padding-top:0">
+<div class="modal">
+  <div class="sidebar">
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Tạo yêu cầu</div><div class="sidebar-sub done">✓ Xong</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Nghiên cứu</div><div class="sidebar-sub done">✓ Xong</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num done">✓</div><div><div class="sidebar-label">Duyệt NC</div><div class="sidebar-sub done">✓ Duyệt</div></div></div>
+    <div class="sidebar-step active"><div class="sidebar-num active" style="background:#D97706;border-color:#D97706">4</div><div><div class="sidebar-label">Đặt mẫu</div><div class="sidebar-sub" style="color:#D97706">Làm lại (lần 2)</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num" style="border-color:#FDE68A;color:#D97706">5</div><div><div class="sidebar-label">Chờ mẫu về</div><div class="sidebar-sub">Chờ</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num" style="border-color:#FDE68A;color:#D97706">6</div><div><div class="sidebar-label">Nhận mẫu & QC</div><div class="sidebar-sub">Chờ</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num">7</div><div><div class="sidebar-label">Duyệt mẫu</div><div class="sidebar-sub">—</div></div></div>
+    <div class="sidebar-step"><div class="sidebar-num">8</div><div><div class="sidebar-label">Đặt hàng</div><div class="sidebar-sub">—</div></div></div>
+  </div>
+  <div class="main">
+    <div class="main-header">
+      <h2>Cáp sạc VelasX Pro 240W</h2>
+      <span class="step-badge" style="color:#D97706">Bước 4: Triển khai SP (lần 2)</span>
+    </div>
+    <div class="main-body">
+      <div class="revision-banner">
+        <div class="title">↺ QC không đạt — Quay lại triển khai</div>
+        <div class="note">Khay nhựa lỏng, cần chỉnh khuôn chặt hơn. Điểm QC: 7/10</div>
+        <div style="font-size:10px;color:#92400E;margin-top:3px">Từ: Minh Anh · 12/05/2026 · Lần QC #1</div>
+      </div>
+
+      <div class="approval-summary">
+        <strong>Log lần 1:</strong> Đặt NCC B, 500 hộp, ETA 10/05. QC fail: khay nhựa lỏng.
+      </div>
+
+      <!-- Form giống bước 4, data cũ để sửa -->
+      <div class="sub-block" style="border-color:#FDE68A">
+        <h4><span class="dot dot-pending"></span> A. Đặt sản xuất mẫu (sửa lại)</h4>
+        <div class="form-group">
+          <label class="form-label">Đặt sản xuất gì</label>
+          <textarea class="form-textarea" style="min-height:45px">Hộp cứng VelasX Pro — CHỈNH: khay nhựa khuôn mới, chặt hơn 2mm mỗi bên</textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">NCC</label><input class="form-input" value="NCC B - Bao bì Phú Yên"></div>
+          <div class="form-group"><label class="form-label">Dự kiến về</label><input class="form-input" type="date" value="2026-05-20"></div>
+        </div>
+      </div>
+
+      <div class="sub-block" style="border-color:#BBF7D0;background:#FAFFF8">
+        <h4><span class="dot dot-pass"></span> B. Thiết kế bao bì — Giữ nguyên</h4>
+        <div style="font-size:11px;color:#16A34A">✓ Đã duyệt lần 1, không cần sửa</div>
+      </div>
+    </div>
+    <div class="main-footer">
+      <button class="btn btn-ghost">Lưu nháp</button>
+      <button class="btn btn-green">Gửi duyệt lại →</button>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+<script>
+function showStep(idx) {
+  document.querySelectorAll('.example-wrap').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.example-tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('step-' + idx).classList.add('active');
+  document.querySelectorAll('.example-tab')[idx].classList.add('active');
+}
+</script>
+</body>
+</html>

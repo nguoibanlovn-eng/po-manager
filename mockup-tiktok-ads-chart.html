@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Mockup: TikTok Ads + Revenue Daily</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #F8FAFC; padding: 20px; }
+  .card { background: #fff; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px 20px; max-width: 980px; margin-bottom: 16px; }
+  .hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .title { font-size: 12px; font-weight: 800; color: #18181B; letter-spacing: .3px; }
+  .badge { font-size: 10px; color: #64748B; }
+  .badge b { color: #18181B; }
+
+  /* Chart container */
+  .chart-wrap { position: relative; height: 200px; border-bottom: 1px solid #E2E8F0; margin-bottom: 4px; }
+  .bars { display: flex; align-items: flex-end; gap: 2px; height: 100%; position: relative; z-index: 2; }
+  .col { display: flex; flex-direction: column; align-items: center; flex: 1; }
+  .bar { width: 60%; min-width: 10px; }
+  .bar-bm { background: #FE2C55; }
+  .bar-gmv { background: #FF9500; border-radius: 2px 2px 0 0; }
+  .bar-bm-only { border-radius: 0 0 2px 2px; }
+  .bar-bm-top { border-radius: 2px 2px 0 0; }
+  .stacked { display: flex; flex-direction: column; align-items: center; width: 100%; }
+  .top-label { font-size: 6.5px; font-weight: 700; color: #374151; text-align: center; margin-bottom: 1px; white-space: nowrap; }
+  .date { font-size: 7px; color: #94A3B8; margin-top: 5px; }
+
+  /* Revenue line overlay */
+  .line-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 3; pointer-events: none; }
+  .line-overlay svg { width: 100%; height: 100%; }
+
+  .legend { display: flex; gap: 16px; margin-top: 10px; padding-top: 8px; border-top: 1px solid #F1F5F9; align-items: center; flex-wrap: wrap; }
+  .leg { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #64748B; }
+  .dot { width: 9px; height: 9px; border-radius: 2px; }
+  .line-dot { width: 16px; height: 2px; border-radius: 1px; }
+  .leg-total { margin-left: auto; font-size: 10px; font-weight: 700; color: #18181B; }
+
+  /* Mini chart */
+  .mini-chart-wrap { position: relative; height: 120px; border-bottom: 1px solid #E2E8F0; margin-bottom: 4px; }
+  .mini-bars { display: flex; align-items: flex-end; gap: 2px; height: 100%; position: relative; z-index: 2; }
+  .mini-col { display: flex; flex-direction: column; align-items: center; flex: 1; }
+  .mini-bar { width: 55%; min-width: 8px; border-radius: 2px 2px 0 0; }
+  .mini-top { font-size: 6px; font-weight: 600; color: #92400E; margin-bottom: 1px; }
+  .mini-date { font-size: 6.5px; color: #94A3B8; margin-top: 4px; }
+
+  .sub-title { font-size: 11px; font-weight: 700; color: #92400E; margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
+  .sub-badge { font-size: 9px; font-weight: 600; padding: 1px 6px; border-radius: 4px; background: #FFF7ED; color: #92400E; }
+</style>
+</head>
+<body>
+
+<!-- ═══ CHART 1: ADS SPEND + REVENUE LINE ═══ -->
+<div class="card">
+  <div class="hdr">
+    <div class="title">CHI TIEU ADS + DOANH THU THEO NGAY</div>
+    <div class="badge">BM <b>47.0M</b> + GMV Max <b>35.4M</b> = Tong <b>82.4M</b></div>
+  </div>
+
+  <div class="chart-wrap">
+    <div class="bars" id="mainBars"></div>
+    <div class="line-overlay" id="lineOverlay"></div>
+  </div>
+
+  <div style="display:flex; gap:2px; padding: 0 4px;" id="mainDates"></div>
+
+  <div class="legend">
+    <div class="leg"><div class="dot" style="background:#FE2C55"></div>BM Ads</div>
+    <div class="leg"><div class="dot" style="background:#FF9500"></div>GMV Max Ads</div>
+    <div class="leg"><div class="dot" style="background:#94A3B8"></div>Tong Ads</div>
+    <div class="leg"><div class="line-dot" style="background:#16A34A"></div>Doanh thu (Nhanh)</div>
+    <div class="leg-total">ROAS: 17.5x</div>
+  </div>
+</div>
+
+<!-- ═══ CHART 2: GMV MAX DETAIL ═══ -->
+<div class="card">
+  <div class="hdr">
+    <div>
+      <div class="sub-title">GMV MAX CHI TIET <span class="sub-badge">479.7M DT · 35.4M Ads · ROI 13.5</span></div>
+      <div style="font-size: 9px; color: #94A3B8;">Ads spend (cot) vs Doanh thu (duong) theo ngay</div>
+    </div>
+  </div>
+
+  <div class="mini-chart-wrap">
+    <div class="mini-bars" id="gmvBars"></div>
+    <div class="line-overlay" id="gmvLineOverlay"></div>
+  </div>
+
+  <div style="display:flex; gap:2px; padding: 0 4px;" id="gmvDates"></div>
+
+  <div class="legend">
+    <div class="leg"><div class="dot" style="background:#FF9500"></div>GMV Max Spend</div>
+    <div class="leg"><div class="line-dot" style="background:#16A34A"></div>GMV Max Revenue</div>
+    <div class="leg-total">ROI: 13.5</div>
+  </div>
+</div>
+
+<script>
+const days = [];
+for (let i = 1; i <= 25; i++) {
+  const d = String(i).padStart(2, "0");
+  const bm = i <= 16 ? 2300 + Math.random()*300 : 1300 + Math.random()*200;
+  const gmv = 1200 + Math.random()*500;
+  const rev = (bm + gmv) * (14 + Math.random()*8);
+  const gmvRev = gmv * (12 + Math.random()*4);
+  days.push({ d, bm: Math.round(bm), gmv: Math.round(gmv), rev: Math.round(rev), gmvRev: Math.round(gmvRev) });
+}
+
+const fmt = (v) => v >= 1000 ? (v/1000).toFixed(1)+"M" : v+"K";
+const maxSpend = Math.max(...days.map(d => d.bm + d.gmv));
+const maxRev = Math.max(...days.map(d => d.rev));
+const barH = 160;
+
+// ═══ MAIN CHART ═══
+const mainBars = document.getElementById("mainBars");
+const mainDates = document.getElementById("mainDates");
+
+days.forEach((d, i) => {
+  const total = d.bm + d.gmv;
+  const bmH = (d.bm / maxSpend) * barH * 0.5;
+  const gmvH = (d.gmv / maxSpend) * barH * 0.5;
+
+  mainBars.innerHTML += `
+    <div class="col">
+      <div class="top-label">${fmt(total)}</div>
+      <div class="stacked">
+        <div class="bar bar-gmv" style="height:${gmvH}px"></div>
+        <div class="bar bar-bm" style="height:${bmH}px; border-radius: 0 0 2px 2px;"></div>
+      </div>
+    </div>
+  `;
+  mainDates.innerHTML += `<div style="flex:1; text-align:center; font-size:7px; color:#94A3B8;">04-${d.d}</div>`;
+});
+
+// Revenue line
+const svgNS = "http://www.w3.org/2000/svg";
+const lineContainer = document.getElementById("lineOverlay");
+const svg = document.createElementNS(svgNS, "svg");
+svg.setAttribute("viewBox", `0 0 ${days.length * 40} 200`);
+svg.setAttribute("preserveAspectRatio", "none");
+svg.style.width = "100%";
+svg.style.height = "100%";
+
+let points = days.map((d, i) => {
+  const x = i * 40 + 20;
+  const y = 200 - (d.rev / maxRev) * 180;
+  return `${x},${y}`;
+});
+
+// Area fill
+const area = document.createElementNS(svgNS, "polygon");
+area.setAttribute("points", `0,200 ${points.join(" ")} ${(days.length-1)*40+20},200`);
+area.setAttribute("fill", "rgba(22,163,74,0.08)");
+svg.appendChild(area);
+
+// Line
+const line = document.createElementNS(svgNS, "polyline");
+line.setAttribute("points", points.join(" "));
+line.setAttribute("fill", "none");
+line.setAttribute("stroke", "#16A34A");
+line.setAttribute("stroke-width", "2");
+svg.appendChild(line);
+
+// Dots
+days.forEach((d, i) => {
+  const x = i * 40 + 20;
+  const y = 200 - (d.rev / maxRev) * 180;
+  const circle = document.createElementNS(svgNS, "circle");
+  circle.setAttribute("cx", x);
+  circle.setAttribute("cy", y);
+  circle.setAttribute("r", "3");
+  circle.setAttribute("fill", "#16A34A");
+  svg.appendChild(circle);
+});
+
+lineContainer.appendChild(svg);
+
+// ═══ GMV MAX MINI CHART ═══
+const gmvBars = document.getElementById("gmvBars");
+const gmvDates = document.getElementById("gmvDates");
+const maxGmvSpend = Math.max(...days.map(d => d.gmv));
+const maxGmvRev = Math.max(...days.map(d => d.gmvRev));
+const miniH = 90;
+
+days.forEach((d, i) => {
+  const h = (d.gmv / maxGmvSpend) * miniH;
+  const roi = d.gmv > 0 ? d.gmvRev / d.gmv : 0;
+  const barColor = roi >= 10 ? "#16A34A" : "#DC2626";
+  const roiLabel = roi.toFixed(1);
+  gmvBars.innerHTML += `
+    <div class="mini-col">
+      <div class="mini-top" style="color:${barColor}; font-weight:700;">${roiLabel}x</div>
+      <div class="mini-bar" style="height:${h}px; background:${barColor};"></div>
+    </div>
+  `;
+  gmvDates.innerHTML += `<div style="flex:1; text-align:center; font-size:6.5px; color:#94A3B8;">${d.d}</div>`;
+});
+
+// GMV Revenue line
+const gmvLineContainer = document.getElementById("gmvLineOverlay");
+const svg2 = document.createElementNS(svgNS, "svg");
+svg2.setAttribute("viewBox", `0 0 ${days.length * 40} 120`);
+svg2.setAttribute("preserveAspectRatio", "none");
+svg2.style.width = "100%";
+svg2.style.height = "100%";
+
+let gmvPoints = days.map((d, i) => {
+  const x = i * 40 + 20;
+  const y = 120 - (d.gmvRev / maxGmvRev) * 100;
+  return `${x},${y}`;
+});
+
+const area2 = document.createElementNS(svgNS, "polygon");
+area2.setAttribute("points", `0,120 ${gmvPoints.join(" ")} ${(days.length-1)*40+20},120`);
+area2.setAttribute("fill", "rgba(22,163,74,0.06)");
+svg2.appendChild(area2);
+
+const line2 = document.createElementNS(svgNS, "polyline");
+line2.setAttribute("points", gmvPoints.join(" "));
+line2.setAttribute("fill", "none");
+line2.setAttribute("stroke", "#16A34A");
+line2.setAttribute("stroke-width", "1.5");
+svg2.appendChild(line2);
+
+days.forEach((d, i) => {
+  const x = i * 40 + 20;
+  const y = 120 - (d.gmvRev / maxGmvRev) * 100;
+  const c = document.createElementNS(svgNS, "circle");
+  c.setAttribute("cx", x); c.setAttribute("cy", y); c.setAttribute("r", "2");
+  c.setAttribute("fill", "#16A34A");
+  svg2.appendChild(c);
+});
+
+gmvLineContainer.appendChild(svg2);
+</script>
+
+</body>
+</html>

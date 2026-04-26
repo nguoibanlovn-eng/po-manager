@@ -79,6 +79,9 @@ const STEP_FORM_FIELDS: Record<string, FieldDef[]> = {
     { key: "description",       label: "Yêu cầu chi tiết", type: "textarea", required: true },
     { key: "ref_links",         label: "Link tham khảo", type: "url" },
   ],
+  "Triển khai": [
+    { key: "evaluation",        label: "Đánh giá chung", type: "textarea" },
+  ],
   // "Đặt mẫu" (production) — chỉ tạo PO, render custom trong modal
   // "Chờ mẫu về" — hiện PO status, render custom trong modal
   "Nhận mẫu & QC": [
@@ -324,7 +327,17 @@ function ModalInner({
   function save() {
     startTransition(async () => {
       const newData = { ...clearRevision(data), ...formData, proposer_role: proposerRole, priority, market_fields: marketFields, supply_fields: supplyFields, [stepsKey]: JSON.stringify(buildUpdatedSteps()) };
-      await saveRdItemAction(item.id, { name: itemName, data: newData });
+      const isNew = item.id === "__NEW__";
+      const r = await saveRdItemAction(isNew ? null : item.id, {
+        name: itemName,
+        stage: item.stage || initSteps[0]?.label || "Đề xuất",
+        rd_type: (data.rd_type as string) || null,
+        data: newData,
+      });
+      if (isNew && r.ok) {
+        // Update item.id so subsequent saves use the real ID
+        (item as Record<string, unknown>).id = r.id;
+      }
       setDirty(false);
       onRefresh();
     });
@@ -345,6 +358,9 @@ function ModalInner({
       if (!deadline) missing.push("Deadline");
       if (!String(fd.description || d.description || "").trim()) missing.push(sl === "Tạo yêu cầu" ? "Yêu cầu chi tiết" : "Mô tả sản phẩm");
       if (sl !== "Tạo yêu cầu" && !String(fd.reason || d.reason || "").trim()) missing.push("Lý do đề xuất");
+    } else if (sl === "Triển khai") {
+      // Production step 2: checklist + đánh giá chung
+      if (!String(fd.evaluation || d.evaluation || "").trim()) missing.push("Đánh giá chung");
     } else if (sl === "Nghiên cứu") {
       if (!String(fd.usp || d.usp || "").trim()) missing.push("Phân tích USP");
       if (!Number(fd.price_buy || d.price_buy || 0)) missing.push("Giá nhập dự kiến");
@@ -431,7 +447,16 @@ function ModalInner({
         (data as Record<string, unknown>)[nextDlKey] = nextDl;
       }
       Object.assign(data, autoDeadline, formData);
-      await saveRdItemAction(item.id, { name: itemName, stage: nextStepLabel, data: newData });
+      const isNew = item.id === "__NEW__";
+      const r = await saveRdItemAction(isNew ? null : item.id, {
+        name: itemName,
+        stage: nextStepLabel,
+        rd_type: (data.rd_type as string) || null,
+        data: newData,
+      });
+      if (isNew && r.ok) {
+        (item as Record<string, unknown>).id = r.id;
+      }
       setDirty(false);
       onRefresh();
       if (isFinished) {
@@ -721,7 +746,7 @@ function ModalInner({
               const stepLabel = step.label;
               let dlLabel = ""; let dlValue = "";
 
-              if (["Xác nhận", "NV nhận việc", "Nghiên cứu", "Duyệt ĐX"].includes(stepLabel)) {
+              if (["Xác nhận", "NV nhận việc", "Nghiên cứu", "Triển khai", "Duyệt ĐX"].includes(stepLabel)) {
                 dlLabel = "Deadline NC (từ Đề xuất)"; dlValue = dxDeadline;
               } else if (stepLabel === "Duyệt NC") {
                 dlLabel = "Deadline NC (từ Đề xuất)"; dlValue = dxDeadline;
@@ -1043,7 +1068,7 @@ function ModalInner({
                       if (data.sample_price_usd) summaryLines.push({ label: "Giá mẫu", value: `$${Number(data.sample_price_usd).toLocaleString("vi-VN")}` });
                       if (data.linked_sample_po) summaryLines.push({ label: "Đơn PO", value: String(data.linked_sample_po), color: "#2563EB" });
                       if (data.sample_eta) summaryLines.push({ label: "ETA hàng về", value: String(data.sample_eta) });
-                    } else if (step.label === "Nghiên cứu") {
+                    } else if (step.label === "Triển khai" || step.label === "Nghiên cứu") {
                       if (data.supplier_name) summaryLines.push({ label: "NCC", value: String(data.supplier_name) });
                       if (data.price_buy) summaryLines.push({ label: "Giá nhập", value: `${Number(data.price_buy).toLocaleString("vi-VN")}đ` });
                       if (data.price_sell) summaryLines.push({ label: "Giá bán", value: `${Number(data.price_sell).toLocaleString("vi-VN")}đ` });
@@ -1417,18 +1442,69 @@ function ModalInner({
                 {/* Deadline QC tự tính từ ETA + 3 ngày — không cần chọn thủ công */}
               </>
               );
-            })() : step.label === "Nghiên cứu" ? (
+            })() : step.label === "Triển khai" ? (
+              <>
+                {/* Tóm tắt yêu cầu từ Tạo yêu cầu */}
+                {(data.description || data.ref_links) && (
+                  <div style={{ padding: "8px 12px", background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, marginBottom: 14, fontSize: 11 }}>
+                    <div style={{ fontWeight: 700, color: "#475569", marginBottom: 4 }}>Yêu cầu từ bước 1</div>
+                    <div style={{ fontWeight: 600, color: "#18181B", marginBottom: 2 }}>{itemName}</div>
+                    {!!data.description && <div style={{ color: "#64748B", marginBottom: 2 }}>{String(data.description)}</div>}
+                    {!!data.ref_links && (
+                      <a href={String(data.ref_links)} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: "#7C3AED", textDecoration: "none" }}>
+                        Link tham khảo
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {/* Checklist từ bước 1 "Tạo yêu cầu" — NV check off + thêm mục */}
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: ".3px", marginBottom: 5 }}>
+                    Checklist ({checklist.filter(c => c.checked).length}/{checklist.length})
+                  </div>
+                  {checklist.map((c, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 4, padding: "4px 0" }}>
+                      <input type="checkbox" checked={c.checked} onChange={() => {
+                        const n = [...checklist]; n[i] = { ...n[i], checked: !n[i].checked }; setChecklist(n); setDirty(true);
+                      }} style={{ marginTop: 3, accentColor: "#7C3AED" }} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 11, color: c.checked ? "#94A3B8" : "#18181B", textDecoration: c.checked ? "line-through" : "none" }}>{c.text}</div>
+                        <input value={c.note || ""} onChange={(e) => {
+                          const n = [...checklist]; n[i] = { ...n[i], note: e.target.value }; setChecklist(n); setDirty(true);
+                        }} placeholder="Ghi chú..." style={{ ...S.input, fontSize: 10, padding: "2px 6px", marginTop: 2, color: "#64748B" }} />
+                      </div>
+                      <button type="button" onClick={() => { setChecklist(checklist.filter((_, j) => j !== i)); setDirty(true); }}
+                        style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 12, padding: 0 }}>✕</button>
+                    </div>
+                  ))}
+                  <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
+                    <input value={newCheckLabel} onChange={(e) => setNewCheckLabel(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter" && newCheckLabel.trim()) { e.preventDefault(); addCheckItem(); } }}
+                      placeholder="Thêm mục..." style={{ ...S.input, flex: 1, fontSize: 10 }} />
+                    <button type="button" onClick={addCheckItem}
+                      style={{ padding: "3px 8px", borderRadius: 5, fontSize: 11, fontWeight: 600, border: "1px solid #7C3AED", background: "#F5F3FF", color: "#7C3AED", cursor: "pointer" }}>+</button>
+                  </div>
+                </div>
+
+                {/* Đánh giá chung */}
+                <div style={S.section}>
+                  <div style={S.label}>Đánh giá chung</div>
+                  <textarea value={formData.evaluation || ""} onChange={(e) => setField("evaluation", e.target.value)} placeholder="Nhận xét, kết luận sau triển khai..." style={{ ...S.textarea, minHeight: 50 }} />
+                </div>
+              </>
+            ) : step.label === "Nghiên cứu" ? (
               <>
                 {/* Tóm tắt yêu cầu từ Đề xuất */}
                 {(data.description || data.reason || data.ref_links) && (
                   <div style={{ padding: "8px 12px", background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, marginBottom: 14, fontSize: 11 }}>
-                    <div style={{ fontWeight: 700, color: "#475569", marginBottom: 4 }}>📋 Yêu cầu nghiên cứu</div>
+                    <div style={{ fontWeight: 700, color: "#475569", marginBottom: 4 }}>Yêu cầu nghiên cứu</div>
                     <div style={{ fontWeight: 600, color: "#18181B", marginBottom: 2 }}>{itemName}</div>
                     {!!data.description && <div style={{ color: "#64748B", marginBottom: 2 }}>{String(data.description)}</div>}
                     {!!data.reason && <div style={{ color: "#64748B", marginBottom: 2 }}>Lý do: {String(data.reason)}</div>}
                     {!!data.ref_links && (
                       <a href={String(data.ref_links)} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: "#7C3AED", textDecoration: "none" }}>
-                        Link tham khảo ↗
+                        Link tham khảo
                       </a>
                     )}
                   </div>
@@ -1506,7 +1582,7 @@ function ModalInner({
             ) : null}
 
             {/* ── QC Checklist (for Hàng về step) — skip if custom rendered ── */}
-            {step.label !== "Hàng về" && step.label !== "QC & Nhận hàng" && step.label !== "Nhập hàng" && step.label !== "Đặt hàng" && step.label !== "Đặt mẫu" && step.label !== "Chờ mẫu về" && (checklist.length > 0 || isQcStep || step.label === "Tạo yêu cầu" || step.label === "Đề xuất") && (
+            {step.label !== "Hàng về" && step.label !== "QC & Nhận hàng" && step.label !== "Nhập hàng" && step.label !== "Đặt hàng" && step.label !== "Đặt mẫu" && step.label !== "Chờ mẫu về" && step.label !== "Triển khai" && (checklist.length > 0 || isQcStep || step.label === "Tạo yêu cầu" || step.label === "Đề xuất") && (
               <div style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: ".3px", marginBottom: 5 }}>
                   {isQcStep ? `QC Checklist (${passCount}/${checklist.length} Pass${failCount > 0 ? ` · ${failCount} Fail` : ""})` : `Checklist (${checkedCount}/${checklist.length})`}

@@ -3,10 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { formatDate } from "@/lib/format";
-import { type RdItem, getSteps } from "@/lib/db/rd-types";
+import { type RdItem, getSteps, createBlankSteps } from "@/lib/db/rd-types";
 import type { UserRef } from "@/lib/db/users";
 import type { SupplierRef } from "@/lib/db/suppliers";
-import { deleteRdItemAction, saveRdItemAction, createBlankRdItemAction } from "./actions";
+import { deleteRdItemAction, saveRdItemAction } from "./actions";
 import RdDetailModal from "./RdDetailModal";
 
 // Stage badges theo GAS gốc
@@ -14,6 +14,7 @@ const STAGE_STYLE: Record<string, { bg: string; color: string; border: string }>
   "Đề xuất":     { bg: "#EDE9FE", color: "#6D28D9", border: "#DDD6FE" },
   "Xác nhận":    { bg: "#FEF3C7", color: "#92400E", border: "#FCD34D" },
   "Nghiên cứu":  { bg: "#EFF6FF", color: "#1D4ED8", border: "#BFDBFE" },
+  "Triển khai":   { bg: "#EFF6FF", color: "#1D4ED8", border: "#BFDBFE" },
   "Duyệt NC":    { bg: "#FEF3C7", color: "#92400E", border: "#FCD34D" },
   "Duyệt":       { bg: "#FEF3C7", color: "#92400E", border: "#FCD34D" },
   "Đặt mẫu":     { bg: "#DCFCE7", color: "#15803D", border: "#86EFAC" },
@@ -48,7 +49,7 @@ function stageStyleFor(stage: string | null | undefined) {
 // Progress % theo stage — research workflow (8 bước)
 const RESEARCH_STEPS = ["Đề xuất", "Xác nhận", "Nghiên cứu", "Duyệt NC", "Đặt mẫu", "Hàng về", "Duyệt mẫu", "Nhập hàng"];
 const PRODUCTION_STEPS = [
-  "Tạo yêu cầu", "Nghiên cứu", "Duyệt NC", "Đặt mẫu",
+  "Tạo yêu cầu", "Triển khai", "Duyệt NC", "Đặt mẫu",
   "Chờ mẫu về", "Nhận mẫu & QC", "Duyệt mẫu", "Đặt hàng",
 ];
 
@@ -198,13 +199,28 @@ export default function RdView({ items, users = [], suppliers = [], currentUserR
         </div>
 
         <div className="row" style={{ gap: 6 }}>
-          <button type="button" className="btn btn-primary btn-sm" disabled={pending} onClick={() => {
-            startTransition(async () => {
-              const rdType = tab === "production" ? "production" : "research";
-              const r = await createBlankRdItemAction(rdType);
-              if (r.ok && r.item) { setDetailItem(r.item); router.refresh(); }
-              else alert("Lỗi tạo SP");
-            });
+          <button type="button" className="btn btn-primary btn-sm" onClick={() => {
+            const rdType = tab === "production" ? "production" : "research";
+            const stepsKey = rdType === "research" ? "new_steps_json" : "mfg_steps_json";
+            const steps = createBlankSteps(rdType);
+            const firstStepLabel = rdType === "production" ? "Tạo yêu cầu" : "Đề xuất";
+            const tempItem: RdItem = {
+              id: "__NEW__",
+              name: "SP mới",
+              source_url: null,
+              stage: firstStepLabel,
+              note: null,
+              created_by: currentUserEmail,
+              created_at: new Date().toISOString().substring(0, 10),
+              updated_at: null,
+              rd_type: rdType,
+              current_step: null,
+              step_completed_at: null,
+              step_data: null,
+              checklists: null,
+              data: { rd_type: rdType, [stepsKey]: steps },
+            };
+            setDetailItem(tempItem);
           }}>
             + Đề xuất SP
           </button>
