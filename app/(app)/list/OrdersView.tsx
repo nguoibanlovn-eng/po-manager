@@ -49,7 +49,7 @@ export default function OrdersView({
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return orders.filter((o) => {
-      if (stage && o.stage !== stage) return false;
+      if (stage && !q && o.stage !== stage) return false; // skip stage filter when searching
       if (pay && !String(o.pay_status || "").includes(pay)) return false;
       if (goodsType && String(o.goods_type || "") !== goodsType) return false;
       if (eta) {
@@ -162,8 +162,9 @@ export default function OrdersView({
         ))}
       </div>
 
-      {/* Filters — 1 dòng */}
+      {/* Filters — tìm kiếm đầu tiên */}
       <div style={{ display: "flex", gap: 6, marginBottom: 10, alignItems: "center" }}>
+        <input type="text" placeholder="🔍 Tìm đơn, NCC, SP... (tất cả tab)" value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "5px 9px", fontSize: 12, border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", width: 220 }} />
         <select value={pay} onChange={(e) => setPay(e.target.value)} style={{ padding: "5px 8px", fontSize: 12, minWidth: 110 }}>
           <option value="">Thanh toán: Tất cả</option>
           <option value="Chưa thanh toán">Chưa TT</option>
@@ -184,7 +185,6 @@ export default function OrdersView({
           <option value="overdue">Quá hạn</option>
           <option value="soon">Sắp đến hạn</option>
         </select>
-        <input type="text" placeholder="Tìm đơn, NCC, SP..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "5px 9px", fontSize: 12, border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", flex: 1, minWidth: 140 }} />
       </div>
 
       {/* Pending task cards */}
