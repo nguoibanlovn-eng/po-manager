@@ -206,8 +206,22 @@ export default function DashDayMobile(p: DashDayMobileProps) {
           })}
         </div>
 
-        {p.channels.map(ch => {
-          const change = pctChange(ch.rev, ch.revYesterday);
+        {/* Quick range filter for channels */}
+        <div style={{ display: "flex", gap: 4, marginBottom: 8, overflowX: "auto", paddingBottom: 2 }}>
+          {DAY_CH_RANGES.map(r => (
+            <button key={r.key} onClick={() => loadChRange(r.key)} style={{
+              padding: "4px 10px", borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: "pointer",
+              border: chRange === r.key ? "1.5px solid #7C3AED" : "1px solid #E2E8F0",
+              background: chRange === r.key ? "#F3E8FF" : "#fff",
+              color: chRange === r.key ? "#7C3AED" : "#64748B",
+              whiteSpace: "nowrap", fontFamily: "inherit",
+            }}>{r.label}</button>
+          ))}
+        </div>
+        {chLoading && <div style={{ textAlign: "center", fontSize: 11, color: "#7C3AED", marginBottom: 6 }}>Đang tải...</div>}
+
+        {displayChannels.map(ch => {
+          const change = chRange === "today" ? pctChange(ch.rev, ch.revYesterday) : 0;
           return (
             <div key={ch.name} style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12, padding: "10px 12px", marginBottom: 6 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
