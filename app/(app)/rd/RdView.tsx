@@ -231,34 +231,32 @@ export default function RdView({ items, users = [], suppliers = [], currentUserR
         </div>
       </div>
 
-      {/* Filter bar */}
-      <div style={{ display: "flex", gap: 6, marginBottom: 12, alignItems: "center", flexWrap: "wrap" }}>
-        <input
-          placeholder="Tìm sản phẩm..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ width: 160, padding: "5px 10px", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 11, outline: "none" }}
-        />
-        <select value={stageFilter} onChange={(e) => setStageFilter(e.target.value)} style={{ fontSize: 11, padding: "5px 8px", border: "1px solid #E2E8F0", borderRadius: 6 }}>
-          <option value="">Tất cả giai đoạn</option>
+      {/* Filter bar — 1 dòng */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 12, alignItems: "center" }}>
+        <input placeholder="Tìm SP..." value={search} onChange={(e) => setSearch(e.target.value)}
+          style={{ width: 130, padding: "5px 10px", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 11, outline: "none" }} />
+        <select value={stageFilter} onChange={(e) => setStageFilter(e.target.value)}
+          style={{ fontSize: 11, padding: "5px 8px", border: "1px solid #E2E8F0", borderRadius: 6, maxWidth: 130 }}>
+          <option value="">Giai đoạn</option>
           {allStages.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
-        <select value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)} style={{ fontSize: 11, padding: "5px 8px", border: "1px solid #E2E8F0", borderRadius: 6 }}>
-          <option value="">Tất cả người</option>
+        <select value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)}
+          style={{ fontSize: 11, padding: "5px 8px", border: "1px solid #E2E8F0", borderRadius: 6, maxWidth: 120 }}>
+          <option value="">Người</option>
           {allAssignees.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
-        <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)} style={{ fontSize: 11, padding: "5px 8px", border: "1px solid #E2E8F0", borderRadius: 6 }}>
-          <option value="">Tất cả ưu tiên</option>
-          <option value="high">Ưu tiên cao</option>
-          <option value="normal">Bình thường</option>
+        <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}
+          style={{ fontSize: 11, padding: "5px 8px", border: "1px solid #E2E8F0", borderRadius: 6, maxWidth: 110 }}>
+          <option value="">Ưu tiên</option>
+          <option value="high">Cao</option>
+          <option value="normal">Thường</option>
           <option value="low">Thấp</option>
         </select>
         {(stageFilter || assigneeFilter || priorityFilter || search) && (
-          <button className="btn btn-ghost" style={{ fontSize: 10, padding: "4px 8px" }} onClick={() => { setStageFilter(""); setAssigneeFilter(""); setPriorityFilter(""); setSearch(""); }}>
-            Xoá lọc
-          </button>
+          <button className="btn btn-ghost" style={{ fontSize: 10, padding: "4px 8px" }}
+            onClick={() => { setStageFilter(""); setAssigneeFilter(""); setPriorityFilter(""); setSearch(""); }}>✕</button>
         )}
-        <span style={{ marginLeft: "auto", fontSize: 10, color: "#94A3B8" }}>{filtered.length}/{activeItems.length} SP</span>
+        <span style={{ marginLeft: "auto", fontSize: 10, color: "#94A3B8", whiteSpace: "nowrap" }}>{filtered.length}/{activeItems.length}</span>
       </div>
 
       {editing && (
