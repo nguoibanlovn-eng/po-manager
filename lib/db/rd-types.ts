@@ -146,10 +146,11 @@ export const PRODUCTION_PIPELINE: PipelineStep[] = [
   { key: "tao_yc",        label: "Tạo yêu cầu",     who: "proposer" },
   { key: "nghien_cuu",    label: "Nghiên cứu",       who: "worker" },
   { key: "duyet_nc",      label: "Duyệt NC",         who: "leader" },
-  { key: "trien_khai",    label: "Triển khai SP",     who: "worker" },   // SX mẫu + TK bao bì
-  { key: "duyet_tk",      label: "Duyệt triển khai", who: "leader" },   // Duyệt SX mẫu + TK bao bì riêng
-  { key: "nhan_mau",      label: "Nhận mẫu & QC",    who: "worker" },   // QC checklist, pass/fail/huỷ
-  { key: "dat_hang",      label: "Đặt hàng",         who: "worker" },   // Tạo PO nhập
+  { key: "dat_mau",       label: "Đặt mẫu",         who: "worker" },    // Tạo PO mẫu
+  { key: "cho_mau_ve",    label: "Chờ mẫu về",      who: "worker" },    // Chờ PO cập nhật
+  { key: "nhan_mau",      label: "Nhận mẫu & QC",   who: "worker" },    // QC checklist, pass/fail/huỷ
+  { key: "duyet_mau",     label: "Duyệt mẫu",       who: "leader" },    // Leader duyệt mẫu
+  { key: "dat_hang",      label: "Đặt hàng",        who: "worker" },    // Tạo PO nhập
 ];
 
 export function getPipeline(rdType: string | null | undefined) {

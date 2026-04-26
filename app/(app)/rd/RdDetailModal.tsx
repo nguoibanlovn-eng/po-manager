@@ -80,39 +80,15 @@ const STEP_FORM_FIELDS: Record<string, FieldDef[]> = {
     { key: "reason",            label: "Mục đích / lý do", type: "textarea", required: true },
     { key: "ref_links",         label: "Link tham khảo", type: "url" },
   ],
-  "Triển khai SP": [
-    // Đặt sản xuất mẫu
-    { key: "mfg_what",          label: "Đặt sản xuất gì", type: "textarea", required: true },
-    { key: "mfg_supplier",      label: "NCC / Nơi sản xuất", required: true },
-    { key: "mfg_contact",       label: "Liên hệ NCC" },
-    { key: "mfg_qty",           label: "Số lượng mẫu", type: "number" },
-    { key: "mfg_price",         label: "Giá sản xuất", type: "number" },
-    { key: "mfg_order_date",    label: "Ngày đặt", type: "date" },
-    { key: "mfg_eta",           label: "Dự kiến hàng về", type: "date" },
-    { key: "mfg_assignee",      label: "Ai phụ trách" },
-    // Thiết kế bao bì
-    { key: "design_link",       label: "Link thiết kế bao bì", type: "url" },
-    { key: "design_note",       label: "Ghi chú thiết kế", type: "textarea" },
-  ],
-  "Duyệt triển khai": [
-    { key: "approve_mfg_verdict",    label: "Duyệt sản xuất mẫu", type: "verdict" },
-    { key: "approve_mfg_note",       label: "Nhận xét SX mẫu", type: "textarea" },
-    { key: "approve_design_verdict", label: "Duyệt thiết kế bao bì", type: "verdict" },
-    { key: "approve_design_note",    label: "Nhận xét thiết kế", type: "textarea" },
-  ],
+  // "Đặt mẫu" (production) — chỉ tạo PO, render custom trong modal
+  // "Chờ mẫu về" — hiện PO status, render custom trong modal
   "Nhận mẫu & QC": [
     { key: "qc_actual",         label: "Mô tả mẫu thực tế", type: "textarea", required: true },
     { key: "qc_score",          label: "Điểm QC (/10)" },
     { key: "qc_evaluation",     label: "Đánh giá chung", type: "textarea", required: true },
   ],
-  "Đặt hàng": [
-    { key: "bulk_supplier",     label: "NCC nhập hàng" },
-    { key: "bulk_contact",      label: "Liên hệ NCC" },
-    { key: "bulk_qty",          label: "Số lượng nhập", type: "number" },
-    { key: "bulk_price",        label: "Giá nhập (đ)", type: "number" },
-    { key: "bulk_eta",          label: "Dự kiến hàng về", type: "date" },
-    { key: "lesson_note",       label: "Ghi chú", type: "textarea" },
-  ],
+  // "Duyệt mẫu" — render custom approval UI (giống Duyệt NC)
+  // "Đặt hàng" (production) — chỉ tạo PO, render custom trong modal
 };
 
 /* ─── Number formatting (1234567 → "1.234.567") ────────── */
@@ -380,12 +356,10 @@ function ModalInner({
       if (!String(fd.deadline_dat_mau || d.deadline_dat_mau || "")) missing.push("Deadline đặt mẫu");
     } else if (sl === "Đặt mẫu") {
       if (!String(d.linked_sample_po || "")) missing.push("Tạo đơn PO mẫu");
-    } else if (sl === "Triển khai SP") {
-      if (!String(fd.mfg_what || d.mfg_what || "").trim()) missing.push("Đặt sản xuất gì");
-      if (!String(fd.mfg_supplier || d.mfg_supplier || "").trim()) missing.push("NCC / Nơi sản xuất");
-    } else if (sl === "Duyệt triển khai") {
-      if (!String(fd.approve_mfg_verdict || d.approve_mfg_verdict || "").trim()) missing.push("Duyệt sản xuất mẫu");
-      if (!String(fd.approve_design_verdict || d.approve_design_verdict || "").trim()) missing.push("Duyệt thiết kế bao bì");
+    } else if (sl === "Đặt mẫu" && isProduction(item)) {
+      if (!String(d.linked_sample_po || "")) missing.push("Tạo đơn PO mẫu");
+    } else if (sl === "Chờ mẫu về") {
+      // Bước chờ — không cần validation
     } else if (sl === "Hàng về" || sl === "QC & Nhận hàng" || sl === "Nhận mẫu & QC") {
       if (!String(fd.qc_actual || d.qc_actual || "").trim()) missing.push("Mô tả mẫu thực tế");
       const evaluated = checklist.filter(c => c.verdict === "pass" || c.verdict === "fail");
@@ -415,7 +389,6 @@ function ModalInner({
       const APPROVAL_STEPS: Record<string, { assignKey: string; dlKey: string }> = {
         "Duyệt NC": { assignKey: "assign_dat_mau", dlKey: "deadline_dat_mau" },
         "Duyệt mẫu": { assignKey: "assign_nhap_hang", dlKey: "deadline_nhap_hang" },
-        "Duyệt triển khai": { assignKey: "assign_nhan_mau", dlKey: "deadline_nhan_mau" },
       };
       const approvalCfg = APPROVAL_STEPS[step.label];
       const isApprovalWithAssign = !!approvalCfg;
@@ -1132,8 +1105,92 @@ function ModalInner({
             </div>
             )}
 
-            {/* Form fields — custom for Nghiên cứu / Đặt mẫu, generic for others */}
-            {step.label === "Đặt mẫu" ? (() => {
+            {/* ── Production: Đặt mẫu — chỉ nút PO ── */}
+            {step.label === "Đặt mẫu" && isProduction(item) ? (() => {
+              const linkedPo = String(data.linked_sample_po || "");
+              return (
+                <div style={{ marginBottom: 14 }}>
+                  {!linkedPo ? (
+                    <div style={{ padding: 20, border: "2px dashed #C4B5FD", borderRadius: 10, textAlign: "center", cursor: "pointer" }}
+                      onClick={() => openPoForm("sample")}>
+                      <div style={{ fontSize: 28, marginBottom: 6 }}>📦</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#7C3AED" }}>Tạo đơn PO đặt mẫu</div>
+                      <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 4 }}>Đơn PO sẽ tạo bên mục Đơn hàng</div>
+                    </div>
+                  ) : (
+                    <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 8, padding: 12 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ fontSize: 20 }}>✅</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: "#15803D" }}>{linkedPo}</div>
+                          <div style={{ fontSize: 10, color: "#475569" }}>{item.name}</div>
+                        </div>
+                        <a href={`/list?q=${linkedPo}`} style={{ fontSize: 10, color: "#7C3AED", fontWeight: 600, textDecoration: "none", padding: "4px 8px", background: "#F5F3FF", borderRadius: 5 }}>Xem đơn ↗</a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()
+
+            /* ── Production: Chờ mẫu về — hiện PO status ── */
+            : step.label === "Chờ mẫu về" ? (() => {
+              const linkedPo = String(data.linked_sample_po || "");
+              const eta = String(data.sample_eta || "");
+              return (
+                <div style={{ marginBottom: 14 }}>
+                  {linkedPo && (
+                    <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 8, padding: 12, marginBottom: 12 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ fontSize: 20 }}>📦</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: "#1D4ED8" }}>{linkedPo}</div>
+                          <div style={{ fontSize: 10, color: "#475569" }}>{item.name}{eta ? ` · ETA: ${eta}` : ""}</div>
+                        </div>
+                        <a href={`/list?q=${linkedPo}`} style={{ fontSize: 10, color: "#7C3AED", fontWeight: 600, textDecoration: "none", padding: "4px 8px", background: "#F5F3FF", borderRadius: 5 }}>Xem đơn ↗</a>
+                      </div>
+                    </div>
+                  )}
+                  <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 8, padding: 16, textAlign: "center" }}>
+                    <div style={{ fontSize: 28, marginBottom: 6 }}>⏳</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1D4ED8" }}>Đang chờ hàng mẫu về</div>
+                    {eta && <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>ETA: {eta}</div>}
+                    <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 6 }}>Khi hàng về, bấm chuyển bước QC</div>
+                  </div>
+                </div>
+              );
+            })()
+
+            /* ── Production: Đặt hàng — chỉ nút PO ── */
+            : (step.label === "Đặt hàng" && isProduction(item)) ? (() => {
+              const linkedPo = String(data.linked_bulk_po || "");
+              return (
+                <div style={{ marginBottom: 14 }}>
+                  {!linkedPo ? (
+                    <div style={{ padding: 20, border: "2px dashed #C4B5FD", borderRadius: 10, textAlign: "center", cursor: "pointer" }}
+                      onClick={() => openPoForm("bulk")}>
+                      <div style={{ fontSize: 28, marginBottom: 6 }}>📦</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#7C3AED" }}>Tạo đơn PO nhập hàng</div>
+                      <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 4 }}>Đơn PO sẽ tạo bên mục Đơn hàng</div>
+                    </div>
+                  ) : (
+                    <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 8, padding: 12 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ fontSize: 20 }}>✅</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: "#15803D" }}>{linkedPo}</div>
+                          <div style={{ fontSize: 10, color: "#475569" }}>{item.name}</div>
+                        </div>
+                        <a href={`/list?q=${linkedPo}`} style={{ fontSize: 10, color: "#7C3AED", fontWeight: 600, textDecoration: "none", padding: "4px 8px", background: "#F5F3FF", borderRadius: 5 }}>Xem đơn ↗</a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()
+
+            /* ── Research: Đặt mẫu (existing) ── */
+            : step.label === "Đặt mẫu" ? (() => {
               const linkedSamplePo = String(data.linked_sample_po || "");
               return (
               <>
