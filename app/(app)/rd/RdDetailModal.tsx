@@ -1370,15 +1370,22 @@ function ModalInner({
               const qcDeadlineVal = String(data.qc_deadline || deadline || "");
               return (
               <>
-                {/* Thông tin tiếp nhận — luôn cho sửa */}
+                {/* Thông tin tiếp nhận — cho sửa assignee */}
                 <div style={{ padding: "10px 14px", background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, marginBottom: 14, fontSize: 11 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                     <span style={{ fontWeight: 700, color: "#475569" }}>Tiếp nhận mẫu</span>
                     {qcConfirmed && <span style={{ fontSize: 9, color: "#16A34A", fontWeight: 600 }}>Đã xác nhận</span>}
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "3px 10px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 10px", alignItems: "center" }}>
                     <span style={{ color: "#94A3B8" }}>Người tiếp nhận:</span>
-                    <span style={{ fontWeight: 600 }}>{assigneeName || assignee || "Leader KT"}</span>
+                    <select value={assignee} onChange={(e) => {
+                      const email = e.target.value;
+                      const u = users.find(uu => uu.email === email);
+                      setAssignee(email); setAssigneeName(u ? (u.name || email) : ""); setDirty(true);
+                    }} style={{ fontSize: 11, padding: "2px 6px", border: "1px solid #E2E8F0", borderRadius: 4 }}>
+                      <option value="">— Chọn —</option>
+                      {users.map(u => <option key={u.email} value={u.email}>{u.name || u.email}</option>)}
+                    </select>
                     <span style={{ color: "#94A3B8" }}>Sản phẩm:</span>
                     <span style={{ fontWeight: 600 }}>{itemName}</span>
                     <span style={{ color: "#94A3B8" }}>Ngày về (ETA):</span>
