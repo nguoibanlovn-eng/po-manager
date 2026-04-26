@@ -95,6 +95,9 @@ export default function RdView({ items, users = [], suppliers = [], currentUserR
   const [detailItem, setDetailItem] = useState<RdItem | null>(null);
   const [tab, setTab] = useState<Tab>("research");
   const [stageFilter, setStageFilter] = useState<string>("");
+  const [assigneeFilter, setAssigneeFilter] = useState<string>("");
+  const [priorityFilter, setPriorityFilter] = useState<string>("");
+  const [search, setSearch] = useState<string>("");
 
   // Phân loại item theo rd_type trong data
   const { researchItems, productionItems } = useMemo(() => {
@@ -110,15 +113,42 @@ export default function RdView({ items, users = [], suppliers = [], currentUserR
 
   const activeItems = tab === "research" ? researchItems : productionItems;
 
-  // Filter theo stage dropdown
+  // Filter
   const filtered = useMemo(() => {
-    if (!stageFilter) return activeItems;
-    return activeItems.filter((it) => it.stage === stageFilter);
-  }, [activeItems, stageFilter]);
+    let list = activeItems;
+    if (stageFilter) list = list.filter((it) => it.stage === stageFilter);
+    if (assigneeFilter) list = list.filter((it) => {
+      const d = (it.data as Record<string, unknown> | null) || {};
+      const steps = getSteps(it);
+      const activeStep = steps.find(s => s.status === "active");
+      return String(d.assigned_name || activeStep?.assignee_name || "") === assigneeFilter;
+    });
+    if (priorityFilter) list = list.filter((it) => {
+      const d = (it.data as Record<string, unknown> | null) || {};
+      return String(d.priority || "normal") === priorityFilter;
+    });
+    if (search) {
+      const q = search.toLowerCase();
+      list = list.filter((it) => (it.name || "").toLowerCase().includes(q));
+    }
+    return list;
+  }, [activeItems, stageFilter, assigneeFilter, priorityFilter, search]);
 
   const allStages = useMemo(() => {
     const s = new Set<string>();
     activeItems.forEach((it) => { if (it.stage) s.add(it.stage); });
+    return Array.from(s).sort();
+  }, [activeItems]);
+
+  const allAssignees = useMemo(() => {
+    const s = new Set<string>();
+    activeItems.forEach((it) => {
+      const d = (it.data as Record<string, unknown> | null) || {};
+      const steps = getSteps(it);
+      const activeStep = steps.find(st => st.status === "active");
+      const name = String(d.assigned_name || activeStep?.assignee_name || "");
+      if (name) s.add(name);
+    });
     return Array.from(s).sort();
   }, [activeItems]);
 
@@ -168,11 +198,6 @@ export default function RdView({ items, users = [], suppliers = [], currentUserR
         </div>
 
         <div className="row" style={{ gap: 6 }}>
-          <select value={stageFilter} onChange={(e) => setStageFilter(e.target.value)}>
-            <option value="">Tất cả giai đoạn</option>
-            {allStages.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <button type="button" className="btn btn-ghost btn-sm">? Hướng dẫn</button>
           <button type="button" className="btn btn-primary btn-sm" disabled={pending} onClick={() => {
             startTransition(async () => {
               const rdType = tab === "production" ? "upgrade" : "research";
@@ -204,6 +229,36 @@ export default function RdView({ items, users = [], suppliers = [], currentUserR
           <div style={{ fontSize: 10, color: "#991B1B", fontWeight: 600 }}>LOẠI BỎ</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#DC2626", margin: "2px 0" }}>{stats.rejected}</div>
         </div>
+      </div>
+
+      {/* Filter bar */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 12, alignItems: "center", flexWrap: "wrap" }}>
+        <input
+          placeholder="Tìm sản phẩm..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ width: 160, padding: "5px 10px", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 11, outline: "none" }}
+        />
+        <select value={stageFilter} onChange={(e) => setStageFilter(e.target.value)} style={{ fontSize: 11, padding: "5px 8px", border: "1px solid #E2E8F0", borderRadius: 6 }}>
+          <option value="">Tất cả giai đoạn</option>
+          {allStages.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <select value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)} style={{ fontSize: 11, padding: "5px 8px", border: "1px solid #E2E8F0", borderRadius: 6 }}>
+          <option value="">Tất cả người</option>
+          {allAssignees.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)} style={{ fontSize: 11, padding: "5px 8px", border: "1px solid #E2E8F0", borderRadius: 6 }}>
+          <option value="">Tất cả ưu tiên</option>
+          <option value="high">Ưu tiên cao</option>
+          <option value="normal">Bình thường</option>
+          <option value="low">Thấp</option>
+        </select>
+        {(stageFilter || assigneeFilter || priorityFilter || search) && (
+          <button className="btn btn-ghost" style={{ fontSize: 10, padding: "4px 8px" }} onClick={() => { setStageFilter(""); setAssigneeFilter(""); setPriorityFilter(""); setSearch(""); }}>
+            Xoá lọc
+          </button>
+        )}
+        <span style={{ marginLeft: "auto", fontSize: 10, color: "#94A3B8" }}>{filtered.length}/{activeItems.length} SP</span>
       </div>
 
       {editing && (
