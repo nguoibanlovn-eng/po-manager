@@ -39,29 +39,26 @@ type Metrics = {
 
 function M(plan: LaunchPlanRow): Metrics { return (plan.metrics as Metrics) || {}; }
 
-function getProgress(m: Metrics, launchDate?: string | null): { totalTarget: number; totalActual: number; pct: number; status: string; color: string } {
+function getProgress(m: Metrics, launchDate?: string | null): { totalTarget: number; totalActual: number; pct: number; status: string; color: string; daysSinceLaunch: number } {
   const ch = m.phase4?.channels || m.sales_target?.channel_split || {};
   const actual = m.actual || {};
   const totalTarget = Object.values(ch).reduce((s, v) => s + (v || 0), 0);
   const totalActual = Object.values(actual).reduce((s, v) => s + (v || 0), 0);
   const pct = totalTarget > 0 ? Math.round((totalActual / totalTarget) * 100) : 0;
 
-  // Tính thời gian đã launch
   const now = new Date();
   const ld = launchDate ? new Date(launchDate) : null;
   const daysSinceLaunch = ld ? Math.max(0, Math.round((now.getTime() - ld.getTime()) / 86400000)) : 0;
-  const handoverDeadline = (m as Record<string, unknown>).handover_deadline as string || "";
-  const deadlinePassed = handoverDeadline ? new Date(handoverDeadline) < now : false;
 
+  // Logic: 2 ngày lập KH triển khai, 5 ngày phải có số bán → tiến độ tính sau 5 ngày
   let status: string, color: string;
-  // Mới launch (<7 ngày) hoặc chưa qua deadline → "Mới launch" / "Đang triển khai"
-  if (daysSinceLaunch < 7 && totalActual === 0) { status = "Mới launch"; color = "#2563EB"; }
-  else if (!deadlinePassed && pct < 40 && daysSinceLaunch < 14) { status = "Đang triển khai"; color = "#D97706"; }
+  if (daysSinceLaunch <= 2) { status = "Lập KH triển khai"; color = "#2563EB"; }
+  else if (daysSinceLaunch <= 5) { status = "Đang triển khai"; color = "#7C3AED"; }
   else if (pct >= 100) { status = "Vượt target"; color = "#16A34A"; }
   else if (pct >= 60) { status = "Đúng tiến độ"; color = "#3B82F6"; }
   else if (pct >= 40) { status = "Chậm"; color = "#D97706"; }
   else { status = "Cảnh báo"; color = "#DC2626"; }
-  return { totalTarget, totalActual, pct, status, color };
+  return { totalTarget, totalActual, pct, status, color, daysSinceLaunch };
 }
 
 function getPhaseChecks(m: Metrics): boolean[] {
@@ -191,7 +188,7 @@ function ReadyTab({ plans, onEdit }: { plans: LaunchPlanRow[]; onEdit: (p: Launc
    ═══════════════════════════════════════════════════════════ */
 type UserRef = { email: string; name: string | null; role: string | null };
 
-export default function LaunchPlanView({ plans, autoAdd, users = [] }: { plans: LaunchPlanRow[]; autoAdd?: { sku: string; name: string; cost: number }; users?: UserRef[] }) {
+export default function LaunchPlanView({ plans, autoAdd, users = [], currentUserRole = "" }: { plans: LaunchPlanRow[]; autoAdd?: { sku: string; name: string; cost: number }; users?: UserRef[]; currentUserRole?: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [tab, setTab] = useState<Tab>("launching");
@@ -586,7 +583,7 @@ export default function LaunchPlanView({ plans, autoAdd, users = [] }: { plans: 
           onClose={() => { setFormOpen(null); setEditPlan(null); }}
           onSaved={() => { setFormOpen(null); setEditPlan(null); router.refresh(); }}
           pending={pending} startTransition={startTransition}
-          users={users}
+          users={users} currentUserRole={currentUserRole}
         />
       )}
     </section>
@@ -866,14 +863,19 @@ const VIDEO_TYPES = [
   { type: "lifestyle", label: "Lifestyle", desc: "Bối cảnh sử dụng", color: "#7C3AED", short: 1, medium: 2, long: 3 },
 ];
 
-function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClose, onSaved, pending, startTransition, users = [] }: {
+function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClose, onSaved, pending, startTransition, users = [], currentUserRole }: {
   initial: LaunchPlanRow | null;
   defaultSku?: string; defaultName?: string; defaultCost?: number;
   onClose: () => void; onSaved: () => void;
   pending: boolean; startTransition: ReturnType<typeof useTransition>[1];
-  users?: UserRef[];
+  users?: UserRef[]; currentUserRole?: string;
 }) {
   const m = initial ? M(initial) : {} as Metrics;
+  // Phần I khoá khi đã LAUNCHED, chỉ Admin/Leader sửa được
+  const isLaunched = initial?.stage === "LAUNCHED";
+  const canEditP1 = !isLaunched || currentUserRole === "ADMIN" || (currentUserRole || "").startsWith("LEADER_");
+  const [p1Unlocked, setP1Unlocked] = useState(false);
+  const p1Locked = isLaunched && !p1Unlocked;
   const [sku] = useState(initial?.sku || defaultSku || "");
   const [name] = useState(initial?.product_name || defaultName || "");
   const [cost, setCost] = useState(m.phase3?.cost || m.pricing?.cost || defaultCost || 0);
@@ -1114,8 +1116,20 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
         {/* ╔══════════════════════════════════╗ */}
         {/* ║  PHẦN I: KẾ HOẠCH (Leader chốt)  ║ */}
         {/* ╚══════════════════════════════════╝ */}
-        {partLabel("I", "Kế hoạch — Leader chốt", BRAND)}
+        {/* Phần I header + lock */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+          {partLabel("I", "Kế hoạch — Leader chốt", BRAND)}
+          {isLaunched && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 9, padding: "2px 8px", borderRadius: 4, background: p1Locked ? "#F3F4F6" : "#F0FDF4", color: p1Locked ? "#6B7280" : "#16A34A", fontWeight: 700 }}>{p1Locked ? "🔒 Đã khoá" : "🔓 Đang sửa"}</span>
+              {canEditP1 && <button type="button" onClick={() => setP1Unlocked(!p1Unlocked)} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, border: "1px solid #DDD6FE", background: p1Locked ? "#fff" : "#FEF2F2", color: p1Locked ? "#7C3AED" : "#DC2626", cursor: "pointer", fontWeight: 600 }}>{p1Locked ? "Sửa" : "Khoá lại"}</button>}
+            </div>
+          )}
+        </div>
 
+        {/* Phần I content — khoá khi LAUNCHED */}
+        <div style={p1Locked ? { opacity: 0.5, pointerEvents: "none", position: "relative" } : undefined}>
+        {p1Locked && <div style={{ position: "absolute", inset: 0, zIndex: 5, cursor: "not-allowed" }} />}
         {/* ═══ B1: Phân loại hàng ═══ */}
         <div style={sectionStyle}>
           {secTitle(1, "Phân loại hàng", BRAND)}
@@ -1332,6 +1346,8 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
 
         {/* ═══ Bàn giao nhân sự ═══ */}
         <HandoverBlock users={users} handoverTo={handoverTo} setHandoverTo={setHandoverTo} handoverDeadline={handoverDeadline} setHandoverDeadline={setHandoverDeadline} onConfirm={() => save("LAUNCHED")} pending={pending} canLaunch={!(stockQty > 0 && totalTarget !== stockQty)} />
+
+        </div>{/* end Phần I locked wrapper */}
 
         {/* ╔══════════════════════════════════╗ */}
         {/* ║  PHẦN II: TRIỂN KHAI (Giao việc)  ║ */}
