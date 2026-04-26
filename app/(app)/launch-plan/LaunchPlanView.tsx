@@ -39,14 +39,25 @@ type Metrics = {
 
 function M(plan: LaunchPlanRow): Metrics { return (plan.metrics as Metrics) || {}; }
 
-function getProgress(m: Metrics): { totalTarget: number; totalActual: number; pct: number; status: string; color: string } {
+function getProgress(m: Metrics, launchDate?: string | null): { totalTarget: number; totalActual: number; pct: number; status: string; color: string } {
   const ch = m.phase4?.channels || m.sales_target?.channel_split || {};
   const actual = m.actual || {};
   const totalTarget = Object.values(ch).reduce((s, v) => s + (v || 0), 0);
   const totalActual = Object.values(actual).reduce((s, v) => s + (v || 0), 0);
   const pct = totalTarget > 0 ? Math.round((totalActual / totalTarget) * 100) : 0;
+
+  // Tính thời gian đã launch
+  const now = new Date();
+  const ld = launchDate ? new Date(launchDate) : null;
+  const daysSinceLaunch = ld ? Math.max(0, Math.round((now.getTime() - ld.getTime()) / 86400000)) : 0;
+  const handoverDeadline = (m as Record<string, unknown>).handover_deadline as string || "";
+  const deadlinePassed = handoverDeadline ? new Date(handoverDeadline) < now : false;
+
   let status: string, color: string;
-  if (pct >= 100) { status = "Vượt target"; color = "#16A34A"; }
+  // Mới launch (<7 ngày) hoặc chưa qua deadline → "Mới launch" / "Đang triển khai"
+  if (daysSinceLaunch < 7 && totalActual === 0) { status = "Mới launch"; color = "#2563EB"; }
+  else if (!deadlinePassed && pct < 40 && daysSinceLaunch < 14) { status = "Đang triển khai"; color = "#D97706"; }
+  else if (pct >= 100) { status = "Vượt target"; color = "#16A34A"; }
   else if (pct >= 60) { status = "Đúng tiến độ"; color = "#3B82F6"; }
   else if (pct >= 40) { status = "Chậm"; color = "#D97706"; }
   else { status = "Cảnh báo"; color = "#DC2626"; }
@@ -202,7 +213,7 @@ export default function LaunchPlanView({ plans, autoAdd, users = [] }: { plans: 
   const launchKpis = useMemo(() => {
     let totalTarget = 0, totalActual = 0, needAttention = 0;
     for (const p of launching) {
-      const pr = getProgress(M(p));
+      const pr = getProgress(M(p), p.launch_date);
       totalTarget += pr.totalTarget;
       totalActual += pr.totalActual;
       if (pr.pct < 40) needAttention++;
@@ -257,7 +268,7 @@ export default function LaunchPlanView({ plans, autoAdd, users = [] }: { plans: 
       result = result.filter((p) => (M(p).phase1?.horizon || M(p).product_type) === filterHorizon);
     }
     if (filterProgress && tab === "launching") {
-      result = result.filter((p) => getProgress(M(p)).status === filterProgress);
+      result = result.filter((p) => getProgress(M(p), p.launch_date).status === filterProgress);
     }
     // Sort: cảnh báo lên đầu for launching tab
     if (tab === "launching") {
@@ -359,12 +370,12 @@ export default function LaunchPlanView({ plans, autoAdd, users = [] }: { plans: 
           {filterList(launching).map((p) => {
             const m = M(p);
             const hz = HORIZONS.find((h) => h.k === (m.phase1?.horizon || m.product_type));
-            const pr = getProgress(m);
+            const pr = getProgress(m, p.launch_date);
             const chTargets = m.phase4?.channels || m.sales_target?.channel_split || {};
             const chActuals = m.actual || {};
             const sellPrice = m.phase3?.sell_price || m.pricing?.sell_price || 0;
             const months = m.phase4?.months || m.sales_target?.months || 0;
-            const isWarning = pr.pct < 40;
+            const isWarning = pr.status === "Cảnh báo";
             const revenue = pr.totalActual * sellPrice;
             const remaining = Math.max(0, pr.totalTarget - pr.totalActual);
             const ld = p.launch_date ? new Date(p.launch_date) : null;
@@ -402,8 +413,8 @@ export default function LaunchPlanView({ plans, autoAdd, users = [] }: { plans: 
                   <div style={{ display: "flex", gap: 4, alignItems: "center", flexShrink: 0 }}>
                     {hz && <span style={{ padding: "1px 5px", borderRadius: 4, fontSize: 9, fontWeight: 700, background: hz.bgOff || "#FFFBEB", color: hz.colorOff || "#D97706" }}>{hz.label}</span>}
                     {timeTag && <span style={{ padding: "1px 5px", borderRadius: 4, fontSize: 9, fontWeight: 700, background: "#EFF6FF", color: "#2563EB" }}>{timeTag}</span>}
-                    <span style={{ padding: "1px 6px", borderRadius: 4, fontSize: 9, fontWeight: 700, background: isWarning ? "#FEF2F2" : pr.pct >= 100 ? "#F0FDF4" : "#FFFBEB", color: isWarning ? "#DC2626" : pr.pct >= 100 ? "#16A34A" : "#D97706" }}>
-                      {isWarning ? "Chậm" : pr.pct >= 100 ? "Vượt" : "OK"}
+                    <span style={{ padding: "1px 6px", borderRadius: 4, fontSize: 9, fontWeight: 700, background: pr.status === "Cảnh báo" ? "#FEF2F2" : pr.status === "Vượt target" ? "#F0FDF4" : pr.status === "Mới launch" ? "#EFF6FF" : "#FFFBEB", color: pr.color }}>
+                      {pr.status}
                     </span>
                     {isWarning && (
                       <button style={{ padding: "3px 10px", borderRadius: 5, fontSize: 10, fontWeight: 700, background: "#92400E", color: "#fff", border: "none", cursor: "pointer", whiteSpace: "nowrap" }} onClick={(e) => { e.stopPropagation(); setEditPlan(p); }}>Relaunch</button>
@@ -489,7 +500,7 @@ export default function LaunchPlanView({ plans, autoAdd, users = [] }: { plans: 
           {filterList(done).map((p) => {
             const m = M(p);
             const hz = HORIZONS.find((h) => h.k === (m.phase1?.horizon || m.product_type));
-            const pr = getProgress(m);
+            const pr = getProgress(m, p.launch_date);
             const sellPrice = m.phase3?.sell_price || m.pricing?.sell_price || 0;
             const revenue = pr.totalActual * sellPrice;
             const chTargets = m.phase4?.channels || m.sales_target?.channel_split || {};
@@ -590,13 +601,13 @@ const CH_DOT: Record<string, string> = { Facebook: "#1877F2", "TikTok Shop": "#1
 function LaunchDetailModal({ plan, onClose, onEdit }: { plan: LaunchPlanRow; onClose: () => void; onEdit: () => void }) {
   const m = M(plan);
   const hz = HORIZONS.find((h) => h.k === (m.phase1?.horizon || m.product_type));
-  const pr = getProgress(m);
+  const pr = getProgress(m, plan.launch_date);
   const chTargets = m.phase4?.channels || m.sales_target?.channel_split || {};
   const chActuals = m.actual || {};
   const sellPrice = m.phase3?.sell_price || m.pricing?.sell_price || 0;
   const cost = m.phase3?.cost || m.pricing?.cost || 0;
   const months = m.phase4?.months || m.sales_target?.months || 0;
-  const isWarning = pr.pct < 40;
+  const isWarning = pr.status === "Cảnh báo";
   const revenue = pr.totalActual * sellPrice;
   const remaining = Math.max(0, pr.totalTarget - pr.totalActual);
   const ld = plan.launch_date ? new Date(plan.launch_date) : null;
@@ -977,9 +988,11 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
       customer: { group: custGroup, pain_point: custPain },
     } as Metrics;
     startTransition(async () => {
+      const launchDate = asStage === "LAUNCHED" && !initial?.launch_date ? new Date().toISOString().slice(0, 10) : initial?.launch_date || null;
       const r = await saveLaunchPlanAction(initial?.id || null, {
         sku: sku || null, product_name: name, stage: asStage || initial?.stage || "READY",
         channels: selChannels.join(","), metrics: metrics as Record<string, unknown>, note: horizonNote || null,
+        launch_date: launchDate,
       });
       if (!r.ok) alert(r.error); else onSaved();
     });
