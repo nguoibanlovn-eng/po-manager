@@ -1455,10 +1455,15 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
               {(results.length > 0 || item.done) && (
                 <div style={{ paddingLeft: 26, paddingRight: 8, marginTop: 2 }}>
                   {results.map((r, ri) => {
+                    const byUser = r.by ? users.find((u) => u.email === r.by) : null;
                     return (
-                    <div key={ri} style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 2 }}>
-                      <span style={{ fontSize: 9, color: "#16A34A", fontWeight: 600, flexShrink: 0, minWidth: 62 }}>{r.at || new Date().toISOString().slice(0, 10)}</span>
-                      <input type="text" value={r.text} placeholder="Link / ghi chú..." onChange={(e) => { const nr = [...results]; nr[ri] = { ...nr[ri], text: e.target.value, at: nr[ri].at || new Date().toISOString().slice(0, 10) }; updateItem({ results: nr }); }} style={{ flex: 1, padding: "2px 6px", border: "1px solid #BBF7D0", borderRadius: 3, fontSize: 10, background: "#F0FDF4" }} />
+                    <div key={ri} style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 2 }}>
+                      <span style={{ fontSize: 9, color: "#16A34A", fontWeight: 600, flexShrink: 0, width: 60 }}>{r.at || today}</span>
+                      <select value={r.by || ""} onChange={(e) => { const nr = [...results]; nr[ri] = { ...nr[ri], by: e.target.value }; updateItem({ results: nr }); }} style={{ padding: "1px 2px", fontSize: 9, border: "1px solid #DDD6FE", borderRadius: 3, color: r.by ? "#7C3AED" : "#A1A1AA", flexShrink: 0, width: 75, background: r.by ? "#F5F3FF" : "#fff" }}>
+                        <option value="">Ai?</option>
+                        {users.map((u) => <option key={u.email} value={u.email}>{u.name || u.email}</option>)}
+                      </select>
+                      <input type="text" value={r.text} placeholder="Link / ghi chú..." onChange={(e) => { const nr = [...results]; nr[ri] = { ...nr[ri], text: e.target.value, at: nr[ri].at || today }; updateItem({ results: nr }); }} style={{ flex: 1, padding: "2px 6px", border: "1px solid #BBF7D0", borderRadius: 3, fontSize: 10, background: "#F0FDF4" }} />
                       <button type="button" onClick={() => updateItem({ results: results.filter((_, i) => i !== ri) })} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 10, padding: 0 }}>×</button>
                     </div>
                     );
