@@ -437,19 +437,6 @@ function RdRow({
               {isOverdue ? "QUÁ HẠN " : "DL: "}{deadline.substring(5)}
             </span>
           )}
-          {(() => {
-            const stage = item.stage || "";
-            const eta = String(data.sample_eta || "");
-            if (stage === "Chờ mẫu về" && eta) {
-              const arrived = eta <= new Date().toISOString().substring(0, 10);
-              return (
-                <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 3, background: arrived ? "#DCFCE7" : "#FEF3C7", color: arrived ? "#15803D" : "#92400E" }}>
-                  {arrived ? "Hàng đã về!" : `ETA: ${eta.substring(5)}`}
-                </span>
-              );
-            }
-            return null;
-          })()}
         </div>
       </td>
       <td>
@@ -468,7 +455,7 @@ function RdRow({
         </div>
         <div style={{ fontSize: 10, color: "#6B7280" }}>
           {currentStep ? (
-            <><span style={{ fontWeight: 600, color: barColor }}>Bước {(currentStepIdx || 0) + 1}/{steps.length || pipelineSteps.length}</span> · {currentStep}</>
+            <><span style={{ fontWeight: 600, color: barColor }}>Bước {(currentStepIdx || 0) + 1}/{steps.length || pipelineSteps.length}</span> · {currentStep === "Chờ mẫu về" && String(data.sample_eta || "") && String(data.sample_eta || "") <= new Date().toISOString().substring(0, 10) ? "Mẫu đã về" : currentStep}</>
           ) : (
             <span style={{ color: "#D1D5DB" }}>Chưa bắt đầu</span>
           )}
