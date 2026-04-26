@@ -1479,15 +1479,19 @@ function ModalInner({
                 <div style={{ marginBottom: 14 }}>
                   <div style={S.label}>Checklist ({checklist.filter(c => c.checked).length}/{checklist.length})</div>
                   {checklist.map((c, i) => (
-                    <label key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", borderBottom: "1px solid #F1F5F9", cursor: "pointer" }}>
-                      <input type="checkbox" checked={c.checked} onChange={() => {
-                        const n = [...checklist]; n[i] = { ...n[i], checked: !n[i].checked }; setChecklist(n); setDirty(true);
-                      }} style={{ accentColor: "#7C3AED", width: 16, height: 16, flexShrink: 0 }} />
-                      <span style={{ flex: 1, fontSize: 12, color: c.checked ? "#94A3B8" : "#18181B", textDecoration: c.checked ? "line-through" : "none" }}>{c.text}</span>
-                      <input value={c.note || ""} onClick={(e) => e.stopPropagation()} onChange={(e) => {
-                        const n = [...checklist]; n[i] = { ...n[i], note: e.target.value }; setChecklist(n); setDirty(true);
-                      }} placeholder="Ghi chú" style={{ width: 180, fontSize: 11, padding: "4px 8px", border: "1px solid #E2E8F0", borderRadius: 4, color: "#475569" }} />
-                    </label>
+                    <div key={i} style={{ padding: "6px 0", borderBottom: "1px solid #F1F5F9" }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                        <input type="checkbox" checked={c.checked} onChange={() => {
+                          const n = [...checklist]; n[i] = { ...n[i], checked: !n[i].checked }; setChecklist(n); setDirty(true);
+                        }} style={{ accentColor: "#7C3AED", width: 16, height: 16, flexShrink: 0 }} />
+                        <span style={{ fontSize: 12, color: c.checked ? "#16A34A" : "#18181B", fontWeight: c.checked ? 600 : 400 }}>{c.text}</span>
+                      </label>
+                      {c.checked && (
+                        <input value={c.note || ""} onChange={(e) => {
+                          const n = [...checklist]; n[i] = { ...n[i], note: e.target.value }; setChecklist(n); setDirty(true);
+                        }} placeholder="Ghi chú kết quả..." style={{ width: "100%", fontSize: 11, padding: "5px 8px", border: "1px solid #E2E8F0", borderRadius: 4, color: "#475569", marginTop: 4, marginLeft: 24 }} />
+                      )}
+                    </div>
                   ))}
                   <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
                     <input value={newCheckLabel} onChange={(e) => setNewCheckLabel(e.target.value)}
