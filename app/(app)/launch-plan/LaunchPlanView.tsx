@@ -26,15 +26,21 @@ type Metrics = {
   phase2?: { drive_link?: string; assignees?: string };
   phase3?: { sell_price?: number; sell_price_2?: number; cost?: number };
   phase4?: { channels?: Record<string, number>; stock_qty?: number; months?: number; deadline?: string; price_from?: number; price_to?: number };
-  actual?: Record<string, number>; // actual sold per channel
+  actual?: Record<string, number>;
   tier?: string;
   channels_selected?: string[];
   pricing?: { cost?: number; sell_price?: number };
-  listings?: Record<string, { links?: string[]; done?: boolean }>;
+  listings?: Record<string, { links?: string[]; done?: boolean; assignee?: string; deadline?: string }>;
   sales_target?: { stock_qty?: number; months?: number; channel_split?: Record<string, number>; confirmed?: boolean; price_from?: number; price_to?: number };
   content?: { drive_link?: string; assignees?: string };
   customer?: { group?: string; pain_point?: string };
   product_type?: string;
+  // Launch flow fields
+  checklist?: Array<{ name: string; qty: number; assignees?: string[]; assignee?: string; deadline: string; done: boolean; results?: Array<{ by: string; text: string; at?: string }>; result?: string }>;
+  handover_to?: string; handover_deadline?: string;
+  start_date?: string; end_date?: string;
+  competitors?: string; horizonNote?: string; channelNote?: string;
+  [key: string]: unknown;
 };
 
 function M(plan: LaunchPlanRow): Metrics { return (plan.metrics as Metrics) || {}; }
@@ -899,7 +905,7 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
   const [handoverTo, setHandoverTo] = useState((m as Record<string, unknown>).handover_to as string || "");
   const [handoverDeadline, setHandoverDeadline] = useState((m as Record<string, unknown>).handover_deadline as string || "");
   // B4 — Checklist tự do
-  type CheckItem = { name: string; qty: number; assignee?: string; assignees?: string[]; deadline: string; done: boolean; result?: string; results?: Array<{ by: string; text: string }> };
+  type CheckItem = { name: string; qty: number; assignee?: string; assignees?: string[]; deadline: string; done: boolean; result?: string; results?: Array<{ by: string; text: string; at?: string }> };
   const rawChecklist = Array.isArray((m as Record<string, unknown>).checklist) ? (m as Record<string, unknown>).checklist as CheckItem[] : null;
   // Migrate: old single assignee/result → arrays
   const existingChecklist = rawChecklist?.map((c) => ({
@@ -1415,7 +1421,13 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
                   <span style={{ fontSize: 9, color: "#A1A1AA", flexShrink: 0 }}>×{item.qty}</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}>
-                  <input type="date" value={item.deadline} onChange={(e) => updateItem({ deadline: e.target.value })} style={{ padding: "1px 3px", fontSize: 9, border: "1px solid #E4E4E7", borderRadius: 3, width: 90 }} />
+                  {(() => {
+                    const dl = item.deadline;
+                    const today = new Date().toISOString().slice(0, 10);
+                    const dlColor = !dl ? "#E4E4E7" : dl < today ? "#DC2626" : dl <= new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10) ? "#D97706" : "#16A34A";
+                    const dlBg = !dl ? undefined : dl < today ? "#FEF2F2" : dl <= new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10) ? "#FFFBEB" : "#F0FDF4";
+                    return <input type="date" value={dl} onChange={(e) => updateItem({ deadline: e.target.value })} style={{ padding: "1px 3px", fontSize: 9, border: `1.5px solid ${dlColor}`, borderRadius: 3, width: 90, background: dlBg, color: dlColor === "#E4E4E7" ? undefined : dlColor }} />;
+                  })()}
                   <button type="button" onClick={() => setChecklist(checklist.filter((_, i) => i !== idx))} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 12, padding: 0, lineHeight: 1 }}>×</button>
                 </div>
               </div>
@@ -1438,11 +1450,12 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
                 <div style={{ paddingLeft: 26, paddingRight: 8, marginTop: 2 }}>
                   {results.map((r, ri) => (
                     <div key={ri} style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 2 }}>
-                      <input type="text" value={r.text} placeholder="Link / ghi chú..." onChange={(e) => { const nr = [...results]; nr[ri] = { ...nr[ri], text: e.target.value }; updateItem({ results: nr }); }} style={{ flex: 1, padding: "2px 6px", border: "1px solid #BBF7D0", borderRadius: 3, fontSize: 10, background: "#F0FDF4" }} />
+                      {r.at && <span style={{ fontSize: 8, color: "#A1A1AA", flexShrink: 0 }}>{r.at}</span>}
+                      <input type="text" value={r.text} placeholder="Link / ghi chú..." onChange={(e) => { const nr = [...results]; nr[ri] = { ...nr[ri], text: e.target.value, at: nr[ri].at || new Date().toISOString().slice(0, 10) }; updateItem({ results: nr }); }} style={{ flex: 1, padding: "2px 6px", border: "1px solid #BBF7D0", borderRadius: 3, fontSize: 10, background: "#F0FDF4" }} />
                       <button type="button" onClick={() => updateItem({ results: results.filter((_, i) => i !== ri) })} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 10, padding: 0 }}>×</button>
                     </div>
                   ))}
-                  <button type="button" onClick={() => updateItem({ results: [...results, { by: "", text: "" }] })} style={{ fontSize: 9, color: "#7C3AED", background: "none", border: "none", cursor: "pointer", padding: 0 }}>+ kết quả</button>
+                  <button type="button" onClick={() => updateItem({ results: [...results, { by: "", text: "", at: new Date().toISOString().slice(0, 10) }] })} style={{ fontSize: 9, color: "#7C3AED", background: "none", border: "none", cursor: "pointer", padding: 0 }}>+ kết quả</button>
                 </div>
               )}
             </div>
