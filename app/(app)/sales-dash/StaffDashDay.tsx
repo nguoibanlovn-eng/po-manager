@@ -1,8 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { formatVNDCompact } from "@/lib/format";
+
+function daysAgo(d: number): string { const dt = new Date(); dt.setDate(dt.getDate() + d); return dt.toISOString().substring(0, 10); }
+function monthRange(offset: number) {
+  const now = new Date(); const y = now.getFullYear(); const m = now.getMonth() + offset;
+  const first = new Date(y, m, 1); const last = offset === 0 ? now : new Date(y, m + 1, 0);
+  const fmt = (d: Date) => d.toISOString().substring(0, 10);
+  return { from: fmt(first), to: fmt(last) };
+}
+const QUICK_RANGES = [
+  { key: "today", label: "Hôm nay" },
+  { key: "yesterday", label: "Hôm qua" },
+  { key: "7d", label: "7N", from: daysAgo(-7), to: daysAgo(0) },
+  { key: "14d", label: "14N", from: daysAgo(-14), to: daysAgo(0) },
+  { key: "30d", label: "30N", from: daysAgo(-30), to: daysAgo(0) },
+  { key: "month", label: "Tháng", ...monthRange(0) },
+  { key: "prev", label: "T.trước", ...monthRange(-1) },
+  { key: "year", label: "Năm nay", from: `${new Date().getFullYear()}-01-01`, to: daysAgo(0) },
+];
 
 export type StaffDashDayProps = {
   channelName: string;
@@ -33,6 +51,38 @@ const statusColor = (pct: number) => pct >= 100 ? "#16A34A" : pct >= 70 ? "#D977
 
 export default function StaffDashDay(p: StaffDashDayProps) {
   const [showAllSources, setShowAllSources] = useState(false);
+  const [rangeKey, setRangeKey] = useState("today");
+  const [rangeData, setRangeData] = useState<{ revenue: number; sources: typeof p.sources } | null>(null);
+  const [rangeLoading, setRangeLoading] = useState(false);
+
+  const loadRange = useCallback(async (key: string) => {
+    setRangeKey(key);
+    if (key === "today") { setRangeData(null); return; }
+    if (key === "yesterday") { setRangeData(null); return; } // handled by link
+    const range = QUICK_RANGES.find(r => r.key === key);
+    if (!range || !("from" in range)) return;
+    setRangeLoading(true);
+    try {
+      const res = await fetch(`/api/dash/channel-range?from=${range.from}&to=${range.to}`);
+      const json = await res.json();
+      if (json.ok) {
+        const ch = (json.channels as Array<{ name: string; revenue: number }>).find(c => c.name === p.channelName || (p.channelName === "Web/App" && ["API", "Admin", "Website"].includes(c.name)));
+        const allWebNames = ["API", "Admin", "Website", "App"];
+        const webRev = p.channelName === "Web/App" ? (json.channels as Array<{ name: string; revenue: number }>).filter(c => allWebNames.includes(c.name)).reduce((s: number, c: { revenue: number }) => s + c.revenue, 0) : 0;
+        const rev = p.channelName === "Web/App" ? webRev : (ch?.revenue || 0);
+        const srcMap = json.sourcesByChannel || {};
+        const sources = srcMap[p.channelName] || srcMap[p.channelName === "TikTok" ? "TikTok Shop" : p.channelName] || [];
+        const webSources = p.channelName === "Web/App" ? [...(srcMap["API"] || []), ...(srcMap["Admin"] || []), ...(srcMap["Website"] || [])].sort((a: { revenue: number }, b: { revenue: number }) => b.revenue - a.revenue) : sources;
+        setRangeData({ revenue: rev, sources: p.channelName === "Web/App" ? webSources : sources });
+      }
+    } catch { /* */ }
+    setRangeLoading(false);
+  }, [p.channelName]);
+
+  const displayRevenue = rangeData?.revenue ?? p.revenue;
+  const displaySources = rangeData?.sources ?? p.sources;
+  const isRangeMode = rangeKey !== "today" && rangeKey !== "yesterday" && rangeData !== null;
+
   const revChange = pctChange(p.revenue, p.revenueYesterday);
   const revPct = p.dailyTarget > 0 ? Math.round((p.revenue / p.dailyTarget) * 100) : 0;
   const monthPct = p.monthTarget > 0 ? Math.round((p.monthRevenue / p.monthTarget) * 100) : 0;
@@ -53,9 +103,15 @@ export default function StaffDashDay(p: StaffDashDayProps) {
             <Link href={`/sales-dash?date=${p.nextDay}`} style={{ background: "rgba(255,255,255,.15)", color: "#fff", width: 30, height: 30, borderRadius: 8, fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}>›</Link>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-          <Link href="/sales-dash" style={{ background: "rgba(255,255,255,.25)", color: "#fff", padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600, textDecoration: "none" }}>Hôm nay</Link>
-          <Link href={`/sales-dash?date=${p.prevDay}`} style={{ background: "rgba(255,255,255,.1)", color: "rgba(255,255,255,.6)", padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600, textDecoration: "none" }}>Hôm qua</Link>
+        <div style={{ display: "flex", gap: 4, marginBottom: 12, overflowX: "auto", paddingBottom: 2 }}>
+          {QUICK_RANGES.map(r => (
+            <button key={r.key} onClick={() => r.key === "today" ? (setRangeKey("today"), setRangeData(null)) : r.key === "yesterday" ? (window.location.href = `/sales-dash?date=${p.prevDay}`) : loadRange(r.key)} style={{
+              background: rangeKey === r.key ? "rgba(255,255,255,.3)" : "rgba(255,255,255,.1)",
+              color: rangeKey === r.key ? "#fff" : "rgba(255,255,255,.6)",
+              padding: "5px 10px", borderRadius: 8, fontSize: 10, fontWeight: 600,
+              border: "none", cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit",
+            }}>{r.label}</button>
+          ))}
         </div>
       </div>
 
