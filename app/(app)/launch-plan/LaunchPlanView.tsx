@@ -13,9 +13,9 @@ const BRAND = "#1D9E75";
 const BRAND2 = "#185FA5";
 
 const HORIZONS = [
-  { k: "short", label: "Ngắn hạn", sub: "<3 tháng", color: "#16A34A" },
-  { k: "medium", label: "Trung hạn", sub: "3-6T", color: "#D97706" },
-  { k: "long", label: "Dài hạn", sub: ">6T", color: "#7C3AED" },
+  { k: "short", label: "Ngắn hạn", sub: "1-3 tháng", color: "#D97706", bgOff: "#FEF3C7", colorOff: "#92400E" },
+  { k: "medium", label: "Trung hạn", sub: "3-6 tháng", color: "#D97706", bgOff: "#F3F4F6", colorOff: "#374151" },
+  { k: "long", label: "Dài hạn", sub: ">6 tháng", color: "#2563EB", bgOff: "#DBEAFE", colorOff: "#1E40AF" },
 ];
 const LAUNCH_CHANNELS = ["Shopee", "TikTok", "Facebook", "Web"];
 const CH_COLORS: Record<string, string> = { Shopee: "#EE4D2D", TikTok: "#000", Facebook: "#1877F2", Web: "#6366F1" };
@@ -276,7 +276,7 @@ export default function LaunchPlanView({ plans, autoAdd }: { plans: LaunchPlanRo
         </div>
       )}
 
-      {/* ═══ TAB: ĐANG LAUNCH — Compact ticket ═══ */}
+      {/* ═══ TAB: ĐANG LAUNCH — Ticket mockup v2 ═══ */}
       {tab === "launching" && (
         <div>
           {filterList(launching).map((p) => {
@@ -305,100 +305,88 @@ export default function LaunchPlanView({ plans, autoAdd }: { plans: LaunchPlanRo
             const p2Done = listingsDone + (contentDone ? 1 : 0);
             const p2Total = listingsTotal + 1;
             const assignee = m.phase2?.assignees || m.content?.assignees || "";
-            // Channel list for mini bars
-            const chList = Object.entries(chTargets).map(([ch, target]) => {
-              const actual = chActuals[ch] || 0;
-              const t = target as number;
-              const pct = t > 0 ? Math.round((actual / t) * 100) : 0;
-              const short = ch.replace("TikTok Shop", "TT").replace("Facebook", "FB").replace("Shopee", "SP").replace("Web/B2B", "Web");
-              return { ch, short, actual, target: t, pct, color: CH_COLORS[ch] || CH_COLORS[ch.replace(" Shop", "")] || "#6B7280" };
-            }).filter((c) => c.target > 0);
+            const checklist = Array.isArray((m as Record<string, unknown>).checklist) ? (m as Record<string, unknown>).checklist as Array<{ done: boolean }> : null;
+            const checkDone = checklist ? checklist.filter((c) => c.done).length : p2Done;
+            const checkTotal = checklist ? checklist.length : p2Total;
 
             return (
-              <div key={p.id} style={{ border: "1px solid #E4E4E7", borderRadius: 10, overflow: "hidden", marginBottom: 8, background: "#fff", cursor: "pointer" }} onClick={() => setDetailPlan(p)}>
-                {/* ─── Row 1: Header + tags + actions ─── */}
-                <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid #F3F4F6" }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 800, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.product_name}</div>
-                    <div style={{ fontSize: 10, color: "#71717A" }}>{p.sku || "—"} · {p.launch_date || "—"}</div>
+              <div key={p.id} style={{ border: "1px solid #E4E4E7", borderRadius: 10, overflow: "hidden", marginBottom: 10, background: "#fff", cursor: "pointer" }} onClick={() => setDetailPlan(p)}>
+                {/* ─── ticket-hdr ─── */}
+                <div style={{ padding: "12px 14px", background: "#FAFAFA", borderBottom: "1px solid #E4E4E7", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: 14 }}>{p.product_name}</div>
+                    <div style={{ fontSize: 10, color: "#71717A" }}>SKU: {p.sku || "—"} · Launch {p.launch_date || "—"}</div>
                   </div>
-                  <div style={{ display: "flex", gap: 4, alignItems: "center", flexShrink: 0 }}>
-                    {hz && <span style={{ padding: "1px 5px", borderRadius: 4, fontSize: 9, fontWeight: 700, background: hz.k === "short" ? "#FEF3C7" : hz.k === "long" ? "#DBEAFE" : "#FFFBEB", color: hz.k === "short" ? "#92400E" : hz.k === "long" ? "#1E40AF" : "#D97706" }}>{hz.label}</span>}
-                    {timeTag && <span style={{ padding: "1px 5px", borderRadius: 4, fontSize: 9, fontWeight: 700, background: "#EFF6FF", color: "#2563EB" }}>{timeTag}</span>}
-                    <span style={{ padding: "1px 6px", borderRadius: 4, fontSize: 9, fontWeight: 700, background: isWarning ? "#FEF2F2" : pr.pct >= 100 ? "#F0FDF4" : "#FFFBEB", color: isWarning ? "#DC2626" : pr.pct >= 100 ? "#16A34A" : "#D97706" }}>
-                      {isWarning ? "Chậm" : pr.pct >= 100 ? "Vượt" : "OK"}
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    {hz && <span style={{ padding: "2px 6px", borderRadius: 4, fontSize: 9, fontWeight: 700, background: hz.bgOff || "#FFFBEB", color: hz.colorOff || "#D97706" }}>{hz.label}</span>}
+                    {timeTag && <span style={{ padding: "2px 6px", borderRadius: 4, fontSize: 9, fontWeight: 700, background: "#EFF6FF", color: "#2563EB" }}>{timeTag}</span>}
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: isWarning ? "#FEF2F2" : pr.pct >= 100 ? "#F0FDF4" : "#FFFBEB", color: isWarning ? "#DC2626" : pr.pct >= 100 ? "#16A34A" : "#D97706" }}>
+                      {isWarning ? "Cảnh báo" : pr.pct >= 100 ? "Vượt target" : "Đang triển khai"}
                     </span>
-                    {isWarning && (
-                      <button style={{ padding: "3px 10px", borderRadius: 5, fontSize: 10, fontWeight: 700, background: "#92400E", color: "#fff", border: "none", cursor: "pointer", whiteSpace: "nowrap" }} onClick={(e) => { e.stopPropagation(); setEditPlan(p); }}>Relaunch</button>
-                    )}
                   </div>
                 </div>
 
-                {/* ─── Row 2: Status + KPI + Channel bars ─── */}
-                <div style={{ padding: "8px 14px", display: "flex", gap: 8, alignItems: "center" }}>
-                  {/* Phần I + II compact */}
-                  <div style={{ display: "flex", gap: 4, flex: "0 0 auto" }}>
-                    <div style={{ padding: "4px 8px", borderLeft: `3px solid ${p1Done ? "#16A34A" : "#D97706"}`, background: "#FAFAFA", borderRadius: "0 4px 4px 0" }}>
-                      <div style={{ fontSize: 8, fontWeight: 700, color: "#16A34A" }}>I · KH</div>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: p1Done ? "#16A34A" : "#D97706" }}>{p1Done ? "🔒" : ""}{p1Count}/3</div>
-                    </div>
-                    <div style={{ padding: "4px 8px", borderLeft: `3px solid ${p2Done >= p2Total ? "#16A34A" : "#7C3AED"}`, background: "#FAFAFA", borderRadius: "0 4px 4px 0" }}>
-                      <div style={{ fontSize: 8, fontWeight: 700, color: "#7C3AED" }}>II · TK</div>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: p2Done >= p2Total ? "#16A34A" : "#D97706" }}>{p2Done}/{p2Total}</div>
-                    </div>
-                  </div>
-
-                  {/* KPI stats */}
-                  {(() => {
-                    // Time progress
-                    const now = new Date();
-                    const startD = ld || now;
-                    const endD = endDate || new Date(startD.getTime() + (months || 3) * 30 * 86400000);
-                    const totalDays = Math.max(1, Math.round((endD.getTime() - startD.getTime()) / 86400000));
-                    const elapsedDays = Math.max(0, Math.round((now.getTime() - startD.getTime()) / 86400000));
-                    const timePct = Math.min(100, Math.round((elapsedDays / totalDays) * 100));
-                    const remainDays = Math.max(0, Math.round((endD.getTime() - now.getTime()) / 86400000));
-                    const timeClr = pr.pct >= timePct ? "#16A34A" : pr.pct >= timePct * 0.6 ? "#D97706" : "#DC2626";
-                    return (
-                      <div style={{ display: "flex", gap: 2, flex: 1 }}>
-                        <div style={{ textAlign: "center", padding: "3px 6px", background: "#F5F5F7", borderRadius: 4, flex: 1 }}>
-                          <div style={{ fontSize: 7, color: "#A1A1AA", lineHeight: 1 }}>Bán · còn {remaining}</div>
-                          <div style={{ fontSize: 12, fontWeight: 800, color: "#16A34A", lineHeight: 1.3 }}>{pr.totalActual}/{pr.totalTarget}</div>
-                        </div>
-                        <div style={{ textAlign: "center", padding: "3px 6px", background: "#F5F5F7", borderRadius: 4, flex: 1 }}>
-                          <div style={{ fontSize: 7, color: "#A1A1AA", lineHeight: 1 }}>DT</div>
-                          <div style={{ fontSize: 12, fontWeight: 800, color: "#185FA5", lineHeight: 1.3 }}>{formatVNDCompact(revenue)}</div>
-                        </div>
-                        <div style={{ textAlign: "center", padding: "3px 6px", background: "#F5F5F7", borderRadius: 4, flex: 1 }}>
-                          <div style={{ fontSize: 7, color: "#A1A1AA", lineHeight: 1 }}>Tiến độ</div>
-                          <div style={{ fontSize: 12, fontWeight: 800, color: pr.color, lineHeight: 1.3 }}>{pr.pct}%</div>
-                        </div>
-                        <div style={{ textAlign: "center", padding: "3px 4px", background: "#F5F5F7", borderRadius: 4, flex: 1 }}>
-                          <div style={{ fontSize: 7, color: "#A1A1AA", lineHeight: 1 }}>TG · còn {remainDays}d</div>
-                          <div style={{ fontSize: 10, fontWeight: 800, color: timeClr, lineHeight: 1.4 }}>{timePct}%</div>
-                          <div style={{ height: 3, background: "#E5E7EB", borderRadius: 2, overflow: "hidden", marginTop: 1 }}>
-                            <div style={{ height: "100%", width: `${timePct}%`, background: timeClr, borderRadius: 2 }} />
-                          </div>
-                        </div>
+                {/* ─── ticket-body ─── */}
+                <div style={{ padding: "12px 14px" }}>
+                  {/* TRẠNG THÁI */}
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#71717A", marginBottom: 8 }}>TRẠNG THÁI</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
+                    <div style={{ border: "1px solid #E4E4E7", borderRadius: 8, padding: "10px 12px", borderLeft: `3px solid ${p1Done ? "#16A34A" : "#D97706"}` }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "#16A34A", textTransform: "uppercase", marginBottom: 4 }}>Phần I — Kế hoạch</div>
+                      <div style={{ fontSize: 12, fontWeight: 600 }}>Phân loại · Định giá · Phân bổ</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4 }}>
+                        {p1Done && <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 4, background: "#F3F4F6", color: "#6B7280", fontWeight: 700 }}>🔒 Đã khoá</span>}
+                        <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: p1Done ? "#F0FDF4" : "#FFFBEB", color: p1Done ? "#16A34A" : "#D97706" }}>{p1Count}/3 sign-off</span>
                       </div>
-                    );
-                  })()}
-
-                  {/* Channel mini bars — small fixed width */}
-                  <div style={{ width: 130, flexShrink: 0, display: "flex", flexDirection: "column", gap: 1 }}>
-                    {chList.map((c) => {
-                      const clr = c.pct >= 80 ? "#16A34A" : c.pct >= 40 ? "#D97706" : "#DC2626";
-                      return (
-                        <div key={c.ch} style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                          <span style={{ fontSize: 7, fontWeight: 700, width: 16, color: c.color, textAlign: "right" }}>{c.short}</span>
-                          <div style={{ flex: 1, height: 3, background: "#F3F4F6", borderRadius: 2, overflow: "hidden" }}>
-                            <div style={{ height: "100%", width: `${Math.min(c.pct, 100)}%`, background: clr, borderRadius: 2 }} />
-                          </div>
-                          <span style={{ fontSize: 7, fontWeight: 700, width: 18, textAlign: "right", color: clr }}>{c.pct}%</span>
-                        </div>
-                      );
-                    })}
+                    </div>
+                    <div style={{ border: "1px solid #E4E4E7", borderRadius: 8, padding: "10px 12px", borderLeft: `3px solid ${checkDone >= checkTotal ? "#16A34A" : "#D97706"}` }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "#7C3AED", textTransform: "uppercase", marginBottom: 4 }}>Phần II — Triển khai</div>
+                      <div style={{ fontSize: 12, fontWeight: 600 }}>Nội dung · Listing</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4 }}>
+                        {assignee && <span style={{ fontSize: 10, color: "#71717A" }}>Giao: {assignee}</span>}
+                        <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: checkDone >= checkTotal ? "#F0FDF4" : "#FFFBEB", color: checkDone >= checkTotal ? "#16A34A" : "#D97706" }}>{checkDone}/{checkTotal} checklist</span>
+                      </div>
+                    </div>
                   </div>
+
+                  <div style={{ height: 1, background: "#E4E4E7", margin: "10px 0" }} />
+
+                  {/* KẾT QUẢ BÁN */}
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#71717A", marginBottom: 6 }}>KẾT QUẢ BÁN (đồng bộ từ Nhanh)</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginBottom: 8 }}>
+                    <div style={{ textAlign: "center", padding: 8, background: "#F5F5F7", borderRadius: 6 }}>
+                      <div style={{ fontSize: 9, color: "#71717A" }}>Đã bán</div>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: "#16A34A" }}>{pr.totalActual}</div>
+                      <div style={{ fontSize: 9, color: "#71717A" }}>/ {pr.totalTarget} SP</div>
+                    </div>
+                    <div style={{ textAlign: "center", padding: 8, background: "#F5F5F7", borderRadius: 6 }}>
+                      <div style={{ fontSize: 9, color: "#71717A" }}>Doanh thu</div>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: BRAND2 }}>{formatVNDCompact(revenue)}</div>
+                    </div>
+                    <div style={{ textAlign: "center", padding: 8, background: "#F5F5F7", borderRadius: 6 }}>
+                      <div style={{ fontSize: 9, color: "#71717A" }}>Tiến độ</div>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: pr.color }}>{pr.pct}%</div>
+                      <div style={{ height: 4, background: "#E5E7EB", borderRadius: 2, overflow: "hidden", marginTop: 4 }}>
+                        <div style={{ height: "100%", width: `${Math.min(pr.pct, 100)}%`, background: pr.color, borderRadius: 2 }} />
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "center", padding: 8, background: "#F5F5F7", borderRadius: 6 }}>
+                      <div style={{ fontSize: 9, color: "#71717A" }}>Còn lại</div>
+                      <div style={{ fontSize: 16, fontWeight: 800 }}>{remaining}</div>
+                      <div style={{ fontSize: 9, color: "#71717A" }}>SP</div>
+                    </div>
+                  </div>
+
+                  {/* Relaunch CTA */}
+                  {isWarning && (
+                    <div style={{ background: "#FFFBEB", border: "1px solid #FCD34D", borderRadius: 8, padding: "10px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#92400E" }}>Tiến độ chậm — cần điều chỉnh?</div>
+                        <div style={{ fontSize: 10, color: "#92400E" }}>{pr.pct}% {months > 0 ? `sau ${months} tháng` : ""} (target 40%). Có thể relaunch để tăng hiệu quả.</div>
+                      </div>
+                      <button style={{ padding: "8px 16px", borderRadius: 7, fontSize: 12, fontWeight: 700, background: "#92400E", color: "#fff", border: "none", cursor: "pointer", whiteSpace: "nowrap" }} onClick={(e) => { e.stopPropagation(); setEditPlan(p); }}>Relaunch →</button>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -963,25 +951,22 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
         {/* ═══ B1: Phân loại hàng ═══ */}
         <div style={sectionStyle}>
           {secTitle(1, "Phân loại hàng", BRAND)}
-          <div className="form-group" style={{ marginBottom: 10 }}>
-            <div style={{ display: "inline-block", fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>CHU KỲ BÁN</div>
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>CHU KỲ BÁN</div>
             <div style={{ display: "flex", gap: 6 }}>
               {HORIZONS.map((h) => (
-                <button key={h.k} onClick={() => { setHorizon(h.k); const k = h.k as "short" | "medium" | "long"; setVideos(VIDEO_TYPES.map((vt) => ({ type: vt.type, count: vt[k] }))); }} style={{ padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", background: horizon === h.k ? h.color : "#F3F4F6", color: horizon === h.k ? "#fff" : "#374151", border: "none", flex: 1 }}>{h.label} {h.sub}</button>
+                <button key={h.k} onClick={() => { setHorizon(h.k); const k = h.k as "short" | "medium" | "long"; setVideos(VIDEO_TYPES.map((vt) => ({ type: vt.type, count: vt[k] }))); }} style={{ padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", background: horizon === h.k ? h.color : (h.bgOff || "#F3F4F6"), color: horizon === h.k ? "#fff" : (h.colorOff || "#374151"), border: "none", flex: 1, textAlign: "center" }}>
+                  {h.label}
+                  <div style={{ fontSize: 9, marginTop: 2, opacity: 0.7 }}>{h.sub}</div>
+                </button>
               ))}
             </div>
           </div>
-          <div className="form-grid fg-2" style={{ marginBottom: 10 }}>
-            <div className="form-group"><div style={{ display: "inline-block", fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>NHÓM KHÁCH HÀNG</div><textarea rows={2} value={custGroup} onChange={(e) => setCustGroup(e.target.value)} placeholder="Hộ gia đình, tuổi, đặc điểm..." /></div>
-            <div className="form-group"><div style={{ display: "inline-block", fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>NHU CẦU / PAIN POINT</div><textarea rows={2} value={custPain} onChange={(e) => setCustPain(e.target.value)} placeholder="Vấn đề cần giải quyết..." /></div>
-          </div>
-          <div className="form-group"><div style={{ display: "inline-block", fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>ĐỐI THỦ + GIÁ THAM CHIẾU</div><input value={custComp} onChange={(e) => setCustComp(e.target.value)} placeholder="Xiaomi 1.2tr · Sharp 2.5tr..." /></div>
           {/* Thời gian triển khai */}
-          <div style={{ display: "inline-block", fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4, marginTop: 10 }}>THỜI GIAN TRIỂN KHAI DỰ KIẾN</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 8 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>THỜI GIAN TRIỂN KHAI DỰ KIẾN</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
             <div><input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={{ width: "100%", padding: "6px 10px", border: "1px solid #E4E4E7", borderRadius: 7, fontSize: 12 }} /><div style={{ fontSize: 9, color: "#A1A1AA", marginTop: 2 }}>Bắt đầu bán</div></div>
             <div><input type="date" value={endDateF} onChange={(e) => setEndDateF(e.target.value)} style={{ width: "100%", padding: "6px 10px", border: "1px solid #E4E4E7", borderRadius: 7, fontSize: 12 }} /><div style={{ fontSize: 9, color: "#A1A1AA", marginTop: 2 }}>Kết thúc dự kiến</div></div>
-            <div><input type="number" value={stockQty || ""} onChange={(e) => setStockQty(Number(e.target.value))} style={{ width: "100%", padding: "6px 10px", border: "1px solid #E4E4E7", borderRadius: 7, fontSize: 12 }} placeholder="SL" /><div style={{ fontSize: 9, color: "#A1A1AA", marginTop: 2 }}>Tồn kho cần bán</div></div>
           </div>
           {/* Timeline visual */}
           {startDate && endDateF && (() => {
@@ -1007,12 +992,25 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
               </div>
             );
           })()}
-          <div className="form-group"><div style={{ display: "inline-block", fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>GHI CHÚ</div><textarea rows={2} value={horizonNote} onChange={(e) => setHorizonNote(e.target.value)} placeholder="Lý do phân loại, đặc điểm hàng hóa..." /></div>
         </div>
 
         {/* ═══ B2: Định giá & CTKM ═══ */}
         <div style={sectionStyle}>
           {secTitle(2, "Định giá & CTKM", "#D97706")}
+          <div style={{ color: "#71717A", fontSize: 12, fontStyle: "italic", marginBottom: 8 }}>Giữ nguyên logic hiện tại — CTKM, giá vốn A, giá bán B1/B2, bảng kịch bản</div>
+
+          {/* CTKM summary line */}
+          {sellB1 > 0 && (
+            <div style={{ background: "#F5F5F7", border: "1px solid #E4E4E7", borderRadius: 8, padding: "10px 12px", marginBottom: 10, fontSize: 11, color: "#71717A" }}>
+              <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                <div>CTKM: <strong style={{ color: "#18181B" }}>{promoType === "gift" ? "Tặng kèm quà" : promoType === "combo" ? "Combo set" : promoType === "flash" ? "Flash sale" : promoType === "discount" ? "Giảm trực tiếp" : "Không có"}</strong></div>
+                <div>A: <strong style={{ color: BRAND2 }}>{formatVND(A)}</strong></div>
+                <div>B1: <strong style={{ color: "#18181B" }}>{formatVND(sellB1)}</strong></div>
+                {sellB2 > 0 && <div>B2: <strong style={{ color: "#18181B" }}>{formatVND(sellB2)}</strong></div>}
+                <div>Gross: <strong style={{ color: gross >= 0 ? "#16A34A" : "#DC2626" }}>{gross >= 0 ? "+" : ""}{formatVNDCompact(gross)} ({grossPct}%)</strong></div>
+              </div>
+            </div>
+          )}
 
           {/* Chương trình bán */}
           <div style={{ background: "#F5F5F7", border: "0.5px solid #E5E7EB", borderRadius: 8, padding: "10px 12px", marginBottom: 10 }}>
@@ -1103,6 +1101,15 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
         <div style={sectionStyle}>
           {secTitle(3, "Phân bổ doanh số", "#2563EB")}
 
+          {/* Summary line */}
+          <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8, fontSize: 11, color: "#71717A", flexWrap: "wrap" }}>
+            <span>Tổng: <strong style={{ color: BRAND }}>{totalTarget > 0 ? `${totalTarget} SP` : "—"}</strong></span>
+            <span style={{ color: "#D1D5DB" }}>|</span>
+            <span>Tồn: <strong style={{ color: "#18181B" }}>{stockQty || "—"}</strong></span>
+            <span style={{ color: "#D1D5DB" }}>|</span>
+            <span style={{ color: "#1E40AF", fontSize: 10 }}>Mặc định: FB 55% · TT 25% · SP 10% · Web 10%</span>
+          </div>
+
           {/* Kênh bán chọn */}
           <div style={{ marginBottom: 10 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase", marginBottom: 6 }}>KÊNH BÁN</div>
@@ -1115,8 +1122,6 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
           </div>
 
           {/* Phân bổ theo kênh */}
-          <div style={{ fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase", marginBottom: 4 }}>SỐ LƯỢNG THEO KÊNH</div>
-          <div style={{ fontSize: 10, color: "#2563EB", marginBottom: 6 }}>Mặc định: FB 55% · TT 25% · SP 10% · Web 10%</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginBottom: 8 }}>
             {selChannels.map((ch) => {
               const short = ch.replace("TikTok Shop", "TT").replace("Facebook", "FB").replace("Shopee", "SP").replace("Web/B2B", "Web");
@@ -1140,7 +1145,7 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
                   return <div key={ch} style={{ width: `${pct}%`, background: CH_CHIP_COLORS[ch] || "#6B7280" }} />;
                 })}
               </div>
-              <span style={{ fontSize: 10, fontWeight: 700, color: BRAND, whiteSpace: "nowrap" }}>{totalTarget} SP</span>
+              <span style={{ fontSize: 10, fontWeight: 700, color: stockQty > 0 && totalTarget === stockQty ? "#16A34A" : BRAND, whiteSpace: "nowrap" }}>{totalTarget}/{stockQty || totalTarget} {stockQty > 0 && totalTarget === stockQty ? "✓" : ""}</span>
             </div>
           )}
         </div>
