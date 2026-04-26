@@ -308,7 +308,7 @@ export default function RdView({ items, users = [], suppliers = [], currentUserR
                     item={it}
                     tab={tab}
                     onOpen={() => setDetailItem(it)}
-                    onEdit={() => setEditing(it)}
+                    onEdit={() => setDetailItem(it)}
                     disabled={pending}
                     startTransition={startTransition}
                     refresh={() => router.refresh()}
