@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { formatVNDCompact } from "@/lib/format";
 import AutoSyncToday from "../components/AutoSyncToday";
@@ -28,11 +28,54 @@ export type DashMonthMobileProps = {
   damageValue: number;
 };
 
+function daysAgo(d: number): string { const dt = new Date(); dt.setDate(dt.getDate() + d); return dt.toISOString().substring(0, 10); }
+function monthRange(offset: number) {
+  const now = new Date(); const y = now.getFullYear(); const m = now.getMonth() + offset;
+  const first = new Date(y, m, 1); const last = offset === 0 ? now : new Date(y, m + 1, 0);
+  const fmt = (d: Date) => d.toISOString().substring(0, 10);
+  return { from: fmt(first), to: fmt(last) };
+}
+const CH_RANGES = [
+  { key: "month", label: "Tháng này", ...monthRange(0) },
+  { key: "7d", label: "7N", from: daysAgo(-7), to: daysAgo(0) },
+  { key: "14d", label: "14N", from: daysAgo(-14), to: daysAgo(0) },
+  { key: "30d", label: "30N", from: daysAgo(-30), to: daysAgo(0) },
+  { key: "prev", label: "T.trước", ...monthRange(-1) },
+  { key: "year", label: "Năm nay", from: `${new Date().getFullYear()}-01-01`, to: daysAgo(0) },
+];
+
 export default function DashMonthMobile(p: DashMonthMobileProps) {
   const [touchIdx, setTouchIdx] = useState<number | null>(null);
   const [pinned, setPinned] = useState(false);
   const [expandedCh, setExpandedCh] = useState<string | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
+  const [chRange, setChRange] = useState("month");
+  const [chData, setChData] = useState<{ name: string; color: string; rev: number; target: number; ads: number }[] | null>(null);
+  const [chSources, setChSources] = useState<Record<string, { name: string; revenue: number; orders: number; expected: number }[]> | null>(null);
+  const [chLoading, setChLoading] = useState(false);
+
+  async function loadChRange(key: string) {
+    setChRange(key);
+    if (key === "month") { setChData(null); setChSources(null); return; }
+    const range = CH_RANGES.find(r => r.key === key);
+    if (!range) return;
+    setChLoading(true);
+    try {
+      const res = await fetch(`/api/dash/channel-range?from=${range.from}&to=${range.to}`);
+      const json = await res.json();
+      if (json.ok) {
+        setChData(json.channels.map((ch: { name: string; revenue: number }) => ({
+          name: ch.name, color: CH_COLORS[ch.name] || "#94A3B8",
+          rev: ch.revenue, target: 0, ads: 0,
+        })));
+        setChSources(json.sourcesByChannel || {});
+      }
+    } catch { /* */ }
+    setChLoading(false);
+  }
+
+  const displayChannels = chData || p.channels;
+  const displaySources: Record<string, Array<{name: string; revenue: number; orders: number; expected: number}>> = chSources || p.sourcesByChannel;
   const barCount = p.dailyByChannel.length;
 
   const getIdx = useCallback((e: React.TouchEvent | React.MouseEvent) => {
@@ -115,14 +158,28 @@ export default function DashMonthMobile(p: DashMonthMobileProps) {
 
       {/* Channels vs KH */}
       <div style={{ padding: "12px 10px 0" }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: .5, marginBottom: 8 }}>DT theo kênh vs KH</div>
-        {p.channels.map(ch => {
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: .5 }}>DT theo kênh{chRange !== "month" ? ` (${CH_RANGES.find(r => r.key === chRange)?.label})` : ""}</div>
+          {chLoading && <span style={{ fontSize: 9, color: "#94A3B8" }}>Loading...</span>}
+        </div>
+        <div style={{ display: "flex", gap: 4, marginBottom: 10, overflowX: "auto", paddingBottom: 2 }}>
+          {CH_RANGES.map(r => (
+            <button key={r.key} onClick={() => loadChRange(r.key)} style={{
+              padding: "4px 10px", borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: "pointer",
+              border: chRange === r.key ? "1.5px solid #7C3AED" : "1px solid #E2E8F0",
+              background: chRange === r.key ? "#F3E8FF" : "#fff",
+              color: chRange === r.key ? "#7C3AED" : "#64748B",
+              whiteSpace: "nowrap", fontFamily: "inherit",
+            }}>{r.label}</button>
+          ))}
+        </div>
+        {displayChannels.map(ch => {
           const pct = ch.target > 0 ? Math.round((ch.rev / ch.target) * 100) : 0;
           const chAdsPct = ch.rev > 0 ? (ch.ads / ch.rev * 100) : 0;
           const isExpanded = expandedCh === ch.name;
-          const sources = p.sourcesByChannel[ch.name] || p.sourcesByChannel[ch.name === "Web/App" ? "API" : ""] || [];
-          const webSources = ch.name === "Web/App" ? [...sources, ...(p.sourcesByChannel["Admin"] || []).filter(s => s.revenue > 0)] : sources;
-          const displaySources = ch.name === "Web/App" ? webSources.sort((a, b) => b.revenue - a.revenue) : sources;
+          const sources = displaySources[ch.name] || displaySources[ch.name === "Web/App" ? "API" : ""] || [];
+          const webSources = ch.name === "Web/App" ? [...sources, ...(displaySources["Admin"] || []).filter(s => s.revenue > 0)] : sources;
+          const finalSources = ch.name === "Web/App" ? webSources.sort((a, b) => b.revenue - a.revenue) : sources;
 
           return (
             <div key={ch.name} style={{ background: "#fff", border: `1px solid ${isExpanded ? ch.color : "#E2E8F0"}`, borderRadius: 12, padding: "10px 12px", marginBottom: 6, transition: "border-color .2s" }}>
@@ -144,14 +201,14 @@ export default function DashMonthMobile(p: DashMonthMobileProps) {
               </div>
 
               {/* Expanded: source detail */}
-              {isExpanded && displaySources.length > 0 && (
+              {isExpanded && finalSources.length > 0 && (
                 <div style={{ marginTop: 8, borderTop: "1px solid #F1F5F9", paddingTop: 6 }}>
-                  <div style={{ fontSize: 9, color: "#94A3B8", marginBottom: 4 }}>Chi tiết kênh nhỏ ({displaySources.length})</div>
-                  {displaySources.map((src, si) => {
+                  <div style={{ fontSize: 9, color: "#94A3B8", marginBottom: 4 }}>Chi tiết kênh nhỏ ({finalSources.length})</div>
+                  {finalSources.map((src, si) => {
                     const srcPct = ch.rev > 0 ? Math.round(src.revenue / ch.rev * 100) : 0;
-                    const barW = displaySources[0]?.revenue > 0 ? Math.round(src.revenue / displaySources[0].revenue * 100) : 0;
+                    const barW = finalSources[0]?.revenue > 0 ? Math.round(src.revenue / finalSources[0].revenue * 100) : 0;
                     return (
-                      <div key={src.name} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 0", borderBottom: si < displaySources.length - 1 ? "1px solid #F8FAFC" : "none" }}>
+                      <div key={src.name} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 0", borderBottom: si < finalSources.length - 1 ? "1px solid #F8FAFC" : "none" }}>
                         <span style={{ fontSize: 9, fontWeight: 700, color: "#94A3B8", width: 14, textAlign: "right" }}>{si + 1}</span>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 10, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{src.name}</div>
