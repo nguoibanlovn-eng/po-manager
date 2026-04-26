@@ -926,8 +926,11 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
   const gross = sellB1 > 0 ? sellB1 - A : 0;
   const grossPct = sellB1 > 0 ? (gross / sellB1 * 100).toFixed(1) : "0";
   // Step 5 — Listing
-  const [listings, setListings] = useState<Record<string, { links: string; done: boolean }>>(
-    Object.fromEntries(ALL_CHANNELS.map((ch) => [ch, { links: (m.listings?.[ch]?.links || []).join("\n"), done: m.listings?.[ch]?.done || false }]))
+  const [listings, setListings] = useState<Record<string, { links: string; done: boolean; assignee?: string; deadline?: string }>>(
+    Object.fromEntries(ALL_CHANNELS.map((ch) => {
+      const li = m.listings?.[ch] as Record<string, unknown> | undefined;
+      return [ch, { links: (Array.isArray(li?.links) ? (li.links as string[]).join("\n") : ""), done: !!(li?.done), assignee: (li?.assignee as string) || "", deadline: (li?.deadline as string) || "" }];
+    }))
   );
   // Step 6 — Nội dung
   const [driveLink, setDriveLink] = useState(m.phase2?.drive_link || m.content?.drive_link || "");
@@ -984,7 +987,7 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
       channels_selected: selChannels, channelNote,
       phase3: { sell_price: sellB1, sell_price_2: sellB2, cost },
       pricing: { cost, sell_price: sellB1 },
-      listings: Object.fromEntries(Object.entries(listings).map(([ch, v]) => [ch, { links: v.links.split("\n").map((l) => l.trim()).filter(Boolean), done: v.done }])),
+      listings: Object.fromEntries(Object.entries(listings).map(([ch, v]) => [ch, { links: v.links.split("\n").map((l) => l.trim()).filter(Boolean), done: v.done, assignee: v.assignee || "", deadline: v.deadline || "" }])),
       phase2: { drive_link: driveLink, assignees }, content: { drive_link: driveLink, assignees },
       phase4: { channels: chTargets, stock_qty: stockQty, months, deadline, price_from: priceFrom, price_to: priceTo },
       sales_target: { stock_qty: stockQty, months, channel_split: chTargets, confirmed: true, price_from: priceFrom, price_to: priceTo },
@@ -1439,11 +1442,11 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
                 <span style={{ fontSize: 11, fontWeight: 600 }}>{ch.replace("TikTok Shop", "TikTok").replace("Web/B2B", "Web")}</span>
               </div>
               <input type="text" placeholder={`Link ${ch}...`} value={(listings[ch]?.links || "").split("\n")[0]} onChange={(e) => setListings({ ...listings, [ch]: { ...listings[ch], links: e.target.value } })} style={{ padding: "3px 8px", border: "1px solid #E4E4E7", borderRadius: 4, fontSize: 11 }} />
-              <select style={{ padding: "3px 4px", fontSize: 11, border: "1px solid #E4E4E7", borderRadius: 4, color: "#A1A1AA" }}>
+              <select value={listings[ch]?.assignee || ""} onChange={(e) => setListings({ ...listings, [ch]: { ...listings[ch], assignee: e.target.value } })} style={{ padding: "3px 4px", fontSize: 11, border: "1px solid #E4E4E7", borderRadius: 4, color: listings[ch]?.assignee ? "#4F46E5" : "#A1A1AA" }}>
                 <option value="">— Chọn —</option>
                 {users.map((u) => <option key={u.email} value={u.email}>{u.name || u.email}</option>)}
               </select>
-              <input type="date" style={{ padding: "3px 4px", fontSize: 11, border: "1px solid #E4E4E7", borderRadius: 4 }} />
+              <input type="date" value={listings[ch]?.deadline || ""} onChange={(e) => setListings({ ...listings, [ch]: { ...listings[ch], deadline: e.target.value } })} style={{ padding: "3px 4px", fontSize: 11, border: "1px solid #E4E4E7", borderRadius: 4 }} />
             </div>
           ))}
         </div>
