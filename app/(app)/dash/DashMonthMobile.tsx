@@ -98,6 +98,8 @@ export default function DashMonthMobile(p: DashMonthMobileProps) {
     if (idx >= 0) setTouchIdx(idx);
   }, [getIdx, pinned]);
 
+  const statusColor = (pct: number) => pct >= 100 ? "#16A34A" : pct >= 70 ? "#D97706" : pct > 0 ? "#DC2626" : "#94A3B8";
+  const adsColor = (pct: number) => pct <= 0 ? "#94A3B8" : pct <= 5 ? "#16A34A" : pct <= 7 ? "#D97706" : "#DC2626";
   const timePct = p.lastDay > 0 ? Math.round((p.dayOfMonth / p.lastDay) * 100) : 0;
   const revPct = p.totalTarget > 0 ? Math.round((p.revTotal / p.totalTarget) * 100) : 0;
   const avgDaily = p.dayOfMonth > 0 ? p.revTotal / p.dayOfMonth : 0;
@@ -105,6 +107,7 @@ export default function DashMonthMobile(p: DashMonthMobileProps) {
   const projPct = p.totalTarget > 0 ? Math.round((projected / p.totalTarget) * 100) : 0;
   const max7d = Math.max(...p.daily.map(d => d.revenue), 1);
   const [, mm] = p.month.split("-");
+  const heroColor = statusColor(revPct);
 
   // Total from range data
   const rangeTotal = chData ? chData.reduce((s, c) => s + c.rev, 0) : 0;
@@ -120,42 +123,40 @@ export default function DashMonthMobile(p: DashMonthMobileProps) {
         </div>
       )}
 
-      {/* Header */}
-      <div style={{ background: "linear-gradient(135deg,#3B82F6,#1D4ED8)", padding: "12px 14px 0", color: "#fff" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+      {/* Header — chuẩn Year */}
+      <div style={{ background: "linear-gradient(135deg,#7C3AED,#4C1D95)", padding: "14px 14px 16px", color: "#fff" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <div style={{ fontSize: 17, fontWeight: 800 }}>Tháng {mm}/{p.month.substring(0, 4)}</div>
-            <div style={{ fontSize: 11, opacity: .6 }}>Ngày {p.dayOfMonth}/{p.lastDay} · {timePct}% thời gian</div>
+            <div style={{ fontSize: 11, opacity: .6 }}>Ngày {p.dayOfMonth}/{p.lastDay} · {timePct}% thời gian · KH: {formatVNDCompact(p.totalTarget)}</div>
           </div>
-          <Link href={`/dash?view=month&month=${p.month}`} style={{ background: "rgba(255,255,255,.15)", padding: "3px 10px", borderRadius: 10, fontSize: 10, color: "#fff", textDecoration: "none" }}>⟳</Link>
+          <div style={{ display: "flex", gap: 4 }}>
+            {(() => {
+              const now = new Date();
+              const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+              const pm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+              const prevMonth = `${pm.getFullYear()}-${String(pm.getMonth() + 1).padStart(2, "0")}`;
+              const isThis = p.month === thisMonth;
+              const isPrev = p.month === prevMonth;
+              return (<>
+                <Link href={`/dash?view=month&month=${thisMonth}`} onClick={() => setNavLoading(true)} style={{
+                  background: isThis ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.1)",
+                  color: isThis ? "#fff" : "rgba(255,255,255,.5)",
+                  padding: "5px 10px", borderRadius: 8, fontSize: 10, fontWeight: 600, textDecoration: "none",
+                }}>Tháng này</Link>
+                <Link href={`/dash?view=month&month=${prevMonth}`} onClick={() => setNavLoading(true)} style={{
+                  background: isPrev ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.1)",
+                  color: isPrev ? "#fff" : "rgba(255,255,255,.5)",
+                  padding: "5px 10px", borderRadius: 8, fontSize: 10, fontWeight: 600, textDecoration: "none",
+                }}>Tháng trước</Link>
+              </>);
+            })()}
+          </div>
         </div>
-        {/* Month quick switch */}
-        {(() => {
-          const now = new Date();
-          const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-          const pm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-          const prevMonth = `${pm.getFullYear()}-${String(pm.getMonth() + 1).padStart(2, "0")}`;
-          const isThis = p.month === thisMonth;
-          const isPrev = p.month === prevMonth;
-          return (
-            <div style={{ display: "flex", gap: 6, paddingBottom: 10 }}>
-              <Link href={`/dash?view=month&month=${thisMonth}`} onClick={() => setNavLoading(true)} style={{
-                background: isThis ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.1)",
-                color: isThis ? "#fff" : "rgba(255,255,255,.5)",
-                padding: "5px 14px", borderRadius: 8, fontSize: 11, fontWeight: 600, textDecoration: "none",
-              }}>Tháng này</Link>
-              <Link href={`/dash?view=month&month=${prevMonth}`} onClick={() => setNavLoading(true)} style={{
-                background: isPrev ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.1)",
-                color: isPrev ? "#fff" : "rgba(255,255,255,.5)",
-                padding: "5px 14px", borderRadius: 8, fontSize: 11, fontWeight: 600, textDecoration: "none",
-              }}>Tháng trước</Link>
-            </div>
-          );
-        })()}
       </div>
 
-      {/* Hero */}
-      <div style={{ background: "linear-gradient(135deg,#3B82F6,#1D4ED8)", margin: "0 10px", borderRadius: 14, padding: 14, color: "#fff", marginTop: -1 }}>
+      {/* Hero — dynamic color giống Year */}
+      <div style={{ margin: "8px 10px 0", borderRadius: 14, padding: 14, color: "#fff", background: `linear-gradient(135deg, ${heroColor}, ${heroColor}CC)` }}>
         <div style={{ fontSize: 11, opacity: .8 }}>DOANH THU THÁNG</div>
         <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: -1 }}>{formatVNDCompact(p.revTotal)}</div>
         <div style={{ fontSize: 11, opacity: .7 }}>{p.revOrders.toLocaleString("vi-VN")} đơn · TB {formatVNDCompact(avgDaily)}/ngày</div>
@@ -163,17 +164,17 @@ export default function DashMonthMobile(p: DashMonthMobileProps) {
           <div style={{ height: "100%", width: `${Math.min(revPct, 100)}%`, background: "#fff", borderRadius: 3 }} />
           <div style={{ position: "absolute", top: -2, left: `${timePct}%`, width: 2, height: 10, background: "rgba(255,255,255,.5)" }} />
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, opacity: .7, marginTop: 3 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, opacity: .8, marginTop: 3 }}>
           <span>{revPct}% KH</span><span>KH: {formatVNDCompact(p.totalTarget)}</span>
         </div>
-        <div style={{ display: "flex", gap: 8, marginTop: 6, fontSize: 10, opacity: .7 }}>
+        <div style={{ display: "flex", gap: 8, marginTop: 4, fontSize: 10, opacity: .7 }}>
           <span>Còn {formatVNDCompact(Math.max(0, p.totalTarget - p.revTotal))}</span>
           <span>·</span>
           <span>Dự kiến {formatVNDCompact(projected)} ({projPct}%)</span>
         </div>
       </div>
 
-      {/* Mini KPIs */}
+      {/* Mini KPIs — chuẩn Year */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, padding: "8px 10px 0" }}>
         <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 14, padding: 12 }}>
           <div style={{ fontSize: 9, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase" }}>DT Dự kiến</div>
@@ -182,8 +183,8 @@ export default function DashMonthMobile(p: DashMonthMobileProps) {
         </div>
         <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 14, padding: 12 }}>
           <div style={{ fontSize: 9, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase" }}>Chi phí Ads</div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: "#DC2626", margin: "2px 0" }}>{formatVNDCompact(p.totalAdSpend)}</div>
-          <div style={{ fontSize: 9, color: "#94A3B8" }}>{p.adsPct.toFixed(1)}% DT · ROAS {p.roas.toFixed(1)}x</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: adsColor(p.adsPct), margin: "2px 0" }}>{formatVNDCompact(p.totalAdSpend)}</div>
+          <div style={{ fontSize: 9, color: adsColor(p.adsPct), fontWeight: 600 }}>{p.adsPct.toFixed(1)}% DT · ROAS {p.roas.toFixed(1)}x</div>
         </div>
       </div>
 
@@ -215,7 +216,7 @@ export default function DashMonthMobile(p: DashMonthMobileProps) {
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 4, background: "#F8FAFC", borderRadius: 8, padding: "6px 8px", marginTop: 4 }}>
                 <div><div style={{ fontSize: 8, color: "#94A3B8", textTransform: "uppercase" }}>KH</div><div style={{ fontSize: 10, fontWeight: 700 }}>{formatVNDCompact(ch.target)}</div></div>
-                <div><div style={{ fontSize: 8, color: "#94A3B8", textTransform: "uppercase" }}>Đạt</div><div style={{ fontSize: 10, fontWeight: 700, color: pct >= 100 ? "#16A34A" : pct >= 70 ? "#374151" : "#D97706" }}>{pct}%</div></div>
+                <div><div style={{ fontSize: 8, color: "#94A3B8", textTransform: "uppercase" }}>Đạt</div><div style={{ fontSize: 10, fontWeight: 700, color: statusColor(pct) }}>{pct}%</div></div>
                 <div><div style={{ fontSize: 8, color: "#94A3B8", textTransform: "uppercase" }}>Ads</div><div style={{ fontSize: 10, fontWeight: 700, color: "#DC2626" }}>{ch.ads > 0 ? formatVNDCompact(ch.ads) : "—"}</div></div>
                 <div><div style={{ fontSize: 8, color: "#94A3B8", textTransform: "uppercase" }}>%Ads</div><div style={{ fontSize: 10, fontWeight: 700, color: chAdsPct <= 5 ? "#16A34A" : chAdsPct <= 7 ? "#D97706" : ch.ads > 0 ? "#DC2626" : "#94A3B8" }}>{ch.ads > 0 ? `${chAdsPct.toFixed(1)}%` : "—"}</div></div>
               </div>
@@ -359,15 +360,13 @@ export default function DashMonthMobile(p: DashMonthMobileProps) {
       {/* Operations */}
       <div style={{ padding: "12px 10px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12, padding: "10px 12px" }}>
-            <div style={{ fontSize: 20, marginBottom: 4 }}>💰</div>
-            <div style={{ fontSize: 10, fontWeight: 600, color: "#64748B" }}>Công nợ</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: p.outstanding > 0 ? "#DC2626" : "#16A34A", margin: "2px 0" }}>{formatVNDCompact(p.outstanding)}</div>
+          <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12, padding: 12 }}>
+            <div style={{ fontSize: 9, fontWeight: 600, color: p.outstanding > 0 ? "#DC2626" : "#94A3B8", textTransform: "uppercase" }}>Công nợ</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: p.outstanding > 0 ? "#DC2626" : "#16A34A", margin: "2px 0" }}>{formatVNDCompact(p.outstanding)}</div>
           </div>
-          <div style={{ background: "#fff", border: `1px solid ${p.damageItems > 0 ? "#FECACA" : "#E2E8F0"}`, borderRadius: 12, padding: "10px 12px" }}>
-            <div style={{ fontSize: 20, marginBottom: 4 }}>⚠️</div>
-            <div style={{ fontSize: 10, fontWeight: 600, color: p.damageItems > 0 ? "#DC2626" : "#64748B" }}>Thiệt hại</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: p.damageItems > 0 ? "#DC2626" : undefined, margin: "2px 0" }}>{p.damageItems} SP</div>
+          <div style={{ background: "#fff", border: `1px solid ${p.damageItems > 0 ? "#FECACA" : "#E2E8F0"}`, borderRadius: 12, padding: 12 }}>
+            <div style={{ fontSize: 9, fontWeight: 600, color: p.damageItems > 0 ? "#DC2626" : "#94A3B8", textTransform: "uppercase" }}>Thiệt hại</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: p.damageItems > 0 ? "#DC2626" : undefined, margin: "2px 0" }}>{p.damageItems} SP</div>
           </div>
         </div>
       </div>
