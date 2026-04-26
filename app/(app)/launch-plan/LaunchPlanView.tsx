@@ -962,22 +962,30 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
         {/* ═══ B1: Phân loại hàng ═══ */}
         <div style={sectionStyle}>
           {secTitle(1, "Phân loại hàng", BRAND)}
+          {/* Thời gian triển khai — đặt trước để auto tính horizon */}
+          <div style={{ fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>THỜI GIAN TRIỂN KHAI DỰ KIẾN</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
+            <div><input type="date" value={startDate} onChange={(e) => {
+              setStartDate(e.target.value);
+              if (e.target.value && endDateF) { const ms = new Date(endDateF).getTime() - new Date(e.target.value).getTime(); const mo = Math.round(ms / (30 * 86400000)); const hz = mo <= 3 ? "short" : mo <= 6 ? "medium" : "long"; setHorizon(hz); const k = hz as "short"|"medium"|"long"; setVideos(VIDEO_TYPES.map((vt) => ({ type: vt.type, count: vt[k] }))); }
+            }} style={{ width: "100%", padding: "6px 10px", border: "1px solid #E4E4E7", borderRadius: 7, fontSize: 12 }} /><div style={{ fontSize: 9, color: "#A1A1AA", marginTop: 2 }}>Bắt đầu bán</div></div>
+            <div><input type="date" value={endDateF} onChange={(e) => {
+              setEndDateF(e.target.value);
+              if (startDate && e.target.value) { const ms = new Date(e.target.value).getTime() - new Date(startDate).getTime(); const mo = Math.round(ms / (30 * 86400000)); const hz = mo <= 3 ? "short" : mo <= 6 ? "medium" : "long"; setHorizon(hz); const k = hz as "short"|"medium"|"long"; setVideos(VIDEO_TYPES.map((vt) => ({ type: vt.type, count: vt[k] }))); }
+            }} style={{ width: "100%", padding: "6px 10px", border: "1px solid #E4E4E7", borderRadius: 7, fontSize: 12 }} /><div style={{ fontSize: 9, color: "#A1A1AA", marginTop: 2 }}>Kết thúc dự kiến</div></div>
+          </div>
+          {/* CHU KỲ BÁN — auto từ thời gian, read-only */}
           <div style={{ marginBottom: 10 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>CHU KỲ BÁN</div>
             <div style={{ display: "flex", gap: 6 }}>
               {HORIZONS.map((h) => (
-                <button key={h.k} onClick={() => { setHorizon(h.k); const k = h.k as "short" | "medium" | "long"; setVideos(VIDEO_TYPES.map((vt) => ({ type: vt.type, count: vt[k] }))); }} style={{ padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", background: horizon === h.k ? h.color : (h.bgOff || "#F3F4F6"), color: horizon === h.k ? "#fff" : (h.colorOff || "#374151"), border: "none", flex: 1, textAlign: "center" }}>
+                <div key={h.k} style={{ padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600, background: horizon === h.k ? h.color : (h.bgOff || "#F3F4F6"), color: horizon === h.k ? "#fff" : (h.colorOff || "#374151"), flex: 1, textAlign: "center", opacity: horizon === h.k ? 1 : 0.5 }}>
                   {h.label}
                   <div style={{ fontSize: 9, marginTop: 2, opacity: 0.7 }}>{h.sub}</div>
-                </button>
+                </div>
               ))}
             </div>
-          </div>
-          {/* Thời gian triển khai */}
-          <div style={{ fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>THỜI GIAN TRIỂN KHAI DỰ KIẾN</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
-            <div><input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={{ width: "100%", padding: "6px 10px", border: "1px solid #E4E4E7", borderRadius: 7, fontSize: 12 }} /><div style={{ fontSize: 9, color: "#A1A1AA", marginTop: 2 }}>Bắt đầu bán</div></div>
-            <div><input type="date" value={endDateF} onChange={(e) => setEndDateF(e.target.value)} style={{ width: "100%", padding: "6px 10px", border: "1px solid #E4E4E7", borderRadius: 7, fontSize: 12 }} /><div style={{ fontSize: 9, color: "#A1A1AA", marginTop: 2 }}>Kết thúc dự kiến</div></div>
+            {!startDate || !endDateF ? <div style={{ fontSize: 9, color: "#D97706", marginTop: 4 }}>Chọn thời gian để tự động xác định chu kỳ bán</div> : null}
           </div>
           {/* Timeline visual */}
           {startDate && endDateF && (() => {
