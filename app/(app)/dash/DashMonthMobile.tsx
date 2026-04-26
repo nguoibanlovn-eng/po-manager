@@ -104,9 +104,19 @@ export default function DashMonthMobile(p: DashMonthMobileProps) {
   const max7d = Math.max(...p.daily.map(d => d.revenue), 1);
   const [, mm] = p.month.split("-");
 
+  // Total from range data
+  const rangeTotal = chData ? chData.reduce((s, c) => s + c.rev, 0) : 0;
+
   return (
     <div style={{ background: "#F8FAFC", minHeight: "100vh", paddingBottom: 80 }}>
       <AutoSyncToday extraSyncs={["/api/tiktok/sync-ads", "/api/tiktok/sync-gmv-max", "/api/fb/sync-ads"]} />
+
+      {/* Loading banner */}
+      {chLoading && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 999, background: "#7C3AED", color: "#fff", textAlign: "center", padding: "6px 0", fontSize: 12, fontWeight: 600 }}>
+          Đang tải dữ liệu...
+        </div>
+      )}
 
       {/* Header */}
       <div style={{ background: "linear-gradient(135deg,#3B82F6,#1D4ED8)", padding: "12px 14px 0", color: "#fff" }}>
@@ -156,7 +166,7 @@ export default function DashMonthMobile(p: DashMonthMobileProps) {
       <div style={{ padding: "12px 10px 0" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: .5 }}>DT theo kênh{chRange !== "month" ? ` (${CH_RANGES.find(r => r.key === chRange)?.label})` : ""}</div>
-          {chLoading && <span style={{ fontSize: 10, color: "#7C3AED", fontWeight: 600 }}>Đang tải...</span>}
+          {chLoading && <span style={{ fontSize: 10, color: "#7C3AED", fontWeight: 600, animation: "pulse 1s infinite" }}>Đang tải...</span>}
         </div>
         <div style={{ display: "flex", gap: 4, marginBottom: 10, overflowX: "auto", paddingBottom: 2 }}>
           {CH_RANGES.map(r => (
@@ -169,13 +179,24 @@ export default function DashMonthMobile(p: DashMonthMobileProps) {
             }}>{r.label}</button>
           ))}
         </div>
+        {/* Range total */}
+        {chRange !== "month" && chData && (
+          <div style={{ background: "#F3E8FF", borderRadius: 10, padding: "8px 12px", marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: "#7C3AED" }}>Tổng DT ({CH_RANGES.find(r => r.key === chRange)?.label})</span>
+            <span style={{ fontSize: 18, fontWeight: 800, color: "#7C3AED" }}>{formatVNDCompact(rangeTotal)}</span>
+          </div>
+        )}
+
         {displayChannels.map(ch => {
-          const pct = ch.target > 0 ? Math.round((ch.rev / ch.target) * 100) : 0;
+          const hasTarget = ch.target > 0;
+          const pct = hasTarget ? Math.round((ch.rev / ch.target) * 100) : 0;
           const chAdsPct = ch.rev > 0 ? (ch.ads / ch.rev * 100) : 0;
           const isExpanded = expandedCh === ch.name;
           const sources = displaySources[ch.name] || displaySources[ch.name === "Web/App" ? "API" : ""] || [];
           const webSources = ch.name === "Web/App" ? [...sources, ...(displaySources["Admin"] || []).filter(s => s.revenue > 0)] : sources;
           const finalSources = ch.name === "Web/App" ? webSources.sort((a, b) => b.revenue - a.revenue) : sources;
+          // % of total for range mode
+          const pctOfTotal = rangeTotal > 0 ? Math.round((ch.rev / rangeTotal) * 100) : 0;
 
           return (
             <div key={ch.name} style={{ background: "#fff", border: `1px solid ${isExpanded ? ch.color : "#E2E8F0"}`, borderRadius: 12, padding: "10px 12px", marginBottom: 6, transition: "border-color .2s" }}>
@@ -185,15 +206,27 @@ export default function DashMonthMobile(p: DashMonthMobileProps) {
                 <div style={{ fontSize: 16, fontWeight: 800, color: ch.color }}>{formatVNDCompact(ch.rev)}</div>
                 <span style={{ fontSize: 10, color: "#94A3B8", transform: isExpanded ? "rotate(90deg)" : "none", transition: "transform .2s" }}>›</span>
               </div>
-              <div style={{ height: 6, background: "#F3F4F6", borderRadius: 3, overflow: "hidden", marginBottom: 3, position: "relative" }}>
-                <div style={{ height: "100%", width: `${Math.min(pct, 100)}%`, background: pct >= 100 ? "#22C55E" : pct >= 70 ? ch.color : "#F59E0B", borderRadius: 3 }} />
-                <div style={{ position: "absolute", top: -1, left: `${timePct}%`, width: 1, height: 8, background: "#DC2626", opacity: .4 }} />
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 4, background: "#F8FAFC", borderRadius: 8, padding: "6px 8px", marginTop: 4 }}>
-                <div><div style={{ fontSize: 8, color: "#94A3B8", textTransform: "uppercase" }}>KH</div><div style={{ fontSize: 10, fontWeight: 700 }}>{formatVNDCompact(ch.target)}</div></div>
-                <div><div style={{ fontSize: 8, color: "#94A3B8", textTransform: "uppercase" }}>Đạt</div><div style={{ fontSize: 10, fontWeight: 700, color: pct >= 100 ? "#16A34A" : pct >= 70 ? "#374151" : "#D97706" }}>{pct}%</div></div>
-                <div><div style={{ fontSize: 8, color: "#94A3B8", textTransform: "uppercase" }}>Ads</div><div style={{ fontSize: 10, fontWeight: 700, color: "#DC2626" }}>{ch.ads > 0 ? formatVNDCompact(ch.ads) : "—"}</div></div>
-                <div><div style={{ fontSize: 8, color: "#94A3B8", textTransform: "uppercase" }}>%Ads</div><div style={{ fontSize: 10, fontWeight: 700, color: chAdsPct <= 5 ? "#16A34A" : chAdsPct <= 7 ? "#D97706" : ch.ads > 0 ? "#DC2626" : "#94A3B8" }}>{ch.ads > 0 ? `${chAdsPct.toFixed(1)}%` : "—"}</div></div>
+              {/* Progress bar — show target progress or % of total */}
+              {hasTarget ? (
+                <div style={{ height: 6, background: "#F3F4F6", borderRadius: 3, overflow: "hidden", marginBottom: 3, position: "relative" }}>
+                  <div style={{ height: "100%", width: `${Math.min(pct, 100)}%`, background: pct >= 100 ? "#22C55E" : pct >= 70 ? ch.color : "#F59E0B", borderRadius: 3 }} />
+                  <div style={{ position: "absolute", top: -1, left: `${timePct}%`, width: 1, height: 8, background: "#DC2626", opacity: .4 }} />
+                </div>
+              ) : (
+                <div style={{ height: 6, background: "#F3F4F6", borderRadius: 3, overflow: "hidden", marginBottom: 3 }}>
+                  <div style={{ height: "100%", width: `${pctOfTotal}%`, background: ch.color, borderRadius: 3, opacity: .7 }} />
+                </div>
+              )}
+              <div style={{ display: "grid", gridTemplateColumns: hasTarget ? "1fr 1fr 1fr 1fr" : "1fr 1fr", gap: 4, background: "#F8FAFC", borderRadius: 8, padding: "6px 8px", marginTop: 4 }}>
+                {hasTarget ? (<>
+                  <div><div style={{ fontSize: 8, color: "#94A3B8", textTransform: "uppercase" }}>KH</div><div style={{ fontSize: 10, fontWeight: 700 }}>{formatVNDCompact(ch.target)}</div></div>
+                  <div><div style={{ fontSize: 8, color: "#94A3B8", textTransform: "uppercase" }}>Đạt</div><div style={{ fontSize: 10, fontWeight: 700, color: pct >= 100 ? "#16A34A" : pct >= 70 ? "#374151" : "#D97706" }}>{pct}%</div></div>
+                  <div><div style={{ fontSize: 8, color: "#94A3B8", textTransform: "uppercase" }}>Ads</div><div style={{ fontSize: 10, fontWeight: 700, color: "#DC2626" }}>{ch.ads > 0 ? formatVNDCompact(ch.ads) : "—"}</div></div>
+                  <div><div style={{ fontSize: 8, color: "#94A3B8", textTransform: "uppercase" }}>%Ads</div><div style={{ fontSize: 10, fontWeight: 700, color: chAdsPct <= 5 ? "#16A34A" : chAdsPct <= 7 ? "#D97706" : ch.ads > 0 ? "#DC2626" : "#94A3B8" }}>{ch.ads > 0 ? `${chAdsPct.toFixed(1)}%` : "—"}</div></div>
+                </>) : (<>
+                  <div><div style={{ fontSize: 8, color: "#94A3B8", textTransform: "uppercase" }}>% tổng</div><div style={{ fontSize: 10, fontWeight: 700 }}>{pctOfTotal}%</div></div>
+                  <div><div style={{ fontSize: 8, color: "#94A3B8", textTransform: "uppercase" }}>Doanh thu</div><div style={{ fontSize: 10, fontWeight: 700, color: ch.color }}>{formatVNDCompact(ch.rev)}</div></div>
+                </>)}
               </div>
 
               {/* Expanded: source detail */}
