@@ -392,13 +392,22 @@ function RdRow({
   return (
     <tr onClick={onOpen} style={{ cursor: "pointer" }}>
       <td>
-        <span style={{
-          fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 4,
-          background: style.bg, color: style.color, border: `1px solid ${style.border}`,
-          whiteSpace: "nowrap",
-        }}>
-          {item.stage || "Đề xuất"}
-        </span>
+        {(() => {
+          const stage = item.stage || "Đề xuất";
+          const eta = String(data.sample_eta || "");
+          const arrived = stage === "Chờ mẫu về" && eta && eta <= new Date().toISOString().substring(0, 10);
+          const label = arrived ? "Mẫu đã về" : stage;
+          const s = arrived ? { bg: "#DCFCE7", color: "#15803D", border: "#BBF7D0" } : style;
+          return (
+            <span style={{
+              fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 4,
+              background: s.bg, color: s.color, border: `1px solid ${s.border}`,
+              whiteSpace: "nowrap",
+            }}>
+              {label}
+            </span>
+          );
+        })()}
       </td>
       <td>
         <div style={{ fontWeight: 700, fontSize: 13 }}>{item.name || "(không tên)"}</div>
