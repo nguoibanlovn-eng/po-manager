@@ -199,6 +199,10 @@ function ModalInner({
   const [activeIdx, setActiveIdx] = useState(firstActive >= 0 ? firstActive : 0);
   const step = initSteps[activeIdx];
 
+  // Production items with old data may have "Nghiên cứu" label → resolve to "Triển khai"
+  const isProd = isProduction(item);
+  const resolvedLabel = (isProd && step.label === "Nghiên cứu") ? "Triển khai" : step.label;
+
   // Item name (editable)
   const [itemName, setItemName] = useState(item.name || "");
   const [creatingPo, setCreatingPo] = useState(false);
@@ -264,7 +268,7 @@ function ModalInner({
   });
 
   // Form fields (data.* flat)
-  const formFields = STEP_FORM_FIELDS[step.label] || [];
+  const formFields = STEP_FORM_FIELDS[resolvedLabel] || STEP_FORM_FIELDS[step.label] || [];
   const [formData, setFormData] = useState<Record<string, string>>(() => {
     const d: Record<string, string> = {};
     for (const f of formFields) d[f.key] = String(data[f.key] ?? "");
@@ -348,7 +352,7 @@ function ModalInner({
   function markComplete() {
     // ── Validation trước khi chuyển bước ──
     const missing: string[] = [];
-    const sl = step.label;
+    const sl = resolvedLabel;
     const fd = formData;
     const d = data;
 
@@ -603,7 +607,7 @@ function ModalInner({
               background: isApprovalStep ? "#FFF7ED" : "#EFF6FF",
               color: isApprovalStep ? "#D97706" : "#3B82F6",
             }}>
-              Bước {activeIdx + 1}: {step.label}
+              Bước {activeIdx + 1}: {resolvedLabel}
             </span>
             <button type="button" onClick={save} disabled={pending || !dirty} style={{ padding: "4px 10px", borderRadius: 6, fontSize: 10, fontWeight: 600, border: "1px solid #E2E8F0", background: dirty ? "#7C3AED" : "#F1F5F9", color: dirty ? "#fff" : "#94A3B8", cursor: "pointer" }}>
               {pending ? "..." : "Lưu"}
@@ -640,7 +644,7 @@ function ModalInner({
                       {isDone ? "✓" : idx + 1}
                     </div>
                     <div>
-                      <div style={{ fontSize: 11, fontWeight: 600 }}>{s.label === "Xác nhận" ? (proposerRole === "leader" ? "NV nhận việc" : "Duyệt ĐX") : s.label}</div>
+                      <div style={{ fontSize: 11, fontWeight: 600 }}>{s.label === "Xác nhận" ? (proposerRole === "leader" ? "NV nhận việc" : "Duyệt ĐX") : (isProd && s.label === "Nghiên cứu") ? "Triển khai" : s.label}</div>
                       <div style={{ fontSize: 9, color: "#94A3B8" }}>{statusText}</div>
                       {s.assignee_name && <div style={{ fontSize: 9, color: "#94A3B8" }}>→ {s.assignee_name.split("(")[0].trim()}</div>}
                     </div>
@@ -740,10 +744,10 @@ function ModalInner({
             )}
 
             {/* ── Deadline banner for ALL steps (except Đề xuất which has its own) ── */}
-            {step.label !== "Đề xuất" && (() => {
-              const dxStep = initSteps.find((s) => s.label === "Đề xuất");
+            {step.label !== "Đề xuất" && step.label !== "Tạo yêu cầu" && (() => {
+              const dxStep = initSteps.find((s) => s.label === "Đề xuất" || s.label === "Tạo yêu cầu");
               const dxDeadline = dxStep?.deadline || "";
-              const stepLabel = step.label;
+              const stepLabel = resolvedLabel;
               let dlLabel = ""; let dlValue = "";
 
               if (["Xác nhận", "NV nhận việc", "Nghiên cứu", "Triển khai", "Duyệt ĐX"].includes(stepLabel)) {
@@ -1442,7 +1446,7 @@ function ModalInner({
                 {/* Deadline QC tự tính từ ETA + 3 ngày — không cần chọn thủ công */}
               </>
               );
-            })() : step.label === "Triển khai" ? (
+            })() : resolvedLabel === "Triển khai" ? (
               <>
                 {/* Tóm tắt yêu cầu từ Tạo yêu cầu */}
                 {(data.description || data.ref_links) && (
@@ -1493,7 +1497,7 @@ function ModalInner({
                   <textarea value={formData.evaluation || ""} onChange={(e) => setField("evaluation", e.target.value)} placeholder="Nhận xét, kết luận sau triển khai..." style={{ ...S.textarea, minHeight: 50 }} />
                 </div>
               </>
-            ) : step.label === "Nghiên cứu" ? (
+            ) : resolvedLabel === "Nghiên cứu" ? (
               <>
                 {/* Tóm tắt yêu cầu từ Đề xuất */}
                 {(data.description || data.reason || data.ref_links) && (
@@ -1582,7 +1586,7 @@ function ModalInner({
             ) : null}
 
             {/* ── QC Checklist (for Hàng về step) — skip if custom rendered ── */}
-            {step.label !== "Hàng về" && step.label !== "QC & Nhận hàng" && step.label !== "Nhập hàng" && step.label !== "Đặt hàng" && step.label !== "Đặt mẫu" && step.label !== "Chờ mẫu về" && step.label !== "Triển khai" && (checklist.length > 0 || isQcStep || step.label === "Tạo yêu cầu" || step.label === "Đề xuất") && (
+            {step.label !== "Hàng về" && step.label !== "QC & Nhận hàng" && step.label !== "Nhập hàng" && step.label !== "Đặt hàng" && step.label !== "Đặt mẫu" && step.label !== "Chờ mẫu về" && resolvedLabel !== "Triển khai" && (checklist.length > 0 || isQcStep || step.label === "Tạo yêu cầu" || step.label === "Đề xuất") && (
               <div style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: ".3px", marginBottom: 5 }}>
                   {isQcStep ? `QC Checklist (${passCount}/${checklist.length} Pass${failCount > 0 ? ` · ${failCount} Fail` : ""})` : `Checklist (${checkedCount}/${checklist.length})`}
