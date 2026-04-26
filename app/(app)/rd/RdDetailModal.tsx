@@ -1473,6 +1473,7 @@ function ModalInner({
                                 background: c.verdict === "fail" ? "#FEF2F2" : "#fff", color: c.verdict === "fail" ? "#DC2626" : "#94A3B8",
                               }}>Fail</button>
                             </div>
+                            <button type="button" onClick={() => removeCheck(i)} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 12, padding: "0 2px" }}>✕</button>
                           </div>
                         ))}
                       </div>
