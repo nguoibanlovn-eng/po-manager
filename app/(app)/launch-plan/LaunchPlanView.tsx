@@ -63,6 +63,82 @@ function getPhaseChecks(m: Metrics): boolean[] {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   READY TAB — Chờ launching (click expand chi tiết)
+   ═══════════════════════════════════════════════════════════ */
+function ReadyTab({ plans, onEdit }: { plans: LaunchPlanRow[]; onEdit: (p: LaunchPlanRow) => void }) {
+  const [expanded, setExpanded] = useState<string | null>(null);
+  return (
+    <div className="card" style={{ padding: 0 }}>
+      {plans.map((p) => {
+        const m = M(p);
+        const hz = HORIZONS.find((h) => h.k === (m.phase1?.horizon || m.product_type));
+        const isOpen = expanded === p.id;
+        const cost = m.phase3?.cost || m.pricing?.cost || 0;
+        const sellPrice = m.phase3?.sell_price || m.pricing?.sell_price || 0;
+        const custGroup = m.phase1?.customer || m.customer?.group || "";
+        const custPain = m.phase1?.pain_point || m.customer?.pain_point || "";
+        const competitors = typeof (m as Record<string, unknown>).competitors === "string" ? (m as Record<string, unknown>).competitors as string : "";
+        const channels = m.channels_selected || [];
+        const listings = m.listings || {};
+
+        return (
+          <div key={p.id} style={{ borderBottom: "1px solid #F3F4F6" }}>
+            {/* Row chính — bấm để expand */}
+            <div style={{ padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => setExpanded(isOpen ? null : p.id)}>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 2 }}>
+                  {m.deploy_id && <span style={{ fontSize: 8, background: BRAND, color: "#fff", borderRadius: 3, padding: "1px 5px", fontWeight: 600 }}>TỪ TRIỂN KHAI</span>}
+                  {hz && <span style={{ fontSize: 8, background: hz.color, color: "#fff", borderRadius: 3, padding: "1px 5px", fontWeight: 600 }}>{hz.label}</span>}
+                  <span style={{ fontWeight: 700, fontSize: 13 }}>{p.product_name}</span>
+                </div>
+                <div style={{ fontSize: 10, color: "#6B7280" }}>
+                  SKU: {p.sku || "—"}
+                  {cost > 0 ? ` · Vốn: ${formatVND(cost)}` : ""}
+                  {sellPrice > 0 ? ` · Giá: ${formatVND(sellPrice)}` : ""}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <span style={{ fontSize: 12, color: "#A1A1AA", transform: isOpen ? "rotate(180deg)" : "rotate(0)", transition: "transform .2s" }}>▼</span>
+                <button className="btn btn-sm" style={{ background: BRAND, color: "#fff", fontSize: 11 }} onClick={(e) => { e.stopPropagation(); onEdit(p); }}>Tạo Launch Plan</button>
+              </div>
+            </div>
+            {/* Chi tiết expand */}
+            {isOpen && (
+              <div style={{ padding: "0 14px 12px", background: "#FAFAFA", borderTop: "1px solid #F3F4F6" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 16px", fontSize: 11, padding: "10px 0" }}>
+                  {custGroup && <div><span style={{ color: "#A1A1AA" }}>Khách hàng:</span> <strong>{custGroup}</strong></div>}
+                  {custPain && <div><span style={{ color: "#A1A1AA" }}>Nhu cầu:</span> <strong>{custPain}</strong></div>}
+                  {competitors && <div style={{ gridColumn: "1 / -1" }}><span style={{ color: "#A1A1AA" }}>Đối thủ:</span> <strong>{competitors}</strong></div>}
+                  {channels.length > 0 && (
+                    <div style={{ gridColumn: "1 / -1" }}>
+                      <span style={{ color: "#A1A1AA" }}>Kênh: </span>
+                      {channels.map((ch) => (
+                        <span key={ch} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 3, fontWeight: 600, background: CH_COLORS[ch.replace(" Shop", "")] || "#6B7280", color: "#fff", marginRight: 3 }}>{ch.replace("TikTok Shop", "TT").replace("Facebook", "FB").replace("Shopee", "SP").replace("Web/B2B", "Web")}</span>
+                      ))}
+                    </div>
+                  )}
+                  {Object.keys(listings).length > 0 && (
+                    <div style={{ gridColumn: "1 / -1" }}>
+                      <span style={{ color: "#A1A1AA" }}>Listing: </span>
+                      {Object.entries(listings).map(([ch, info]) => {
+                        const li = info as { done?: boolean };
+                        return <span key={ch} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 3, fontWeight: 600, background: li.done ? "#F0FDF4" : "#FEF2F2", color: li.done ? "#16A34A" : "#DC2626", marginRight: 3 }}>{ch.replace("TikTok Shop", "TT").replace("Facebook", "FB").replace("Web/B2B", "Web")} {li.done ? "✓" : "—"}</span>;
+                      })}
+                    </div>
+                  )}
+                </div>
+                {p.note && <div style={{ fontSize: 10, color: "#92400E", background: "#FFFBEB", padding: "4px 8px", borderRadius: 4 }}>{p.note}</div>}
+              </div>
+            )}
+          </div>
+        );
+      })}
+      {plans.length === 0 && <div className="muted" style={{ padding: 24, textAlign: "center" }}>Không có SP sẵn sàng.</div>}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
    MAIN VIEW
    ═══════════════════════════════════════════════════════════ */
 export default function LaunchPlanView({ plans, autoAdd }: { plans: LaunchPlanRow[]; autoAdd?: { sku: string; name: string; cost: number } }) {
@@ -235,45 +311,7 @@ export default function LaunchPlanView({ plans, autoAdd }: { plans: LaunchPlanRo
 
       {/* ═══ TAB: SẴN SÀNG ═══ */}
       {tab === "ready" && (
-        <div className="card" style={{ padding: 0 }}>
-          {filterList(ready).map((p) => {
-            const m = M(p);
-            const hz = HORIZONS.find((h) => h.k === (m.phase1?.horizon || m.product_type));
-            const listings = m.listings || {};
-            return (
-              <div key={p.id} style={{ padding: "10px 14px", borderBottom: "1px solid #F3F4F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 2 }}>
-                    {m.deploy_id && <span style={{ fontSize: 8, background: BRAND, color: "#fff", borderRadius: 3, padding: "1px 5px", fontWeight: 600 }}>TỪ TRIỂN KHAI</span>}
-                    {hz && <span style={{ fontSize: 8, background: hz.color, color: "#fff", borderRadius: 3, padding: "1px 5px", fontWeight: 600 }}>{hz.label}</span>}
-                    <span style={{ fontWeight: 700, fontSize: 13 }}>{p.product_name}</span>
-                  </div>
-                  <div style={{ fontSize: 10, color: "#6B7280" }}>
-                    SKU: {p.sku || "—"}
-                    {(m.pricing?.sell_price || m.phase3?.sell_price) ? ` · Giá: ${formatVND(m.pricing?.sell_price || m.phase3?.sell_price || 0)}` : ""}
-                  </div>
-                  {/* Deploy channel status */}
-                  <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
-                    {["Facebook", "TikTok", "Shopee", "Web"].map((ch) => {
-                      const key = ch === "TikTok" ? "TikTok Shop" : ch === "Web" ? "Web/B2B" : ch;
-                      const isDone = listings[key]?.done;
-                      return (
-                        <span key={ch} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 3, fontWeight: 600, background: isDone ? CH_COLORS[ch] : "#F3F4F6", color: isDone ? "#fff" : "#9CA3AF" }}>
-                          {ch.substring(0, 2)} {isDone ? "✓" : "—"}
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
-                <div style={{ display: "flex", gap: 4 }}>
-                  <button className="btn btn-sm" style={{ background: BRAND, color: "#fff", fontSize: 11 }} onClick={() => setEditPlan(p)}>🚀 Tạo Launch Plan</button>
-                  <button className="btn btn-ghost btn-xs" style={{ color: "#DC2626" }} onClick={() => del(p.id, p.product_name || "")}>✕</button>
-                </div>
-              </div>
-            );
-          })}
-          {filterList(ready).length === 0 && <div className="muted" style={{ padding: 24, textAlign: "center" }}>Không có SP sẵn sàng.</div>}
-        </div>
+        <ReadyTab plans={filterList(ready)} onEdit={setEditPlan} />
       )}
 
       {/* ═══ TAB: ĐANG LAUNCH — Compact ticket ═══ */}
