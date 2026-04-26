@@ -188,7 +188,7 @@ function ReadyTab({ plans, onEdit }: { plans: LaunchPlanRow[]; onEdit: (p: Launc
    ═══════════════════════════════════════════════════════════ */
 type UserRef = { email: string; name: string | null; role: string | null };
 
-export default function LaunchPlanView({ plans, autoAdd, users = [], currentUserRole = "" }: { plans: LaunchPlanRow[]; autoAdd?: { sku: string; name: string; cost: number }; users?: UserRef[]; currentUserRole?: string }) {
+export default function LaunchPlanView({ plans, autoAdd, users = [], currentUserRole = "", currentUserEmail = "" }: { plans: LaunchPlanRow[]; autoAdd?: { sku: string; name: string; cost: number }; users?: UserRef[]; currentUserRole?: string; currentUserEmail?: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [tab, setTab] = useState<Tab>("launching");
@@ -390,6 +390,9 @@ export default function LaunchPlanView({ plans, autoAdd, users = [], currentUser
             const p2Done = listingsDone + (contentDone ? 1 : 0);
             const p2Total = listingsTotal + 1;
             const assignee = m.phase2?.assignees || m.content?.assignees || "";
+            const handoverToEmail = (m as Record<string, unknown>).handover_to as string || "";
+            const handoverUser = users.find((u) => u.email === handoverToEmail);
+            const isMyTask = handoverToEmail === currentUserEmail;
             // Channel list for mini bars
             const chList = Object.entries(chTargets).map(([ch, target]) => {
               const actual = chActuals[ch] || 0;
@@ -400,12 +403,15 @@ export default function LaunchPlanView({ plans, autoAdd, users = [], currentUser
             }).filter((c) => c.target > 0);
 
             return (
-              <div key={p.id} style={{ border: "1px solid #E4E4E7", borderRadius: 10, overflow: "hidden", marginBottom: 8, background: "#fff", cursor: "pointer" }} onClick={() => setEditPlan(p)}>
+              <div key={p.id} style={{ border: isMyTask ? "2px solid #7C3AED" : "1px solid #E4E4E7", borderRadius: 10, overflow: "hidden", marginBottom: 8, background: "#fff", cursor: "pointer" }} onClick={() => setEditPlan(p)}>
                 {/* ─── Row 1: Header + tags + actions ─── */}
                 <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid #F3F4F6" }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 800, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.product_name}</div>
-                    <div style={{ fontSize: 10, color: "#71717A" }}>{p.sku || "—"} · {p.launch_date || "—"}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      {isMyTask && <span style={{ fontSize: 8, padding: "1px 5px", borderRadius: 3, background: "#7C3AED", color: "#fff", fontWeight: 700, flexShrink: 0 }}>VIỆC CỦA TÔI</span>}
+                      <span style={{ fontWeight: 800, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.product_name}</span>
+                    </div>
+                    <div style={{ fontSize: 10, color: "#71717A" }}>{p.sku || "—"} · {p.launch_date || "—"}{handoverUser ? ` · Giao: ${handoverUser.name || handoverToEmail}` : ""}</div>
                   </div>
                   <div style={{ display: "flex", gap: 4, alignItems: "center", flexShrink: 0 }}>
                     {hz && <span style={{ padding: "1px 5px", borderRadius: 4, fontSize: 9, fontWeight: 700, background: hz.bgOff || "#FFFBEB", color: hz.colorOff || "#D97706" }}>{hz.label}</span>}
@@ -1455,11 +1461,21 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
 
         {/* Fixed footer */}
         <div style={{ background: "#fff", borderTop: "1px solid #E4E4E7", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 20px", flexShrink: 0 }}>
-          <div style={{ fontSize: 11, color: "#6B7280" }}>{stepDone.filter(Boolean).length}/{stepDone.length} mục đã điền</div>
+          <div style={{ fontSize: 11, color: "#6B7280" }}>
+            {isLaunched
+              ? `${checklist.filter((c) => c.done).length}/${checklist.length} checklist · ${Object.values(listings).filter((l) => l.done).length}/${ALL_CHANNELS.length} listing`
+              : `${stepDone.filter(Boolean).length}/${stepDone.length} mục đã điền`}
+          </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <button className="btn btn-ghost btn-sm" onClick={onClose}>Huỷ</button>
-            <button className="btn btn-ghost btn-sm" onClick={() => save("READY")} disabled={pending}>Lưu nháp</button>
-            <button className="btn btn-sm" style={{ background: (stockQty > 0 && totalTarget !== stockQty) ? "#9CA3AF" : BRAND, color: "#fff", padding: "8px 20px", cursor: (stockQty > 0 && totalTarget !== stockQty) ? "not-allowed" : "pointer" }} onClick={() => { if (stockQty > 0 && totalTarget !== stockQty) { alert(`Phân bổ chưa khớp: ${totalTarget}/${stockQty} SP`); return; } save("LAUNCHED"); }} disabled={pending}>Bắt đầu Launch →</button>
+            <button className="btn btn-ghost btn-sm" onClick={onClose}>{isLaunched ? "Đóng" : "Huỷ"}</button>
+            {isLaunched ? (
+              <button className="btn btn-sm" style={{ background: "#7C3AED", color: "#fff", padding: "8px 20px" }} onClick={() => save("LAUNCHED")} disabled={pending}>Lưu cập nhật</button>
+            ) : (
+              <>
+                <button className="btn btn-ghost btn-sm" onClick={() => save("READY")} disabled={pending}>Lưu nháp</button>
+                <button className="btn btn-sm" style={{ background: (stockQty > 0 && totalTarget !== stockQty) ? "#9CA3AF" : BRAND, color: "#fff", padding: "8px 20px", cursor: (stockQty > 0 && totalTarget !== stockQty) ? "not-allowed" : "pointer" }} onClick={() => { if (stockQty > 0 && totalTarget !== stockQty) { alert(`Phân bổ chưa khớp: ${totalTarget}/${stockQty} SP`); return; } save("LAUNCHED"); }} disabled={pending}>Bắt đầu Launch →</button>
+              </>
+            )}
           </div>
         </div>
       </div>

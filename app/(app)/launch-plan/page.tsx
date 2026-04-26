@@ -15,5 +15,5 @@ export default async function LaunchPlanPage({
 
   const [plans, users, currentUser] = await Promise.all([listLaunchPlans(), listActiveUsers(), requireUser()]);
   const autoAdd = sp.add ? { sku: sp.add, name: sp.name || "", cost: Number(sp.cost) || 0 } : undefined;
-  return <LaunchPlanView plans={plans} autoAdd={autoAdd} users={users} currentUserRole={currentUser.role} />;
+  return <LaunchPlanView plans={plans} autoAdd={autoAdd} users={users} currentUserRole={currentUser.role} currentUserEmail={currentUser.email} />;
 }
