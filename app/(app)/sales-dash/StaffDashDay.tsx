@@ -118,25 +118,26 @@ export default function StaffDashDay(p: StaffDashDayProps) {
         {(() => {
           const todayDate = daysAgo(0);
           const yesterdayDate = daysAgo(-1);
-          const isToday = p.date === todayDate;
-          const isYesterday = p.date === yesterdayDate;
+          const isRangeActive = rangeKey !== "today" && rangeKey !== "yesterday" && rangeData !== null;
+          const isTodayActive = isToday && !isRangeActive;
+          const isYesterdayActive = isYesterday && !isRangeActive;
           const chParam = `channel=${encodeURIComponent(p.channelName)}`;
           return (
           <div style={{ display: "flex", gap: 4, marginBottom: 12, overflowX: "auto", paddingBottom: 2 }}>
-            <Link href={`/sales-dash?${chParam}`} onClick={() => setNavLoading(true)} style={{
-              background: isToday && rangeKey === "today" ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.1)",
-              color: isToday && rangeKey === "today" ? "#fff" : "rgba(255,255,255,.5)",
+            <Link href={`/sales-dash?${chParam}`} onClick={() => { setRangeKey("today"); setRangeData(null); setNavLoading(true); }} style={{
+              background: isTodayActive ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.1)",
+              color: isTodayActive ? "#fff" : "rgba(255,255,255,.5)",
               padding: "5px 10px", borderRadius: 8, fontSize: 10, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap",
             }}>Hôm nay</Link>
-            <Link href={`/sales-dash?${chParam}&date=${yesterdayDate}`} onClick={() => setNavLoading(true)} style={{
-              background: isYesterday ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.1)",
-              color: isYesterday ? "#fff" : "rgba(255,255,255,.5)",
+            <Link href={`/sales-dash?${chParam}&date=${yesterdayDate}`} onClick={() => { setRangeKey("yesterday"); setRangeData(null); setNavLoading(true); }} style={{
+              background: isYesterdayActive ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.1)",
+              color: isYesterdayActive ? "#fff" : "rgba(255,255,255,.5)",
               padding: "5px 10px", borderRadius: 8, fontSize: 10, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap",
             }}>Hôm qua</Link>
             {QUICK_RANGES.filter(r => r.key !== "today" && r.key !== "yesterday").map(r => (
               <button key={r.key} onClick={() => loadRange(r.key)} style={{
-                background: rangeKey === r.key ? "rgba(255,255,255,.3)" : "rgba(255,255,255,.1)",
-                color: rangeKey === r.key ? "#fff" : "rgba(255,255,255,.5)",
+                background: rangeKey === r.key && isRangeActive ? "rgba(255,255,255,.3)" : "rgba(255,255,255,.1)",
+                color: rangeKey === r.key && isRangeActive ? "#fff" : "rgba(255,255,255,.5)",
                 padding: "5px 10px", borderRadius: 8, fontSize: 10, fontWeight: 600,
                 border: "none", cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit",
               }}>{r.label}</button>

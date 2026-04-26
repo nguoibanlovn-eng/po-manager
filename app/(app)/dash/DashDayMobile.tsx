@@ -75,8 +75,8 @@ export default function DashDayMobile(p: DashDayMobileProps) {
   const [chData, setChData] = useState<typeof p.channels | null>(null);
   const [chLoading, setChLoading] = useState(false);
   const [navLoading, setNavLoading] = useState(false);
-  // Reset loading when date changes (component re-renders with new props)
-  useEffect(() => { setNavLoading(false); }, [p.today]);
+  // Reset loading + range when date changes
+  useEffect(() => { setNavLoading(false); setChRange("today"); setChData(null); }, [p.today]);
 
   const loadChRange = useCallback(async (key: string) => {
     setChRange(key);
@@ -126,9 +126,12 @@ export default function DashDayMobile(p: DashDayMobileProps) {
           {(() => {
             const isToday = p.today === daysAgo(0);
             const isYesterday = p.today === daysAgo(-1);
+            const isChRangeActive = chRange !== "today" && chData !== null;
+            const isTodayActive = isToday && !isChRangeActive;
+            const isYesterdayActive = isYesterday && !isChRangeActive;
             return (<>
-              <Link href="/dash?view=day" onClick={() => setNavLoading(true)} style={{ background: isToday ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.1)", color: isToday ? "#fff" : "rgba(255,255,255,.5)", padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600, textDecoration: "none" }}>Hôm nay</Link>
-              <Link href={`/dash?view=day&date=${daysAgo(-1)}`} onClick={() => setNavLoading(true)} style={{ background: isYesterday ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.1)", color: isYesterday ? "#fff" : "rgba(255,255,255,.5)", padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600, textDecoration: "none" }}>Hôm qua</Link>
+              <Link href="/dash?view=day" onClick={() => { setNavLoading(true); setChRange("today"); setChData(null); }} style={{ background: isTodayActive ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.1)", color: isTodayActive ? "#fff" : "rgba(255,255,255,.5)", padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600, textDecoration: "none" }}>Hôm nay</Link>
+              <Link href={`/dash?view=day&date=${daysAgo(-1)}`} onClick={() => { setNavLoading(true); setChRange("today"); setChData(null); }} style={{ background: isYesterdayActive ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.1)", color: isYesterdayActive ? "#fff" : "rgba(255,255,255,.5)", padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600, textDecoration: "none" }}>Hôm qua</Link>
             </>);
           })()}
         </div>
