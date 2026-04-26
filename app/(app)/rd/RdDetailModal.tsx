@@ -1239,21 +1239,24 @@ function ModalInner({
                       </div>
                     </div>
                   )}
-                  {arrived ? (
-                    <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 8, padding: 16, textAlign: "center" }}>
-                      <div style={{ fontSize: 28, marginBottom: 6 }}>📦</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "#15803D" }}>Hàng mẫu đã về!</div>
-                      <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>ETA: {eta}</div>
-                      <div style={{ fontSize: 10, color: "#16A34A", marginTop: 6, fontWeight: 600 }}>Bấm chuyển bước để QC mẫu</div>
+                  <div style={{
+                    background: arrived ? "#F0FDF4" : "#EFF6FF",
+                    border: `1px solid ${arrived ? "#BBF7D0" : "#BFDBFE"}`,
+                    borderRadius: 12, padding: "32px 20px", textAlign: "center", flex: 1,
+                  }}>
+                    <div style={{ fontSize: 40, marginBottom: 10 }}>{arrived ? "📦" : "⏳"}</div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: arrived ? "#15803D" : "#1D4ED8", marginBottom: 6 }}>
+                      {arrived ? "Hàng mẫu đã về!" : "Đang chờ hàng mẫu về"}
                     </div>
-                  ) : (
-                    <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 8, padding: 16, textAlign: "center" }}>
-                      <div style={{ fontSize: 28, marginBottom: 6 }}>&#9203;</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "#1D4ED8" }}>Đang chờ hàng mẫu về</div>
-                      {eta && <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>ETA: {eta}</div>}
-                      <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 6 }}>Chưa đến ngày ETA, chờ hàng về</div>
+                    {eta && (
+                      <div style={{ fontSize: 12, color: "#64748B", marginBottom: 8 }}>
+                        ETA: {eta} {arrived ? "— Đã đến hạn" : `— Còn ${Math.max(0, Math.ceil((new Date(eta).getTime() - Date.now()) / 86400000))} ngày`}
+                      </div>
+                    )}
+                    <div style={{ fontSize: 11, color: arrived ? "#16A34A" : "#94A3B8", fontWeight: arrived ? 600 : 400, marginTop: 4 }}>
+                      {arrived ? "Bấm \"Đã về — Chuyển QC\" bên dưới" : "Nút chuyển bước sẽ sáng khi đến ngày ETA"}
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             })()
