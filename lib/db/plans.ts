@@ -169,3 +169,52 @@ export async function createLaunchFromDeploy(deploy: {
   if (error) { console.warn("Auto-create launch plan failed:", error.message); return null; }
   return row.id;
 }
+
+/** Sync actual sales from product_sales → launch_plan.metrics.actual for all LAUNCHED plans */
+export async function syncLaunchPlanSales(): Promise<number> {
+  const db = supabaseAdmin();
+
+  // Get all LAUNCHED plans with SKU
+  const { data: plans } = await db.from("launch_plan").select("id, sku, metrics, launch_date").eq("stage", "LAUNCHED").not("sku", "is", null);
+  if (!plans?.length) return 0;
+
+  // Channel name mapping: product_sales uses various names → normalize to launch plan channels
+  const CH_MAP: Record<string, string> = {
+    "Shopee": "Shopee", "shopee": "Shopee",
+    "TikTok Shop": "TikTok Shop", "TikTok": "TikTok Shop", "tiktok": "TikTok Shop",
+    "Facebook": "Facebook", "facebook": "Facebook",
+    "Web/B2B": "Web/B2B", "Web": "Web/B2B", "web": "Web/B2B", "API": "Web/B2B",
+    "Admin": "Web/B2B", "admin": "Web/B2B",
+  };
+
+  let updated = 0;
+  for (const plan of plans) {
+    if (!plan.sku) continue;
+    const m = (plan.metrics || {}) as Record<string, unknown>;
+    const launchDate = plan.launch_date || (m.start_date as string) || "";
+
+    // Get sales for this SKU since launch date
+    let q = db.from("product_sales").select("channel_name, qty").eq("sku", plan.sku);
+    if (launchDate) q = q.gte("date", launchDate);
+    const { data: sales } = await q;
+    if (!sales?.length) continue;
+
+    // Aggregate by channel
+    const actual: Record<string, number> = {};
+    for (const s of sales) {
+      const ch = CH_MAP[s.channel_name] || s.channel_name || "Web/B2B";
+      actual[ch] = (actual[ch] || 0) + (s.qty || 0);
+    }
+
+    // Compare with existing actual — skip if same
+    const oldActual = (m.actual || {}) as Record<string, number>;
+    const same = Object.keys(actual).length === Object.keys(oldActual).length && Object.entries(actual).every(([k, v]) => oldActual[k] === v);
+    if (same) continue;
+
+    // Update
+    const newMetrics = { ...m, actual };
+    await db.from("launch_plan").update({ metrics: newMetrics, updated_at: nowVN() }).eq("id", plan.id);
+    updated++;
+  }
+  return updated;
+}

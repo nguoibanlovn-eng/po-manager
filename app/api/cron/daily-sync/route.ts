@@ -11,6 +11,7 @@ import { syncGmvMax } from "@/lib/tiktok/gmv-max-sync";
 import { syncProductSales } from "@/lib/nhanh/sync-product-sales";
 import { refreshCustomerStats } from "@/lib/db/refresh-customer-stats";
 import { syncSscInventory } from "@/lib/ssc/sync";
+import { syncLaunchPlanSales } from "@/lib/db/plans";
 
 export const maxDuration = 300;
 
@@ -60,6 +61,7 @@ export async function POST(req: Request) {
   const phase2 = await Promise.allSettled([
     syncNhanhReport({}).then((r) => ({ ok: r.ok, days: r.days, rows: r.rows })),
     syncSscInventory().then((r) => ({ ok: true, ...r })),
+    syncLaunchPlanSales().then((n) => ({ ok: true, updated: n })),
   ]);
   results.nhanh_report = phase2[0].status === "fulfilled"
     ? phase2[0].value
@@ -67,6 +69,9 @@ export async function POST(req: Request) {
   results.ssc_inventory = phase2[1].status === "fulfilled"
     ? phase2[1].value
     : { ok: false, error: phase2[1].reason instanceof Error ? phase2[1].reason.message : String(phase2[1].reason) };
+  results.launch_plan_sales = phase2[2].status === "fulfilled"
+    ? phase2[2].value
+    : { ok: false, error: phase2[2].reason instanceof Error ? phase2[2].reason.message : String(phase2[2].reason) };
 
   return NextResponse.json({
     ok: true,
