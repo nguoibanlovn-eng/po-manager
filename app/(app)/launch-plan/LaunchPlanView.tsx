@@ -386,7 +386,7 @@ export default function LaunchPlanView({ plans, autoAdd, users = [], currentUser
             const handoverToEmail = (m as Record<string, unknown>).handover_to as string || "";
             const handoverUser = users.find((u) => u.email === handoverToEmail);
             const isMyTask = handoverToEmail === currentUserEmail;
-            const hDeadline = m.handover_deadline as string || m.end_date as string || (endDate ? endDate.toISOString().slice(0, 10) : "");
+            const hDeadline = m.handover_deadline || m.end_date || m.phase4?.deadline || (endDate ? endDate.toISOString().slice(0, 10) : "");
             // Channel list for mini bars
             const chList = Object.entries(chTargets).map(([ch, target]) => {
               const actual = chActuals[ch] || 0;
@@ -644,7 +644,7 @@ function LaunchDetailModal({ plan, onClose, onEdit }: { plan: LaunchPlanRow; onC
         <div style={{ background: "#FAFAFA", borderBottom: "1px solid #E4E4E7", padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
           <div>
             <div style={{ fontWeight: 800, fontSize: 16 }}>{plan.product_name}</div>
-            <div style={{ fontSize: 10, color: "#71717A" }}>SKU: {plan.sku || "—"} · Launch {plan.launch_date || "—"}{(m.end_date || m.handover_deadline) ? ` → Kết thúc: ${m.end_date || m.handover_deadline}` : ""}</div>
+            <div style={{ fontSize: 10, color: "#71717A" }}>SKU: {plan.sku || "—"} · Launch {plan.launch_date || "—"}{(m.end_date || m.handover_deadline || m.phase4?.deadline) ? ` → Kết thúc: ${m.end_date || m.handover_deadline || m.phase4?.deadline}` : ""}</div>
           </div>
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             {hz && <span style={{ padding: "2px 6px", borderRadius: 4, fontSize: 9, fontWeight: 700, background: hz.k === "short" ? "#FEF3C7" : hz.k === "long" ? "#DBEAFE" : "#FFFBEB", color: hz.k === "short" ? "#92400E" : hz.k === "long" ? "#1E40AF" : "#D97706" }}>{hz.label}</span>}
@@ -767,8 +767,8 @@ function LaunchDetailModal({ plan, onClose, onEdit }: { plan: LaunchPlanRow; onC
           )}
 
           {/* ═══ Deadline triển khai ═══ */}
-          {(m.end_date || m.handover_deadline) && (() => {
-            const dl = (m.end_date || m.handover_deadline) as string;
+          {(m.end_date || m.handover_deadline || m.phase4?.deadline) && (() => {
+            const dl = (m.end_date || m.handover_deadline || m.phase4?.deadline) as string;
             const today = new Date().toISOString().slice(0, 10);
             const daysLeft = Math.round((new Date(dl).getTime() - Date.now()) / 86400000);
             const dlClr = dl < today ? "#DC2626" : daysLeft <= 7 ? "#D97706" : "#16A34A";
