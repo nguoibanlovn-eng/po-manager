@@ -867,8 +867,18 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
     return { type: vt.type, count: (found as Record<string, number>)?.videos ?? vt[hzKey] };
   }));
   // Step 7 — Target
-  const [chTargets, setChTargets] = useState<Record<string, number>>(m.phase4?.channels || m.sales_target?.channel_split || {});
-  const [stockQty, setStockQty] = useState(m.phase4?.stock_qty || m.sales_target?.stock_qty || 0);
+  const initQty = m.phase4?.stock_qty || m.sales_target?.stock_qty || 0;
+  const initCh = m.phase4?.channels || m.sales_target?.channel_split || {};
+  // Auto-fill channel targets if qty exists but no channel split
+  const hasChannelSplit = Object.values(initCh).some((v) => (v as number) > 0);
+  const autoSplit = !hasChannelSplit && initQty > 0 ? {
+    Facebook: Math.round(initQty * 0.55),
+    "TikTok Shop": Math.round(initQty * 0.25),
+    Shopee: Math.round(initQty * 0.10),
+    "Web/B2B": initQty - Math.round(initQty * 0.55) - Math.round(initQty * 0.25) - Math.round(initQty * 0.10),
+  } : initCh;
+  const [chTargets, setChTargets] = useState<Record<string, number>>(autoSplit as Record<string, number>);
+  const [stockQty, setStockQty] = useState(initQty);
   const [months, setMonths] = useState(m.phase4?.months || m.sales_target?.months || 4);
   const [deadline, setDeadline] = useState(m.phase4?.deadline || "");
   const [priceFrom, setPriceFrom] = useState(m.phase4?.price_from || m.sales_target?.price_from || 0);
@@ -1207,7 +1217,7 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
           {/* Kênh bán — 4 kênh cố định */}
 
           {/* Phân bổ theo kênh */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginBottom: 8 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 4, marginBottom: 8 }}>
             {selChannels.map((ch) => {
               const short = ch.replace("TikTok Shop", "TT").replace("Facebook", "FB").replace("Shopee", "SP").replace("Web/B2B", "Web");
               const pct = totalTarget > 0 ? Math.round(((chTargets[ch] || 0) / totalTarget) * 100) : (DEFAULT_SPLIT[ch] || 0);
