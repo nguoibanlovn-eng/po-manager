@@ -40,6 +40,7 @@ export default function OrdersView({
   const [stage, setStage] = useState<string>("PENDING_PURCHASE");
   const [pay, setPay] = useState<string>("");
   const [eta, setEta] = useState<string>("");
+  const [goodsType, setGoodsType] = useState<string>("");
   const [detailOrderId, setDetailOrderId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
@@ -50,6 +51,7 @@ export default function OrdersView({
     return orders.filter((o) => {
       if (stage && o.stage !== stage) return false;
       if (pay && !String(o.pay_status || "").includes(pay)) return false;
+      if (goodsType && String(o.goods_type || "") !== goodsType) return false;
       if (eta) {
         const d = daysFromNow(o.eta_date);
         if (eta === "overdue" && (d === null || d >= 0)) return false;
@@ -65,7 +67,7 @@ export default function OrdersView({
       }
       return true;
     });
-  }, [orders, search, stage, pay, eta]);
+  }, [orders, search, stage, pay, eta, goodsType]);
 
   const total = filtered.reduce((s, o) => s + Number(o.order_total || 0), 0);
 
@@ -89,9 +91,12 @@ export default function OrdersView({
   const tabCounts = useMemo(() => ({
     PENDING_PURCHASE: orders.filter((o) => o.stage === "PENDING_PURCHASE").length,
     all: orders.length,
+    DRAFT: orders.filter((o) => o.stage === "DRAFT").length,
     ORDERED: orders.filter((o) => o.stage === "ORDERED").length,
     ARRIVED: orders.filter((o) => o.stage === "ARRIVED").length,
+    QC_DONE: orders.filter((o) => o.stage === "QC_DONE").length,
     ON_SHELF: orders.filter((o) => o.stage === "ON_SHELF").length,
+    SELLING: orders.filter((o) => o.stage === "SELLING").length,
     COMPLETED: orders.filter((o) => o.stage === "COMPLETED").length,
   }), [orders]);
 
@@ -143,9 +148,12 @@ export default function OrdersView({
         {[
           { key: "PENDING_PURCHASE", label: "Chờ xử lý", count: tabCounts.PENDING_PURCHASE, urgent: true },
           { key: "", label: "Tất cả", count: tabCounts.all },
+          { key: "DRAFT", label: "Nháp", count: tabCounts.DRAFT },
           { key: "ORDERED", label: "Đã đặt", count: tabCounts.ORDERED },
           { key: "ARRIVED", label: "Hàng về", count: tabCounts.ARRIVED },
+          { key: "QC_DONE", label: "QC xong", count: tabCounts.QC_DONE },
           { key: "ON_SHELF", label: "Lên kệ", count: tabCounts.ON_SHELF },
+          { key: "SELLING", label: "Đang bán", count: tabCounts.SELLING },
           { key: "COMPLETED", label: "Hoàn tất", count: tabCounts.COMPLETED },
         ].map((tab) => (
           <button key={tab.key} className={`mini-tab${stage === tab.key ? " active" : ""}`} onClick={() => setStage(tab.key)}>
@@ -154,17 +162,25 @@ export default function OrdersView({
         ))}
       </div>
 
-      {/* Filters */}
-      <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <select value={pay} onChange={(e) => setPay(e.target.value)} style={{ padding: "5px 8px", fontSize: 12 }}>
-          <option value="">Thanh toán</option>
+      {/* Filters — 1 dòng */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 10, alignItems: "center" }}>
+        <select value={pay} onChange={(e) => setPay(e.target.value)} style={{ padding: "5px 8px", fontSize: 12, minWidth: 110 }}>
+          <option value="">Thanh toán: Tất cả</option>
           <option value="Chưa thanh toán">Chưa TT</option>
           <option value="Đã cọc">Đã cọc</option>
           <option value="Đã thanh toán">Đã TT</option>
           <option value="Công nợ">Công nợ</option>
         </select>
-        <select value={eta} onChange={(e) => setEta(e.target.value)} style={{ padding: "5px 8px", fontSize: 12 }}>
-          <option value="">Hạn ETA</option>
+        <select value={goodsType} onChange={(e) => setGoodsType(e.target.value)} style={{ padding: "5px 8px", fontSize: 12, minWidth: 130 }}>
+          <option value="">Phân loại: Tất cả</option>
+          <option value="Trung Quốc trữ sẵn">TQ trữ sẵn</option>
+          <option value="Trung Quốc đặt hàng">TQ đặt hàng</option>
+          <option value="Nội địa">Nội địa</option>
+          <option value="Hàng mẫu">Hàng mẫu</option>
+          <option value="Hàng sản xuất">Hàng sản xuất</option>
+        </select>
+        <select value={eta} onChange={(e) => setEta(e.target.value)} style={{ padding: "5px 8px", fontSize: 12, minWidth: 110 }}>
+          <option value="">ETA: Tất cả</option>
           <option value="overdue">Quá hạn</option>
           <option value="soon">Sắp đến hạn</option>
         </select>
