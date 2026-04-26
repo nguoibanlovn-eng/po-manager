@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { formatVNDCompact } from "@/lib/format";
 
 function daysAgo(d: number): string { const dt = new Date(); dt.setDate(dt.getDate() + d); return dt.toISOString().substring(0, 10); }
@@ -51,6 +51,8 @@ const statusColor = (pct: number) => pct >= 100 ? "#16A34A" : pct >= 70 ? "#D977
 
 export default function StaffDashDay(p: StaffDashDayProps) {
   const [showAllSources, setShowAllSources] = useState(false);
+  const [navLoading, setNavLoading] = useState(false);
+  useEffect(() => { setNavLoading(false); }, [p.date]);
   const [rangeKey, setRangeKey] = useState("today");
   const [rangeData, setRangeData] = useState<{ revenue: number; sources: typeof p.sources } | null>(null);
   const [rangeLoading, setRangeLoading] = useState(false);
@@ -95,7 +97,7 @@ export default function StaffDashDay(p: StaffDashDayProps) {
   return (
     <div style={{ background: "#F8FAFC", minHeight: "100vh", paddingBottom: 80 }}>
       {/* Loading overlay */}
-      {rangeLoading && (
+      {(rangeLoading || navLoading) && (
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 999, background: "#7C3AED", color: "#fff", textAlign: "center", padding: "6px 0", fontSize: 12, fontWeight: 600 }}>
           Đang tải dữ liệu...
         </div>
@@ -109,20 +111,39 @@ export default function StaffDashDay(p: StaffDashDayProps) {
             <div style={{ fontSize: 11, opacity: .6 }}>{p.dayOfWeek}, {p.displayDate}</div>
           </div>
           <div style={{ display: "flex", gap: 4 }}>
-            <Link href={`/sales-dash?date=${p.prevDay}`} style={{ background: "rgba(255,255,255,.15)", color: "#fff", width: 30, height: 30, borderRadius: 8, fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}>‹</Link>
-            <Link href={`/sales-dash?date=${p.nextDay}`} style={{ background: "rgba(255,255,255,.15)", color: "#fff", width: 30, height: 30, borderRadius: 8, fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}>›</Link>
+            <Link href={`/sales-dash?channel=${encodeURIComponent(p.channelName)}&date=${p.prevDay}`} onClick={() => setNavLoading(true)} style={{ background: "rgba(255,255,255,.15)", color: "#fff", width: 30, height: 30, borderRadius: 8, fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}>‹</Link>
+            <Link href={`/sales-dash?channel=${encodeURIComponent(p.channelName)}&date=${p.nextDay}`} onClick={() => setNavLoading(true)} style={{ background: "rgba(255,255,255,.15)", color: "#fff", width: 30, height: 30, borderRadius: 8, fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}>›</Link>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 4, marginBottom: 12, overflowX: "auto", paddingBottom: 2 }}>
-          {QUICK_RANGES.map(r => (
-            <button key={r.key} onClick={() => r.key === "today" ? (setRangeKey("today"), setRangeData(null)) : r.key === "yesterday" ? (window.location.href = `/sales-dash?channel=${encodeURIComponent(p.channelName)}&date=${daysAgo(-1)}`) : loadRange(r.key)} style={{
-              background: rangeKey === r.key ? "rgba(255,255,255,.3)" : "rgba(255,255,255,.1)",
-              color: rangeKey === r.key ? "#fff" : "rgba(255,255,255,.6)",
-              padding: "5px 10px", borderRadius: 8, fontSize: 10, fontWeight: 600,
-              border: "none", cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit",
-            }}>{r.label}</button>
-          ))}
-        </div>
+        {(() => {
+          const todayDate = daysAgo(0);
+          const yesterdayDate = daysAgo(-1);
+          const isToday = p.date === todayDate;
+          const isYesterday = p.date === yesterdayDate;
+          const chParam = `channel=${encodeURIComponent(p.channelName)}`;
+          return (
+          <div style={{ display: "flex", gap: 4, marginBottom: 12, overflowX: "auto", paddingBottom: 2 }}>
+            <Link href={`/sales-dash?${chParam}`} onClick={() => setNavLoading(true)} style={{
+              background: isToday && rangeKey === "today" ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.1)",
+              color: isToday && rangeKey === "today" ? "#fff" : "rgba(255,255,255,.5)",
+              padding: "5px 10px", borderRadius: 8, fontSize: 10, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap",
+            }}>Hôm nay</Link>
+            <Link href={`/sales-dash?${chParam}&date=${yesterdayDate}`} onClick={() => setNavLoading(true)} style={{
+              background: isYesterday ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.1)",
+              color: isYesterday ? "#fff" : "rgba(255,255,255,.5)",
+              padding: "5px 10px", borderRadius: 8, fontSize: 10, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap",
+            }}>Hôm qua</Link>
+            {QUICK_RANGES.filter(r => r.key !== "today" && r.key !== "yesterday").map(r => (
+              <button key={r.key} onClick={() => loadRange(r.key)} style={{
+                background: rangeKey === r.key ? "rgba(255,255,255,.3)" : "rgba(255,255,255,.1)",
+                color: rangeKey === r.key ? "#fff" : "rgba(255,255,255,.5)",
+                padding: "5px 10px", borderRadius: 8, fontSize: 10, fontWeight: 600,
+                border: "none", cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit",
+              }}>{r.label}</button>
+            ))}
+          </div>
+          );
+        })()}
       </div>
 
       {/* KH ngày */}
