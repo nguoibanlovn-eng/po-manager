@@ -899,7 +899,7 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
   const [handoverTo, setHandoverTo] = useState((m as Record<string, unknown>).handover_to as string || "");
   const [handoverDeadline, setHandoverDeadline] = useState((m as Record<string, unknown>).handover_deadline as string || "");
   // B4 — Checklist tự do
-  type CheckItem = { name: string; qty: number; assignee: string; deadline: string; done: boolean };
+  type CheckItem = { name: string; qty: number; assignee: string; deadline: string; done: boolean; result?: string };
   const existingChecklist = Array.isArray((m as Record<string, unknown>).checklist) ? (m as Record<string, unknown>).checklist as CheckItem[] : null;
   const hzKeyInit = (horizon === "short" ? "short" : horizon === "long" ? "long" : "medium") as "short" | "medium" | "long";
   const defaultChecklist: CheckItem[] = VIDEO_TYPES.map((vt) => ({ name: vt.label + " — " + vt.desc, qty: vt[hzKeyInit], assignee: "", deadline: "", done: false }));
@@ -1404,16 +1404,23 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
           </div>
 
           {checklist.map((item, idx) => (
-            <div key={idx} style={{ display: "grid", gridTemplateColumns: "28px 1fr 36px 120px 100px 24px", gap: 4, alignItems: "center", padding: "5px 8px", borderBottom: "1px solid #F3F4F6", opacity: item.done ? 0.5 : 1 }}>
-              <input type="checkbox" checked={item.done} onChange={(e) => { const arr = [...checklist]; arr[idx] = { ...arr[idx], done: e.target.checked }; setChecklist(arr); }} style={{ accentColor: "#16A34A" }} />
-              <span style={{ fontSize: 12, fontWeight: item.done ? 400 : 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</span>
-              <span style={{ fontSize: 11, color: "#71717A", textAlign: "center" }}>{item.qty}</span>
-              <select value={item.assignee} onChange={(e) => { const arr = [...checklist]; arr[idx] = { ...arr[idx], assignee: e.target.value }; setChecklist(arr); }} style={{ padding: "3px 4px", fontSize: 11, border: "1px solid #E4E4E7", borderRadius: 4, color: item.assignee ? "#4F46E5" : "#A1A1AA" }}>
-                <option value="">— Chọn —</option>
-                {users.map((u) => <option key={u.email} value={u.email}>{u.name || u.email}</option>)}
-              </select>
-              <input type="date" value={item.deadline} onChange={(e) => { const arr = [...checklist]; arr[idx] = { ...arr[idx], deadline: e.target.value }; setChecklist(arr); }} style={{ padding: "3px 4px", fontSize: 11, border: "1px solid #E4E4E7", borderRadius: 4 }} />
-              <button type="button" onClick={() => setChecklist(checklist.filter((_, i) => i !== idx))} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 14, padding: 0, lineHeight: 1 }}>×</button>
+            <div key={idx} style={{ borderBottom: "1px solid #F3F4F6" }}>
+              {/* Row chính */}
+              <div style={{ display: "grid", gridTemplateColumns: "28px 1fr 36px 120px 100px 24px", gap: 4, alignItems: "center", padding: "5px 8px" }}>
+                <input type="checkbox" checked={item.done} onChange={(e) => { const arr = [...checklist]; arr[idx] = { ...arr[idx], done: e.target.checked }; setChecklist(arr); }} style={{ accentColor: "#16A34A" }} />
+                <span style={{ fontSize: 12, fontWeight: item.done ? 400 : 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: item.done ? "#16A34A" : undefined, textDecoration: item.done ? "line-through" : undefined }}>{item.name}</span>
+                <span style={{ fontSize: 11, color: "#71717A", textAlign: "center" }}>{item.qty}</span>
+                <select value={item.assignee} onChange={(e) => { const arr = [...checklist]; arr[idx] = { ...arr[idx], assignee: e.target.value }; setChecklist(arr); }} style={{ padding: "3px 4px", fontSize: 11, border: "1px solid #E4E4E7", borderRadius: 4, color: item.assignee ? "#4F46E5" : "#A1A1AA" }}>
+                  <option value="">— Chọn —</option>
+                  {users.map((u) => <option key={u.email} value={u.email}>{u.name || u.email}</option>)}
+                </select>
+                <input type="date" value={item.deadline} onChange={(e) => { const arr = [...checklist]; arr[idx] = { ...arr[idx], deadline: e.target.value }; setChecklist(arr); }} style={{ padding: "3px 4px", fontSize: 11, border: "1px solid #E4E4E7", borderRadius: 4 }} />
+                <button type="button" onClick={() => setChecklist(checklist.filter((_, i) => i !== idx))} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 14, padding: 0, lineHeight: 1 }}>×</button>
+              </div>
+              {/* Row kết quả — luôn hiện */}
+              <div style={{ padding: "0 8px 6px", paddingLeft: 36 }}>
+                <input type="text" placeholder="Kết quả: dán link, ghi chú hoàn thành..." value={item.result || ""} onChange={(e) => { const arr = [...checklist]; arr[idx] = { ...arr[idx], result: e.target.value }; setChecklist(arr); }} style={{ width: "100%", padding: "4px 8px", border: `1px solid ${item.result ? "#BBF7D0" : "#E4E4E7"}`, borderRadius: 4, fontSize: 11, background: item.result ? "#F0FDF4" : "#FAFAFA", color: "#374151" }} />
+              </div>
             </div>
           ))}
 
