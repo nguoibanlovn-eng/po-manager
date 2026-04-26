@@ -1475,32 +1475,26 @@ function ModalInner({
                   </div>
                 )}
 
-                {/* Checklist từ bước 1 "Tạo yêu cầu" — NV check off + thêm mục */}
+                {/* Checklist từ bước 1 */}
                 <div style={{ marginBottom: 14 }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: ".3px", marginBottom: 5 }}>
-                    Checklist ({checklist.filter(c => c.checked).length}/{checklist.length})
-                  </div>
+                  <div style={S.label}>Checklist ({checklist.filter(c => c.checked).length}/{checklist.length})</div>
                   {checklist.map((c, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 4, padding: "4px 0" }}>
+                    <label key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", borderBottom: "1px solid #F1F5F9", cursor: "pointer" }}>
                       <input type="checkbox" checked={c.checked} onChange={() => {
                         const n = [...checklist]; n[i] = { ...n[i], checked: !n[i].checked }; setChecklist(n); setDirty(true);
-                      }} style={{ marginTop: 3, accentColor: "#7C3AED" }} />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 11, color: c.checked ? "#94A3B8" : "#18181B", textDecoration: c.checked ? "line-through" : "none" }}>{c.text}</div>
-                        <input value={c.note || ""} onChange={(e) => {
-                          const n = [...checklist]; n[i] = { ...n[i], note: e.target.value }; setChecklist(n); setDirty(true);
-                        }} placeholder="Ghi chú..." style={{ ...S.input, fontSize: 10, padding: "2px 6px", marginTop: 2, color: "#64748B" }} />
-                      </div>
-                      <button type="button" onClick={() => { setChecklist(checklist.filter((_, j) => j !== i)); setDirty(true); }}
-                        style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 12, padding: 0 }}>✕</button>
-                    </div>
+                      }} style={{ accentColor: "#7C3AED", width: 16, height: 16, flexShrink: 0 }} />
+                      <span style={{ flex: 1, fontSize: 12, color: c.checked ? "#94A3B8" : "#18181B", textDecoration: c.checked ? "line-through" : "none" }}>{c.text}</span>
+                      <input value={c.note || ""} onClick={(e) => e.stopPropagation()} onChange={(e) => {
+                        const n = [...checklist]; n[i] = { ...n[i], note: e.target.value }; setChecklist(n); setDirty(true);
+                      }} placeholder="Ghi chú" style={{ width: 120, fontSize: 10, padding: "2px 6px", border: "1px solid #E2E8F0", borderRadius: 4, color: "#64748B" }} />
+                      <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setChecklist(checklist.filter((_, j) => j !== i)); setDirty(true); }}
+                        style={{ background: "none", border: "none", color: "#CBD5E1", cursor: "pointer", fontSize: 11, padding: "0 2px" }}>✕</button>
+                    </label>
                   ))}
-                  <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
+                  <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
                     <input value={newCheckLabel} onChange={(e) => setNewCheckLabel(e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter" && newCheckLabel.trim()) { e.preventDefault(); addCheckItem(); } }}
-                      placeholder="Thêm mục..." style={{ ...S.input, flex: 1, fontSize: 10 }} />
-                    <button type="button" onClick={addCheckItem}
-                      style={{ padding: "3px 8px", borderRadius: 5, fontSize: 11, fontWeight: 600, border: "1px solid #7C3AED", background: "#F5F3FF", color: "#7C3AED", cursor: "pointer" }}>+</button>
+                      placeholder="+ Thêm mục..." style={{ ...S.input, flex: 1, fontSize: 11 }} />
                   </div>
                 </div>
 
