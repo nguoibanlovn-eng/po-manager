@@ -409,7 +409,7 @@ export default function LaunchPlanView({ plans, autoAdd, users = [], currentUser
             }).filter((c) => c.target > 0);
 
             return (
-              <div key={p.id} style={{ border: isMyTask ? "2px solid #7C3AED" : "1px solid #E4E4E7", borderRadius: 10, overflow: "hidden", marginBottom: 8, background: "#fff", cursor: "pointer" }} onClick={() => setEditPlan(p)}>
+              <div key={p.id} style={{ border: isMyTask ? "2px solid #7C3AED" : "1px solid #E4E4E7", borderRadius: 10, overflow: "hidden", marginBottom: 8, background: "#fff" }}>
                 {/* ─── Row 1: Header + tags + actions ─── */}
                 <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid #F3F4F6" }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -495,6 +495,11 @@ export default function LaunchPlanView({ plans, autoAdd, users = [], currentUser
                       );
                     })}
                   </div>
+                </div>
+                {/* ─── Row 3: Action buttons ─── */}
+                <div style={{ padding: "6px 14px", borderTop: "1px solid #F3F4F6", display: "flex", justifyContent: "flex-end", gap: 6 }}>
+                  <button style={{ padding: "4px 12px", borderRadius: 5, fontSize: 10, fontWeight: 600, background: "#fff", color: "#2563EB", border: "1px solid #BFDBFE", cursor: "pointer" }} onClick={() => setDetailPlan(p)}>Chi tiết kết quả</button>
+                  <button style={{ padding: "4px 12px", borderRadius: 5, fontSize: 10, fontWeight: 700, background: "#7C3AED", color: "#fff", border: "none", cursor: "pointer" }} onClick={() => setEditPlan(p)}>Triển khai</button>
                 </div>
               </div>
             );
