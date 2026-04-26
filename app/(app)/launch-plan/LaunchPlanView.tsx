@@ -908,11 +908,12 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
   // B4 — Checklist tự do
   type CheckItem = { name: string; qty: number; assignee?: string; assignees?: string[]; deadline: string; done: boolean; result?: string; results?: Array<{ by: string; text: string; at?: string }> };
   const rawChecklist = Array.isArray((m as Record<string, unknown>).checklist) ? (m as Record<string, unknown>).checklist as CheckItem[] : null;
-  // Migrate: old single assignee/result → arrays
+  // Migrate: old single assignee/result → arrays + auto set date
+  const today = new Date().toISOString().slice(0, 10);
   const existingChecklist = rawChecklist?.map((c) => ({
     ...c,
     assignees: c.assignees || (c.assignee ? [c.assignee] : []),
-    results: c.results || (c.result ? [{ by: "", text: c.result }] : []),
+    results: (c.results || (c.result ? [{ by: "", text: c.result }] : [])).map((r) => ({ ...r, at: r.at || (r.text ? today : "") })),
   })) || null;
   const hzKeyInit = (horizon === "short" ? "short" : horizon === "long" ? "long" : "medium") as "short" | "medium" | "long";
   const defaultChecklist: CheckItem[] = VIDEO_TYPES.map((vt) => ({ name: vt.label + " — " + vt.desc, qty: vt[hzKeyInit], assignee: "", deadline: "", done: false }));
@@ -1453,13 +1454,15 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
               {/* Kết quả */}
               {(results.length > 0 || item.done) && (
                 <div style={{ paddingLeft: 26, paddingRight: 8, marginTop: 2 }}>
-                  {results.map((r, ri) => (
+                  {results.map((r, ri) => {
+                    return (
                     <div key={ri} style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 2 }}>
-                      <span style={{ fontSize: 9, color: "#16A34A", fontWeight: 600, flexShrink: 0, minWidth: 58 }}>{r.at || "—"}</span>
+                      <span style={{ fontSize: 9, color: "#16A34A", fontWeight: 600, flexShrink: 0, minWidth: 62 }}>{r.at || new Date().toISOString().slice(0, 10)}</span>
                       <input type="text" value={r.text} placeholder="Link / ghi chú..." onChange={(e) => { const nr = [...results]; nr[ri] = { ...nr[ri], text: e.target.value, at: nr[ri].at || new Date().toISOString().slice(0, 10) }; updateItem({ results: nr }); }} style={{ flex: 1, padding: "2px 6px", border: "1px solid #BBF7D0", borderRadius: 3, fontSize: 10, background: "#F0FDF4" }} />
                       <button type="button" onClick={() => updateItem({ results: results.filter((_, i) => i !== ri) })} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 10, padding: 0 }}>×</button>
                     </div>
-                  ))}
+                    );
+                  })}
                   <button type="button" onClick={() => updateItem({ results: [...results, { by: "", text: "", at: new Date().toISOString().slice(0, 10) }] })} style={{ fontSize: 9, color: "#7C3AED", background: "none", border: "none", cursor: "pointer", padding: 0 }}>+ kết quả</button>
                 </div>
               )}
