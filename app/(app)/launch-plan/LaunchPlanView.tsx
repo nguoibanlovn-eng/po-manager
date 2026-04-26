@@ -595,7 +595,7 @@ export default function LaunchPlanView({ plans, autoAdd, users = [], currentUser
           onClose={() => { setFormOpen(null); setEditPlan(null); }}
           onSaved={() => { setFormOpen(null); setEditPlan(null); router.refresh(); }}
           pending={pending} startTransition={startTransition}
-          users={users} currentUserRole={currentUserRole}
+          users={users} currentUserRole={currentUserRole} currentUserEmail={currentUserEmail}
         />
       )}
     </section>
@@ -876,12 +876,12 @@ const VIDEO_TYPES = [
   { type: "lifestyle", label: "Lifestyle", desc: "Bối cảnh sử dụng", color: "#7C3AED", short: 1, medium: 2, long: 3 },
 ];
 
-function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClose, onSaved, pending, startTransition, users = [], currentUserRole }: {
+function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClose, onSaved, pending, startTransition, users = [], currentUserRole, currentUserEmail = "" }: {
   initial: LaunchPlanRow | null;
   defaultSku?: string; defaultName?: string; defaultCost?: number;
   onClose: () => void; onSaved: () => void;
   pending: boolean; startTransition: ReturnType<typeof useTransition>[1];
-  users?: UserRef[]; currentUserRole?: string;
+  users?: UserRef[]; currentUserRole?: string; currentUserEmail?: string;
 }) {
   const m = initial ? M(initial) : {} as Metrics;
   // Phần I khoá + rút gọn khi đã LAUNCHED, chỉ Admin/Leader sửa được
@@ -1463,12 +1463,12 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
                         <option value="">Ai?</option>
                         {users.map((u) => <option key={u.email} value={u.email}>{u.name || u.email}</option>)}
                       </select>
-                      <input type="text" value={r.text} placeholder="Link / ghi chú..." onChange={(e) => { const nr = [...results]; nr[ri] = { ...nr[ri], text: e.target.value, at: nr[ri].at || today }; updateItem({ results: nr }); }} style={{ flex: 1, padding: "2px 6px", border: "1px solid #BBF7D0", borderRadius: 3, fontSize: 10, background: "#F0FDF4" }} />
+                      <input type="text" value={r.text} placeholder="Link / ghi chú..." onChange={(e) => { const nr = [...results]; nr[ri] = { ...nr[ri], text: e.target.value, at: nr[ri].at || today, by: nr[ri].by || currentUserEmail }; updateItem({ results: nr }); }} style={{ flex: 1, padding: "2px 6px", border: "1px solid #BBF7D0", borderRadius: 3, fontSize: 10, background: "#F0FDF4" }} />
                       <button type="button" onClick={() => updateItem({ results: results.filter((_, i) => i !== ri) })} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 10, padding: 0 }}>×</button>
                     </div>
                     );
                   })}
-                  <button type="button" onClick={() => updateItem({ results: [...results, { by: "", text: "", at: new Date().toISOString().slice(0, 10) }] })} style={{ fontSize: 9, color: "#7C3AED", background: "none", border: "none", cursor: "pointer", padding: 0 }}>+ kết quả</button>
+                  <button type="button" onClick={() => updateItem({ results: [...results, { by: currentUserEmail, text: "", at: new Date().toISOString().slice(0, 10) }] })} style={{ fontSize: 9, color: "#7C3AED", background: "none", border: "none", cursor: "pointer", padding: 0 }}>+ kết quả</button>
                 </div>
               )}
             </div>
