@@ -33,34 +33,57 @@ export default function DamageMgmtView({
     return Array.from(m.values()).sort((a, b) => b.total - a.total);
   }, [items]);
 
+  const totalDamage = items.reduce((s, it) => s + toNum(it.damage_amount), 0);
+  const totalRecovered = items.reduce((s, it) => s + toNum(it.resolved_amount), 0);
+  const pendingCount = items.filter((it) => !it.damage_handled).length;
+  const doneCount = items.filter((it) => it.damage_handled).length;
+
   return (
     <section className="section">
       <div className="page-hdr">
         <div>
-          <div className="page-title">🔧 Xử lý hàng hỏng</div>
+          <div className="page-title">Xử lý hàng hỏng</div>
           <div className="page-sub">Các SP lỗi do TECH ghi nhận — liên hệ NCC đổi/hoàn tiền</div>
         </div>
       </div>
 
-      <div className="mini-tabs">
-        <Link
-          href="/damage-mgmt?tab=pending"
-          className={"mini-tab" + (tab === "pending" ? " active" : "")}
-          style={{ textDecoration: "none" }}
-        >
-          ⏳ Cần xử lý <span className="cnt">{tab === "pending" ? items.length : ""}</span>
-        </Link>
-        <Link
-          href="/damage-mgmt?tab=done"
-          className={"mini-tab" + (tab === "done" ? " active" : "")}
-          style={{ textDecoration: "none" }}
-        >
-          ✅ Đã xử lý <span className="cnt">{tab === "done" ? items.length : ""}</span>
-        </Link>
+      {/* Stat strip */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", background: "var(--card)", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden", marginBottom: 12 }}>
+        {[
+          { label: "Cần xử lý", value: String(pendingCount), sub: "SP lỗi chưa xong", color: "var(--red)" },
+          { label: "Đã xử lý", value: String(doneCount), sub: "Đổi/hoàn tiền xong", color: "var(--green)" },
+          { label: "Tổng thiệt hại", value: formatVND(totalDamage), sub: "Chưa thu hồi", color: "#D97706" },
+          { label: "Đã thu hồi", value: formatVND(totalRecovered), sub: "Từ NCC đổi/hoàn", color: "var(--blue)" },
+        ].map((c, i) => (
+          <div key={i} style={{ padding: "12px 14px", borderRight: i < 3 ? "1px solid var(--border)" : undefined }}>
+            <div style={{ fontSize: 9, fontWeight: 800, color: c.color, textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>{c.label}</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: c.color }}>{c.value}</div>
+            <div style={{ fontSize: 9, color: "var(--subtle)" }}>{c.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Tabs — pill style */}
+      <div style={{ display: "flex", gap: 4, marginBottom: 14 }}>
+        {[
+          { key: "pending", label: "Cần xử lý", count: pendingCount },
+          { key: "done", label: "Đã xử lý", count: doneCount },
+        ].map((t) => (
+          <Link key={t.key} href={`/damage-mgmt?tab=${t.key}`} style={{
+            padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none",
+            border: tab === t.key ? "1px solid #18181B" : "1px solid var(--border)",
+            background: tab === t.key ? "#18181B" : "#fff",
+            color: tab === t.key ? "#fff" : "#64748B",
+            display: "flex", alignItems: "center", gap: 5,
+          }}>
+            {t.label}
+            <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 10, background: tab === t.key ? "rgba(255,255,255,.2)" : "#F1F5F9", color: tab === t.key ? "#fff" : "#64748B" }}>{t.count}</span>
+          </Link>
+        ))}
       </div>
 
       {groups.length === 0 ? (
-        <div className="card muted" style={{ padding: 24, textAlign: "center" }}>
+        <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 12, padding: 32, textAlign: "center", color: "#94A3B8" }}>
           {tab === "pending" ? "Không có hàng hỏng cần xử lý." : "Chưa có case nào đã xử lý."}
         </div>
       ) : (
@@ -75,6 +98,7 @@ export default function DamageMgmtView({
               total={g.total}
               arrivalDate={meta?.arrival_date || meta?.order_date || null}
               users={users}
+              isDone={tab === "done"}
             />
           );
         })
@@ -84,7 +108,7 @@ export default function DamageMgmtView({
 }
 
 function OrderGroup({
-  orderId, supplier, items, total, arrivalDate, users,
+  orderId, supplier, items, total, arrivalDate, users, isDone,
 }: {
   orderId: string;
   supplier: string;
@@ -92,58 +116,43 @@ function OrderGroup({
   total: number;
   arrivalDate: string | null;
   users: UserRef[];
+  isDone?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(!isDone);
   const doneCount = items.filter((it) => it.damage_handled).length;
   const allDone = doneCount === items.length;
+  const borderColor = allDone ? "#BBF7D0" : "#FECACA";
+  const headerBg = allDone ? "#F0FDF4" : "#FEF2F2";
+
   return (
-    <div className="card" style={{ marginBottom: 12, padding: 0, overflow: "hidden" }}>
-      <div
-        onClick={() => setOpen((v) => !v)}
-        style={{
-          padding: "12px 14px",
-          background: "#FAFAFA",
-          borderBottom: open ? "1px solid var(--border)" : "none",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 10,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 12, color: "var(--muted)" }}>{open ? "▾" : "▸"}</span>
-          <div>
-            <div style={{ fontWeight: 700 }}>
-              Lô hàng về {formatDate(arrivalDate) || "—"}{" "}
-              <Link
-                href={`/create?order_id=${orderId}`}
-                style={{ color: "var(--blue)", fontWeight: 400, fontSize: 13 }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {orderId}
-              </Link>
-            </div>
-            <div className="muted" style={{ fontSize: 12 }}>{items.length} SP lỗi · NCC: {supplier}</div>
+    <div style={{ background: "#fff", border: `1px solid ${borderColor}`, borderRadius: 12, overflow: "hidden", marginBottom: 12 }}>
+      {/* Header */}
+      <div onClick={() => setOpen((v) => !v)} style={{ padding: "12px 16px", background: headerBg, borderBottom: open ? `1px solid ${borderColor}` : "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: allDone ? "#16A34A" : "#18181B" }}>
+            Lô hàng về {formatDate(arrivalDate) || "—"}{allDone ? " ✓" : ""}
+          </div>
+          <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 2 }}>
+            <Link href={`/create?order_id=${orderId}`} style={{ color: "#3B82F6", textDecoration: "none", fontWeight: 600 }} onClick={(e) => e.stopPropagation()}>{orderId}</Link> · {items.length} SP lỗi · NCC: {supplier}
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
-          <span className={`chip ${allDone ? "chip-green" : "chip-amber"}`} style={{ fontSize: 10 }}>
-            {allDone ? "✓ Hoàn tất" : `${doneCount}/${items.length} xong`}
-          </span>
-          <span style={{ fontSize: 13, color: "var(--red)", fontWeight: 700 }}>
-            {formatVND(total)} thiệt hại
-          </span>
-          <span className="chip chip-gray">NCC: {supplier}</span>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexShrink: 0 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: allDone ? "#16A34A" : "#DC2626" }}>{doneCount}/{items.length} xong</span>
+          <span style={{ fontSize: 13, fontWeight: 800, color: "#DC2626" }}>{formatVND(total)}</span>
+          <span className="chip chip-gray" style={{ fontSize: 10 }}>NCC: {supplier}</span>
         </div>
       </div>
 
+      {/* Items */}
       {open && (
-        <div>
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 80px", padding: "8px 16px", fontSize: 9, fontWeight: 700, color: "#94A3B8", textTransform: "uppercase", background: "#F8FAFC", borderBottom: "1px solid #E2E8F0" }}>
+            <div>Sản phẩm</div><div>Số lượng</div><div>Thiệt hại</div><div>Trạng thái</div><div></div>
+          </div>
           {items.map((it) => (
             <ItemAccordion key={`${it.order_id}-${it.line_id}`} item={it} users={users} />
           ))}
-        </div>
+        </>
       )}
     </div>
   );
@@ -151,38 +160,24 @@ function OrderGroup({
 
 function ItemAccordion({ item, users }: { item: DamageItem; users: UserRef[] }) {
   const [open, setOpen] = useState(false);
-  const resLabel: Record<string, string> = { replace: "↩ Đổi trả", refund: "💵 Hoàn tiền", liquidate: "📦 Thanh lý" };
   return (
-    <div style={{ borderBottom: "1px solid var(--border)" }}>
-      <div
-        onClick={() => setOpen((v) => !v)}
-        style={{
-          padding: "10px 14px",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 10,
-        }}
-      >
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 600 }}>
-            <span style={{ color: "var(--muted)", fontSize: 11, marginRight: 6 }}>{open ? "▾" : "▸"}</span>
-            {item.product_name} <span className="muted" style={{ fontSize: 11 }}>{item.sku || ""}</span>
-          </div>
+    <div style={{ borderBottom: "1px solid #F1F5F9" }}>
+      <div onClick={() => setOpen((v) => !v)} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 80px", padding: "10px 16px", cursor: "pointer", alignItems: "center", fontSize: 12 }}>
+        <div>
+          <div style={{ fontWeight: 600 }}>{item.product_name}</div>
+          <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 1 }}>{item.sku || ""}</div>
         </div>
-        <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
-          <span className="chip chip-red" style={{ fontSize: 10 }}>
-            {toNum(item.damage_qty)} lỗi · {formatVND(item.damage_amount)}
+        <div style={{ fontWeight: 700, color: "#DC2626" }}>{toNum(item.damage_qty)} cái</div>
+        <div style={{ fontWeight: 700 }}>{formatVND(item.damage_amount)}</div>
+        <div>
+          <span className={`chip ${item.damage_handled ? "chip-green" : "chip-red"}`} style={{ fontSize: 10 }}>
+            {item.damage_handled ? "Xong" : "Chưa xử lý"}
           </span>
-          {item.resolution_type && (
-            <span className="chip chip-blue" style={{ fontSize: 10 }}>
-              {resLabel[item.resolution_type] || item.resolution_type}
-            </span>
-          )}
-          <span className={`chip ${item.damage_handled ? "chip-green" : "chip-amber"}`} style={{ fontSize: 10 }}>
-            {item.damage_handled ? "✓ Xong" : "Đang xử lý"}
-          </span>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <button type="button" style={{ padding: "4px 10px", borderRadius: 6, fontSize: 10, fontWeight: 600, border: "1px solid #E2E8F0", background: "#fff", color: "#64748B", cursor: "pointer" }}>
+            {open ? "Thu gọn" : item.damage_handled ? "Xem" : "Xử lý"}
+          </button>
         </div>
       </div>
       {open && (
