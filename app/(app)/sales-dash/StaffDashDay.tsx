@@ -66,12 +66,15 @@ export default function StaffDashDay(p: StaffDashDayProps) {
       const res = await fetch(`/api/dash/channel-range?from=${range.from}&to=${range.to}`);
       const json = await res.json();
       if (json.ok) {
-        const ch = (json.channels as Array<{ name: string; revenue: number }>).find(c => c.name === p.channelName || (p.channelName === "Web/App" && ["API", "Admin", "Website"].includes(c.name)));
+        const channels = json.channels as Array<{ name: string; revenue: number }>;
+        // Map channel names: dashboard shows "TikTok" but DB has "TikTok Shop"
+        const dbName = p.channelName === "TikTok" ? "TikTok Shop" : p.channelName;
+        const ch = channels.find(c => c.name === p.channelName || c.name === dbName);
         const allWebNames = ["API", "Admin", "Website", "App"];
-        const webRev = p.channelName === "Web/App" ? (json.channels as Array<{ name: string; revenue: number }>).filter(c => allWebNames.includes(c.name)).reduce((s: number, c: { revenue: number }) => s + c.revenue, 0) : 0;
+        const webRev = p.channelName === "Web/App" ? channels.filter(c => allWebNames.includes(c.name)).reduce((s: number, c: { revenue: number }) => s + c.revenue, 0) : 0;
         const rev = p.channelName === "Web/App" ? webRev : (ch?.revenue || 0);
         const srcMap = json.sourcesByChannel || {};
-        const sources = srcMap[p.channelName] || srcMap[p.channelName === "TikTok" ? "TikTok Shop" : p.channelName] || [];
+        const sources = srcMap[p.channelName] || srcMap[dbName] || [];
         const webSources = p.channelName === "Web/App" ? [...(srcMap["API"] || []), ...(srcMap["Admin"] || []), ...(srcMap["Website"] || [])].sort((a: { revenue: number }, b: { revenue: number }) => b.revenue - a.revenue) : sources;
         setRangeData({ revenue: rev, sources: p.channelName === "Web/App" ? webSources : sources });
       }
@@ -87,10 +90,17 @@ export default function StaffDashDay(p: StaffDashDayProps) {
   const revPct = p.dailyTarget > 0 ? Math.round((p.revenue / p.dailyTarget) * 100) : 0;
   const monthPct = p.monthTarget > 0 ? Math.round((p.monthRevenue / p.monthTarget) * 100) : 0;
   const timePct = p.daysInMonth > 0 ? Math.round((p.dayOfMonth / p.daysInMonth) * 100) : 0;
-  const visibleSources = showAllSources ? p.sources : p.sources.slice(0, 3);
+  const visibleSources = showAllSources ? displaySources : displaySources.slice(0, 3);
 
   return (
     <div style={{ background: "#F8FAFC", minHeight: "100vh", paddingBottom: 80 }}>
+      {/* Loading overlay */}
+      {rangeLoading && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 999, background: "#7C3AED", color: "#fff", textAlign: "center", padding: "6px 0", fontSize: 12, fontWeight: 600 }}>
+          Đang tải dữ liệu...
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ background: `linear-gradient(135deg, ${p.channelColor}, ${p.channelColor}CC)`, padding: "14px 14px 0", color: "#fff" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
@@ -105,7 +115,7 @@ export default function StaffDashDay(p: StaffDashDayProps) {
         </div>
         <div style={{ display: "flex", gap: 4, marginBottom: 12, overflowX: "auto", paddingBottom: 2 }}>
           {QUICK_RANGES.map(r => (
-            <button key={r.key} onClick={() => r.key === "today" ? (setRangeKey("today"), setRangeData(null)) : r.key === "yesterday" ? (window.location.href = `/sales-dash?date=${p.prevDay}`) : loadRange(r.key)} style={{
+            <button key={r.key} onClick={() => r.key === "today" ? (setRangeKey("today"), setRangeData(null)) : r.key === "yesterday" ? (window.location.href = `/sales-dash?channel=${encodeURIComponent(p.channelName)}&date=${p.prevDay}`) : loadRange(r.key)} style={{
               background: rangeKey === r.key ? "rgba(255,255,255,.3)" : "rgba(255,255,255,.1)",
               color: rangeKey === r.key ? "#fff" : "rgba(255,255,255,.6)",
               padding: "5px 10px", borderRadius: 8, fontSize: 10, fontWeight: 600,
@@ -131,8 +141,8 @@ export default function StaffDashDay(p: StaffDashDayProps) {
 
       {/* Hero DT */}
       <div style={{ margin: "8px 10px 0", borderRadius: 14, padding: 14, color: "#fff", background: `linear-gradient(135deg, ${revPct >= 100 ? "#059669" : revPct >= 70 ? "#D97706" : "#DC2626"}, ${revPct >= 100 ? "#10B981" : revPct >= 70 ? "#F59E0B" : "#EF4444"})` }}>
-        <div style={{ fontSize: 11, opacity: .8 }}>DT THÀNH CÔNG · {p.channelName}</div>
-        <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: -1 }}>{formatVNDCompact(p.revenue)}</div>
+        <div style={{ fontSize: 11, opacity: .8 }}>DT THÀNH CÔNG · {p.channelName}{isRangeMode ? ` (${QUICK_RANGES.find(r => r.key === rangeKey)?.label})` : ""}</div>
+        <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: -1 }}>{formatVNDCompact(displayRevenue)}</div>
         <div style={{ fontSize: 11, opacity: .7 }}>{p.orders} đơn · {revChange >= 0 ? "▲" : "▼"} {revChange >= 0 ? "+" : ""}{revChange}% vs hôm qua</div>
         <div style={{ height: 6, background: "rgba(255,255,255,.2)", borderRadius: 3, marginTop: 10, overflow: "hidden" }}>
           <div style={{ height: "100%", width: `${Math.min(revPct, 100)}%`, background: "#fff", borderRadius: 3 }} />
