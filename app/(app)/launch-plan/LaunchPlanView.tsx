@@ -799,6 +799,7 @@ function LaunchDetailModal({ plan, onClose, onEdit }: { plan: LaunchPlanRow; onC
    LAUNCH FORM MODAL — 7 Steps
    ═══════════════════════════════════════════════════════════ */
 const ALL_CHANNELS = ["Facebook", "TikTok Shop", "Shopee", "Web/B2B"];
+const LISTING_CHANNELS_DEFAULT = ["TikTok Shop", "Shopee", "Web/B2B"];
 const CH_CHIP_COLORS: Record<string, string> = { Facebook: "#1877F2", "TikTok Shop": "#FE2C55", Shopee: "#EE4D2D", "Web/B2B": "#6366F1" };
 const SCENARIOS_SAN = [
   { label: "Xả hàng", fees: "Sàn 20%", calc: (B: number) => B * 0.20 },
@@ -944,12 +945,16 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
   const gross = sellB1 > 0 ? sellB1 - A : 0;
   const grossPct = sellB1 > 0 ? (gross / sellB1 * 100).toFixed(1) : "0";
   // Step 5 — Listing
-  const [listings, setListings] = useState<Record<string, { links: string; done: boolean; assignee?: string; deadline?: string }>>(
-    Object.fromEntries(ALL_CHANNELS.map((ch) => {
-      const li = m.listings?.[ch] as Record<string, unknown> | undefined;
+  const [listings, setListings] = useState<Record<string, { links: string; done: boolean; assignee?: string; deadline?: string }>>(() => {
+    const existing = m.listings || {};
+    const existingKeys = Object.keys(existing);
+    // Nếu có data cũ → load tất cả. Nếu mới → chỉ 3 kênh (không FB)
+    const channels = existingKeys.length > 0 ? existingKeys : LISTING_CHANNELS_DEFAULT;
+    return Object.fromEntries(channels.map((ch) => {
+      const li = existing[ch] as Record<string, unknown> | undefined;
       return [ch, { links: (Array.isArray(li?.links) ? (li.links as string[]).join("\n") : ""), done: !!(li?.done), assignee: (li?.assignee as string) || "", deadline: (li?.deadline as string) || "" }];
-    }))
-  );
+    }));
+  });
   // Step 6 — Nội dung
   const [driveLink, setDriveLink] = useState(m.phase2?.drive_link || m.content?.drive_link || "");
   const [assignees, setAssignees] = useState(m.phase2?.assignees || m.content?.assignees || "");
@@ -1449,8 +1454,8 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
               {(results.length > 0 || item.done) && (
                 <div style={{ paddingLeft: 26, paddingRight: 8, marginTop: 2 }}>
                   {results.map((r, ri) => (
-                    <div key={ri} style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 2 }}>
-                      {r.at && <span style={{ fontSize: 8, color: "#A1A1AA", flexShrink: 0 }}>{r.at}</span>}
+                    <div key={ri} style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 2 }}>
+                      <span style={{ fontSize: 9, color: "#16A34A", fontWeight: 600, flexShrink: 0, minWidth: 58 }}>{r.at || "—"}</span>
                       <input type="text" value={r.text} placeholder="Link / ghi chú..." onChange={(e) => { const nr = [...results]; nr[ri] = { ...nr[ri], text: e.target.value, at: nr[ri].at || new Date().toISOString().slice(0, 10) }; updateItem({ results: nr }); }} style={{ flex: 1, padding: "2px 6px", border: "1px solid #BBF7D0", borderRadius: 3, fontSize: 10, background: "#F0FDF4" }} />
                       <button type="button" onClick={() => updateItem({ results: results.filter((_, i) => i !== ri) })} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 10, padding: 0 }}>×</button>
                     </div>
@@ -1472,31 +1477,49 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
           <div style={{ height: 1, background: "#E5E7EB", margin: "14px 0" }} />
 
           {/* Listing sản phẩm */}
-          <div style={{ fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase", marginBottom: 8 }}>LISTING SẢN PHẨM</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase" }}>LISTING SẢN PHẨM</div>
+            <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 700, color: "#16A34A" }}>{Object.values(listings).filter((l) => l.done).length}/{Object.keys(listings).filter((k) => listings[k]?.links || listings[k]?.done).length || Object.keys(listings).length}</span>
+          </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "28px 80px 1fr 120px 100px", gap: 4, padding: "4px 8px", fontSize: 9, fontWeight: 700, color: "#A1A1AA", textTransform: "uppercase", borderBottom: "1px solid #E4E4E7", marginBottom: 2 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "22px 70px 1fr 110px 90px 20px", gap: 3, padding: "3px 8px", fontSize: 9, fontWeight: 700, color: "#A1A1AA", textTransform: "uppercase", borderBottom: "1px solid #E4E4E7", marginBottom: 2 }}>
             <span />
             <span>Kênh</span>
             <span>Link</span>
             <span>Nhân sự</span>
             <span>Deadline</span>
+            <span />
           </div>
 
-          {ALL_CHANNELS.map((ch) => (
-            <div key={ch} style={{ display: "grid", gridTemplateColumns: "28px 80px 1fr 120px 100px", gap: 4, alignItems: "center", padding: "5px 8px", borderBottom: "1px solid #F3F4F6" }}>
-              <input type="checkbox" checked={listings[ch]?.done || false} onChange={(e) => setListings({ ...listings, [ch]: { ...listings[ch], done: e.target.checked } })} style={{ accentColor: "#16A34A" }} />
-              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: CH_CHIP_COLORS[ch], flexShrink: 0 }} />
-                <span style={{ fontSize: 11, fontWeight: 600 }}>{ch.replace("TikTok Shop", "TikTok").replace("Web/B2B", "Web")}</span>
+          {Object.keys(listings).filter((ch) => ch !== "__new__").map((ch) => (
+            <div key={ch} style={{ display: "grid", gridTemplateColumns: "22px 70px 1fr 110px 90px 20px", gap: 3, alignItems: "center", padding: "3px 8px", borderBottom: "1px solid #F3F4F6" }}>
+              <input type="checkbox" checked={listings[ch]?.done || false} onChange={(e) => setListings({ ...listings, [ch]: { ...listings[ch], done: e.target.checked } })} style={{ accentColor: "#16A34A", width: 14, height: 14 }} />
+              <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: CH_CHIP_COLORS[ch] || "#6B7280", flexShrink: 0 }} />
+                <span style={{ fontSize: 10, fontWeight: 600 }}>{ch.replace("TikTok Shop", "TikTok").replace("Web/B2B", "Web")}</span>
               </div>
-              <input type="text" placeholder={`Link ${ch}...`} value={(listings[ch]?.links || "").split("\n")[0]} onChange={(e) => setListings({ ...listings, [ch]: { ...listings[ch], links: e.target.value } })} style={{ padding: "3px 8px", border: "1px solid #E4E4E7", borderRadius: 4, fontSize: 11 }} />
-              <select value={listings[ch]?.assignee || ""} onChange={(e) => setListings({ ...listings, [ch]: { ...listings[ch], assignee: e.target.value } })} style={{ padding: "3px 4px", fontSize: 11, border: "1px solid #E4E4E7", borderRadius: 4, color: listings[ch]?.assignee ? "#4F46E5" : "#A1A1AA" }}>
+              <input type="text" placeholder={`Link...`} value={(listings[ch]?.links || "").split("\n")[0]} onChange={(e) => setListings({ ...listings, [ch]: { ...listings[ch], links: e.target.value } })} style={{ padding: "2px 6px", border: "1px solid #E4E4E7", borderRadius: 3, fontSize: 10 }} />
+              <select value={listings[ch]?.assignee || ""} onChange={(e) => setListings({ ...listings, [ch]: { ...listings[ch], assignee: e.target.value } })} style={{ padding: "2px 3px", fontSize: 10, border: "1px solid #E4E4E7", borderRadius: 3, color: listings[ch]?.assignee ? "#4F46E5" : "#A1A1AA" }}>
                 <option value="">— Chọn —</option>
                 {users.map((u) => <option key={u.email} value={u.email}>{u.name || u.email}</option>)}
               </select>
-              <input type="date" value={listings[ch]?.deadline || ""} onChange={(e) => setListings({ ...listings, [ch]: { ...listings[ch], deadline: e.target.value } })} style={{ padding: "3px 4px", fontSize: 11, border: "1px solid #E4E4E7", borderRadius: 4 }} />
+              <input type="date" value={listings[ch]?.deadline || ""} onChange={(e) => setListings({ ...listings, [ch]: { ...listings[ch], deadline: e.target.value } })} style={{ padding: "2px 3px", fontSize: 9, border: "1px solid #E4E4E7", borderRadius: 3 }} />
+              {!LISTING_CHANNELS_DEFAULT.includes(ch) && !ALL_CHANNELS.includes(ch) ? (
+                <button type="button" onClick={() => { const nw = { ...listings }; delete nw[ch]; setListings(nw); }} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 12, padding: 0 }}>×</button>
+              ) : <span />}
             </div>
           ))}
+          {/* Thêm kênh listing */}
+          <div style={{ display: "flex", gap: 4, padding: "6px 8px", alignItems: "center" }}>
+            <input id="new-listing-ch" type="text" placeholder="Tên kênh mới (VD: Lazada, Sendo...)" style={{ flex: 1, padding: "4px 8px", border: "1px solid #E4E4E7", borderRadius: 4, fontSize: 10 }} />
+            <button type="button" onClick={() => {
+              const inp = document.getElementById("new-listing-ch") as HTMLInputElement;
+              const ch = inp?.value?.trim();
+              if (!ch || listings[ch]) return;
+              setListings({ ...listings, [ch]: { links: "", done: false, assignee: "", deadline: "" } });
+              if (inp) inp.value = "";
+            }} style={{ padding: "3px 10px", borderRadius: 4, fontSize: 10, fontWeight: 700, background: "#7C3AED", color: "#fff", border: "none", cursor: "pointer" }}>+ Thêm</button>
+          </div>
         </div>
 
         </div>{/* end scrollable content */}
