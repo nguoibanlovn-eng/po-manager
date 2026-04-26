@@ -700,8 +700,8 @@ function LaunchDetailModal({ plan, onClose, onEdit }: { plan: LaunchPlanRow; onC
 /* ═══════════════════════════════════════════════════════════
    LAUNCH FORM MODAL — 7 Steps
    ═══════════════════════════════════════════════════════════ */
-const ALL_CHANNELS = ["Facebook", "TikTok Shop", "Shopee", "Web/B2B", "Live stream"];
-const CH_CHIP_COLORS: Record<string, string> = { Facebook: "#1877F2", "TikTok Shop": "#FE2C55", Shopee: "#EE4D2D", "Web/B2B": "#6366F1", "Live stream": "#16A34A" };
+const ALL_CHANNELS = ["Facebook", "TikTok Shop", "Shopee", "Web/B2B"];
+const CH_CHIP_COLORS: Record<string, string> = { Facebook: "#1877F2", "TikTok Shop": "#FE2C55", Shopee: "#EE4D2D", "Web/B2B": "#6366F1" };
 const SCENARIOS_SAN = [
   { label: "Xả hàng", fees: "Sàn 20%", calc: (B: number) => B * 0.20 },
   { label: "Bán thường", fees: "Sàn 20%, Thuế 1.5%, HT 7k, VH 10%", calc: (B: number) => B * 0.20 + B * 0.015 + 7000 + B * 0.10 },
@@ -753,7 +753,7 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
   const [newItemName, setNewItemName] = useState("");
   const [newItemQty, setNewItemQty] = useState("");
   // Step 3 — Kênh bán
-  const [selChannels, setSelChannels] = useState<string[]>(m.channels_selected || (m.phase4?.channels ? Object.keys(m.phase4.channels).filter((k) => (m.phase4?.channels?.[k] || 0) > 0) : ["Facebook", "TikTok Shop", "Shopee"]));
+  const [selChannels, setSelChannels] = useState<string[]>(m.channels_selected || (m.phase4?.channels ? Object.keys(m.phase4.channels).filter((k) => (m.phase4?.channels?.[k] || 0) > 0) : ALL_CHANNELS));
   const [channelNote, setChannelNote] = useState((m as Record<string, unknown>).channelNote as string || "");
   // Step 4 — Định giá
   const [sellB1, setSellB1] = useState(m.phase3?.sell_price || m.pricing?.sell_price || 0);
@@ -1121,16 +1121,7 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
             <span style={{ color: "#1E40AF", fontSize: 10 }}>Mặc định: FB 55% · TT 25% · SP 10% · Web 10%</span>
           </div>
 
-          {/* Kênh bán chọn */}
-          <div style={{ marginBottom: 10 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase", marginBottom: 6 }}>KÊNH BÁN</div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {ALL_CHANNELS.map((ch) => {
-                const on = selChannels.includes(ch);
-                return (<button key={ch} onClick={() => setSelChannels(on ? selChannels.filter((c) => c !== ch) : [...selChannels, ch])} style={{ padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", background: on ? CH_CHIP_COLORS[ch] || "#3B82F6" : "#F3F4F6", color: on ? "#fff" : "#374151", border: "none" }}>{ch}</button>);
-              })}
-            </div>
-          </div>
+          {/* Kênh bán — 4 kênh cố định */}
 
           {/* Phân bổ theo kênh */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginBottom: 8 }}>
