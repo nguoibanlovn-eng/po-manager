@@ -200,26 +200,58 @@ function OrderQcCard({
         }}
         onClick={() => setExpanded((v) => !v)}
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        {/* Dòng 1: tên + thời gian */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 800, fontSize: 14 }}>
-              {order.order_name || order.order_id}
-            </div>
+            <div style={{ fontWeight: 800, fontSize: 14 }}>{order.order_name || order.order_id}</div>
             <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
-              {order.supplier_name || "—"} · {formatDate(order.arrival_date)} · {items.length} SP · {totalQty} cái · <span style={{ color: isUrgent ? "#DC2626" : "#64748B", fontWeight: isUrgent ? 700 : 400 }}>{daysAgo} ngày trước</span>
+              {order.supplier_name || "—"} · {formatDate(order.arrival_date)} · <span style={{ color: isUrgent ? "#DC2626" : "#64748B", fontWeight: isUrgent ? 700 : 400 }}>{daysAgo} ngày trước</span>
             </div>
-          </div>
-          <div style={{ textAlign: "right", flexShrink: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: qcPct >= 100 && shelfPct >= 100 ? "#16A34A" : qcPct > 0 ? "#D97706" : "#DC2626" }}>
-              {qcPct >= 100 && shelfPct >= 100 ? "Xong" : `${Math.min(qcPct, shelfPct)}%`}
-            </div>
-            <div style={{ fontSize: 10, color: "#94A3B8" }}>QC {qcPct}% · Kệ {shelfPct}%</div>
           </div>
           <span style={{ fontSize: 10, color: "#94A3B8", transform: expanded ? "rotate(90deg)" : "none", transition: "transform .2s" }}>›</span>
         </div>
-        {damageCount > 0 && (
-          <div style={{ fontSize: 11, color: "#DC2626", fontWeight: 700, marginTop: 4 }}>Lỗi: {damageCount} SP · {formatVND(damageCost)}</div>
-        )}
+
+        {/* KPI strip gọn */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 4, background: "#F8FAFC", borderRadius: 8, padding: "6px 10px", marginBottom: 6 }}>
+          <div>
+            <div style={{ fontSize: 9, color: "#94A3B8", fontWeight: 600, textTransform: "uppercase" }}>Sản phẩm</div>
+            <div style={{ fontSize: 13, fontWeight: 800 }}>{items.length} <span style={{ fontSize: 10, fontWeight: 600, color: "#64748B" }}>({totalQty} cái)</span></div>
+          </div>
+          <div>
+            <div style={{ fontSize: 9, color: "#94A3B8", fontWeight: 600, textTransform: "uppercase" }}>Đã QC</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: qcPct >= 100 ? "#16A34A" : qcPct > 0 ? "#D97706" : "#DC2626" }}>{qcDoneCount}/{items.length}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 9, color: "#94A3B8", fontWeight: 600, textTransform: "uppercase" }}>Lên kệ</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: shelfPct >= 100 ? "#16A34A" : shelfPct > 0 ? "#D97706" : "#DC2626" }}>{shelfDoneCount}/{items.length}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 9, color: "#94A3B8", fontWeight: 600, textTransform: "uppercase" }}>Lỗi</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: damageCount > 0 ? "#DC2626" : "#94A3B8" }}>{damageCount > 0 ? damageCount : "0"}</div>
+          </div>
+        </div>
+
+        {/* Progress bars */}
+        <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginBottom: 2 }}>
+              <span style={{ color: "#64748B", fontWeight: 600 }}>QC</span>
+              <span style={{ fontWeight: 700, color: qcPct >= 100 ? "#16A34A" : "#0D9488" }}>{qcPct}%</span>
+            </div>
+            <div style={{ height: 5, background: "#F3F4F6", borderRadius: 3, overflow: "hidden" }}>
+              <div style={{ width: `${qcPct}%`, height: "100%", background: qcPct >= 100 ? "#22C55E" : "#0D9488", borderRadius: 3 }} />
+            </div>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginBottom: 2 }}>
+              <span style={{ color: "#64748B", fontWeight: 600 }}>Lên kệ</span>
+              <span style={{ fontWeight: 700, color: shelfPct >= 100 ? "#16A34A" : "#16A34A" }}>{shelfPct}%</span>
+            </div>
+            <div style={{ height: 5, background: "#F3F4F6", borderRadius: 3, overflow: "hidden" }}>
+              <div style={{ width: `${shelfPct}%`, height: "100%", background: shelfPct >= 100 ? "#22C55E" : "#16A34A", borderRadius: 3 }} />
+            </div>
+          </div>
+        </div>
       </div>
 
       {expanded && (
