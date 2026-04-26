@@ -118,6 +118,8 @@ export default function StaffDashDay(p: StaffDashDayProps) {
         {(() => {
           const todayDate = daysAgo(0);
           const yesterdayDate = daysAgo(-1);
+          const isToday = p.date === todayDate;
+          const isYesterday = p.date === yesterdayDate;
           const isRangeActive = rangeKey !== "today" && rangeKey !== "yesterday" && rangeData !== null;
           const isTodayActive = isToday && !isRangeActive;
           const isYesterdayActive = isYesterday && !isRangeActive;
