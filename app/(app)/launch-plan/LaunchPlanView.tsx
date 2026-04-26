@@ -1214,11 +1214,9 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
             <span style={{ color: "#1E40AF", fontSize: 10 }}>Mặc định: FB 55% · TT 25% · SP 10% · Web 10%</span>
           </div>
 
-          {/* Kênh bán — 4 kênh cố định */}
-
-          {/* Phân bổ theo kênh */}
+          {/* Phân bổ theo kênh — luôn 4 kênh cố định */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 4, marginBottom: 8 }}>
-            {selChannels.map((ch) => {
+            {ALL_CHANNELS.map((ch) => {
               const short = ch.replace("TikTok Shop", "TT").replace("Facebook", "FB").replace("Shopee", "SP").replace("Web/B2B", "Web");
               const pct = totalTarget > 0 ? Math.round(((chTargets[ch] || 0) / totalTarget) * 100) : (DEFAULT_SPLIT[ch] || 0);
               return (
@@ -1231,18 +1229,33 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
               );
             })}
           </div>
-          {/* Progress bar + total */}
-          {totalTarget > 0 && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ flex: 1, height: 6, background: "#E5E7EB", borderRadius: 3, overflow: "hidden", display: "flex" }}>
-                {selChannels.map((ch) => {
-                  const pct = totalTarget > 0 ? ((chTargets[ch] || 0) / totalTarget) * 100 : 0;
-                  return <div key={ch} style={{ width: `${pct}%`, background: CH_CHIP_COLORS[ch] || "#6B7280" }} />;
-                })}
-              </div>
-              <span style={{ fontSize: 10, fontWeight: 700, color: stockQty > 0 && totalTarget === stockQty ? "#16A34A" : BRAND, whiteSpace: "nowrap" }}>{totalTarget}/{stockQty || totalTarget} {stockQty > 0 && totalTarget === stockQty ? "✓" : ""}</span>
-            </div>
-          )}
+          {/* Progress bar + total + validation */}
+          {(() => {
+            const diff = stockQty > 0 ? totalTarget - stockQty : 0;
+            const isMatch = stockQty > 0 && diff === 0;
+            const isOver = diff > 0;
+            const isUnder = diff < 0;
+            return (
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ flex: 1, height: 6, background: "#E5E7EB", borderRadius: 3, overflow: "hidden", display: "flex" }}>
+                    {ALL_CHANNELS.map((ch) => {
+                      const pct = totalTarget > 0 ? ((chTargets[ch] || 0) / totalTarget) * 100 : 0;
+                      return <div key={ch} style={{ width: `${pct}%`, background: CH_CHIP_COLORS[ch] || "#6B7280" }} />;
+                    })}
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: isMatch ? "#16A34A" : (isOver || isUnder) ? "#DC2626" : BRAND, whiteSpace: "nowrap" }}>
+                    {totalTarget}/{stockQty || totalTarget} {isMatch ? "✓" : ""}
+                  </span>
+                </div>
+                {stockQty > 0 && !isMatch && (
+                  <div style={{ marginTop: 6, padding: "6px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, background: "#FEF2F2", color: "#DC2626", border: "1px solid #FECACA" }}>
+                    {isOver ? `⚠ Thừa ${diff} SP — tổng phân bổ (${totalTarget}) vượt tồn kho (${stockQty})` : `⚠ Thiếu ${Math.abs(diff)} SP — cần phân bổ thêm ${Math.abs(diff)} SP nữa cho đủ ${stockQty}`}
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
 
         {/* ═══ Xác nhận kế hoạch + Bàn giao ═══ */}
@@ -1365,7 +1378,7 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
           <div style={{ display: "flex", gap: 8 }}>
             <button className="btn btn-ghost btn-sm" onClick={onClose}>Huỷ</button>
             <button className="btn btn-ghost btn-sm" onClick={() => save("READY")} disabled={pending}>Lưu nháp</button>
-            <button className="btn btn-sm" style={{ background: BRAND, color: "#fff", padding: "8px 20px" }} onClick={() => save("LAUNCHED")} disabled={pending}>Bắt đầu Launch →</button>
+            <button className="btn btn-sm" style={{ background: (stockQty > 0 && totalTarget !== stockQty) ? "#9CA3AF" : BRAND, color: "#fff", padding: "8px 20px", cursor: (stockQty > 0 && totalTarget !== stockQty) ? "not-allowed" : "pointer" }} onClick={() => { if (stockQty > 0 && totalTarget !== stockQty) { alert(`Phân bổ chưa khớp: ${totalTarget}/${stockQty} SP`); return; } save("LAUNCHED"); }} disabled={pending}>Bắt đầu Launch →</button>
           </div>
         </div>
       </div>
