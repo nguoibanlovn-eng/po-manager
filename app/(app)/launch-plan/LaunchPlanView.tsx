@@ -792,6 +792,61 @@ const SCENARIOS_OFF = [
   { label: "Có ads", fees: "+Ads 10%", calc: (B: number) => B * 0.015 + B * 0.10 + B * 0.10 },
   { label: "Ads + CTV", fees: "+CTV 10%", calc: (B: number) => B * 0.015 + B * 0.10 + B * 0.10 + B * 0.10 },
 ];
+/* Searchable user picker + handover block */
+function HandoverBlock({ users, handoverTo, setHandoverTo, handoverDeadline, setHandoverDeadline, onConfirm, pending, canLaunch }: {
+  users: UserRef[]; handoverTo: string; setHandoverTo: (v: string) => void;
+  handoverDeadline: string; setHandoverDeadline: (v: string) => void;
+  onConfirm: () => void; pending: boolean; canLaunch: boolean;
+}) {
+  const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
+  const filtered = users.filter((u) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (u.name || "").toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || (u.role || "").toLowerCase().includes(q);
+  });
+  const selected = users.find((u) => u.email === handoverTo);
+
+  return (
+    <div style={{ background: "#F5F3FF", border: "1px solid #DDD6FE", borderRadius: 10, padding: 14, marginBottom: 12 }}>
+      <div style={{ fontSize: 13, fontWeight: 800, color: "#7C3AED", marginBottom: 10 }}>Bàn giao triển khai</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        {/* Searchable user input */}
+        <span style={{ fontSize: 12, fontWeight: 600, color: "#7C3AED", whiteSpace: "nowrap" }}>Giao cho:</span>
+        <div style={{ position: "relative", flex: 1, minWidth: 160 }}>
+          <input
+            value={open ? search : (selected ? `${selected.name || selected.email}${selected.role ? ` (${selected.role})` : ""}` : "")}
+            placeholder="Gõ tên nhân sự..."
+            onFocus={() => { setOpen(true); setSearch(""); }}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ width: "100%", padding: "6px 10px", fontSize: 12, border: "1px solid #DDD6FE", borderRadius: 6, fontWeight: 600 }}
+          />
+          {open && (
+            <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: "1px solid #DDD6FE", borderRadius: 6, maxHeight: 180, overflowY: "auto", zIndex: 10, boxShadow: "0 4px 12px rgba(0,0,0,.1)" }}>
+              {filtered.length === 0 && <div style={{ padding: "8px 10px", fontSize: 11, color: "#A1A1AA" }}>Không tìm thấy</div>}
+              {filtered.map((u) => (
+                <div key={u.email} onClick={() => { setHandoverTo(u.email); setOpen(false); setSearch(""); }} style={{ padding: "6px 10px", fontSize: 12, cursor: "pointer", display: "flex", justifyContent: "space-between", borderBottom: "1px solid #F3F4F6" }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "#F5F3FF")} onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}>
+                  <span style={{ fontWeight: 600 }}>{u.name || u.email}</span>
+                  <span style={{ fontSize: 10, color: "#A1A1AA" }}>{u.role || ""}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {open && <div style={{ position: "fixed", inset: 0, zIndex: 9 }} onClick={() => setOpen(false)} />}
+        </div>
+        {/* Deadline cùng dòng */}
+        <span style={{ fontSize: 12, fontWeight: 600, color: "#7C3AED", whiteSpace: "nowrap" }}>Deadline:</span>
+        <input type="date" value={handoverDeadline} onChange={(e) => setHandoverDeadline(e.target.value)} style={{ padding: "6px 10px", fontSize: 12, border: "1px solid #DDD6FE", borderRadius: 6 }} />
+      </div>
+      {/* Nút xác nhận */}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
+        <button type="button" disabled={pending || !canLaunch} style={{ background: canLaunch ? "#7C3AED" : "#9CA3AF", color: "#fff", padding: "10px 24px", fontSize: 13, border: "none", borderRadius: 7, fontWeight: 700, cursor: canLaunch ? "pointer" : "not-allowed" }} onClick={() => { if (!handoverTo) { alert("Chọn nhân sự bàn giao trước"); return; } onConfirm(); }}>Xác nhận & Bàn giao →</button>
+      </div>
+    </div>
+  );
+}
+
 const VIDEO_TYPES = [
   { type: "problem", label: "Vấn đề", desc: "Khai thác pain point", color: "#DC2626", short: 2, medium: 3, long: 4 },
   { type: "demo", label: "Chứng minh", desc: "Demo SP hiệu quả", color: "#D97706", short: 2, medium: 2, long: 3 },
@@ -1263,25 +1318,7 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
         </div>
 
         {/* ═══ Bàn giao nhân sự ═══ */}
-        <div style={{ background: "#F5F3FF", border: "1px solid #DDD6FE", borderRadius: 10, padding: 14, marginBottom: 12 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: "#7C3AED", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
-            Bàn giao triển khai
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: "#7C3AED", whiteSpace: "nowrap" }}>Giao cho:</span>
-            <select value={handoverTo} onChange={(e) => setHandoverTo(e.target.value)} style={{ flex: 1, padding: "6px 10px", fontSize: 12, border: "1px solid #DDD6FE", borderRadius: 6, fontWeight: 600 }}>
-              <option value="">— Chọn nhân sự —</option>
-              {users.map((u) => (
-                <option key={u.email} value={u.email}>{u.name || u.email}{u.role ? ` (${u.role})` : ""}</option>
-              ))}
-            </select>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 11, color: "#7C3AED", fontWeight: 600, whiteSpace: "nowrap" }}>Deadline:</span>
-            <input type="date" value={handoverDeadline} onChange={(e) => setHandoverDeadline(e.target.value)} style={{ padding: "5px 10px", fontSize: 12, border: "1px solid #DDD6FE", borderRadius: 6 }} />
-            <span style={{ fontSize: 9, color: "#71717A" }}>Người nhận phải phân bổ việc + Launch trước ngày này</span>
-          </div>
-        </div>
+        <HandoverBlock users={users} handoverTo={handoverTo} setHandoverTo={setHandoverTo} handoverDeadline={handoverDeadline} setHandoverDeadline={setHandoverDeadline} onConfirm={() => save("LAUNCHED")} pending={pending} canLaunch={!(stockQty > 0 && totalTarget !== stockQty)} />
 
         {/* ╔══════════════════════════════════╗ */}
         {/* ║  PHẦN II: TRIỂN KHAI (Giao việc)  ║ */}
