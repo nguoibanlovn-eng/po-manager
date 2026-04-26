@@ -1370,59 +1370,82 @@ function LaunchFormModal({ initial, defaultSku, defaultName, defaultCost, onClos
         {/* ═══ B4: Nội dung & Listing ═══ */}
         <div style={sectionStyle}>
           {secTitle(4, "Nội dung & Listing", "#7C3AED")}
-          <div style={{ background: "#F5F5F7", borderRadius: 6, padding: "6px 10px", marginBottom: 10, fontSize: 10, color: "#71717A", lineHeight: 1.5 }}>
-            Gán nhân sự + deadline cho từng mục. Khi Launch, noti gửi vào <strong>Việc của tôi</strong>.
+
+          {/* Drive link */}
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase", marginBottom: 4 }}>KHO TÀI LIỆU CHUNG</div>
+            <input value={driveLink} onChange={(e) => setDriveLink(e.target.value)} placeholder="https://drive.google.com/..." style={{ width: "100%", padding: "6px 10px", border: "1px solid #E4E4E7", borderRadius: 6, fontSize: 12 }} />
           </div>
 
-          <div className="form-grid fg-2" style={{ marginBottom: 10 }}>
-            <div className="form-group"><div style={{ display: "inline-block", fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>KHO TÀI LIỆU CHUNG</div><input value={driveLink} onChange={(e) => setDriveLink(e.target.value)} placeholder="https://drive.google.com/..." /></div>
-            <div className="form-group"><div style={{ display: "inline-block", fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 4 }}>NGƯỜI PHỤ TRÁCH</div><input value={assignees} onChange={(e) => setAssignees(e.target.value)} placeholder="Tên nhân sự..." /></div>
-          </div>
-
-          {/* Checklist nội dung — tự do */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+          {/* Checklist nội dung */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase" }}>Checklist nội dung</div>
             <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 4, background: "#EFF6FF", color: "#1E40AF", fontWeight: 600 }}>Gợi ý: {horizon === "short" ? "Ngắn hạn 7" : horizon === "long" ? "Dài hạn 15" : "Trung hạn 10"} video</span>
+            <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 700, color: "#16A34A" }}>{checklist.filter((c) => c.done).length}/{checklist.length}</span>
           </div>
+
+          {/* Table header */}
+          <div style={{ display: "grid", gridTemplateColumns: "28px 1fr 36px 120px 100px 24px", gap: 4, padding: "4px 8px", fontSize: 9, fontWeight: 700, color: "#A1A1AA", textTransform: "uppercase", borderBottom: "1px solid #E4E4E7", marginBottom: 2 }}>
+            <span />
+            <span>Nội dung</span>
+            <span>SL</span>
+            <span>Nhân sự</span>
+            <span>Deadline</span>
+            <span />
+          </div>
+
           {checklist.map((item, idx) => (
-            <div key={idx} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", border: "1px solid #E5E7EB", borderRadius: 8, marginBottom: 4, flexWrap: "wrap", opacity: item.done ? 0.6 : 1 }}>
+            <div key={idx} style={{ display: "grid", gridTemplateColumns: "28px 1fr 36px 120px 100px 24px", gap: 4, alignItems: "center", padding: "5px 8px", borderBottom: "1px solid #F3F4F6", opacity: item.done ? 0.5 : 1 }}>
               <input type="checkbox" checked={item.done} onChange={(e) => { const arr = [...checklist]; arr[idx] = { ...arr[idx], done: e.target.checked }; setChecklist(arr); }} style={{ accentColor: "#16A34A" }} />
-              <span style={{ fontSize: 12, fontWeight: item.done ? 400 : 600, flex: 1, minWidth: 120 }}>{item.name}</span>
-              <span style={{ fontSize: 10, color: "#71717A" }}>{item.qty}</span>
-              <select value={item.assignee} onChange={(e) => { const arr = [...checklist]; arr[idx] = { ...arr[idx], assignee: e.target.value }; setChecklist(arr); }} style={{ width: "auto", padding: "2px 6px", fontSize: 10, border: "1px solid #E4E4E7", borderRadius: 4, color: item.assignee ? "#4F46E5" : "#A1A1AA" }}>
-                <option value="">— Giao —</option>
-                <option>Hoa</option><option>Phát</option><option>Linh</option><option>Đức</option><option>Mai Thu</option>
+              <span style={{ fontSize: 12, fontWeight: item.done ? 400 : 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</span>
+              <span style={{ fontSize: 11, color: "#71717A", textAlign: "center" }}>{item.qty}</span>
+              <select value={item.assignee} onChange={(e) => { const arr = [...checklist]; arr[idx] = { ...arr[idx], assignee: e.target.value }; setChecklist(arr); }} style={{ padding: "3px 4px", fontSize: 11, border: "1px solid #E4E4E7", borderRadius: 4, color: item.assignee ? "#4F46E5" : "#A1A1AA" }}>
+                <option value="">— Chọn —</option>
+                {users.map((u) => <option key={u.email} value={u.email}>{u.name || u.email}</option>)}
               </select>
-              <span style={{ fontSize: 9, color: "#A1A1AA" }}>DL:</span>
-              <input type="date" value={item.deadline} onChange={(e) => { const arr = [...checklist]; arr[idx] = { ...arr[idx], deadline: e.target.value }; setChecklist(arr); }} style={{ padding: "2px 4px", fontSize: 9, border: "1px solid #E4E4E7", borderRadius: 4, width: "auto" }} />
-              <button type="button" onClick={() => setChecklist(checklist.filter((_, i) => i !== idx))} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 13, padding: "0 4px" }}>×</button>
+              <input type="date" value={item.deadline} onChange={(e) => { const arr = [...checklist]; arr[idx] = { ...arr[idx], deadline: e.target.value }; setChecklist(arr); }} style={{ padding: "3px 4px", fontSize: 11, border: "1px solid #E4E4E7", borderRadius: 4 }} />
+              <button type="button" onClick={() => setChecklist(checklist.filter((_, i) => i !== idx))} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 14, padding: 0, lineHeight: 1 }}>×</button>
             </div>
           ))}
-          <div style={{ display: "flex", gap: 6, marginTop: 6, marginBottom: 12 }}>
-            <input type="text" placeholder="Tên mục mới (VD: Video unbox, Infographic...)" value={newItemName} onChange={(e) => setNewItemName(e.target.value)} style={{ flex: 1, padding: "5px 10px", border: "1px solid #E4E4E7", borderRadius: 6, fontSize: 12 }} />
-            <input type="text" placeholder="SL" value={newItemQty} onChange={(e) => setNewItemQty(e.target.value)} style={{ width: 50, padding: "5px 8px", border: "1px solid #E4E4E7", borderRadius: 6, fontSize: 12, textAlign: "center" }} />
-            <button type="button" className="btn btn-ghost" style={{ fontSize: 10, padding: "5px 10px" }} onClick={() => { if (!newItemName.trim()) return; setChecklist([...checklist, { name: newItemName, qty: Number(newItemQty) || 1, assignee: "", deadline: "", done: false }]); setNewItemName(""); setNewItemQty(""); }}>+ Thêm</button>
+
+          {/* Thêm mục mới */}
+          <div style={{ display: "grid", gridTemplateColumns: "28px 1fr 36px 120px 100px 24px", gap: 4, alignItems: "center", padding: "6px 8px", marginTop: 4 }}>
+            <span />
+            <input type="text" placeholder="Tên mục mới..." value={newItemName} onChange={(e) => setNewItemName(e.target.value)} style={{ padding: "4px 8px", border: "1px solid #E4E4E7", borderRadius: 4, fontSize: 11 }} />
+            <input type="text" placeholder="SL" value={newItemQty} onChange={(e) => setNewItemQty(e.target.value)} style={{ padding: "4px", border: "1px solid #E4E4E7", borderRadius: 4, fontSize: 11, textAlign: "center" }} />
+            <span />
+            <span />
+            <button type="button" onClick={() => { if (!newItemName.trim()) return; setChecklist([...checklist, { name: newItemName, qty: Number(newItemQty) || 1, assignee: "", deadline: "", done: false }]); setNewItemName(""); setNewItemQty(""); }} style={{ background: "none", border: "none", color: "#7C3AED", cursor: "pointer", fontSize: 16, padding: 0, fontWeight: 700 }}>+</button>
           </div>
 
-          <div style={{ height: 1, background: "#E5E7EB", margin: "12px 0" }} />
+          <div style={{ height: 1, background: "#E5E7EB", margin: "14px 0" }} />
 
-          {/* Listing */}
-          <div style={{ fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase", marginBottom: 6 }}>LISTING SẢN PHẨM</div>
-          {selChannels.map((ch) => (
-            <div key={ch} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", border: "1px solid #E5E7EB", borderRadius: 8, marginBottom: 4, flexWrap: "wrap" }}>
+          {/* Listing sản phẩm */}
+          <div style={{ fontSize: 10, fontWeight: 700, color: "#71717A", textTransform: "uppercase", marginBottom: 8 }}>LISTING SẢN PHẨM</div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "28px 80px 1fr 120px 100px", gap: 4, padding: "4px 8px", fontSize: 9, fontWeight: 700, color: "#A1A1AA", textTransform: "uppercase", borderBottom: "1px solid #E4E4E7", marginBottom: 2 }}>
+            <span />
+            <span>Kênh</span>
+            <span>Link</span>
+            <span>Nhân sự</span>
+            <span>Deadline</span>
+          </div>
+
+          {ALL_CHANNELS.map((ch) => (
+            <div key={ch} style={{ display: "grid", gridTemplateColumns: "28px 80px 1fr 120px 100px", gap: 4, alignItems: "center", padding: "5px 8px", borderBottom: "1px solid #F3F4F6" }}>
               <input type="checkbox" checked={listings[ch]?.done || false} onChange={(e) => setListings({ ...listings, [ch]: { ...listings[ch], done: e.target.checked } })} style={{ accentColor: "#16A34A" }} />
-              <span style={{ width: 10, height: 10, borderRadius: "50%", background: CH_CHIP_COLORS[ch], flexShrink: 0 }} />
-              <span style={{ fontSize: 12, fontWeight: 600, minWidth: 70 }}>{ch}</span>
-              <input type="text" placeholder={`Link ${ch}...`} value={(listings[ch]?.links || "").split("\n")[0]} onChange={(e) => setListings({ ...listings, [ch]: { ...listings[ch], links: e.target.value } })} style={{ flex: 1, padding: "4px 8px", border: "1px solid #E5E7EB", borderRadius: 6, fontSize: 11, minWidth: 120 }} />
-              <select style={{ width: "auto", padding: "2px 6px", fontSize: 10, border: "1px solid #E4E4E7", borderRadius: 4 }}>
-                <option value="">— Giao —</option>
-                <option>Hoa</option><option>Phát</option><option>Linh</option>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: CH_CHIP_COLORS[ch], flexShrink: 0 }} />
+                <span style={{ fontSize: 11, fontWeight: 600 }}>{ch.replace("TikTok Shop", "TikTok").replace("Web/B2B", "Web")}</span>
+              </div>
+              <input type="text" placeholder={`Link ${ch}...`} value={(listings[ch]?.links || "").split("\n")[0]} onChange={(e) => setListings({ ...listings, [ch]: { ...listings[ch], links: e.target.value } })} style={{ padding: "3px 8px", border: "1px solid #E4E4E7", borderRadius: 4, fontSize: 11 }} />
+              <select style={{ padding: "3px 4px", fontSize: 11, border: "1px solid #E4E4E7", borderRadius: 4, color: "#A1A1AA" }}>
+                <option value="">— Chọn —</option>
+                {users.map((u) => <option key={u.email} value={u.email}>{u.name || u.email}</option>)}
               </select>
-              <span style={{ fontSize: 9, color: "#A1A1AA" }}>DL:</span>
-              <input type="date" style={{ padding: "2px 4px", fontSize: 9, border: "1px solid #E4E4E7", borderRadius: 4, width: "auto" }} />
+              <input type="date" style={{ padding: "3px 4px", fontSize: 11, border: "1px solid #E4E4E7", borderRadius: 4 }} />
             </div>
           ))}
-          {selChannels.length === 0 && <div style={{ color: "#9CA3AF", fontSize: 12, textAlign: "center", padding: 16 }}>Chọn kênh bán ở B3 trước</div>}
         </div>
 
         </div>{/* end scrollable content */}
