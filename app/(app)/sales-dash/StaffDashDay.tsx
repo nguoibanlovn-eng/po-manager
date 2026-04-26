@@ -115,7 +115,7 @@ export default function StaffDashDay(p: StaffDashDayProps) {
         </div>
         <div style={{ display: "flex", gap: 4, marginBottom: 12, overflowX: "auto", paddingBottom: 2 }}>
           {QUICK_RANGES.map(r => (
-            <button key={r.key} onClick={() => r.key === "today" ? (setRangeKey("today"), setRangeData(null)) : r.key === "yesterday" ? (window.location.href = `/sales-dash?channel=${encodeURIComponent(p.channelName)}&date=${p.prevDay}`) : loadRange(r.key)} style={{
+            <button key={r.key} onClick={() => r.key === "today" ? (setRangeKey("today"), setRangeData(null)) : r.key === "yesterday" ? (window.location.href = `/sales-dash?channel=${encodeURIComponent(p.channelName)}&date=${daysAgo(-1)}`) : loadRange(r.key)} style={{
               background: rangeKey === r.key ? "rgba(255,255,255,.3)" : "rgba(255,255,255,.1)",
               color: rangeKey === r.key ? "#fff" : "rgba(255,255,255,.6)",
               padding: "5px 10px", borderRadius: 8, fontSize: 10, fontWeight: 600,

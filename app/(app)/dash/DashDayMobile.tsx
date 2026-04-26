@@ -121,7 +121,7 @@ export default function DashDayMobile(p: DashDayMobileProps) {
         </div>
         <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
           <Link href="/dash?view=day" style={{ background: "rgba(255,255,255,.25)", color: "#fff", padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600, textDecoration: "none" }}>Hôm nay</Link>
-          <Link href={`/dash?view=day&date=${p.prevDay}`} style={{ background: "rgba(255,255,255,.1)", color: "rgba(255,255,255,.6)", padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600, textDecoration: "none" }}>Hôm qua</Link>
+          <Link href={`/dash?view=day&date=${daysAgo(-1)}`} style={{ background: "rgba(255,255,255,.1)", color: "rgba(255,255,255,.6)", padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600, textDecoration: "none" }}>Hôm qua</Link>
         </div>
       </div>
 
