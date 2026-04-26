@@ -75,29 +75,36 @@ function ReadyTab({ plans, onEdit }: { plans: LaunchPlanRow[]; onEdit: (p: Launc
         const isOpen = expanded === p.id;
         const cost = m.phase3?.cost || m.pricing?.cost || 0;
         const sellPrice = m.phase3?.sell_price || m.pricing?.sell_price || 0;
+        const stockQty = m.phase4?.stock_qty || m.sales_target?.stock_qty || 0;
+        const deployId = m.deploy_id || "";
+        const productDesc = (m as Record<string, unknown>).product_desc as string || "";
         const custGroup = m.phase1?.customer || m.customer?.group || "";
         const custPain = m.phase1?.pain_point || m.customer?.pain_point || "";
         const competitors = typeof (m as Record<string, unknown>).competitors === "string" ? (m as Record<string, unknown>).competitors as string : "";
         const channels = m.channels_selected || [];
         const listings = m.listings || {};
+        // Tính gross
+        const gross = sellPrice > 0 && cost > 0 ? sellPrice - cost : 0;
+        const grossPct = sellPrice > 0 ? ((gross / sellPrice) * 100).toFixed(1) : "0";
 
         return (
           <div key={p.id} style={{ borderBottom: "1px solid #F3F4F6" }}>
             {/* Row chính — bấm để expand */}
             <div style={{ padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => setExpanded(isOpen ? null : p.id)}>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 2 }}>
-                  {m.deploy_id && <span style={{ fontSize: 8, background: BRAND, color: "#fff", borderRadius: 3, padding: "1px 5px", fontWeight: 600 }}>TỪ TRIỂN KHAI</span>}
+                  {deployId && <span style={{ fontSize: 8, background: BRAND, color: "#fff", borderRadius: 3, padding: "1px 5px", fontWeight: 600 }}>TỪ ĐƠN HÀNG</span>}
                   {hz && <span style={{ fontSize: 8, background: hz.color, color: "#fff", borderRadius: 3, padding: "1px 5px", fontWeight: 600 }}>{hz.label}</span>}
-                  <span style={{ fontWeight: 700, fontSize: 13 }}>{p.product_name}</span>
+                  <span style={{ fontWeight: 700, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.product_name}</span>
                 </div>
                 <div style={{ fontSize: 10, color: "#6B7280" }}>
                   SKU: {p.sku || "—"}
                   {cost > 0 ? ` · Vốn: ${formatVND(cost)}` : ""}
-                  {sellPrice > 0 ? ` · Giá: ${formatVND(sellPrice)}` : ""}
+                  {sellPrice > 0 ? ` · Giá bán: ${formatVND(sellPrice)}` : ""}
+                  {stockQty > 0 ? ` · SL: ${stockQty}` : ""}
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
                 <span style={{ fontSize: 12, color: "#A1A1AA", transform: isOpen ? "rotate(180deg)" : "rotate(0)", transition: "transform .2s" }}>▼</span>
                 <button className="btn btn-sm" style={{ background: BRAND, color: "#fff", fontSize: 11 }} onClick={(e) => { e.stopPropagation(); onEdit(p); }}>Tạo Launch Plan</button>
               </div>
@@ -105,28 +112,51 @@ function ReadyTab({ plans, onEdit }: { plans: LaunchPlanRow[]; onEdit: (p: Launc
             {/* Chi tiết expand */}
             {isOpen && (
               <div style={{ padding: "0 14px 12px", background: "#FAFAFA", borderTop: "1px solid #F3F4F6" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 16px", fontSize: 11, padding: "10px 0" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px", padding: "10px 0" }}>
+                  {/* Giá nhập / Giá bán / Gross */}
+                  <div style={{ background: "#fff", border: "1px solid #E4E4E7", borderRadius: 6, padding: "8px 10px", textAlign: "center" }}>
+                    <div style={{ fontSize: 9, color: "#A1A1AA" }}>Giá vốn (A)</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: BRAND2 }}>{cost > 0 ? formatVND(cost) : "—"}</div>
+                  </div>
+                  <div style={{ background: "#fff", border: "1px solid #E4E4E7", borderRadius: 6, padding: "8px 10px", textAlign: "center" }}>
+                    <div style={{ fontSize: 9, color: "#A1A1AA" }}>Giá bán dự kiến</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B" }}>{sellPrice > 0 ? formatVND(sellPrice) : "—"}</div>
+                  </div>
+                  <div style={{ background: "#fff", border: "1px solid #E4E4E7", borderRadius: 6, padding: "8px 10px", textAlign: "center" }}>
+                    <div style={{ fontSize: 9, color: "#A1A1AA" }}>Gross (B−A)</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: gross > 0 ? "#16A34A" : "#DC2626" }}>{gross > 0 ? `+${formatVND(gross)}` : "—"}</div>
+                    {gross > 0 && <div style={{ fontSize: 9, color: "#16A34A" }}>{grossPct}%</div>}
+                  </div>
+                </div>
+
+                {/* Thông tin nguồn */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 16px", fontSize: 11, marginBottom: 6 }}>
+                  {deployId && <div><span style={{ color: "#A1A1AA" }}>Nguồn:</span> <strong style={{ color: BRAND }}>{deployId}</strong></div>}
+                  {stockQty > 0 && <div><span style={{ color: "#A1A1AA" }}>SL nhập:</span> <strong>{stockQty.toLocaleString("vi-VN")} SP</strong></div>}
+                  {productDesc && <div style={{ gridColumn: "1 / -1" }}><span style={{ color: "#A1A1AA" }}>Mô tả SP:</span> <strong>{productDesc}</strong></div>}
                   {custGroup && <div><span style={{ color: "#A1A1AA" }}>Khách hàng:</span> <strong>{custGroup}</strong></div>}
                   {custPain && <div><span style={{ color: "#A1A1AA" }}>Nhu cầu:</span> <strong>{custPain}</strong></div>}
                   {competitors && <div style={{ gridColumn: "1 / -1" }}><span style={{ color: "#A1A1AA" }}>Đối thủ:</span> <strong>{competitors}</strong></div>}
-                  {channels.length > 0 && (
-                    <div style={{ gridColumn: "1 / -1" }}>
-                      <span style={{ color: "#A1A1AA" }}>Kênh: </span>
-                      {channels.map((ch) => (
-                        <span key={ch} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 3, fontWeight: 600, background: CH_COLORS[ch.replace(" Shop", "")] || "#6B7280", color: "#fff", marginRight: 3 }}>{ch.replace("TikTok Shop", "TT").replace("Facebook", "FB").replace("Shopee", "SP").replace("Web/B2B", "Web")}</span>
-                      ))}
-                    </div>
-                  )}
-                  {Object.keys(listings).length > 0 && (
-                    <div style={{ gridColumn: "1 / -1" }}>
-                      <span style={{ color: "#A1A1AA" }}>Listing: </span>
-                      {Object.entries(listings).map(([ch, info]) => {
-                        const li = info as { done?: boolean };
-                        return <span key={ch} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 3, fontWeight: 600, background: li.done ? "#F0FDF4" : "#FEF2F2", color: li.done ? "#16A34A" : "#DC2626", marginRight: 3 }}>{ch.replace("TikTok Shop", "TT").replace("Facebook", "FB").replace("Web/B2B", "Web")} {li.done ? "✓" : "—"}</span>;
-                      })}
-                    </div>
-                  )}
                 </div>
+
+                {/* Kênh + Listing */}
+                {channels.length > 0 && (
+                  <div style={{ fontSize: 11, marginBottom: 6 }}>
+                    <span style={{ color: "#A1A1AA" }}>Kênh: </span>
+                    {channels.map((ch) => (
+                      <span key={ch} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 3, fontWeight: 600, background: CH_COLORS[ch.replace(" Shop", "")] || "#6B7280", color: "#fff", marginRight: 3 }}>{ch.replace("TikTok Shop", "TT").replace("Facebook", "FB").replace("Shopee", "SP").replace("Web/B2B", "Web")}</span>
+                    ))}
+                  </div>
+                )}
+                {Object.keys(listings).length > 0 && (
+                  <div style={{ fontSize: 11, marginBottom: 6 }}>
+                    <span style={{ color: "#A1A1AA" }}>Listing: </span>
+                    {Object.entries(listings).map(([ch, info]) => {
+                      const li = info as { done?: boolean };
+                      return <span key={ch} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 3, fontWeight: 600, background: li.done ? "#F0FDF4" : "#FEF2F2", color: li.done ? "#16A34A" : "#DC2626", marginRight: 3 }}>{ch.replace("TikTok Shop", "TT").replace("Facebook", "FB").replace("Web/B2B", "Web")} {li.done ? "✓" : "—"}</span>;
+                    })}
+                  </div>
+                )}
                 {p.note && <div style={{ fontSize: 10, color: "#92400E", background: "#FFFBEB", padding: "4px 8px", borderRadius: 4 }}>{p.note}</div>}
               </div>
             )}
