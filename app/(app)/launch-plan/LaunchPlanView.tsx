@@ -67,6 +67,7 @@ function getPhaseChecks(m: Metrics): boolean[] {
    ═══════════════════════════════════════════════════════════ */
 function ReadyTab({ plans, onEdit }: { plans: LaunchPlanRow[]; onEdit: (p: LaunchPlanRow) => void }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [descPopup, setDescPopup] = useState<string | null>(null);
   return (
     <div className="card" style={{ padding: 0 }}>
       {plans.map((p) => {
@@ -112,49 +113,42 @@ function ReadyTab({ plans, onEdit }: { plans: LaunchPlanRow[]; onEdit: (p: Launc
             {/* Chi tiết expand */}
             {isOpen && (
               <div style={{ padding: "0 14px 12px", background: "#FAFAFA", borderTop: "1px solid #F3F4F6" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px", padding: "10px 0" }}>
-                  {/* Giá nhập / Giá bán / Gross */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "8px", padding: "10px 0" }}>
+                  <div style={{ background: "#fff", border: "1px solid #E4E4E7", borderRadius: 6, padding: "8px 10px", textAlign: "center" }}>
+                    <div style={{ fontSize: 9, color: "#A1A1AA" }}>SL nhập</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B" }}>{stockQty > 0 ? stockQty.toLocaleString("vi-VN") : "—"}</div>
+                  </div>
                   <div style={{ background: "#fff", border: "1px solid #E4E4E7", borderRadius: 6, padding: "8px 10px", textAlign: "center" }}>
                     <div style={{ fontSize: 9, color: "#A1A1AA" }}>Giá vốn (A)</div>
                     <div style={{ fontSize: 14, fontWeight: 800, color: BRAND2 }}>{cost > 0 ? formatVND(cost) : "—"}</div>
                   </div>
                   <div style={{ background: "#fff", border: "1px solid #E4E4E7", borderRadius: 6, padding: "8px 10px", textAlign: "center" }}>
-                    <div style={{ fontSize: 9, color: "#A1A1AA" }}>Giá bán dự kiến</div>
+                    <div style={{ fontSize: 9, color: "#A1A1AA" }}>Giá bán</div>
                     <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B" }}>{sellPrice > 0 ? formatVND(sellPrice) : "—"}</div>
                   </div>
                   <div style={{ background: "#fff", border: "1px solid #E4E4E7", borderRadius: 6, padding: "8px 10px", textAlign: "center" }}>
-                    <div style={{ fontSize: 9, color: "#A1A1AA" }}>Gross (B−A)</div>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: gross > 0 ? "#16A34A" : "#DC2626" }}>{gross > 0 ? `+${formatVND(gross)}` : "—"}</div>
+                    <div style={{ fontSize: 9, color: "#A1A1AA" }}>Gross</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: gross > 0 ? "#16A34A" : "#DC2626" }}>{gross > 0 ? `+${formatVNDCompact(gross)}` : "—"}</div>
                     {gross > 0 && <div style={{ fontSize: 9, color: "#16A34A" }}>{grossPct}%</div>}
                   </div>
                 </div>
 
-                {/* Thông tin nguồn */}
+                {/* Nguồn + thông tin */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 16px", fontSize: 11, marginBottom: 6 }}>
                   {deployId && <div><span style={{ color: "#A1A1AA" }}>Nguồn:</span> <strong style={{ color: BRAND }}>{deployId}</strong></div>}
-                  {stockQty > 0 && <div><span style={{ color: "#A1A1AA" }}>SL nhập:</span> <strong>{stockQty.toLocaleString("vi-VN")} SP</strong></div>}
-                  {productDesc && <div style={{ gridColumn: "1 / -1" }}><span style={{ color: "#A1A1AA" }}>Mô tả SP:</span> <strong>{productDesc}</strong></div>}
                   {custGroup && <div><span style={{ color: "#A1A1AA" }}>Khách hàng:</span> <strong>{custGroup}</strong></div>}
                   {custPain && <div><span style={{ color: "#A1A1AA" }}>Nhu cầu:</span> <strong>{custPain}</strong></div>}
-                  {competitors && <div style={{ gridColumn: "1 / -1" }}><span style={{ color: "#A1A1AA" }}>Đối thủ:</span> <strong>{competitors}</strong></div>}
+                  {competitors && <div><span style={{ color: "#A1A1AA" }}>Đối thủ:</span> <strong>{competitors}</strong></div>}
                 </div>
 
-                {/* Kênh + Listing */}
-                {channels.length > 0 && (
-                  <div style={{ fontSize: 11, marginBottom: 6 }}>
-                    <span style={{ color: "#A1A1AA" }}>Kênh: </span>
-                    {channels.map((ch) => (
-                      <span key={ch} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 3, fontWeight: 600, background: CH_COLORS[ch.replace(" Shop", "")] || "#6B7280", color: "#fff", marginRight: 3 }}>{ch.replace("TikTok Shop", "TT").replace("Facebook", "FB").replace("Shopee", "SP").replace("Web/B2B", "Web")}</span>
-                    ))}
-                  </div>
-                )}
-                {Object.keys(listings).length > 0 && (
-                  <div style={{ fontSize: 11, marginBottom: 6 }}>
-                    <span style={{ color: "#A1A1AA" }}>Listing: </span>
-                    {Object.entries(listings).map(([ch, info]) => {
-                      const li = info as { done?: boolean };
-                      return <span key={ch} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 3, fontWeight: 600, background: li.done ? "#F0FDF4" : "#FEF2F2", color: li.done ? "#16A34A" : "#DC2626", marginRight: 3 }}>{ch.replace("TikTok Shop", "TT").replace("Facebook", "FB").replace("Web/B2B", "Web")} {li.done ? "✓" : "—"}</span>;
-                    })}
+                {/* Mô tả SP — rút gọn, bấm xem popup */}
+                {productDesc && (
+                  <div style={{ background: "#fff", border: "1px solid #E4E4E7", borderRadius: 6, padding: "8px 10px", fontSize: 11, marginBottom: 6 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: "#A1A1AA", textTransform: "uppercase" }}>Mô tả sản phẩm</span>
+                      <button onClick={(e) => { e.stopPropagation(); setDescPopup(productDesc); }} style={{ fontSize: 9, color: BRAND2, background: "#EFF6FF", border: "none", borderRadius: 4, padding: "2px 8px", cursor: "pointer", fontWeight: 600 }}>Xem đầy đủ</button>
+                    </div>
+                    <div style={{ color: "#374151", lineHeight: 1.4, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const }}>{productDesc}</div>
                   </div>
                 )}
                 {p.note && <div style={{ fontSize: 10, color: "#92400E", background: "#FFFBEB", padding: "4px 8px", borderRadius: 4 }}>{p.note}</div>}
@@ -164,6 +158,19 @@ function ReadyTab({ plans, onEdit }: { plans: LaunchPlanRow[]; onEdit: (p: Launc
         );
       })}
       {plans.length === 0 && <div className="muted" style={{ padding: 24, textAlign: "center" }}>Không có SP sẵn sàng.</div>}
+
+      {/* Popup mô tả SP */}
+      {descPopup && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 200, display: "flex", justifyContent: "center", alignItems: "center", padding: 16 }} onClick={() => setDescPopup(null)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 12, maxWidth: 600, width: "100%", maxHeight: "70vh", overflow: "auto", boxShadow: "0 25px 50px rgba(0,0,0,.25)" }}>
+            <div style={{ padding: "14px 20px", borderBottom: "1px solid #E4E4E7", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontWeight: 800, fontSize: 14 }}>Mô tả sản phẩm</span>
+              <button onClick={() => setDescPopup(null)} style={{ background: "#F4F4F5", border: "none", fontSize: 16, cursor: "pointer", color: "#52525B", width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>✕</button>
+            </div>
+            <div style={{ padding: "16px 20px", fontSize: 13, lineHeight: 1.8, color: "#374151", whiteSpace: "pre-wrap" }}>{descPopup}</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
