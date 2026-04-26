@@ -179,35 +179,75 @@ function OrderQcCard({
     });
   }
 
+  const totalQty = items.reduce((s, it) => s + toNum(it.qty), 0);
+  const damageCount = items.filter((it) => toNum(it.damage_qty) > 0).length;
+  const damageCost = items.reduce((s, it) => s + toNum(it.damage_amount), 0);
+  const qcPct = items.length > 0 ? Math.round(qcDoneCount / items.length * 100) : 0;
+  const shelfPct = items.length > 0 ? Math.round(shelfDoneCount / items.length * 100) : 0;
+  // Tính số ngày kể từ hàng về
+  const daysAgo = order.arrival_date ? Math.max(0, Math.floor((Date.now() - new Date(order.arrival_date).getTime()) / 86400000)) : 0;
+  const isUrgent = daysAgo >= 3 && (qcPct < 100 || shelfPct < 100);
+
   return (
-    <div className="card" style={{ marginBottom: 12, padding: 0, overflow: "hidden" }}>
+    <div style={{ background: "#fff", border: `1px solid ${isUrgent ? "#FECACA" : "#E2E8F0"}`, borderRadius: 12, marginBottom: 10, overflow: "hidden" }}>
+      {/* Header */}
       <div
         style={{
           padding: "12px 14px",
-          background: "#FAFAFA",
-          borderBottom: expanded ? "1px solid var(--border)" : "none",
+          borderBottom: expanded ? "1px solid #E2E8F0" : "none",
           cursor: "pointer",
+          background: isUrgent ? "#FEF2F2" : "#FAFBFC",
         }}
         onClick={() => setExpanded((v) => !v)}
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 700 }}>
-              {order.order_id} · {order.order_name || "—"}
+            <div style={{ fontWeight: 700, fontSize: 13 }}>
+              {order.order_name || order.order_id}
             </div>
-            <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
-              {order.supplier_name || "—"} · Về ngày {formatDate(order.arrival_date)} · {items.length} SP
+            <div style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>
+              {order.supplier_name || "—"} · Về {formatDate(order.arrival_date)} · <span style={{ color: isUrgent ? "#DC2626" : "#64748B", fontWeight: isUrgent ? 700 : 400 }}>{daysAgo}d trước</span>
             </div>
           </div>
           <span className={`stage-badge stage-${order.stage}`}>{order.stage}</span>
-          <span style={{ color: "var(--muted)" }}>{expanded ? "▾" : "▸"}</span>
+          <span style={{ fontSize: 10, color: "#94A3B8", transform: expanded ? "rotate(90deg)" : "none", transition: "transform .2s" }}>›</span>
         </div>
 
-        {/* Progress bar QC + Kệ */}
+        {/* KPI strip */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 4, background: "#F8FAFC", borderRadius: 8, padding: "6px 8px", marginBottom: 8 }}>
+          <div>
+            <div style={{ fontSize: 8, color: "#94A3B8", textTransform: "uppercase" }}>Sản phẩm</div>
+            <div style={{ fontSize: 11, fontWeight: 700 }}>{items.length} SP · {totalQty} cái</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 8, color: "#94A3B8", textTransform: "uppercase" }}>QC</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: qcPct >= 100 ? "#16A34A" : qcPct > 0 ? "#D97706" : "#DC2626" }}>{qcDoneCount}/{items.length} ({qcPct}%)</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 8, color: "#94A3B8", textTransform: "uppercase" }}>Lên kệ</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: shelfPct >= 100 ? "#16A34A" : shelfPct > 0 ? "#D97706" : "#DC2626" }}>{shelfDoneCount}/{items.length} ({shelfPct}%)</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 8, color: "#94A3B8", textTransform: "uppercase" }}>Lỗi</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: damageCount > 0 ? "#DC2626" : "#94A3B8" }}>{damageCount > 0 ? `${damageCount} SP · ${formatVND(damageCost)}` : "0"}</div>
+          </div>
+        </div>
+
+        {/* Dual progress bar */}
         {items.length > 0 && (
-          <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
-            <ProgressLine label={`QC: ${qcDoneCount}/${items.length} SP`} pct={qcDoneCount / items.length * 100} color="var(--teal)" />
-            <ProgressLine label={`Lên kệ: ${shelfDoneCount}/${items.length} SP`} pct={shelfDoneCount / items.length * 100} color="var(--green)" />
+          <div style={{ display: "flex", gap: 6 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ height: 5, background: "#F3F4F6", borderRadius: 3, overflow: "hidden" }}>
+                <div style={{ width: `${qcPct}%`, height: "100%", background: qcPct >= 100 ? "#22C55E" : "#0D9488", borderRadius: 3, transition: "width 0.3s" }} />
+              </div>
+              <div style={{ fontSize: 8, color: "#94A3B8", marginTop: 2 }}>QC</div>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ height: 5, background: "#F3F4F6", borderRadius: 3, overflow: "hidden" }}>
+                <div style={{ width: `${shelfPct}%`, height: "100%", background: shelfPct >= 100 ? "#22C55E" : "#16A34A", borderRadius: 3, transition: "width 0.3s" }} />
+              </div>
+              <div style={{ fontSize: 8, color: "#94A3B8", marginTop: 2 }}>Kệ</div>
+            </div>
           </div>
         )}
       </div>
